@@ -2,9 +2,24 @@ import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { ArrowRight, ShieldCheck, ShoppingCart, Users, X } from 'lucide-react';
 
-const nftItems = Array.from({ length: 16 }).map((_, i) => ({
+const nftImages = [
+  "/nfts/nft.jpg",
+  "/nfts/nft2.jpg",
+  "/nfts/nft3.jpg",
+  "/nfts/nft4.jpg",
+  "/nfts/nft5.jpg",
+  "/nfts/nft6.jpg",
+  "/nfts/nft7.jpg",
+  "/nfts/nft8.jpg",
+  "/nfts/nft9.jpg",
+  "/nfts/nft10.jpg",
+  "/nfts/nft11.jpg",
+  "/nfts/nft12.jpg",
+];
+
+const nftItems = nftImages.map((img, i) => ({
   id: i + 1,
-  img: `/nfts/nft${(i % 5) + 1}.png`,
+  img,
   title: `NFT #${i + 1}`,
   price: `$${(20 + i * 3).toFixed(2)}`,
 }));

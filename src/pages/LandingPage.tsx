@@ -2,8 +2,8 @@
 import Ecosystem from '@/components/Ecosystem';
 import EcosystemIntro from '@/components/EcosystemIntro';
 import EnergyBreakdown from '@/components/EnergyBreakdown';
-import EnergyExplanation from '@/components/EnergyExplanation';
-import EnergyTrustInfo from '@/components/EnergyTrustInfo';
+import PrivateEnergyTrust from '@/components/PrivateEnergyTrust';
+
 
 
 import TransactionStatus from '@/components/TransactionStatus';
@@ -14,8 +14,7 @@ export default function LandingPage () {
   
     <EnergyBreakdown />
     <TransactionStatus/>
-    <EnergyTrustInfo/>
-    <EnergyExplanation/>
+   <PrivateEnergyTrust/>
     <Ecosystem/>
     <EcosystemIntro/>
     
