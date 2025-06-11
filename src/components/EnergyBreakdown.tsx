@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import React from 'react';
 import { ArrowRight, Star, Globe, LockKeyhole, Users, BarChart3, Landmark, Flame, BookOpen, ShieldCheck, Scale } from 'lucide-react';
 
 const EnergyBreakdown = () => {

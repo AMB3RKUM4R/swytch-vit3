@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowRight, ShieldCheck, ShoppingCart, Users, X } from 'lucide-react';
 
 const nftItems = Array.from({ length: 16 }).map((_, i) => ({
@@ -12,7 +12,7 @@ const nftItems = Array.from({ length: 16 }).map((_, i) => ({
 const PrivateEnergyTrust = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaypalModal, setShowPaypalModal] = useState(false);
-  const [scrollX, setScrollX] = useState(0);
+  const [] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

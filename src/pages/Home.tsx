@@ -1,5 +1,4 @@
 
-import EcosystemIntro from '@/components/EcosystemIntro';
 import EnergyBreakdown from '@/components/EnergyBreakdown';
 import EnergyExplanation from '@/components/EnergyExplanation';
 import EnergyTrustInfo from '@/components/EnergyTrustInfo';

@@ -1,6 +1,6 @@
 
 import { motion } from 'framer-motion';
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { X, Rocket, KeyRound, Terminal, ShieldCheck, Coins, Flame, Workflow, BadgeCheck, Eye, BarChart3, HelpCircle, UserCheck } from 'lucide-react';
 import visionImg from '@/assets/swytch/bg1.jpg';
 import onboardingImg from '@/assets/swytch/bg (74).jpg';

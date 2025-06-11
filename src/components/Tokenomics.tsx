@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
-import React from 'react';
+
 
 const Tokenomics = () => {
   const variants = {
@@ -132,7 +132,7 @@ const Tokenomics = () => {
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
             <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} fill="#8884d8" dataKey="value" label>
-              {pieData.map((entry, index) => (
+              {pieData.map((_entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>

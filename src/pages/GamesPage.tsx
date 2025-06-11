@@ -1,4 +1,3 @@
-import React from 'react';
 
 import LevelsIntro from '@/components/LevelsIntro';
 import EnergyTrustInfo from '@/components/EnergyTrustInfo';

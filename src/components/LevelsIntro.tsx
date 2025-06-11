@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   TrendingUp, Star, ShieldCheck, Brain, BarChart2, Sparkles, Gift, BookOpen, ScrollText,
-  Trophy, Users, Flashlight, Layers3, Settings2, CircleDollarSign
+  Trophy, Flashlight, CircleDollarSign
 } from 'lucide-react';
 
 const levels = [

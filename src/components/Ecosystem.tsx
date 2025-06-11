@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import React from 'react';
+
 import { Flame, Landmark, Users, Globe2, Rocket, HeartHandshake, Lock, BookOpenCheck, Trophy, Compass } from 'lucide-react';
 import ecosystemImg from '@/assets/swytch/bg (108).jpg';
 import trustImg from '@/assets/swytch/bg (108).jpg';
@@ -23,7 +23,7 @@ const Ecosystem = () => {
       icon: Users,
       title: 'PET Membership',
       description:
-        'You don’t join a platform — you join a movement. PETs (People of Energy & Truth) are contributors, not consumers. Earn your way. Vote. Propose. Grow. PET identity is sacred: lore-bound, sovereign, and evolving.',
+        'You dont join a platform — you join a movement. PETs (People of Energy & Truth) are contributors, not consumers. Earn your way. Vote. Propose. Grow. PET identity is sacred: lore-bound, sovereign, and evolving.',
     },
     {
       icon: Rocket,

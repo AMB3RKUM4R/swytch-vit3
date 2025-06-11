@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import React, { useState } from 'react';
+
 
 interface EnergyRewardPopupProps {
   energy: number;

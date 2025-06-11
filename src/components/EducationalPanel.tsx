@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 // Removed: import { GambaUi } from 'gamba-react-ui-v2';
-import React from 'react';
+
 
 const EducationalPanel = () => {
   const variants = {

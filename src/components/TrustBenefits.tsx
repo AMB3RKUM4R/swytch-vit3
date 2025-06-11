@@ -3,7 +3,7 @@ import {
   ShieldCheck, Banknote, LockKeyhole, LibraryBig, Users, Globe2, PiggyBank, Gamepad2, Sparkles, AlertTriangle
 } from 'lucide-react';
 import {
-  FaWallet, FaEthereum, FaBitcoin, FaCoins, FaLock, FaGoogleWallet, FaDollarSign, FaChartPie, FaCogs
+  FaWallet, FaCoins, FaLock, FaGoogleWallet, FaDollarSign, FaChartPie, FaCogs
 } from 'react-icons/fa';
 
 const TrustBenefits = () => {
