@@ -22,7 +22,7 @@ export default function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/GamesPage" element={<GamesPage />} />
           <Route path="/privacy" element={<Privacy />} />
-          <Route path="/withdraw" element={<Withdraw />} />
+          <Route path="/Withdraw" element={<Withdraw />} />
 
           {/* Swytch Onboarding Phases */}
           {/* Add them here if needed */}

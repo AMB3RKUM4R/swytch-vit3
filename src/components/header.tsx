@@ -13,7 +13,7 @@ const navItems = [
   { name: 'Pricing', path: '/', icon: DollarSign },
   { name: 'Withdraw', path: '/Withdraw', icon: Banknote },
   { name: 'Privacy', path: '/Privacy', icon: Shield },
-  { name: 'Account', path: '/account', icon: UserCheck },
+  { name: 'Account', path: '/Withdraw', icon: UserCheck },
 ];
 
 const paymentItems = [
