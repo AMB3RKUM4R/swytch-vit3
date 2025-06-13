@@ -7,7 +7,7 @@ import EcosystemIntro from '@/components/EcosystemIntro';
 
 export default function GamesPage() {
   return (
-    <div className="p-4 space-y-6">
+    <div >
       <LevelsIntro />
       <EnergyTrustInfo/>
       <TransactionStatus/>

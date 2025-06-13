@@ -20,7 +20,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/LandingPage" element={<LandingPage />} />
           <Route path="/home" element={<Home />} />
-          <Route path="/games" element={<GamesPage />} />
+          <Route path="/GamesPage" element={<GamesPage />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/withdraw" element={<Withdraw />} />
 
