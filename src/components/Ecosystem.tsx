@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
 
 import { Flame, Landmark, Users, Globe2, Rocket, HeartHandshake, Lock, BookOpenCheck, Trophy, Compass } from 'lucide-react';
-import ecosystemImg from '/bg (66).jpg';
+import ecosystemImg from '/bg (50).jpg';
 import trustImg from '/bg (50).jpg';
-import flowImg from '/bg (88).jpg';
+import flowImg from "/bg (88).jpg";
 
 const Ecosystem = () => {
   const variants = {

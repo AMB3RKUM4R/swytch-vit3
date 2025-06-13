@@ -1,12 +1,13 @@
-import Ecosystem from '@/components/Ecosystem';
+import SwytchDisclosure from '@/components/Disclosure';
 import EcosystemIntro from '@/components/EcosystemIntro';
+import SwytchVision from '@/components/vision';
 
 
 export default function Withdraw() {
   return (
     <div>
-      <Ecosystem/>
-      
+      <SwytchDisclosure/>
+      <SwytchVision/>
       <EcosystemIntro/>
       
     </div>
