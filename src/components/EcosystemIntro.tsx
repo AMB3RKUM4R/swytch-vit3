@@ -2,13 +2,13 @@
 import { motion } from 'framer-motion';
 import  { useState } from 'react';
 import { X, Rocket, KeyRound, Terminal, ShieldCheck, Coins, Flame, Workflow, BadgeCheck, Eye, BarChart3, HelpCircle, UserCheck } from 'lucide-react';
-import visionImg from '@/assets/swytch/bg1.jpg';
-import onboardingImg from '@/assets/swytch/bg (74).jpg';
-import vaultImg from '@/assets/swytch/bg (117).jpg';
-import rebellionImg from '@/assets/swytch/bg (58).jpg';
-import agentImg from '@/assets/swytch/bg (66).jpg';
-import chartImg from '@/assets/swytch/bg (88).jpg';
-import diagramImg from '@/assets/swytch/bg (62).jpg';
+import visionImg from '/bg (123).jpg';
+import onboardingImg from '/bg (107).jpg';
+import vaultImg from '/bg (117).jpg';
+import rebellionImg from '/bg (117).jpg';
+import agentImg from '/bg (113).jpg';
+import chartImg from '/bg (28).jpg';
+import diagramImg from '/bg (109).jpg';
 
 const ecosystemSections = [
   {

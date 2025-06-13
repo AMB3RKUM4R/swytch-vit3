@@ -1,9 +1,7 @@
 
 import Ecosystem from '@/components/Ecosystem';
-import EcosystemIntro from '@/components/EcosystemIntro';
-import EnergyBreakdown from '@/components/EnergyBreakdown';
-import PrivateEnergyTrust from '@/components/PrivateEnergyTrust';
-
+import SwytchExperience from '@/components/SwytchExp';
+import AccountSection from "../components/Account";
 
 
 import TransactionStatus from '@/components/TransactionStatus';
@@ -11,12 +9,12 @@ import TransactionStatus from '@/components/TransactionStatus';
 export default function LandingPage () {
   return (
     <div >
-  
-    <EnergyBreakdown />
+     <SwytchExperience/>
+     <AccountSection/>
     <TransactionStatus/>
-   <PrivateEnergyTrust/>
+   
     <Ecosystem/>
-    <EcosystemIntro/>
+   
     
     
     </div>

@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { X, Bolt, ShieldCheck, BookOpen, Landmark, Scale, Zap, FileText, Wallet } from 'lucide-react';
-import energyCycle from '@/assets/swytch/bg (57).jpg';
-import jewelChart from '@/assets/swytch/bg (79).jpg';
-import freedomIcon from '@/assets/swytch/bg (123).jpg';
+import energyCycle from '/bg (57).jpg';
+import jewelChart from '/bg (79).jpg';
+import freedomIcon from '/bg (123).jpg';
 
 const EnergyExplanation = () => {
   const [modalOpen, setModalOpen] = useState(false);
