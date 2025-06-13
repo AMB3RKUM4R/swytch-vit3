@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Gamepad2, DollarSign, Banknote, Shield,
-  CreditCard, Building, Wallet, UserPlus, X, Coins, UserCheck
+  CreditCard, Building, Wallet, UserPlus, X, Coins, UserCheck, MonitorSmartphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const navItems = [
   { name: 'Home', path: '/home', icon: Home },
-  { name: 'Games', path: '/games', icon: Gamepad2 },
-  { name: 'Pricing', path: '/pricing', icon: DollarSign },
-  { name: 'Withdraw', path: '/withdraw', icon: Banknote },
-  { name: 'Privacy', path: '/privacy', icon: Shield },
+  { name: 'Games', path: '/GamesPage', icon: Gamepad2 },
+  { name: 'Landing', path: '/LandingPage', icon: MonitorSmartphone },
+  { name: 'Pricing', path: '/', icon: DollarSign },
+  { name: 'Withdraw', path: '/Withdraw', icon: Banknote },
+  { name: 'Privacy', path: '/Privacy', icon: Shield },
   { name: 'Account', path: '/account', icon: UserCheck },
 ];
 
@@ -141,20 +142,34 @@ export default function HeaderComponent() {
 
       <nav className="fixed bottom-4 left-0 right-0 z-50 flex justify-center">
         <div className="max-w-xs md:max-w-md mx-auto flex items-center gap-3 bg-gray-900/60 backdrop-blur-md border border-cyan-500/20 rounded-full px-4 py-2 shadow-lg">
-          {navItems.map((item) => (
-            <button
-              key={item.name}
-              onClick={() => item.name === 'Withdraw' ? setActiveModal('Withdraw') : null}
-              className={`p-2 rounded-full transition-all duration-200 ${
-                location.pathname === item.path
-                  ? 'bg-cyan-500/20 text-cyan-300 scale-110'
-                  : 'text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-300 hover:scale-110'
-              }`}
-              aria-label={item.name}
-            >
-              <item.icon className="w-5 h-5" />
-            </button>
-          ))}
+          {navItems.map((item) =>
+            item.name === 'Withdraw' ? (
+              <button
+                key={item.name}
+                onClick={() => setActiveModal('Withdraw')}
+                className={`p-2 rounded-full transition-all duration-200 ${
+                  location.pathname === item.path
+                    ? 'bg-cyan-500/20 text-cyan-300 scale-110'
+                    : 'text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-300 hover:scale-110'
+                }`}
+                aria-label={item.name}
+              >
+                <item.icon className="w-5 h-5" />
+              </button>
+            ) : (
+              <Link to={item.path} key={item.name} aria-label={item.name}>
+                <button
+                  className={`p-2 rounded-full transition-all duration-200 ${
+                    location.pathname === item.path
+                      ? 'bg-cyan-500/20 text-cyan-300 scale-110'
+                      : 'text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-300 hover:scale-110'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                </button>
+              </Link>
+            )
+          )}
         </div>
       </nav>
 
