@@ -41,7 +41,6 @@ const paymentItems: PaymentItem[] = [
 const sidebarItems: NavItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Community', path: '/community', icon: Users },
-  { name: 'Education', path: '/education', icon: BookOpen },
   { name: 'Rewards', path: '/GamesPage', icon: Trophy },
   { name: 'Settings', path: '/community', icon: Settings },
 ];
