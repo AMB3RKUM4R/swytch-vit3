@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Gamepad2, DollarSign, Banknote, Shield, CreditCard, Building, Wallet, UserPlus, Coins,
   UserCheck, MonitorSmartphone, X, User, LogOut, Sparkles, Menu, LayoutDashboard, Users,
-  BookOpen, Trophy, Settings
+  Trophy, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import throttle from 'lodash.throttle';
