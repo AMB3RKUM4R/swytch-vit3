@@ -40,7 +40,7 @@ const sidebarItems: NavItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Community', path: '/community', icon: Users },
   { name: 'Rewards', path: '/GamesPage', icon: Trophy },
-  { name: 'Settings', path: '/LandingPage', icon: Settings },
+  { name: 'Swytch Center', path: '/LandingPage', icon: Settings },
   { name: 'Energy Vault', path: '/Trust', icon: Coins },
   { name: 'Withdraw', path: '/withdraw', icon: Banknote },
   { name: 'Connect Wallet', path: '/home', icon: Wallet },
