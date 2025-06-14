@@ -36,7 +36,7 @@ const gameStoreSections = [
   { title: '🆕 New Releases', icon: <Info className="w-6 h-6 text-cyan-300 animate-pulse" />, games: ['ECLIPSE RIFT', 'MYTHIC STORM', 'LUX RUNNERS'] },
 ];
 
-const SwytchExperience = () => {
+const SwytchExp = () => {
   const [search, setSearch] = useState('');
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -409,4 +409,4 @@ const SwytchExperience = () => {
   );
 };
 
-export default SwytchExperience;
+export default SwytchExp;

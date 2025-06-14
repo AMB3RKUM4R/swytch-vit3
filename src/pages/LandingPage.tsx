@@ -1,14 +1,14 @@
 
-import SwytchExperience from '@/components/SwytchExp';
 import AccountSection from "../components/Account";
 import SwytchMembership from '@/components/Membership';
+import EcosystemIntro from '@/components/EcosystemIntro';
 
 
 
 export default function LandingPage () {
   return (
     <div >
-     <SwytchExperience/>
+     <EcosystemIntro/>
      <AccountSection/>
     <SwytchMembership/>
    

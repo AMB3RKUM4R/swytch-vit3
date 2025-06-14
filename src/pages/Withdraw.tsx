@@ -1,15 +1,15 @@
 import SwytchDisclosure from '@/components/Disclosure';
-import EcosystemIntro from '@/components/EcosystemIntro';
-import SwytchVision from '@/components/vision';
+import EnergyTrustInfo from '@/components/EnergyTrustInfo';
+import TrustBenefits from '@/components/TrustBenefits';
 
 
 export default function Withdraw() {
   return (
     <div>
-      <SwytchDisclosure/>
-      <SwytchVision/>
-      <EcosystemIntro/>
       
+      <SwytchDisclosure/>
+      <EnergyTrustInfo/>
+      <TrustBenefits/>
     </div>
   );
 }

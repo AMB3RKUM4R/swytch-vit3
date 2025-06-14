@@ -9,9 +9,9 @@ const navItems = [
   { name: 'Home', path: '/home', icon: Home },
   { name: 'Games', path: '/GamesPage', icon: Gamepad2 },
   { name: 'Landing', path: '/LandingPage', icon: MonitorSmartphone },
-  { name: 'Pricing', path: '/', icon: DollarSign },
+  { name: 'Pricing', path: '/Trust', icon: DollarSign },
   { name: 'Privacy', path: '/Privacy', icon: Shield },
-  { name: 'Account', path: '/Account', icon: UserCheck },
+  { name: 'Account', path: '/Withdraw', icon: UserCheck },
 ];
 
 const paymentItems = [
