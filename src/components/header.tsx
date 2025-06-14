@@ -34,8 +34,6 @@ const paymentItems: PaymentItem[] = [
   { name: 'Bank Transfer', icon: Building },
   { name: 'View Transactions', icon: Wallet },
   { name: 'Join Membership', icon: UserPlus },
-  { name: 'Energy Vault', icon: Coins },
-  { name: 'Withdraw', icon: Banknote },
 ];
 
 const sidebarItems: NavItem[] = [
@@ -43,6 +41,10 @@ const sidebarItems: NavItem[] = [
   { name: 'Community', path: '/community', icon: Users },
   { name: 'Rewards', path: '/GamesPage', icon: Trophy },
   { name: 'Settings', path: '/community', icon: Settings },
+  { name: 'Energy Vault', path: '/energy-vault', icon: Coins },
+  { name: 'Withdraw', path: '/withdraw', icon: Banknote },
+  { name: 'Connect Wallet', path: '/connect-wallet', icon: Wallet },
+  { name: 'Profile', path: '/profile', icon: User },
 ];
 
 // Components
@@ -329,6 +331,10 @@ const HeaderComponent: React.FC = () => {
                     : 'text-gray-300 hover:bg-rose-500/20 hover:text-rose-400'
                 }`}
                 aria-label={item.name}
+                onClick={() => {
+                  if (item.name === 'Connect Wallet') setActiveModal('Connect Wallet');
+                  if (item.name === 'Profile') setShowProfileDropdown(!showProfileDropdown);
+                }}
               >
                 <item.icon className="w-5 h-5 animate-pulse" />
                 {isSidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
@@ -375,17 +381,16 @@ const HeaderComponent: React.FC = () => {
         >
           {/* Logo */}
           <Link
-  to="/"
-  className="text-2xl font-bold text-rose-400 hover:scale-110 transition-all flex items-center gap-2"
-  aria-label="Swytch Home"
->
-  <img
-    src="/logo.png"
-    alt="Swytch Logo"
-    className="w-6 h-6"
-  />
-  Swytch
-</Link>
+            to="/"
+            className="text-2xl font-bold text-rose-400 hover:scale-110 transition-all flex items-center gap-2"
+            aria-label="Swytch Home"
+          >
+            <img
+              src="/logo.png"
+              alt="Swytch Logo"
+              className="w-6 h-6"
+            />
+          </Link>
 
           {/* Payment Actions */}
           <div className="flex gap-2">
@@ -408,85 +413,6 @@ const HeaderComponent: React.FC = () => {
                 </motion.span>
               </motion.div>
             ))}
-            {/* Wallet Connect */}
-            <motion.div
-              className="relative group"
-              whileHover={{ scale: 1.1 }}
-            >
-              <Button ariaLabel="Connect Wallet" onClick={() => setActiveModal('Connect Wallet')}>
-                <Wallet className="w-5 h-5 animate-pulse" />
-              </Button>
-              <motion.span
-                variants={tooltipVariants}
-                initial="hidden"
-                whileHover="visible"
-                className="absolute top-12 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded-md"
-              >
-                Connect Wallet
-              </motion.span>
-            </motion.div>
-            {/* Profile Dropdown */}
-            <motion.div
-              className="relative group"
-              whileHover={{ scale: 1.1 }}
-            >
-              <Button
-                ariaLabel="Profile"
-                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-              >
-                <User className="w-5 h-5 animate-pulse" />
-              </Button>
-              <motion.span
-                variants={tooltipVariants}
-                initial="hidden"
-                whileHover="visible"
-                className="absolute top-12 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded-md"
-              >
-                Profile
-              </motion.span>
-              <AnimatePresence>
-                {showProfileDropdown && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-12 right-0 bg-gray-900 border border-rose-500/20 rounded-xl p-4 shadow-xl w-48 text-left"
-                  >
-                    <div className="flex items-center gap-2 mb-4">
-                      <img
-                        src="/avatar1.jpg"
-                        alt="PET Avatar"
-                        className="w-8 h-8 rounded-full border border-rose-500/20"
-                      />
-                      <div>
-                        <p className="text-white text-sm font-bold">AstraRebel</p>
-                        <p className="text-gray-400 text-xs">Mythic PET</p>
-                      </div>
-                    </div>
-                    <Link
-                      to="/profile"
-                      className="block text-gray-300 hover:text-rose-400 text-sm mb-2"
-                      onClick={() => setShowProfileDropdown(false)}
-                    >
-                      View Profile
-                    </Link>
-                    <Link
-                      to="/settings"
-                      className="block text-gray-300 hover:text-rose-400 text-sm mb-2"
-                      onClick={() => setShowProfileDropdown(false)}
-                    >
-                      Settings
-                    </Link>
-                    <button
-                      className="flex items-center gap-2 text-gray-300 hover:text-red-400 text-sm"
-                      onClick={() => setShowProfileDropdown(false)}
-                    >
-                      <LogOut className="w-4 h-4" /> Log Out
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
           </div>
         </motion.div>
       </header>
@@ -547,7 +473,7 @@ const HeaderComponent: React.FC = () => {
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .blur-3xl { filter: blur(64px); }
         .bg-[url('/noise.png')] {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUKpVUKqVRKpVJutxuNRqMhSRJpmkYkSVKpVCqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJKpVIplUqlVColSf4BQUzS2f8eAAAAAElFTkSuQmCC');
+          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nJcxyRJMpVCoZTaJUTaKpVCoVUKqVVaKpVUKqVRKpVJutxuNRqMhSRJpmVUkSVKpVVCqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJKpVIplUqlVColSf4BQUzS2f8eAAAAAElFTkSuQmCC');
         }
         @media (prefers-reduced-motion) {
           .animate-pulse, .animate-bounce, [data-animate] {
