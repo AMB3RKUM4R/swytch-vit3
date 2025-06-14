@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Gamepad2, DollarSign, Banknote, Shield, CreditCard, Building, Wallet, UserPlus, Coins,
-  UserCheck, MonitorSmartphone, X, User, LogOut, Sparkles, Menu, LayoutDashboard, Users,
+  UserCheck, MonitorSmartphone, X, User, Sparkles, Menu, LayoutDashboard, Users,
   Trophy, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -40,11 +40,11 @@ const sidebarItems: NavItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Community', path: '/community', icon: Users },
   { name: 'Rewards', path: '/GamesPage', icon: Trophy },
-  { name: 'Settings', path: '/community', icon: Settings },
-  { name: 'Energy Vault', path: '/energy-vault', icon: Coins },
+  { name: 'Settings', path: '/LandingPage', icon: Settings },
+  { name: 'Energy Vault', path: '/Trust', icon: Coins },
   { name: 'Withdraw', path: '/withdraw', icon: Banknote },
-  { name: 'Connect Wallet', path: '/connect-wallet', icon: Wallet },
-  { name: 'Profile', path: '/profile', icon: User },
+  { name: 'Connect Wallet', path: '/home', icon: Wallet },
+  { name: 'Privacy', path: '/Privacy', icon: User },
 ];
 
 // Components
@@ -333,7 +333,7 @@ const HeaderComponent: React.FC = () => {
                 aria-label={item.name}
                 onClick={() => {
                   if (item.name === 'Connect Wallet') setActiveModal('Connect Wallet');
-                  if (item.name === 'Profile') setShowProfileDropdown(!showProfileDropdown);
+                  if (item.name === 'Chat Room') setShowProfileDropdown(!showProfileDropdown);
                 }}
               >
                 <item.icon className="w-5 h-5 animate-pulse" />
