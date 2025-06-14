@@ -1,13 +1,14 @@
+
+import PrivateEnergyTrust from '@/components/PrivateEnergyTrust';
 import Tokenomics from '@/components/Tokenomics';
-import TransactionStatus from '@/components/TransactionStatus';
+
 
 
 export default function Privacy() {
   return (
     <div >
-      
-    <TransactionStatus/>
+      <PrivateEnergyTrust/> 
       <Tokenomics/>
-    </div>
+        </div>
   );
 }

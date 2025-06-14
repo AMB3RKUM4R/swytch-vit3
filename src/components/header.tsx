@@ -42,8 +42,8 @@ const sidebarItems: NavItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Community', path: '/community', icon: Users },
   { name: 'Education', path: '/education', icon: BookOpen },
-  { name: 'Rewards', path: '/rewards', icon: Trophy },
-  { name: 'Settings', path: '/settings', icon: Settings },
+  { name: 'Rewards', path: '/GamesPage', icon: Trophy },
+  { name: 'Settings', path: '/community', icon: Settings },
 ];
 
 // Components
@@ -376,12 +376,17 @@ const HeaderComponent: React.FC = () => {
         >
           {/* Logo */}
           <Link
-            to="/"
-            className="text-2xl font-bold text-rose-400 hover:scale-110 transition-all flex items-center gap-2"
-            aria-label="Swytch Home"
-          >
-            <Sparkles className="w-6 h-6 animate-pulse" /> Swytch
-          </Link>
+  to="/"
+  className="text-2xl font-bold text-rose-400 hover:scale-110 transition-all flex items-center gap-2"
+  aria-label="Swytch Home"
+>
+  <img
+    src="/logo.png"
+    alt="Swytch Logo"
+    className="w-6 h-6"
+  />
+  Swytch
+</Link>
 
           {/* Payment Actions */}
           <div className="flex gap-2">
