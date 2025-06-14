@@ -10,6 +10,7 @@ import Privacy from './pages/Privacy';
 import Withdraw from './pages/Withdraw';
 import LandingPage from './pages/LandingPage';
 import GamesPage from './pages/GamesPage';
+import Trust from './pages/Trust';
 
 export default function App() {
   return (
@@ -23,6 +24,8 @@ export default function App() {
           <Route path="/GamesPage" element={<GamesPage />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/Withdraw" element={<Withdraw />} />
+          <Route path="/Trust" element={<Trust />} />
+
 
           {/* Swytch Onboarding Phases */}
           {/* Add them here if needed */}
