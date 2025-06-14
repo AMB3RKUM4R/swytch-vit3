@@ -1,10 +1,67 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowUpRight, CheckCircle, Gift, ShoppingCart, TrendingUp, Zap, Coins, CreditCard, DollarSign, LineChart, User, Users, Wallet, ArrowRight, X, Sparkles, Trophy
+  ArrowUpRight, CheckCircle, Gift, ShoppingCart, TrendingUp, Zap, Coins, CreditCard, DollarSign, LineChart, User, Users, Wallet, ArrowRight, X, Sparkles, Trophy, Target, Award
 } from 'lucide-react';
 
-const initialTransactions = [
+// Interfaces
+interface Transaction {
+  icon: JSX.Element;
+  address: string;
+  action: string;
+  amount: string;
+  forToken: string;
+}
+
+interface LeaderboardEntry {
+  address: string;
+  referrals: number;
+  rewards: string;
+}
+
+interface Quest {
+  id: string;
+  title: string;
+  progress: number;
+  goal: number;
+  rewardJEWELS: number;
+  rewardXP: number;
+  completed: boolean;
+}
+
+interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  unlocked: boolean;
+}
+
+interface Reward {
+  jewels: number;
+  xp: number;
+  message: string;
+}
+
+interface SavedState {
+  jewels: number;
+  swyt: number;
+  quests: Quest[];
+  clicks: number;
+  lastVisit: string | null;
+  streak: number;
+  achievements: Achievement[];
+}
+
+interface CardProps {
+  children: React.ReactNode;
+  gradient: string;
+  className?: string;
+  onMouseEnter?: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
+}
+
+// Data
+const initialTransactions: Transaction[] = [
   {
     icon: <ArrowUpRight className="text-green-400 w-4 h-4 animate-pulse" />,
     address: '0x4b...d9A3',
@@ -42,7 +99,7 @@ const initialTransactions = [
   },
 ];
 
-const generateRandomTx = () => {
+const generateRandomTx = (): Transaction => {
   const actions = ['Arbitraged', 'Swapped', 'Deposited', 'Claimed Reward', 'Purchased', 'Staked'];
   const icons = [ArrowUpRight, TrendingUp, Gift, Zap, ShoppingCart, CheckCircle];
   const amounts = ['$12.50', '$47.20', '$89.00', '$13.33', '$101.00'];
@@ -60,52 +117,221 @@ const generateRandomTx = () => {
   };
 };
 
-const leaderboard = [
+const leaderboard: LeaderboardEntry[] = [
   { address: '0x1a...f9B2', referrals: 42, rewards: '500 JEWELS' },
   { address: '0x5b...cD4E', referrals: 35, rewards: '350 JEWELS' },
   { address: '0x9c...eF67', referrals: 28, rewards: '200 JEWELS' },
   { address: '0x3d...aB89', referrals: 15, rewards: '100 JEWELS' },
 ];
 
-const TransactionStatus = () => {
-  const [transactions, setTransactions] = useState(initialTransactions);
+const initialQuests: Quest[] = [
+  { id: 'view-tx', title: 'View Transaction Feed', progress: 0, goal: 1, rewardJEWELS: 10, rewardXP: 20, completed: false },
+  { id: 'check-stats', title: 'Check Your Stats', progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 10, completed: false },
+  { id: 'share-referral', title: 'Share Referral Link', progress: 0, goal: 1, rewardJEWELS: 15, rewardXP: 30, completed: false }
+];
+
+const achievements: Achievement[] = [
+  { id: 'first-tx-view', title: 'First Transaction View', description: 'View the transaction feed for the first time.', unlocked: false },
+  { id: 'streak-3', title: '3-Day Streak', description: 'Check in for 3 consecutive days.', unlocked: false },
+  { id: 'jewels-100', title: 'JEWELS Collector', description: 'Collect 100 JEWELS.', unlocked: false },
+  { id: 'referrals-10', title: 'Social PET', description: 'View 10 referral entries.', unlocked: false }
+];
+
+const checkInRewards = [5, 10, 15, 20, 25, 30, 50];
+
+// Animation Variants
+const sectionVariants = {
+  hidden: { opacity: 0, y: 50, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } }
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
+};
+
+const orbitVariants = {
+  animate: { rotate: 360, transition: { duration: 20, repeat: Infinity, ease: 'linear' } }
+};
+
+const flareVariants = {
+  animate: { scale: [1, 1.2, 1], opacity: [0.6, 0.8, 0.6], transition: { duration: 4, repeat: Infinity, ease: 'easeInOut' } }
+};
+
+const particleVariants = {
+  animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } }
+};
+
+const vaultClickVariants = {
+  click: { scale: [1, 1.2, 1], transition: { duration: 0.3 } }
+};
+
+const rewardVariants = {
+  initial: { opacity: 0, scale: 0.8, y: 50 },
+  animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+  exit: { opacity: 0, scale: 0.8, y: -50, transition: { duration: 0.3 } }
+};
+
+// Components
+const Card = ({ children, gradient, className = '', onMouseEnter, onClick }: CardProps) => (
+  <motion.div
+    className={`relative bg-gray-900/50 border border-rose-500/20 p-6 rounded-2xl shadow-xl backdrop-blur-md hover:shadow-rose-500/30 transition-all bg-gradient-to-r ${gradient} ${className}`}
+    whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(244, 63, 94, 0.5)' }}
+    onMouseEnter={onMouseEnter}
+    onClick={onClick}
+  >
+    {children}
+  </motion.div>
+);
+
+const Modal = ({ title, onClose, children }: { title: string; onClose: () => void; children: JSX.Element }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (modalRef.current) {
+      modalRef.current.focus();
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <motion.div
+        ref={modalRef}
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.8 }}
+        className="bg-gray-900 border border-rose-500/20 rounded-xl p-8 w-full max-w-md shadow-2xl backdrop-blur-lg"
+        tabIndex={-1}
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 id="modal-title" className="text-2xl font-bold text-rose-400 flex items-center gap-2">
+            <Sparkles className="w-6 h-6 animate-pulse" /> {title}
+          </h2>
+          <button onClick={onClose} aria-label="Close modal">
+            <X className="text-rose-400 hover:text-red-500 w-6 h-6" />
+          </button>
+        </div>
+        {children}
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// Main Component
+const TransactionStatus: React.FC = () => {
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [jewelsBalance, setJewelsBalance] = useState(0);
+  const [swytBalance, setSwytBalance] = useState(26);
+  const [quests, setQuests] = useState<Quest[]>(initialQuests);
+  const [dailyClicks, setDailyClicks] = useState(0);
+  const [showReward, setShowReward] = useState<Reward | null>(null);
+  const [achievementsState, setAchievementsState] = useState<Achievement[]>(achievements);
+  const [lastVisit, setLastVisit] = useState<string | null>(null);
+  const [visitStreak, setVisitStreak] = useState(0);
+  const [, setReferralViews] = useState(0);
   const feedRef = useRef<HTMLDivElement>(null);
+  const vaultRef = useRef<HTMLCanvasElement>(null);
+  const clickAudioRef = useRef<HTMLAudioElement>(null);
+  const rewardAudioRef = useRef<HTMLAudioElement>(null);
 
-  // Animation variants
-  const sectionVariants = {
-    hidden: { opacity: 0, y: 50, scale: 0.95 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } }
-  };
+  // Local Storage Keys
+  const JEWELS_STORAGE_KEY = 'swytch_exp_game_state'; // Shared with Tokenomics.tsx, SwytchExp.tsx
+  const SWYT_STORAGE_KEY = 'swytch_game_state'; // Shared with LevelsIntro.tsx
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
-  };
+  // Load State
+  useEffect(() => {
+    // Load JEWELS state
+    const jewelsState = localStorage.getItem(JEWELS_STORAGE_KEY);
+    const swytState = localStorage.getItem(SWYT_STORAGE_KEY);
+    const today = new Date().toISOString().split('T')[0];
 
-  const orbitVariants = {
-    animate: { rotate: 360, transition: { duration: 20, repeat: Infinity, ease: 'linear' } }
-  };
+    if (jewelsState) {
+      const parsedState: SavedState = JSON.parse(jewelsState);
+      setJewelsBalance(parsedState.jewels || 0);
+      setQuests(parsedState.quests?.filter(q => initialQuests.some(iq => iq.id === q.id)) || initialQuests);
+      setDailyClicks(parsedState.clicks || 0);
+      setLastVisit(parsedState.lastVisit || null);
+      setVisitStreak(parsedState.streak || 0);
+      setAchievementsState(parsedState.achievements || achievements);
+      setReferralViews(parsedState.achievements?.find(a => a.id === 'referrals-10')?.unlocked ? 10 : 0);
+    } else {
+      unlockAchievement('first-tx-view');
+      setShowCheckInModal(true);
+    }
 
-  // Transaction feed
+    if (swytState) {
+      const parsedSwytState = JSON.parse(swytState);
+      setSwytBalance(parsedSwytState.swytBalance || 26);
+    }
+
+    // Handle daily reset and streak
+    if (lastVisit !== today) {
+      setDailyClicks(0);
+      setQuests(initialQuests.map(q => ({ ...q, progress: 0, completed: false })));
+      const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
+      if (lastVisit === yesterday) {
+        setVisitStreak(prev => {
+          const newStreak = prev + 1;
+          if (newStreak >= 3) unlockAchievement('streak-3');
+          return newStreak;
+        });
+        setShowCheckInModal(true);
+      } else {
+        setVisitStreak(1);
+        setShowCheckInModal(true);
+      }
+      setLastVisit(today);
+    }
+  }, []);
+
+  // Save State
+  useEffect(() => {
+    localStorage.setItem(JEWELS_STORAGE_KEY, JSON.stringify({
+      jewels: jewelsBalance,
+      quests,
+      clicks: dailyClicks,
+      lastVisit,
+      streak: visitStreak,
+      achievements: achievementsState
+    }));
+    localStorage.setItem(SWYT_STORAGE_KEY, JSON.stringify({
+      swytBalance
+    }));
+  }, [jewelsBalance, swytBalance, quests, dailyClicks, lastVisit, visitStreak, achievementsState]);
+
+  // Auto-dismiss Reward Popup
+  useEffect(() => {
+    if (showReward) {
+      const timer = setTimeout(() => setShowReward(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showReward]);
+
+  // Transaction Feed
   useEffect(() => {
     const interval = setInterval(() => {
-      setTransactions(prev => [generateRandomTx(), ...prev.slice(0, 50)]);
+      setTransactions(prev => [generateRandomTx(), ...prev.slice(0, 49)]);
     }, 2000);
     return () => clearInterval(interval);
   }, []);
 
-  // Parallax effect
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  // Auto-scroll transaction feed
+  // Auto-scroll Transaction Feed
   useEffect(() => {
     const feed = feedRef.current;
     if (!feed) return;
@@ -121,12 +347,216 @@ const TransactionStatus = () => {
     return () => clearInterval(interval);
   }, [transactions]);
 
+  // Parallax Effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // Draw Energy Vault
+  useEffect(() => {
+    const canvas = vaultRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = 100;
+    canvas.height = 100;
+
+    const drawVault = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const gradient = ctx.createRadialGradient(50, 50, 10, 50, 50, 50);
+      gradient.addColorStop(0, 'rgba(244, 63, 94, 0.8)');
+      gradient.addColorStop(1, 'rgba(34, 211, 238, 0.2)');
+      ctx.beginPath();
+      ctx.arc(50, 50, 45, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      ctx.closePath();
+    };
+
+    drawVault();
+  }, []);
+
+  // Unlock Achievement
+  const unlockAchievement = (id: string) => {
+    setAchievementsState(prev =>
+      prev.map(a => a.id === id && !a.unlocked ? { ...a, unlocked: true } : a)
+    );
+    if (id === 'first-tx-view') {
+      setShowReward({ jewels: 5, xp: 10, message: 'Achievement Unlocked: First Transaction View!' });
+      rewardAudioRef.current?.play();
+    } else if (id === 'streak-3') {
+      setShowReward({ jewels: 20, xp: 30, message: 'Achievement Unlocked: 3-Day Streak!' });
+      rewardAudioRef.current?.play();
+    } else if (id === 'jewels-100') {
+      setShowReward({ jewels: 10, xp: 20, message: 'Achievement Unlocked: JEWELS Collector!' });
+      rewardAudioRef.current?.play();
+    } else if (id === 'referrals-10') {
+      setShowReward({ jewels: 15, xp: 30, message: 'Achievement Unlocked: Social PET!' });
+      rewardAudioRef.current?.play();
+    }
+  };
+
+  // Handle Energy Vault Click
+  const handleVaultClick = () => {
+    if (dailyClicks >= 10) {
+      alert('Daily click limit reached! Come back tomorrow.');
+      return;
+    }
+
+    clickAudioRef.current?.play();
+    const jewelsGain = Math.floor(Math.random() * 3) + 1;
+    setJewelsBalance(prev => {
+      const newJewels = prev + jewelsGain;
+      if (newJewels >= 100 && !achievementsState.find(a => a.id === 'jewels-100')?.unlocked) {
+        unlockAchievement('jewels-100');
+      }
+      return newJewels;
+    });
+    setDailyClicks(prev => prev + 1);
+    setQuests(prev =>
+      prev.map(q =>
+        q.id === 'view-tx' && !q.completed
+          ? { ...q, progress: Math.min(q.progress + 1, q.goal) }
+          : q
+      )
+    );
+
+    // Particle effect
+    const canvas = vaultRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        for (let i = 0; i < 5; i++) {
+          setTimeout(() => {
+            ctx.beginPath();
+            ctx.arc(50 + (Math.random() - 0.5) * 20, 50 + (Math.random() - 0.5) * 20, 2, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(34, 211, 238, 0.8)';
+            ctx.fill();
+            ctx.closePath();
+          }, i * 50);
+        }
+        setTimeout(() => {
+          const gradient = ctx.createRadialGradient(50, 50, 10, 50, 50, 50);
+          gradient.addColorStop(0, 'rgba(244, 63, 94, 0.8)');
+          gradient.addColorStop(1, 'rgba(34, 211, 238, 0.2)');
+          ctx.beginPath();
+          ctx.arc(50, 50, 45, 0, Math.PI * 2);
+          ctx.fillStyle = gradient;
+          ctx.fill();
+          ctx.closePath();
+        }, 250);
+      }
+    }
+  };
+
+  // Handle Quest Completion
+  const handleClaimQuest = (questId: string) => {
+    const quest = quests.find(q => q.id === questId);
+    if (!quest || quest.completed || quest.progress < quest.goal) return;
+
+    setQuests(prev =>
+      prev.map(q =>
+        q.id === questId ? { ...q, completed: true } : q
+      )
+    );
+    setJewelsBalance(prev => prev + quest.rewardJEWELS);
+    setShowReward({
+      jewels: quest.rewardJEWELS,
+      xp: quest.rewardXP,
+      message: `Quest Completed: ${quest.title}!`
+    });
+    rewardAudioRef.current?.play();
+  };
+
+  // Handle Stats Hover
+  const handleStatsHover = () => {
+    setQuests(prev =>
+      prev.map(q =>
+        q.id === 'check-stats' && !q.completed
+          ? { ...q, progress: 1, completed: true }
+          : q
+      )
+    );
+  };
+
+  // Handle Referral Click
+  const handleReferralClick = () => {
+    setReferralViews(prev => {
+      const newViews = prev + 1;
+      if (newViews >= 10 && !achievementsState.find(a => a.id === 'referrals-10')?.unlocked) {
+        unlockAchievement('referrals-10');
+      }
+      return newViews;
+    });
+    setQuests(prev =>
+      prev.map(q =>
+        q.id === 'share-referral' && !q.completed
+          ? { ...q, progress: 1, completed: true }
+          : q
+      )
+    );
+    alert('Referral link copied: https://swytch.io/ref/0xAB...CDEF');
+  };
+
+  // Handle Account Details Click
+  const handleAccountDetailsClick = () => {
+    alert(`Balance: ${swytBalance} SWYT, ${jewelsBalance} JEWELS\nWallet: 0xAB...CDEF\nNetwork: Avalanche`);
+  };
+
+  // Handle Check-In
+  const handleCheckIn = () => {
+    const reward = checkInRewards[Math.min(visitStreak - 1, checkInRewards.length - 1)];
+    setJewelsBalance(prev => prev + reward);
+    setShowReward({ jewels: reward, xp: 0, message: `Day ${visitStreak} Check-In: +${reward} JEWELS!` });
+    rewardAudioRef.current?.play();
+    setShowCheckInModal(false);
+  };
+
+  // Handle Wallet Connect
+  const handleWalletConnect = (type: string) => {
+    alert(`Connecting ${type}...`);
+    setShowWalletModal(false);
+  };
+
   return (
-    <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-gradient-to-br from-gray-950 via-indigo-950 to-black text-white overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,255,255,0.08)_0%,_transparent_70%)] pointer-events-none" />
+    <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white overflow-hidden">
+      {/* Visual Effects */}
+      <motion.div className="fixed inset-0 pointer-events-none z-10">
+        <motion.div
+          className="absolute w-96 h-96 bg-gradient-to-br from-rose-400/50 via-pink-500/40 to-cyan-500/30 rounded-full opacity-30 blur-3xl"
+          variants={flareVariants}
+          animate="animate"
+          style={{ top: `${mousePosition.y * 100}%`, left: `${mousePosition.x * 100}%` }}
+        />
+        <motion.div
+          className="absolute w-64 h-64 bg-gradient-to-br from-cyan-400/40 via-rose-500/30 to-pink-400/20 rounded-full opacity-20 blur-2xl"
+          variants={flareVariants}
+          animate="animate"
+          style={{ top: `${50 + mousePosition.y * 50}%`, left: `${50 + mousePosition.x * 50}%` }}
+        />
+        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-15 bg-repeat bg-[length:64px_64px]" />
+        {[...Array(15)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1.5 h-1.5 rounded-full"
+            style={{
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              backgroundColor: i % 2 === 0 ? 'rgba(236, 72, 153, 0.5)' : 'rgba(34, 211, 238, 0.5)'
+            }}
+            variants={particleVariants}
+            animate="animate"
+          />
+        ))}
+      </motion.div>
 
       <motion.div
-        className="relative z-10 max-w-7xl mx-auto space-y-24"
+        className="relative z-20 max-w-7xl mx-auto space-y-24"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -134,36 +564,108 @@ const TransactionStatus = () => {
         {/* Hero Section */}
         <motion.div
           variants={sectionVariants}
-          className="relative text-center bg-gray-900/50 backdrop-blur-lg rounded-3xl p-12 border border-cyan-500/30 shadow-2xl hover:shadow-cyan-500/40 transition-all"
+          className="relative text-center bg-gray-900/50 backdrop-blur-lg rounded-3xl p-12 border border-rose-500/30 shadow-2xl hover:shadow-rose-500/40 transition-all"
           style={{
             backgroundImage: `url(/bg (59).jpg)`,
             backgroundSize: 'cover',
             backgroundPosition: `${50 + mousePosition.x * 5}% ${50 + mousePosition.y * 5}%`
           }}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-800/60 to-blue-900/60 rounded-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-r from-rose-800/60 to-pink-900/60 rounded-3xl" />
           <motion.div className="absolute inset-0 pointer-events-none" variants={orbitVariants} animate="animate">
-            <motion.div className="absolute top-10 left-10 w-4 h-4 bg-cyan-400 rounded-full opacity-50" animate={{ scale: [1, 1.5, 1], transition: { duration: 2, repeat: Infinity } }} />
-            <motion.div className="absolute bottom-10 right-10 w-6 h-6 bg-teal-400 rounded-full opacity-50" animate={{ scale: [1, 1.3, 1], transition: { duration: 3, repeat: Infinity } }} />
+            <motion.div className="absolute top-10 left-10 w-4 h-4 bg-rose-400 rounded-full opacity-50" animate={{ scale: [1, 1.5, 1], transition: { duration: 2, repeat: Infinity } }} />
+            <motion.div className="absolute bottom-10 right-10 w-6 h-6 bg-pink-400 rounded-full opacity-50" animate={{ scale: [1, 1.3, 1], transition: { duration: 3, repeat: Infinity } }} />
           </motion.div>
           <div className="relative space-y-6">
             <motion.h2
-              className="text-5xl sm:text-7xl font-extrabold text-cyan-400 flex items-center justify-center gap-4"
+              className="text-5xl sm:text-7xl font-extrabold text-rose-400 flex items-center justify-center gap-4"
               animate={{ y: [0, -10, 0], transition: { duration: 3, repeat: Infinity, ease: 'easeInOut' } }}
             >
               <Sparkles className="w-12 h-12 animate-pulse" /> Energy Trust
             </motion.h2>
             <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto">
-              Watch the Swytch Bot fuel your 3.3% monthly yield with AI-powered trades across 5 DEXes, live every 2 seconds.
+              Watch the Swytch Bot fuel your 3.3% monthly yield at Mythic PET level with AI-powered trades across 5 DEXes, live every 2 seconds.
             </p>
-            <button
-              className="inline-flex items-center px-8 py-4 bg-cyan-600 text-white hover:bg-cyan-700 rounded-full text-lg font-semibold group"
+            <motion.button
+              className="inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group"
               onClick={() => setShowWalletModal(true)}
+              whileHover={{ scale: 1.05 }}
             >
               Join the Vault
               <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
-            </button>
+            </motion.button>
           </div>
+        </motion.div>
+
+        {/* Daily Quests */}
+        <motion.div variants={sectionVariants}>
+          <Card gradient="from-cyan-500/10 to-blue-500/10">
+            <div className="space-y-6">
+              <h3 className="text-3xl font-bold text-white flex items-center gap-3">
+                <Target className="w-8 h-8 text-cyan-400 animate-pulse" /> Daily Quests
+              </h3>
+              <p className="text-gray-300">Complete tasks to earn JEWELS and XP!</p>
+              <div className="space-y-4">
+                {quests.map(quest => (
+                  <div key={quest.id} className="flex items-center justify-between bg-gray-800/50 p-4 rounded-lg">
+                    <div>
+                      <p className="text-white font-semibold">{quest.title}</p>
+                      <p className="text-sm text-gray-400">
+                        Progress: {quest.progress}/{quest.goal} | Reward: {quest.rewardJEWELS} JEWELS, {quest.rewardXP} XP
+                      </p>
+                      <div className="w-32 bg-gray-900 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-cyan-500 h-2 rounded-full"
+                          style={{ width: `${(quest.progress / quest.goal) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                    <motion.button
+                      className={`px-4 py-2 rounded-lg font-semibold ${quest.progress >= quest.goal && !quest.completed ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
+                      onClick={() => handleClaimQuest(quest.id)}
+                      disabled={quest.completed || quest.progress < quest.goal}
+                      whileHover={{ scale: quest.progress >= quest.goal && !quest.completed ? 1.05 : 1 }}
+                      aria-disabled={quest.completed || quest.progress < quest.goal}
+                    >
+                      {quest.completed ? 'Claimed' : 'Claim'}
+                    </motion.button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* Energy Vault */}
+        <motion.div variants={sectionVariants}>
+          <Card gradient="from-rose-500/10 to-pink-500/10">
+            <div className="space-y-6 text-center">
+              <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+                <Zap className="w-8 h-8 text-rose-400 animate-pulse" /> Energy Vault
+              </h3>
+              <p className="text-2xl text-gray-300">JEWELS: {jewelsBalance} 💎 | SWYT: {swytBalance} ⚡</p>
+              <p className="text-lg text-gray-400">Check-In Streak: {visitStreak} Day{visitStreak !== 1 ? 's' : ''}</p>
+              <motion.canvas
+                ref={vaultRef}
+                className="mx-auto cursor-pointer"
+                width={100}
+                height={100}
+                onClick={handleVaultClick}
+                variants={vaultClickVariants}
+                animate={dailyClicks < 10 ? 'click' : undefined}
+                role="button"
+                aria-label="Collect JEWELS from Energy Vault"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleVaultClick()}
+              />
+              <p className="text-sm text-gray-400">
+                {dailyClicks < 10 ? `${10 - dailyClicks} clicks left today` : 'Come back tomorrow!'}
+              </p>
+              <p className="text-lg text-rose-300">
+                Click the Energy Vault to collect JEWELS and power your financial journey.
+              </p>
+            </div>
+          </Card>
         </motion.div>
 
         {/* Transaction Feed */}
@@ -180,6 +682,9 @@ const TransactionStatus = () => {
           <div
             ref={feedRef}
             className="bg-gray-900/60 backdrop-blur-lg border border-cyan-500/20 rounded-2xl p-6 h-[500px] overflow-y-auto no-scrollbar shadow-xl"
+            role="log"
+            aria-live="polite"
+            aria-label="Live Transaction Feed"
           >
             <AnimatePresence>
               {transactions.map((tx, index) => (
@@ -212,42 +717,26 @@ const TransactionStatus = () => {
           variants={sectionVariants}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto"
         >
-          <motion.div
-            className="relative bg-gray-900/60 p-6 rounded-xl shadow-xl border border-teal-500/20 backdrop-blur-md flex flex-col items-center"
-            whileHover={{ scale: 1.05 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-green-500/10 rounded-xl" />
+          <Card gradient="from-teal-500/10 to-green-500/10" className="flex flex-col items-center" onMouseEnter={handleStatsHover}>
             <Coins className="w-8 h-8 text-orange-400 mb-2 animate-pulse" />
             <p className="text-sm text-gray-400">Your Balance</p>
-            <p className="text-xl font-bold text-white">26 SWYT</p>
-          </motion.div>
-          <motion.div
-            className="relative bg-gray-900/60 p-6 rounded-xl shadow-xl border border-teal-500/20 backdrop-blur-md flex flex-col items-center"
-            whileHover={{ scale: 1.05 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-green-500/10 rounded-xl" />
+            <p className="text-xl font-bold text-white">{swytBalance} SWYT</p>
+          </Card>
+          <Card gradient="from-teal-500/10 to-green-500/10" className="flex flex-col items-center" onMouseEnter={handleStatsHover}>
             <LineChart className="w-8 h-8 text-blue-400 mb-2 animate-pulse" />
             <p className="text-sm text-gray-400">Profit</p>
             <p className="text-xl font-bold text-white">57 SWYT</p>
-          </motion.div>
-          <motion.div
-            className="relative bg-gray-900/60 p-6 rounded-xl shadow-xl border border-teal-500/20 backdrop-blur-md flex flex-col items-center"
-            whileHover={{ scale: 1.05 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-green-500/10 rounded-xl" />
+          </Card>
+          <Card gradient="from-teal-500/10 to-green-500/10" className="flex flex-col items-center" onMouseEnter={handleStatsHover}>
             <DollarSign className="w-8 h-8 text-pink-400 mb-2 animate-pulse" />
             <p className="text-sm text-gray-400">Total Deposit</p>
             <p className="text-xl font-bold text-white">9,839 SWYT</p>
-          </motion.div>
-          <motion.div
-            className="relative bg-gray-900/60 p-6 rounded-xl shadow-xl border border-teal-500/20 backdrop-blur-md flex flex-col items-center"
-            whileHover={{ scale: 1.05 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-green-500/10 rounded-xl" />
+          </Card>
+          <Card gradient="from-teal-500/10 to-green-500/10" className="flex flex-col items-center" onMouseEnter={handleStatsHover}>
             <CreditCard className="w-8 h-8 text-purple-400 mb-2 animate-pulse" />
             <p className="text-sm text-gray-400">Total Withdrawals</p>
             <p className="text-xl font-bold text-white">9,870 SWYT</p>
-          </motion.div>
+          </Card>
         </motion.div>
 
         {/* Performance Metrics */}
@@ -255,30 +744,44 @@ const TransactionStatus = () => {
           variants={sectionVariants}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto"
         >
-          <motion.div
-            className="relative bg-gray-900/60 p-6 rounded-xl shadow-xl border border-blue-500/20 backdrop-blur-md text-center"
-            whileHover={{ scale: 1.05 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-xl" />
+          <Card gradient="from-blue-500/10 to-indigo-500/10" className="text-center">
             <p className="text-blue-300 text-3xl font-bold">4.21%</p>
             <p className="text-gray-300 text-sm mt-2">Swytch Profits for May 2025</p>
-          </motion.div>
-          <motion.div
-            className="relative bg-gray-900/60 p-6 rounded-xl shadow-xl border border-blue-500/20 backdrop-blur-md text-center"
-            whileHover={{ scale: 1.05 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-xl" />
+          </Card>
+          <Card gradient="from-blue-500/10 to-indigo-500/10" className="text-center">
             <p className="text-blue-300 text-3xl font-bold">3.79%</p>
             <p className="text-gray-300 text-sm mt-2">Your Max Profits for May 2025</p>
-          </motion.div>
-          <motion.div
-            className="relative bg-gray-900/60 p-6 rounded-xl shadow-xl border border-blue-500/20 backdrop-blur-md text-center"
-            whileHover={{ scale: 1.05 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-xl" />
+          </Card>
+          <Card gradient="from-blue-500/10 to-indigo-500/10" className="text-center">
             <p className="text-blue-300 text-3xl font-bold">462.14%</p>
             <p className="text-gray-300 text-sm mt-2">Swytch Profits Since Inception</p>
-          </motion.div>
+          </Card>
+        </motion.div>
+
+        {/* Achievements */}
+        <motion.div variants={sectionVariants}>
+          <Card gradient="from-cyan-500/10 to-blue-500/10">
+            <div className="space-y-6">
+              <h3 className="text-3xl font-bold text-white flex items-center gap-3">
+                <Award className="w-8 h-8 text-cyan-400 animate-pulse" /> Achievements
+              </h3>
+              <p className="text-gray-300">Earn milestones to showcase your financial mastery!</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {achievementsState.map(achievement => (
+                  <div
+                    key={achievement.id}
+                    className={`p-4 rounded-lg border ${achievement.unlocked ? 'border-cyan-500 bg-gray-800/50' : 'border-gray-600 opacity-50'}`}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <Award className={`w-6 h-6 ${achievement.unlocked ? 'text-cyan-400' : 'text-gray-400'}`} />
+                      <p className="text-white font-semibold">{achievement.title}</p>
+                    </div>
+                    <p className="text-sm text-gray-400">{achievement.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
         </motion.div>
 
         {/* Referral Leaderboard */}
@@ -292,7 +795,7 @@ const TransactionStatus = () => {
           <p className="text-lg text-gray-300 text-center max-w-3xl mx-auto">
             Invite PETs to the Swytch Vault and earn JEWELS for every referral.
           </p>
-          <div className="bg-gray-900/60 backdrop-blur-lg border border-yellow-500/20 rounded-2xl p-6 shadow-xl">
+          <Card gradient="from-yellow-500/10 to-orange-500/10">
             {leaderboard.map((entry, index) => (
               <motion.div
                 key={index}
@@ -311,7 +814,7 @@ const TransactionStatus = () => {
                 </div>
               </motion.div>
             ))}
-          </div>
+          </Card>
         </motion.div>
 
         {/* Account Actions */}
@@ -319,36 +822,24 @@ const TransactionStatus = () => {
           variants={sectionVariants}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto"
         >
-          <motion.div
-            className="relative bg-gray-900/60 p-6 rounded-xl shadow-xl border border-cyan-500/20 backdrop-blur-md flex items-center gap-4"
-            whileHover={{ scale: 1.05 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-xl" />
+          <Card gradient="from-cyan-500/10 to-blue-500/10" className="flex items-center gap-4 cursor-pointer" onClick={handleAccountDetailsClick}>
             <User className="w-6 h-6 text-cyan-400 animate-pulse" />
             <p className="text-white">Account Details</p>
-          </motion.div>
-          <motion.div
-            className="relative bg-gray-900/60 p-6 rounded-xl shadow-xl border border-cyan-500/20 backdrop-blur-md flex items-center gap-4"
-            whileHover={{ scale: 1.05 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-xl" />
+          </Card>
+          <Card gradient="from-cyan-500/10 to-blue-500/10" className="flex items-center gap-4 cursor-pointer" onClick={handleReferralClick}>
             <Users className="w-6 h-6 text-cyan-400 animate-pulse" />
             <p className="text-white">Referrals</p>
-          </motion.div>
-          <motion.div
-            className="relative bg-gray-900/60 p-6 rounded-xl shadow-xl border border-cyan-500/20 backdrop-blur-md text-center"
-            whileHover={{ scale: 1.05 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-xl" />
+          </Card>
+          <Card gradient="from-cyan-500/10 to-blue-500/10" className="text-center">
             <p className="text-white text-lg font-bold">Active PETs</p>
             <p className="text-cyan-400 font-semibold text-2xl mt-1">0</p>
-          </motion.div>
+          </Card>
         </motion.div>
 
         {/* Wallet Info */}
         <motion.div
           variants={sectionVariants}
-          className="text-sm text-cyan-300 italic text-center max-w-xl mx-auto"
+          className="text-sm text-rose-300 italic text-center max-w-xl mx-auto"
         >
           🔐 Wallet: 0xAB...CDEF | 🔗 Network: Avalanche | 💼 Status: Active
         </motion.div>
@@ -356,82 +847,127 @@ const TransactionStatus = () => {
         {/* Final CTA */}
         <motion.div
           variants={sectionVariants}
-          className="relative bg-gray-900/50 backdrop-blur-lg rounded-3xl p-12 text-center border border-teal-500/20 shadow-2xl hover:shadow-teal-500/40 transition-all"
+          className="relative bg-gray-900/50 backdrop-blur-lg rounded-3xl p-12 text-center border border-pink-500/20 shadow-2xl hover:shadow-pink-500/40 transition-all"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-green-500/10 rounded-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-rose-500/10 rounded-3xl" />
           <div className="relative space-y-6">
             <h3 className="text-4xl font-extrabold text-white flex items-center justify-center gap-4">
-              <Sparkles className="w-10 h-10 text-teal-400 animate-pulse" /> Power Your Future
+              <Sparkles className="w-10 h-10 text-pink-400 animate-pulse" /> Power Your Future
             </h3>
             <p className="text-lg text-gray-300 max-w-3xl mx-auto">
               Join the Swytch Energy Trust and harness AI-driven yields to fuel your decentralized journey.
             </p>
-            <button
-              className="inline-flex items-center px-8 py-4 bg-teal-600 text-white hover:bg-teal-700 rounded-full text-lg font-semibold group"
+            <motion.button
+              className="inline-flex items-center px-8 py-4 bg-pink-600 text-white hover:bg-pink-700 rounded-full text-lg font-semibold group"
               onClick={() => setShowWalletModal(true)}
+              whileHover={{ scale: 1.05 }}
             >
               Start Earning
               <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
-            </button>
+            </motion.button>
           </div>
         </motion.div>
-
-        {/* Wallet Connection Modal */}
-        <AnimatePresence>
-          {showWalletModal && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 relative border border-cyan-500/20 shadow-2xl backdrop-blur-lg"
-                animate={{ rotate: [0, 2, -2, 0], transition: { duration: 5, repeat: Infinity, ease: 'easeInOut' } }}
-              >
-                <motion.button
-                  onClick={() => setShowWalletModal(false)}
-                  className="absolute top-4 right-4 text-cyan-400 hover:text-red-500"
-                  whileHover={{ rotate: 90 }}
-                >
-                  <X className="w-8 h-8" />
-                </motion.button>
-                <h3 className="text-3xl font-bold text-cyan-400 mb-6 flex items-center gap-3">
-                  <Wallet className="w-8 h-8 animate-pulse" /> Connect to the Vault
-                </h3>
-                <div className="space-y-4">
-                  <motion.button
-                    className="w-full p-3 bg-cyan-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <Wallet className="w-5 h-5" /> Connect MetaMask
-                  </motion.button>
-                  <motion.button
-                    className="w-full p-3 bg-teal-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <Wallet className="w-5 h-5" /> Connect WalletConnect
-                  </motion.button>
-                  <motion.button
-                    className="w-full p-3 bg-gray-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <Wallet className="w-5 h-5" /> Generate New Wallet
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
 
+      {/* Wallet Connection Modal */}
+      <AnimatePresence>
+        {showWalletModal && (
+          <Modal title="Connect to the Vault" onClose={() => setShowWalletModal(false)}>
+            <div className="space-y-4">
+              <motion.button
+                className="w-full p-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.05 }}
+                onClick={() => handleWalletConnect('MetaMask')}
+              >
+                <Wallet className="w-5 h-5" /> Connect MetaMask
+              </motion.button>
+              <motion.button
+                className="w-full p-3 bg-pink-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.05 }}
+                onClick={() => handleWalletConnect('WalletConnect')}
+              >
+                <Wallet className="w-5 h-5" /> Connect WalletConnect
+              </motion.button>
+              <motion.button
+                className="w-full p-3 bg-gray-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.05 }}
+                onClick={() => handleWalletConnect('New Wallet')}
+              >
+                <Wallet className="w-5 h-5" /> Generate New Wallet
+              </motion.button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Check-In Modal */}
+      <AnimatePresence>
+        {showCheckInModal && (
+          <Modal title={`Day ${visitStreak} Check-In`} onClose={() => setShowCheckInModal(false)}>
+            <div className="space-y-6 text-center">
+              <p className="text-gray-300">
+                Claim your daily reward: <span className="text-rose-400 font-bold">{checkInRewards[Math.min(visitStreak - 1, checkInRewards.length - 1)]} JEWELS</span>
+              </p>
+              <motion.button
+                className="w-full p-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.05 }}
+                onClick={handleCheckIn}
+              >
+                <Gift className="w-5 h-5" /> Claim Reward
+              </motion.button>
+              <button
+                className="text-gray-400 hover:text-gray-300 text-sm"
+                onClick={() => setShowCheckInModal(false)}
+              >
+                Skip
+              </button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Reward Popup */}
+      <AnimatePresence>
+        {showReward && (
+          <motion.div
+            variants={rewardVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed bottom-20 right-4 max-w-sm w-full bg-gray-900 border border-rose-500/20 rounded-xl shadow-2xl p-4 backdrop-blur-lg z-50"
+          >
+            <div className="flex items-center gap-4">
+              <Sparkles className="w-8 h-8 text-rose-400 animate-pulse" />
+              <div>
+                <p className="text-white font-bold">{showReward.message}</p>
+                <p className="text-sm text-gray-300">+{showReward.jewels} JEWELS{showReward.xp > 0 ? `, +${showReward.xp} XP` : ''}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Audio */}
+      <audio ref={clickAudioRef} src="/audio/click.mp3" preload="auto" />
+      <audio ref={rewardAudioRef} src="/audio/reward.mp3" preload="auto" />
+
       <style>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .blur-3xl { filter: blur(64px); }
+        .blur-2xl { filter: blur(32px); }
+        .bg-[url('/noise.png')] {
+          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TqCRZQqlUKqlaVSqlUKqVqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC');
         }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
+        button:focus, canvas:focus {
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.5);
+        }
+        @media (prefers-reduced-motion) {
+          .animate-pulse, .animate-bounce, [data-animate] {
+            animation: none !important;
+            transition: none !important;
+          }
         }
       `}</style>
     </section>
