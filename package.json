@@ -36,6 +36,9 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.177.0"
   },
+  "engines": {
+  "node": "20.x"
+},
   "devDependencies": {
     "@eslint/js": "^9.19.0",
     "@types/lodash.throttle": "^4.1.9",
@@ -54,4 +57,5 @@
     "vite": "^6.1.0",
     "vite-tsconfig-paths": "^5.1.4"
   }
+  
 }
