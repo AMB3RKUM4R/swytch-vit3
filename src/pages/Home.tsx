@@ -9,7 +9,7 @@ export default function Home() {
     <div >
       <KidsStarFlixUI/>
       <KidsMusicFlixUI/>
-    <KidsJoyFlixUI/>
+      <KidsJoyFlixUI/>
     </div>
   );
 }

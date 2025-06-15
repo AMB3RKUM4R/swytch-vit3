@@ -2,11 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Wallet, Send, ArrowRight, Repeat2, Gamepad, ShoppingBag, BarChart2, User, Code, Newspaper, Sparkles, Shield, Globe, CircleDollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Tilt from 'react-parallax-tilt';
-
-// Mock Web3 provider
-const mockWeb3 = {
-  connect: async () => ({ address: '0x1234...5678', balance: '100 USDT' }),
-};
+import RazorTransaction from '../RazorWithdraw'; // Import RazorTransaction
 
 // Interfaces
 interface AccountSection {
@@ -21,7 +17,7 @@ interface DashboardTab {
   title: string;
   icon: JSX.Element;
   content: JSX.Element;
-  gradient: string; // Added to fix TS2339
+  gradient: string;
 }
 
 // Data
@@ -42,7 +38,7 @@ const AccountSections: AccountSection[] = [
   },
   {
     title: '💰 Economic Rebirth',
-    content: 'Your gameplay isn’t a pastime — it’s proof-of-energy. The more you engage, the more you earn. Your Energy converts to Swytch Stablecoin, tied to USDT.',
+    content: 'Your gameplay isn’t a pastime — it’s proof-of-energy. The more you engage, the more you earn. Your Energy converts to INR in the Fiat Vault.',
     icon: <CircleDollarSign className="w-6 h-6 text-pink-400 animate-pulse" />,
     gradient: 'from-pink-500/10 to-rose-500/10'
   },
@@ -164,6 +160,9 @@ const Account: React.FC = () => {
   const [energyInput, setEnergyInput] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
 
+  // Conversion rate (configurable via env variable)
+  const ENERGY_TO_INR_RATE = import.meta.env.VITE_ENERGY_TO_INR_RATE || 2.14; // 1 Energy = ₹2.14
+
   // Throttled mouse move
   useEffect(() => {
     const handleMouseMove = throttle((e: MouseEvent) => {
@@ -192,7 +191,7 @@ const Account: React.FC = () => {
           </div>
         </div>
       ),
-      gradient: 'from-rose-500/10 to-pink-500/10' // Added
+      gradient: 'from-rose-500/10 to-pink-500/10'
     },
     {
       id: 'marketplace',
@@ -201,22 +200,27 @@ const Account: React.FC = () => {
       content: (
         <div className="space-y-4 text-center">
           <p className="text-gray-300 text-lg max-w-3xl mx-auto">
-            Trade in-game assets with Swytch Stablecoin. Every transaction is verified for Energy integrity.
+            Purchase in-game assets with INR via UPI. Every transaction is verified for Energy integrity.
           </p>
-          <button className="bg-pink-600 hover:bg-pink-700 px-6 py-3 rounded-lg text-white font-semibold">Explore Marketplace</button>
+          <button
+            className="bg-pink-600 hover:bg-pink-700 px-6 py-3 rounded-lg text-white font-semibold"
+            onClick={() => setModal('Send')}
+          >
+            Explore Marketplace
+          </button>
         </div>
       ),
-      gradient: 'from-pink-500/10 to-rose-500/10' // Added
+      gradient: 'from-pink-500/10 to-rose-500/10'
     },
     {
       id: 'energy',
-      title: 'Energy Dashboard',
+      title: 'Fiat Vault',
       icon: <BarChart2 className="w-5 h-5 animate-pulse" />,
       content: (
         <div className="flex flex-col lg:flex-row items-center gap-8">
           <div className="lg:w-1/2 space-y-4">
             <p className="text-gray-300 text-lg">
-              Track your proof-of-energy. Convert Energy to Swytch Stablecoin (1 Energy = 0.0258 USDT).
+              Track your proof-of-energy. Convert Energy to INR (1 Energy = ₹{ENERGY_TO_INR_RATE}).
             </p>
             <div className="space-y-2">
               <input
@@ -228,17 +232,24 @@ const Account: React.FC = () => {
                 aria-label="Enter Energy amount"
               />
               <p className="text-rose-400 font-bold">
-                {energyInput ? `${(energyInput * 0.0258).toFixed(2)} USDT` : 'Enter Energy to calculate'}
+                {energyInput ? `₹${(energyInput * ENERGY_TO_INR_RATE).toFixed(2)}` : 'Enter Energy to calculate'}
               </p>
+              <button
+                className="bg-rose-600 hover:bg-rose-700 px-6 py-3 rounded-lg text-white font-semibold"
+                onClick={() => setModal('Swap')}
+                disabled={!energyInput}
+              >
+                Withdraw INR
+              </button>
             </div>
           </div>
           <div className="lg:w-1/2 bg-gray-800/50 p-6 rounded-lg text-gray-200 text-center space-y-2">
             <p className="text-xl font-bold">Energy: 1245</p>
-            <p className="text-xl font-bold">Earnings: 32.15 USDT</p>
+            <p className="text-xl font-bold">Balance: ₹{(1245 * ENERGY_TO_INR_RATE).toFixed(2)}</p>
           </div>
         </div>
       ),
-      gradient: 'from-cyan-500/10 to-blue-500/10' // Added
+      gradient: 'from-cyan-500/10 to-blue-500/10'
     },
     {
       id: 'identity',
@@ -269,7 +280,7 @@ const Account: React.FC = () => {
           </div>
         </div>
       ),
-      gradient: 'from-rose-500/10 to-cyan-500/10' // Added
+      gradient: 'from-rose-500/10 to-cyan-500/10'
     },
     {
       id: 'creator',
@@ -286,7 +297,7 @@ const Account: React.FC = () => {
           </div>
         </div>
       ),
-      gradient: 'from-cyan-500/10 to-pink-500/10' // Added
+      gradient: 'from-cyan-500/10 to-pink-500/10'
     },
     {
       id: 'feed',
@@ -298,23 +309,13 @@ const Account: React.FC = () => {
             Stay connected with DAO voting alerts, social posts, and global energy stats.
           </p>
           <div className="bg-gray-800/50 p-6 rounded-lg text-gray-200">
-            🚨 Vote #42: Should Energy-to-USDT be uncapped? 🗳️
+            🚨 Vote #42: Should Energy-to-INR rate be adjusted? 🗳️
           </div>
         </div>
       ),
-      gradient: 'from-pink-500/10 to-rose-500/10' // Added
+      gradient: 'from-pink-500/10 to-rose-500/10'
     }
   ];
-
-  // Handle wallet connection
-  const handleConnectWallet = async () => {
-    try {
-      const { address } = await mockWeb3.connect();
-      alert(`Connected: ${address}`);
-    } catch {
-      alert('Failed to connect wallet');
-    }
-  };
 
   return (
     <div className="bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white px-6 py-24 sm:px-12 lg:px-24 space-y-32 overflow-hidden">
@@ -420,7 +421,7 @@ const Account: React.FC = () => {
         </Card>
       </motion.section>
 
-      {/* Wallet & Actions Section */}
+      {/* Payment Actions Section */}
       <motion.section
         className="relative z-20 max-w-5xl mx-auto space-y-8"
         variants={fadeUp}
@@ -431,58 +432,39 @@ const Account: React.FC = () => {
           className="text-4xl font-extrabold text-rose-400 flex items-center gap-4"
           variants={fadeLeft}
         >
-          <Wallet className="w-10 h-10 animate-pulse" /> Wallet Actions
+          <Wallet className="w-10 h-10 animate-pulse" /> Payment Actions
         </motion.h2>
         <div className="grid sm:grid-cols-2 gap-8">
           <Card gradient="from-rose-500/10 to-pink-500/10">
-            <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); handleConnectWallet(); }}>
+            <div className="space-y-6">
               <h3 className="text-2xl font-bold text-rose-400 flex items-center gap-3">
-                <Wallet className="w-6 h-6 animate-bounce" /> Connect Wallet
+                <Wallet className="w-6 h-6 animate-bounce" /> Membership Upgrade
               </h3>
-              <input
-                type="text"
-                placeholder="Wallet Address"
-                className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-rose-500"
-                disabled
-                value="0x1234...5678"
-                aria-label="Wallet Address"
-              />
-              <input
-                type="number"
-                placeholder="Amount in USDT"
-                className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-rose-500"
-                aria-label="Amount in USDT"
-              />
+              <p className="text-gray-300">Upgrade to a PET membership for ₹830 to unlock exclusive perks.</p>
               <button
-                type="submit"
                 className="bg-rose-600 hover:bg-rose-700 px-6 py-3 rounded-lg text-white flex items-center gap-2 font-semibold w-full justify-center"
+                onClick={() => setModal('Receive')}
               >
-                <Wallet className="w-5 h-5 animate-bounce" /> Connect
+                <Wallet className="w-5 h-5 animate-bounce" /> Upgrade Membership
               </button>
-            </form>
+            </div>
           </Card>
           <Card gradient="from-pink-500/10 to-rose-500/10" className="flex flex-col justify-between">
             <div className="space-y-4">
               <h3 className="text-2xl font-bold text-rose-400 flex items-center gap-3">
-                <ArrowRight className="w-6 h-6 animate-pulse" /> Crypto Actions
+                <ArrowRight className="w-6 h-6 animate-pulse" /> UPI Actions
               </h3>
               <button
                 onClick={() => setModal('Send')}
                 className="bg-rose-600 hover:bg-rose-700 px-6 py-4 rounded-lg text-white flex items-center justify-center gap-2 font-semibold w-full"
               >
-                <Send className="w-5 h-5 animate-pulse" /> Send Crypto
-              </button>
-              <button
-                onClick={() => setModal('Receive')}
-                className="bg-pink-600 hover:bg-pink-700 px-6 py-4 rounded-lg text-white flex items-center justify-center gap-2 font-semibold w-full"
-              >
-                <ArrowRight className="w-5 h-5 animate-pulse" /> Receive Crypto
+                <Send className="w-5 h-5 animate-pulse" /> Purchase Content
               </button>
               <button
                 onClick={() => setModal('Swap')}
                 className="bg-cyan-600 hover:bg-cyan-700 px-6 py-4 rounded-lg text-white flex items-center justify-center gap-2 font-semibold w-full"
               >
-                <Repeat2 className="w-5 h-5 animate-pulse" /> Swap
+                <Repeat2 className="w-5 h-5 animate-pulse" /> Withdraw INR
               </button>
             </div>
           </Card>
@@ -524,37 +506,16 @@ const Account: React.FC = () => {
 
       {/* Modals */}
       <AnimatePresence>
-        {modal === 'connect' && (
-          <Modal title="Connect Wallet" onClose={() => setModal(null)}>
-            <div className="space-y-6">
-              <button
-                className="bg-rose-600 hover:bg-rose-700 px-6 py-3 rounded-lg text-white w-full font-semibold flex items-center justify-center gap-2"
-                onClick={handleConnectWallet}
-              >
-                <Wallet className="w-5 h-5 animate-bounce" /> Connect MetaMask
-              </button>
-            </div>
-          </Modal>
-        )}
         {['Send', 'Receive', 'Swap'].includes(modal || '') && (
-          <Modal title={`${modal} Crypto`} onClose={() => setModal(null)}>
-            <form className="space-y-6">
-              <input
-                type="text"
-                placeholder="Wallet Address"
-                className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-rose-500"
-                aria-label="Wallet Address"
-              />
-              <input
-                type="number"
-                placeholder="Amount in USDT"
-                className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-rose-500"
-                aria-label="Amount in USDT"
-              />
-              <button className="bg-rose-600 hover:bg-rose-700 px-6 py-3 rounded-lg text-white w-full font-semibold">
-                Confirm
-              </button>
-            </form>
+          <Modal title={`${modal === 'Send' ? 'Purchase Content' : modal === 'Receive' ? 'Upgrade Membership' : 'Withdraw INR'}`} onClose={() => setModal(null)}>
+            <div className="space-y-6">
+              <RazorTransaction
+                transactionType={modal === 'Send' ? 'content_purchase' : modal === 'Receive' ? 'membership' : 'withdraw'}
+                amount={modal === 'Receive' ? 830 : modal === 'Swap' && energyInput ? energyInput * ENERGY_TO_INR_RATE : 1000} // Default ₹1000 for content_purchase
+                onSuccess={function (_itemId?: string): void {
+                  throw new Error('Function not implemented.');
+                } }              />
+            </div>
           </Modal>
         )}
       </AnimatePresence>
@@ -563,7 +524,7 @@ const Account: React.FC = () => {
         .blur-3xl { filter: blur(64px); }
         .blur-2xl { filter: blur(32px); }
         .bg-[url('/noise.png')] {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUKpVUKqVRKpVJutxuNRqMhSRJpmkYkSVKpVCqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJKpVIplUqlVColSf4BQUzS2f8eAAAAAElFTkSuQmCC');
+          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVCqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC');
         }
         input:focus {
           transition: border-color 0.3s ease, ring-color 0.3s ease;

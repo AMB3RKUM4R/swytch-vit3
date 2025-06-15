@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Gamepad2, DollarSign, Banknote, Shield, CreditCard, Building, UserPlus,
@@ -9,8 +9,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import RazorTransaction from '@/RazorWithdraw';
 import PhoneLogin from '@/hooks/PhoneLogin';
 import { useAuthUser } from '@/hooks/useAuthUser';
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
 
-// Interfaces
+// Types
+type MembershipTier = 'membership_basic' | 'membership_pro' | 'membership_premium';
+
 interface NavItem {
   name: string;
   path: string;
@@ -20,6 +24,17 @@ interface NavItem {
 interface PaymentItem {
   name: string;
   icon: React.ComponentType<{ className?: string }>;
+}
+
+interface Transaction {
+  transactionId: string;
+  userId: string;
+  amount: string;
+  transactionType: string;
+  status: string;
+  timestamp: any;
+  screenshot?: string;
+  itemId?: string;
 }
 
 const navItems: NavItem[] = [
@@ -51,16 +66,16 @@ const sidebarItems: NavItem[] = [
 // Animation Variants
 const tooltipVariants = {
   hidden: { opacity: 0, y: 10, scale: 0.9 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.2 } }
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.2 } },
 };
 
 const sidebarVariants = {
   visible: { x: 0, opacity: 1, transition: { duration: 0.3, ease: 'easeOut' } },
-  hidden: { x: '-100%', opacity: 0, transition: { duration: 0.3, ease: 'easeIn' } }
+  hidden: { x: '-100%', opacity: 0, transition: { duration: 0.3, ease: 'easeIn' } },
 };
 
 const particleVariants = {
-  animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } }
+  animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
 // Components
@@ -74,6 +89,7 @@ const Button = ({ children, onClick, ariaLabel, className }: {
     onClick={onClick}
     className={`p-2 rounded-full text-rose-400 hover:bg-rose-600/20 hover:scale-110 transition-all focus:outline-none focus:ring-2 focus:ring-rose-500 ${className}`}
     aria-label={ariaLabel}
+    role="button"
   >
     {children}
   </button>
@@ -105,6 +121,7 @@ const Modal = ({ title, onClose, children }: {
         onClick={onClose}
         whileHover={{ rotate: 90 }}
         aria-label="Close modal"
+        role="button"
       >
         <X className="w-6 h-6" />
       </motion.button>
@@ -120,7 +137,45 @@ const HeaderComponent: React.FC = () => {
   const location = useLocation();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { user, loading, error, signInWithGoogle, signInWithFacebook, signOutUser } = useAuthUser();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [selectedTier, setSelectedTier] = useState<MembershipTier | null>(null);
+  const { user, membership, loading, error, signInWithGoogle, signInWithFacebook, signInWithTwitter, signInWithGithub, signInWithMicrosoft, signOutUser } = useAuthUser();
+
+  // Fetch wallet balance
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      if (user) {
+        try {
+          const userRef = doc(db, 'users', user.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setWalletBalance(userSnap.data().WalletBalance || 0);
+          }
+        } catch (err) {
+          console.error('Failed to fetch wallet balance:', err);
+        }
+      }
+    };
+    fetchWalletBalance();
+  }, [user]);
+
+  // Fetch transactions when View Transactions modal opens
+  useEffect(() => {
+    if (activeModal === 'View Transactions' && user) {
+      const fetchTransactions = async () => {
+        try {
+          const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+          const querySnapshot = await getDocs(q);
+          const txs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as unknown as Transaction[];
+          setTransactions(txs);
+        } catch (err) {
+          console.error('Failed to fetch transactions:', err);
+        }
+      };
+      fetchTransactions();
+    }
+  }, [activeModal, user]);
 
   // Handle loading state
   if (loading) {
@@ -136,6 +191,8 @@ const HeaderComponent: React.FC = () => {
           <button
             onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-rose-600 text-white rounded-md"
+            role="button"
+            aria-label="Retry"
           >
             Try Again
           </button>
@@ -148,37 +205,28 @@ const HeaderComponent: React.FC = () => {
     switch (activeModal) {
       case 'Pay with Card':
         return (
-          <Modal title="Pay with Razorpay" onClose={() => setActiveModal(null)}>
+          <Modal title="Pay with Card" onClose={() => setActiveModal(null)}>
             <div className="grid gap-4 text-white">
               {user ? (
-                <>
-                  <p className="text-gray-200">Pay $50 for premium content.</p>
-                  <RazorTransaction
-                    uid={user.uid}
-                    amount={50}
-                    mode="buy"
-                    to="inventory"
-                  />
-                </>
+                <p className="text-gray-200">This feature is not available for memberships. Please use "Join Membership" to purchase a plan.</p>
               ) : (
                 <>
-                  <p className="text-red-400">Please log in to proceed with payment.</p>
-                  <div className="flex gap-4 justify-center">
-                    <motion.button
-                      onClick={signInWithGoogle}
-                      className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
+                  <p className="text-red-400">Please log in to proceed.</p>
+                  <div className="flex flex-wrap gap-4 justify-center">
+                    <motion.button onClick={signInWithGoogle} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Google">
                       Sign in with Google
                     </motion.button>
-                    <motion.button
-                      onClick={signInWithFacebook}
-                      className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
+                    <motion.button onClick={signInWithFacebook} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Facebook">
                       Sign in with Facebook
+                    </motion.button>
+                    <motion.button onClick={signInWithTwitter} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Twitter">
+                      Sign in with Twitter
+                    </motion.button>
+                    <motion.button onClick={signInWithGithub} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with GitHub">
+                      Sign in with GitHub
+                    </motion.button>
+                    <motion.button onClick={signInWithMicrosoft} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Microsoft">
+                      Sign in with Microsoft
                     </motion.button>
                   </div>
                 </>
@@ -189,47 +237,52 @@ const HeaderComponent: React.FC = () => {
       case 'Bank Transfer':
         return (
           <Modal title="Initiate Bank Transfer" onClose={() => setActiveModal(null)}>
-            <form className="grid gap-4 text-white">
-              <input
-                placeholder="Account Holder Name"
-                className="bg-gray-900/80 p-3 rounded-md border border-rose-500/20 w-full text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-              <input
-                placeholder="Bank Name"
-                className="bg-gray-900/80 p-3 rounded-md border border-rose-500/20 w-full text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-              <input
-                placeholder="SWIFT/IFSC Code"
-                className="bg-gray-900/80 p-3 rounded-md border border-rose-500/20 w-full text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-              <input
-                placeholder="Amount (USDT)"
-                className="bg-gray-900/80 p-3 rounded-md border border-rose-500/20 w-full text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
+            <div className="grid gap-4 text-white">
+              <p className="text-gray-200">Bank transfer is not yet implemented. Please use "Join Membership" for payments.</p>
               <motion.button
-                className="bg-rose-600 text-white py-2 rounded-lg font-bold hover:bg-rose-700"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                onClick={() => alert('Bank transfer is coming soon!')}
+                className="bg-rose-600 text-white py-2 rounded-lg font-bold hover:bg-rose-700 opacity-50 cursor-not-allowed"
+                disabled
+                role="button"
+                aria-label="Transfer Now (Disabled)"
               >
-                Transfer Now
+                Transfer Now (Coming Soon)
               </motion.button>
-            </form>
+            </div>
           </Modal>
         );
       case 'View Transactions':
         return (
           <Modal title="Transaction History" onClose={() => setActiveModal(null)}>
-            <ul className="text-sm text-gray-200 space-y-3">
-              <li className="flex items-center gap-2">
-                <span className="text-green-400">✅</span> Paid $50 for Swytch Membership
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-rose-400">🔁</span> Swapped 20 USDT to JEWELS
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-red-400">🏆</span> Claimed 2.8% yield from Vault
-              </li>
-            </ul>
+            {user ? (
+              <>
+                {transactions.length > 0 ? (
+                  <ul className="text-sm text-gray-200 space-y-3 max-h-60 overflow-y-auto no-scrollbar">
+                    {transactions.map((tx) => (
+                      <li key={tx.transactionId} className="flex items-center gap-2">
+                        <span className={`text-${tx.status === 'success' ? 'green' : tx.status === 'pending' ? 'yellow' : 'red'}-400`}>
+                          {tx.status === 'success' ? '✅' : tx.status === 'pending' ? '🔄' : '❌'}
+                        </span>
+                        {tx.transactionType === 'membership' ? (
+                          <span>Paid ₹{tx.amount} for {tx.itemId?.replace('membership_', '')} membership - {tx.status}</span>
+                        ) : (
+                          <span>{tx.transactionType === 'withdraw' ? 'Withdrawal' : tx.transactionType} of ₹{tx.amount} - {tx.status}</span>
+                        )}
+                        {tx.screenshot && (
+                          <a href={tx.screenshot} target="_blank" rel="noopener noreferrer" className="text-rose-400 underline" aria-label="View transaction screenshot">
+                            View Screenshot
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-200">No transactions found.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-red-400">Please log in to view transactions.</p>
+            )}
           </Modal>
         );
       case 'Join Membership':
@@ -238,33 +291,75 @@ const HeaderComponent: React.FC = () => {
             <div className="grid gap-4 text-white">
               {user ? (
                 <>
-                  <p className="text-gray-200">One-time $50 USDT membership.</p>
-                  <RazorTransaction
-                    uid={user.uid}
-                    amount={50}
-                    mode="buy"
-                    to="inventory"
-                  />
+                  {membership && membership !== 'none' ? (
+                    <p className="text-rose-400">You already have an active {membership.replace('membership_', '')} membership.</p>
+                  ) : (
+                    <>
+                      <p className="text-gray-200">Choose a membership tier:</p>
+                      <div className="flex flex-col gap-2">
+                        <motion.button
+                          onClick={() => setSelectedTier('membership_basic')}
+                          className={`px-4 py-2 rounded-md font-semibold ${selectedTier === 'membership_basic' ? 'bg-rose-600 text-white' : 'bg-gray-800 text-gray-200 hover:bg-gray-700'}`}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          role="button"
+                          aria-label="Select Basic Membership"
+                        >
+                          Basic Membership (₹500)
+                        </motion.button>
+                        <motion.button
+                          onClick={() => setSelectedTier('membership_pro')}
+                          className={`px-4 py-2 rounded-md font-semibold ${selectedTier === 'membership_pro' ? 'bg-rose-600 text-white' : 'bg-gray-800 text-gray-200 hover:bg-gray-700'}`}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          role="button"
+                          aria-label="Select Pro Membership"
+                        >
+                          Pro Membership (₹1000)
+                        </motion.button>
+                        <motion.button
+                          onClick={() => setSelectedTier('membership_premium')}
+                          className={`px-4 py-2 rounded-md font-semibold ${selectedTier === 'membership_premium' ? 'bg-rose-600 text-white' : 'bg-gray-800 text-gray-200 hover:bg-gray-700'}`}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          role="button"
+                          aria-label="Select Premium Membership"
+                        >
+                          Premium Membership (₹2000)
+                        </motion.button>
+                      </div>
+                      {selectedTier && (
+                        <RazorTransaction
+                          amount={MEMBERSHIP_TIERS[selectedTier].amount}
+                          itemId={selectedTier}
+                          transactionType="membership"
+                          onSuccess={() => {
+                            setSelectedTier(null);
+                            setActiveModal(null);
+                          }}
+                        />
+                      )}
+                    </>
+                  )}
                 </>
               ) : (
                 <>
                   <p className="text-red-400">Please log in to proceed with membership.</p>
-                  <div className="flex gap-4 justify-center">
-                    <motion.button
-                      onClick={signInWithGoogle}
-                      className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
+                  <div className="flex flex-wrap gap-4 justify-center">
+                    <motion.button onClick={signInWithGoogle} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Google">
                       Sign in with Google
                     </motion.button>
-                    <motion.button
-                      onClick={signInWithFacebook}
-                      className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
+                    <motion.button onClick={signInWithFacebook} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Facebook">
                       Sign in with Facebook
+                    </motion.button>
+                    <motion.button onClick={signInWithTwitter} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Twitter">
+                      Sign in with Twitter
+                    </motion.button>
+                    <motion.button onClick={signInWithGithub} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with GitHub">
+                      Sign in with GitHub
+                    </motion.button>
+                    <motion.button onClick={signInWithMicrosoft} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Microsoft">
+                      Sign in with Microsoft
                     </motion.button>
                   </div>
                 </>
@@ -276,14 +371,16 @@ const HeaderComponent: React.FC = () => {
         return (
           <Modal title="Access Energy Vault" onClose={() => setActiveModal(null)}>
             <div className="text-white space-y-4">
-              <p className="text-gray-200">Your Vault Balance: <span className="font-bold text-rose-400">500 JEWELS</span></p>
+              <p className="text-gray-200">Your Wallet Balance: <span className="font-bold text-rose-400">₹{walletBalance}</span></p>
               <p className="text-gray-200">Current Yield: <span className="font-bold text-rose-400">2.5% Monthly</span></p>
               <motion.button
-                className="w-full bg-rose-600 text-white py-2 rounded-lg font-bold hover:bg-rose-700"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                onClick={() => alert('Yield claiming is coming soon!')}
+                className="w-full bg-rose-600 text-white py-2 rounded-lg font-bold hover:bg-rose-700 opacity-50 cursor-not-allowed"
+                disabled
+                role="button"
+                aria-label="Claim Yield (Disabled)"
               >
-                Claim Yield
+                Claim Yield (Coming Soon)
               </motion.button>
             </div>
           </Modal>
@@ -291,37 +388,41 @@ const HeaderComponent: React.FC = () => {
       case 'Withdraw':
         return (
           <Modal title="Withdraw Funds" onClose={() => setActiveModal(null)}>
-            {user ? (
-              <RazorTransaction
-                uid={user.uid}
-                amount={50}
-                mode="withdraw"
-                from="wallet"
-                to="wallet"
-              />
-            ) : (
-              <>
-                <p className="text-red-400">Please log in to withdraw funds.</p>
-                <div className="flex gap-4 justify-center">
-                  <motion.button
-                    onClick={signInWithGoogle}
-                    className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Sign in with Google
-                  </motion.button>
-                  <motion.button
-                    onClick={signInWithFacebook}
-                    className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Sign in with Facebook
-                  </motion.button>
-                </div>
-              </>
-            )}
+            <div className="grid gap-4 text-white">
+              {user ? (
+                walletBalance >= 50 ? (
+                  <RazorTransaction
+                    amount={50}
+                    itemId="membership_basic" // Dummy value, not used for withdraw
+                    transactionType="withdraw"
+                    onSuccess={() => setActiveModal(null)}
+                  />
+                ) : (
+                  <p className="text-red-400">Insufficient wallet balance. Minimum withdrawal is ₹50.</p>
+                )
+              ) : (
+                <>
+                  <p className="text-red-400">Please log in to withdraw funds.</p>
+                  <div className="flex flex-wrap gap-4 justify-center">
+                    <motion.button onClick={signInWithGoogle} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Google">
+                      Sign in with Google
+                    </motion.button>
+                    <motion.button onClick={signInWithFacebook} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Facebook">
+                      Sign in with Facebook
+                    </motion.button>
+                    <motion.button onClick={signInWithTwitter} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Twitter">
+                      Sign in with Twitter
+                    </motion.button>
+                    <motion.button onClick={signInWithGithub} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with GitHub">
+                      Sign in with GitHub
+                    </motion.button>
+                    <motion.button onClick={signInWithMicrosoft} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Microsoft">
+                      Sign in with Microsoft
+                    </motion.button>
+                  </div>
+                </>
+              )}
+            </div>
           </Modal>
         );
       case 'Login / Signup':
@@ -329,22 +430,21 @@ const HeaderComponent: React.FC = () => {
           <Modal title="Login or Signup" onClose={() => setActiveModal(null)}>
             <div className="grid gap-4 text-white">
               <PhoneLogin />
-              <div className="flex gap-4 justify-center">
-                <motion.button
-                  onClick={signInWithGoogle}
-                  className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
+              <div className="flex flex-wrap gap-4 justify-center">
+                <motion.button onClick={signInWithGoogle} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Google">
                   Sign in with Google
                 </motion.button>
-                <motion.button
-                  onClick={signInWithFacebook}
-                  className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
+                <motion.button onClick={signInWithFacebook} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Facebook">
                   Sign in with Facebook
+                </motion.button>
+                <motion.button onClick={signInWithTwitter} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Twitter">
+                  Sign in with Twitter
+                </motion.button>
+                <motion.button onClick={signInWithGithub} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with GitHub">
+                  Sign in with GitHub
+                </motion.button>
+                <motion.button onClick={signInWithMicrosoft} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Microsoft">
+                  Sign in with Microsoft
                 </motion.button>
               </div>
               {user && (
@@ -353,6 +453,8 @@ const HeaderComponent: React.FC = () => {
                   className="px-4 py-2 bg-red-600 text-white rounded-md font-semibold hover:bg-red-700"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  role="button"
+                  aria-label="Sign Out"
                 >
                   Sign Out
                 </motion.button>
@@ -412,8 +514,9 @@ const HeaderComponent: React.FC = () => {
                     : 'text-gray-200 hover:bg-rose-600/20 hover:text-rose-400'
                 }`}
                 aria-label={item.name}
-                onClick={() => {
+                onClick={(e) => {
                   if (item.name === 'Login / Signup' || item.name === 'Withdraw') {
+                    e.preventDefault();
                     setActiveModal(item.name);
                   }
                 }}
@@ -512,6 +615,7 @@ const HeaderComponent: React.FC = () => {
                       ? 'bg-rose-600/20 text-rose-400 scale-110'
                       : 'text-gray-200 hover:bg-rose-600/20 hover:text-rose-400 hover:scale-110'
                   }`}
+                  role="button"
                 >
                   <item.icon className="w-5 h-5 animate-pulse" />
                 </button>
@@ -548,6 +652,13 @@ const HeaderComponent: React.FC = () => {
       `}</style>
     </div>
   );
+};
+
+// Define MEMBERSHIP_TIERS for use in Join Membership modal
+const MEMBERSHIP_TIERS: Record<MembershipTier, { name: string; amount: number; contentRoute: string }> = {
+  membership_basic: { name: 'Basic Membership', amount: 500, contentRoute: '/basic-content' },
+  membership_pro: { name: 'Pro Membership', amount: 1000, contentRoute: '/pro-content' },
+  membership_premium: { name: 'Premium Membership', amount: 2000, contentRoute: '/premium-content' },
 };
 
 export default HeaderComponent;

@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  Play, Music, Star, Search, Sparkles, Mic, Heart, Cake, DiamondPercentIcon, Music2,
+  Play, Music, Star, Search, Sparkles, Mic, Heart, Cake, Music2,
   Video, PartyPopper, Wand2, X
 } from 'lucide-react';
-import { auth, db, storage } from '../lib/firebaseConfig';
 import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
-import HeaderComponent from './header.tsx';
-import RazorTransaction from '../RazorWithdraw.tsx';
+import { db, storage } from '../lib/firebaseConfig';
+import HeaderComponent from './header';
+import RazorTransaction from '../RazorWithdraw';
+import { useAuthUser } from '@/hooks/useAuthUser';
+import { useModal } from '../context/ModalContext';
+import { MembershipTier } from '@/lib/types';
 
+// Interfaces
 interface Content {
   id: number;
   title: string;
@@ -22,6 +26,8 @@ interface Content {
   duration?: string;
   isLive?: boolean;
   isPremium?: boolean;
+  membershipRequired?: MembershipTier;
+  price?: number;
 }
 
 interface Category {
@@ -29,8 +35,24 @@ interface Category {
   items: Content[];
 }
 
+interface KidStar {
+  id: number;
+  name: string;
+  image: string;
+  description: string;
+}
 
+interface MusicChallenge {
+  id: number;
+  title: string;
+  thumbnail: string;
+  description: string;
+  isPremium?: boolean;
+  membershipRequired?: MembershipTier;
+  price?: number;
+}
 
+// Mock Data
 const featuredContent: Content[] = [
   {
     id: 1,
@@ -41,81 +63,187 @@ const featuredContent: Content[] = [
     rating: 4.8,
     ageRating: 'G',
     isLive: true,
-    isPremium: false
-  }
+    isPremium: false,
+  },
+  {
+    id: 2,
+    title: 'Rainbow Sing-Along',
+    type: 'song',
+    thumbnail: '/images/rainbow.jpg',
+    description: 'Sing the colors of the rainbow!',
+    rating: 4.9,
+    ageRating: '2+',
+    duration: '3m',
+    isPremium: true,
+    membershipRequired: 'membership_basic',
+    price: 5,
+  },
+  {
+    id: 3,
+    title: 'Groovy Dance Party',
+    type: 'dance',
+    thumbnail: '/images/dance-party.jpg',
+    description: 'Dance with your friends in this live party!',
+    rating: 4.7,
+    ageRating: '4+',
+    isLive: true,
+    isPremium: true,
+    membershipRequired: 'membership_pro',
+    price: 7,
+  },
 ];
 
 const categories: Category[] = [
   {
     name: 'Sing-Along Songs',
-    items: featuredContent
+    items: [
+      {
+        id: 4,
+        title: 'Twinkle Star Song',
+        type: 'song',
+        thumbnail: '/images/twinkle.jpg',
+        description: 'Sing Twinkle, Twinkle, Little Star!',
+        rating: 4.8,
+        ageRating: '2+',
+        duration: '2m',
+        isPremium: false,
+      },
+      {
+        id: 2,
+        title: 'Rainbow Sing-Along',
+        type: 'song',
+        thumbnail: '/images/rainbow.jpg',
+        description: 'Sing the colors of the rainbow!',
+        rating: 4.9,
+        ageRating: '2+',
+        duration: '3m',
+        isPremium: true,
+        membershipRequired: 'membership_basic',
+        price: 5,
+      },
+    ],
   },
   {
     name: 'Music Videos',
-    items: featuredContent
+    items: [
+      {
+        id: 5,
+        title: 'Magic Music Video',
+        type: 'music_video',
+        thumbnail: '/images/magic-video.jpg',
+        description: 'A magical music video for kids!',
+        rating: 4.6,
+        ageRating: '3+',
+        duration: '4m',
+        isPremium: true,
+        membershipRequired: 'membership_premium',
+        price: 10,
+      },
+    ],
   },
   {
     name: 'Kids Dancing & Singing',
-    items: featuredContent
-  }
+    items: [
+      {
+        id: 3,
+        title: 'Groovy Dance Party',
+        type: 'dance',
+        thumbnail: '/images/dance-party.jpg',
+        description: 'Dance with your friends in this live party!',
+        rating: 4.7,
+        ageRating: '4+',
+        isLive: true,
+        isPremium: true,
+        membershipRequired: 'membership_pro',
+        price: 7,
+      },
+    ],
+  },
 ];
 
-const kidStars = [
+const kidStars: KidStar[] = [
   {
     id: 1,
     name: 'Nona Berry',
     image: '/images/nona.jpg',
-    description: 'Child actress & singer'
-  }
+    description: 'Child actress & singer',
+  },
+  {
+    id: 2,
+    name: 'Toby Tune',
+    image: '/images/toby.jpg',
+    description: 'A dancing sensation!',
+  },
 ];
 
-const musicChallenges = [
+const musicChallenges: MusicChallenge[] = [
   {
     id: 1,
     title: 'Dance Battle #1',
     thumbnail: '/images/challenge1.jpg',
     description: 'Can you match the moves?',
-    isPremium: true
-  }
+    isPremium: true,
+    membershipRequired: 'membership_basic',
+    price: 5,
+  },
+  {
+    id: 2,
+    title: 'Sing-Off Challenge',
+    thumbnail: '/images/challenge2.jpg',
+    description: 'Show off your singing skills!',
+    isPremium: true,
+    membershipRequired: 'membership_pro',
+    price: 7,
+  },
 ];
-
-interface MusicChallenge {
-  id: number;
-  title: string;
-  thumbnail: string;
-  description: string;
-  isPremium?: boolean;
-}
-
-// Mock Data (unchanged)
 
 // Animation Variants
 const sectionVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } }
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } },
 };
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
+  visible: { opacity: 1, transition: { staggerChildren: 0.15 } },
 };
 
 const flareVariants = {
-  animate: { scale: [1, 1.3, 1], opacity: [0.5, 0.7, 0.5], transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' } }
+  animate: { scale: [1, 1.3, 1], opacity: [0.5, 0.7, 0.5], transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
 const particleVariants = {
-  animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } }
+  animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
+};
+
+// Membership Access Logic
+const canAccessContent = (membership: string | null, membershipRequired: MembershipTier | undefined): boolean => {
+  if (!membershipRequired) return true;
+  if (!membership) return false;
+
+  const tiers: Record<MembershipTier, number> = {
+    membership_basic: 1,
+    membership_pro: 2,
+    membership_premium: 3,
+  };
+
+  const userTier = tiers[membership as MembershipTier] || 0;
+  const requiredTier = tiers[membershipRequired] || 0;
+
+  return userTier >= requiredTier;
 };
 
 const KidsMusicFlixUI: React.FC = () => {
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user, membership, loading, error } = useAuthUser();
+  const { openLoginModal, openMembershipModal } = useModal();
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<number[]>([]);
   const [modalContent, setModalContent] = useState<Content | MusicChallenge | null>(null);
+  const [modalType, setModalType] = useState<'purchase' | 'upgrade' | null>(null);
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
   const [purchasedItems, setPurchasedItems] = useState<number[]>([]);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const modalRef = useRef<HTMLDivElement>(null);
 
   // Parallax effect
   useEffect(() => {
@@ -126,42 +254,83 @@ const KidsMusicFlixUI: React.FC = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Monitor auth state (unchanged)
+  // Focus trapping for modal
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUserId(user ? user.uid : null);
-    });
-    return unsubscribe;
-  }, []);
+    if (modalContent && modalRef.current) {
+      modalRef.current.focus();
+      const focusableElements = modalRef.current.querySelectorAll('button, [href], input, [tabindex]');
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
 
-  // Fetch favorites from Firestore (unchanged)
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Tab') {
+          if (e.shiftKey && document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          } else if (!e.shiftKey && document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+        if (e.key === 'Escape') {
+          setModalContent(null);
+          setModalType(null);
+        }
+      };
+
+      modalRef.current.addEventListener('keydown', handleKeyDown);
+      return () => modalRef.current?.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [modalContent]);
+
+  // Fetch favorites from Firestore
   useEffect(() => {
-    if (userId) {
+    if (user) {
       const fetchFavorites = async () => {
-        const favoritesRef = collection(doc(db, 'users', userId), 'favorites');
-        const snapshot = await getDocs(favoritesRef);
-        const favoriteIds = snapshot.docs.map((doc) => Number(doc.id));
-        setFavorites(favoriteIds);
+        try {
+          const favoritesRef = collection(doc(db, 'users', user.uid), 'favorites');
+          const snapshot = await getDocs(favoritesRef);
+          const favoriteIds = snapshot.docs.map((doc) => Number(doc.id));
+          setFavorites(favoriteIds);
+        } catch (err) {
+          console.error('Failed to fetch favorites:', err);
+        }
       };
       fetchFavorites();
     }
-  }, [userId]);
+  }, [user]);
 
-  // Fetch purchased items from Firestore (unchanged)
+  // Fetch purchased items from Firestore
   useEffect(() => {
-    if (userId) {
+    if (user) {
       const fetchPurchasedItems = async () => {
-        const purchasesRef = collection(doc(db, 'users', userId), 'purchases');
-        const snapshot = await getDocs(purchasesRef);
-        const purchasedIds = snapshot.docs.map((doc) => Number(doc.id));
-        setPurchasedItems(purchasedIds);
+        try {
+          const purchasesRef = collection(doc(db, 'users', user.uid), 'purchases');
+          const snapshot = await getDocs(purchasesRef);
+          const purchasedIds = snapshot.docs.map((doc) => Number(doc.id));
+          setPurchasedItems(purchasedIds);
+        } catch (err) {
+          console.error('Failed to fetch purchased items:', err);
+        }
       };
       fetchPurchasedItems();
     }
-  }, [userId]);
+  }, [user]);
 
-  // Fetch thumbnail URLs from Firebase Storage (unchanged)
+  // Fetch thumbnail URLs with retry logic
   useEffect(() => {
+    const fetchThumbnail = async (path: string, retries = 2): Promise<string> => {
+      try {
+        return await getDownloadURL(ref(storage, path));
+      } catch (err) {
+        if (retries > 0) {
+          return fetchThumbnail(path, retries - 1);
+        }
+        console.error(`Failed to fetch ${path}:`, err);
+        return '/placeholder.jpg';
+      }
+    };
+
     const fetchThumbnails = async () => {
       const urls: Record<string, string> = {};
       const allContent = [
@@ -172,26 +341,20 @@ const KidsMusicFlixUI: React.FC = () => {
       ];
       for (const item of allContent) {
         const path = 'image' in item ? item.image : item.thumbnail;
-        try {
-          const url = await getDownloadURL(ref(storage, path));
-          urls[path] = url;
-        } catch (err) {
-          console.error(`Failed to fetch ${path}:`, err);
-          urls[path] = '/placeholder.jpg';
-        }
+        urls[path] = await fetchThumbnail(path);
       }
       setThumbnailUrls(urls);
     };
     fetchThumbnails();
   }, []);
 
-  // Toggle favorite (unchanged)
+  // Toggle favorite
   const toggleFavorite = async (contentId: number) => {
-    if (!userId) {
-      alert('Please log in to favorite content.');
+    if (!user) {
+      openLoginModal();
       return;
     }
-    const favoritesRef = doc(db, 'users', userId, 'favorites', contentId.toString());
+    const favoritesRef = doc(db, 'users', user.uid, 'favorites', contentId.toString());
     if (favorites.includes(contentId)) {
       setFavorites(favorites.filter((id) => id !== contentId));
       await deleteDoc(favoritesRef);
@@ -201,30 +364,41 @@ const KidsMusicFlixUI: React.FC = () => {
     }
   };
 
-  // Handle content click (unchanged)
+  // Handle content click
   const handleContentClick = (item: Content | MusicChallenge) => {
-    if (!userId) {
-      alert('Please log in to access content.');
+    if (!user) {
+      setModalContent(item);
+      setModalType('upgrade');
       return;
     }
-    if ('isPremium' in item && item.isPremium && !purchasedItems.includes(item.id)) {
+
+    const membershipRequired = 'membershipRequired' in item ? item.membershipRequired : undefined;
+    if (item.isPremium && membershipRequired && !canAccessContent(membership, membershipRequired)) {
       setModalContent(item);
+      setModalType('upgrade');
+      return;
+    }
+
+    if (item.isPremium && !purchasedItems.includes(item.id)) {
+      setModalContent(item);
+      setModalType('purchase');
     } else {
       alert(`Playing ${item.title}!`);
     }
   };
 
-  // Handle payment success (unchanged)
-  const handlePaymentSuccess = async (itemId: string) => {
-    if (!userId) return;
-    const purchaseRef = doc(db, 'users', userId, 'purchases', itemId);
+  // Handle payment success
+  const handlePaymentSuccess = async (itemId?: string) => {
+    if (!user || !itemId) return;
+    const purchaseRef = doc(db, 'users', user.uid, 'purchases', itemId);
     await setDoc(purchaseRef, { itemId: Number(itemId), purchasedAt: new Date() });
     setPurchasedItems([...purchasedItems, Number(itemId)]);
     setModalContent(null);
+    setModalType(null);
     alert('Purchase successful! Enjoy your content!');
   };
 
-  // Filter content (unchanged)
+  // Filter content
   const filteredCategories = categories.map((category) => ({
     ...category,
     items: category.items.filter((item) =>
@@ -247,6 +421,32 @@ const KidsMusicFlixUI: React.FC = () => {
     challenge.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     challenge.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Handle loading state
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center text-white">Loading...</div>;
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-white">
+        <div className="text-center">
+          <p>Error: {error}</p>
+          <motion.button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-rose-600 text-white rounded-md"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            role="button"
+            aria-label="Retry"
+          >
+            Try Again
+          </motion.button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#2A1B3D] via-rose-950/20 to-black text-white overflow-hidden relative font-sans">
@@ -285,7 +485,7 @@ const KidsMusicFlixUI: React.FC = () => {
         style={{
           backgroundImage: `url(${thumbnailUrls[featuredContent[0].thumbnail] || '/placeholder.jpg'})`,
           backgroundSize: 'cover',
-          backgroundPosition: `${50 + mousePosition.x * 10}% ${50 + mousePosition.y * 10}%`
+          backgroundPosition: `${50 + mousePosition.x * 10}% ${50 + mousePosition.y * 10}%`,
         }}
         variants={sectionVariants}
         initial="hidden"
@@ -318,13 +518,16 @@ const KidsMusicFlixUI: React.FC = () => {
             Sing, dance, and groove with fun songs and videos!
           </p>
           <motion.button
-            className="inline-flex items-center px-8 py-4 bg-rose-600 text-white rounded-full font-semibold hover:bg-rose-700"
+            className="inline-flex items-center px-8 py-4 bg-rose-600 text-white rounded-full font-semibold hover:bg-rose-700 opacity-50 cursor-not-allowed"
             onClick={() => alert('Starting the party!')}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            role="button"
+            aria-label="Start the Party"
+            disabled
           >
             <Play className="w-6 h-6 mr-2" />
-            Start the Party!
+            Start the Party! (Coming Soon)
           </motion.button>
         </div>
       </motion.section>
@@ -340,6 +543,7 @@ const KidsMusicFlixUI: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2 bg-gray-900/80 rounded-full text-white border border-rose-500/20 w-full sm:w-80 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              aria-label="Search content"
             />
           </div>
         </div>
@@ -358,6 +562,8 @@ const KidsMusicFlixUI: React.FC = () => {
               }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              role="button"
+              aria-label={`Go to ${category.name}`}
             >
               {category.name}
             </motion.button>
@@ -400,7 +606,11 @@ const KidsMusicFlixUI: React.FC = () => {
                       <span className="text-sm text-white">{item.rating}</span>
                       <span className="text-sm text-gray-300">| {item.ageRating}</span>
                       {item.isLive && <span className="text-sm text-rose-400 font-semibold">LIVE</span>}
-                      {item.isPremium && !purchasedItems.includes(item.id) && <span className="text-sm text-rose-400 font-semibold">PREMIUM</span>}
+                      {item.isPremium && !purchasedItems.includes(item.id) && (
+                        <span className="text-sm text-rose-400 font-semibold">
+                          {item.membershipRequired ? item.membershipRequired.replace('membership_', '').toUpperCase() : 'PREMIUM'}
+                        </span>
+                      )}
                     </div>
                     <div className="flex justify-between mt-3">
                       <motion.button
@@ -408,8 +618,10 @@ const KidsMusicFlixUI: React.FC = () => {
                         className="inline-flex items-center px-4 py-2 bg-rose-600 text-white rounded-md text-sm font-semibold hover:bg-rose-700"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
+                        role="button"
+                        aria-label={`Play ${item.title}`}
                       >
-                        {item.type === 'dance' ? <DiamondPercentIcon className="w-4 h-4 mr-2" /> : item.type === 'music_video' ? <Video className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                        {item.type === 'dance' ? <PartyPopper className="w-4 h-4 mr-2" /> : item.type === 'music_video' ? <Video className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
                         {item.isLive ? 'Join Live' : item.type === 'dance' ? 'Dance Now' : 'Play Now'}
                       </motion.button>
                       <motion.button
@@ -418,6 +630,7 @@ const KidsMusicFlixUI: React.FC = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         aria-label={favorites.includes(item.id) ? `Remove ${item.title} from favorites` : `Add ${item.title} to favorites`}
+                        role="button"
                       >
                         <Heart
                           className={`w-5 h-5 ${favorites.includes(item.id) ? 'fill-rose-400 text-rose-400' : ''}`}
@@ -472,7 +685,11 @@ const KidsMusicFlixUI: React.FC = () => {
                         <span className="text-sm text-white">{item.rating}</span>
                         <span className="text-sm text-gray-300">| {item.ageRating}</span>
                         {item.isLive && <span className="text-sm text-rose-400 font-semibold">LIVE</span>}
-                        {item.isPremium && !purchasedItems.includes(item.id) && <span className="text-sm text-rose-400 font-semibold">PREMIUM</span>}
+                        {item.isPremium && !purchasedItems.includes(item.id) && (
+                          <span className="text-sm text-rose-400 font-semibold">
+                            {item.membershipRequired ? item.membershipRequired.replace('membership_', '').toUpperCase() : 'PREMIUM'}
+                          </span>
+                        )}
                       </div>
                       <div className="flex justify-between mt-3">
                         <motion.button
@@ -480,8 +697,10 @@ const KidsMusicFlixUI: React.FC = () => {
                           className="inline-flex items-center px-4 py-2 bg-rose-600 text-white rounded-md text-sm font-semibold hover:bg-rose-700"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
+                          role="button"
+                          aria-label={`Play ${item.title}`}
                         >
-                          {item.type === 'dance' ? <DiamondPercentIcon className="w-4 h-4 mr-2" /> : item.type === 'music_video' ? <Video className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                          {item.type === 'dance' ? <PartyPopper className="w-4 h-4 mr-2" /> : item.type === 'music_video' ? <Video className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
                           {item.isLive ? 'Join Live' : item.type === 'dance' ? 'Dance Now' : 'Play Now'}
                         </motion.button>
                         <motion.button
@@ -490,6 +709,7 @@ const KidsMusicFlixUI: React.FC = () => {
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           aria-label={favorites.includes(item.id) ? `Remove ${item.title} from favorites` : `Add ${item.title} to favorites`}
+                          role="button"
                         >
                           <Heart
                             className={`w-5 h-5 ${favorites.includes(item.id) ? 'fill-rose-400 text-rose-400' : ''}`}
@@ -538,12 +758,15 @@ const KidsMusicFlixUI: React.FC = () => {
                     <div className="flex justify-between mt-3">
                       <motion.button
                         onClick={() => alert(`Watching ${star.name}!`)}
-                        className="inline-flex items-center px-4 py-2 bg-rose-600 text-white rounded-md text-sm font-semibold hover:bg-rose-700"
+                        className="inline-flex items-center px-4 py-2 bg-rose-600 text-white rounded-md text-sm font-semibold hover:bg-rose-700 opacity-50 cursor-not-allowed"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
+                        role="button"
+                        aria-label={`Watch ${star.name}`}
+                        disabled
                       >
                         <Heart className="w-4 h-4 mr-2" />
-                        Watch {star.name}
+                        Watch {star.name} (Coming Soon)
                       </motion.button>
                       <motion.button
                         onClick={() => toggleFavorite(star.id)}
@@ -551,6 +774,7 @@ const KidsMusicFlixUI: React.FC = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         aria-label={favorites.includes(star.id) ? `Remove ${star.name} from favorites` : `Add ${star.name} to favorites`}
+                        role="button"
                       >
                         <Heart
                           className={`w-5 h-5 ${favorites.includes(star.id) ? 'fill-rose-400 text-rose-400' : ''}`}
@@ -596,7 +820,11 @@ const KidsMusicFlixUI: React.FC = () => {
                     <h4 className="text-lg font-semibold text-white">{challenge.title}</h4>
                     <p className="text-sm text-gray-200">{challenge.description}</p>
                     <div className="flex items-center gap-2 mt-2">
-                      {challenge.isPremium && !purchasedItems.includes(challenge.id) && <span className="text-sm text-rose-400 font-semibold">PREMIUM</span>}
+                      {challenge.isPremium && !purchasedItems.includes(challenge.id) && (
+                        <span className="text-sm text-rose-400 font-semibold">
+                          {challenge.membershipRequired ? challenge.membershipRequired.replace('membership_', '').toUpperCase() : 'PREMIUM'}
+                        </span>
+                      )}
                     </div>
                     <div className="flex justify-between mt-3">
                       <motion.button
@@ -604,6 +832,8 @@ const KidsMusicFlixUI: React.FC = () => {
                         className="inline-flex items-center px-4 py-2 bg-rose-600 text-white rounded-md text-sm font-semibold hover:bg-rose-700"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
+                        role="button"
+                        aria-label={`Try ${challenge.title}`}
                       >
                         <Music className="w-4 h-4 mr-2" />
                         Try Challenge
@@ -614,6 +844,7 @@ const KidsMusicFlixUI: React.FC = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         aria-label={favorites.includes(challenge.id) ? `Remove ${challenge.title} from favorites` : `Add ${challenge.title} to favorites`}
+                        role="button"
                       >
                         <Heart
                           className={`w-5 h-5 ${favorites.includes(challenge.id) ? 'fill-rose-400 text-rose-400' : ''}`}
@@ -644,21 +875,24 @@ const KidsMusicFlixUI: React.FC = () => {
           <div className="relative space-y-4">
             <p className="text-lg text-gray-200">Follow along with your favorite songs!</p>
             <motion.button
-              className="inline-flex items-center px-6 py-3 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
+              className="inline-flex items-center px-6 py-3 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700 opacity-50 cursor-not-allowed"
               onClick={() => alert('Viewing lyrics!')}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              role="button"
+              aria-label="View Lyrics"
+              disabled
             >
               <Music2 className="w-5 h-5 mr-2" />
-              View Lyrics
+              View Lyrics (Coming Soon)
             </motion.button>
           </div>
         </div>
       </motion.section>
 
-      {/* Payment Modal */}
+      {/* Access Modal */}
       <AnimatePresence>
-        {modalContent && userId && (
+        {modalContent && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -666,7 +900,7 @@ const KidsMusicFlixUI: React.FC = () => {
             className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
             role="dialog"
             aria-modal="true"
-            aria-label="Payment Modal"
+            aria-label={modalType === 'purchase' ? 'Purchase Modal' : 'Upgrade Membership Modal'}
           >
             <motion.div
               className="bg-gray-900 rounded-2xl max-w-md w-full p-8 relative border border-rose-500/20 shadow-2xl backdrop-blur-lg"
@@ -674,31 +908,76 @@ const KidsMusicFlixUI: React.FC = () => {
               animate={{ scale: 1 }}
               exit={{ scale: 0.8 }}
               transition={{ duration: 0.4 }}
-              tabIndex={-1}
+              ref={modalRef}
             >
               <motion.button
-                onClick={() => setModalContent(null)}
+                onClick={() => {
+                  setModalContent(null);
+                  setModalType(null);
+                }}
                 className="absolute top-4 right-4 text-rose-400 hover:text-red-500"
                 whileHover={{ rotate: 90 }}
-                aria-label="Close payment modal"
+                aria-label="Close modal"
+                role="button"
               >
                 <X className="w-6 h-6" />
               </motion.button>
-              <h3 className="text-xl font-bold text-rose-400 mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 animate-pulse" />
-                Unlock {modalContent.title}
-              </h3>
-              <div className="grid gap-4 text-white">
-                <p className="text-gray-200">Pay $5 to access this premium content.</p>
-                <RazorTransaction
-                  uid={userId}
-                  amount={5}
-                  mode="buy"
-                  to="inventory"
-                  itemId={modalContent.id.toString()}
-                  onSuccess={() => handlePaymentSuccess(modalContent.id.toString())}
-                />
-              </div>
+              {modalType === 'purchase' ? (
+                <>
+                  <h3 className="text-xl font-bold text-rose-400 mb-4 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 animate-pulse" />
+                    Unlock {modalContent.title}
+                  </h3>
+                  <div className="grid gap-4 text-white">
+                    <p className="text-gray-200">
+                      Pay ₹{'price' in modalContent ? modalContent.price || 5 : 5} to access this premium content.
+                    </p>
+                    {user ? (
+                      <RazorTransaction
+                        amount={'price' in modalContent ? modalContent.price || 5 : 5}
+                        itemId={modalContent.id.toString()}
+                        transactionType="content_purchase"
+                        onSuccess={() => handlePaymentSuccess(modalContent.id.toString())}
+                      />
+                    ) : (
+                      <motion.button
+                        onClick={openLoginModal}
+                        className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        role="button"
+                        aria-label="Log in to purchase"
+                      >
+                        Log in to Purchase
+                      </motion.button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-xl font-bold text-rose-400 mb-4 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 animate-pulse" />
+                    Upgrade to Access {modalContent.title}
+                  </h3>
+                  <div className="grid gap-4 text-white">
+                    <p className="text-gray-200">
+                      {user
+                        ? `You need a ${'membershipRequired' in modalContent && modalContent.membershipRequired ? modalContent.membershipRequired.replace('membership_', '') : 'premium'} membership to access this content.`
+                        : `Please log in to access ${modalContent.title}.`}
+                    </p>
+                    <motion.button
+                      onClick={user ? openMembershipModal : openLoginModal}
+                      className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      role="button"
+                      aria-label={user ? 'Upgrade Membership' : 'Log in'}
+                    >
+                      {user ? 'Upgrade Membership' : 'Log in'}
+                    </motion.button>
+                  </div>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -713,16 +992,16 @@ const KidsMusicFlixUI: React.FC = () => {
           </h3>
           <p className="text-lg text-gray-200 mb-4">MusicFlix is your place to sing, dance, and shine!</p>
           <div className="flex justify-center gap-6">
-            <Link to="/about" className="text-gray-200 hover:text-rose-400 focus:outline-none focus:underline">
+            <Link to="/about" className="text-gray-200 hover:text-rose-400 focus:outline-none focus:underline" aria-label="About">
               About
             </Link>
-            <Link to="/terms" className="text-gray-200 hover:text-rose-400 focus:outline-none focus:underline">
+            <Link to="/terms" className="text-gray-200 hover:text-rose-400 focus:outline-none focus:underline" aria-label="Terms">
               Terms
             </Link>
-            <Link to="/privacy" className="text-gray-200 hover:text-rose-400 focus:outline-none focus:underline">
+            <Link to="/privacy" className="text-gray-200 hover:text-rose-400 focus:outline-none focus:underline" aria-label="Privacy">
               Privacy
             </Link>
-            <Link to="/contact" className="text-gray-200 hover:text-rose-400 focus:outline-none focus:underline">
+            <Link to="/contact" className="text-gray-200 hover:text-rose-400 focus:outline-none focus:underline" aria-label="Contact">
               Contact
             </Link>
           </div>

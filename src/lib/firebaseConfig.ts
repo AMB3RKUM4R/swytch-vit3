@@ -1,24 +1,31 @@
+"use client";
+
+import { getStorage } from '@firebase/storage';
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, TwitterAuthProvider, GithubAuthProvider, OAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
-
+// Firebase configuration using environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyAeGvzJX4f6YrhEkB4Ttywj8pYxlqJI5XI",
-  authDomain: "swytch-pet.firebaseapp.com",
-  databaseURL: "https://swytch-pet-default-rtdb.firebaseio.com",
-  projectId: "swytch-pet",
-  storageBucket: "swytch-pet.firebasestorage.app",
-  messagingSenderId: "845433042703",
-  appId: "1:845433042703:web:4587b195f97d14d412b07a"
+  apiKey: "AIzaSyAScGyvtc7nttn-9MkboB5G-tvuVSWEsnI",
+  authDomain: "bhartiya-matkkka-pub.firebaseapp.com",
+  projectId: "bhartiya-matkkka-pub",
+  storageBucket: "bhartiya-matkkka-pub.appspot.com",
+  messagingSenderId: "766901673732",
+  appId: "1:766901673732:web:2b0a913504dcaed3687a51",
+  databaseURL: "https://bhartiya-matkkka-pub.firebaseio.com",
 };
 
-// Initialize Firebase App
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Export Firebase services
+// Initialize Auth and Providers
 export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+export const facebookProvider = new FacebookAuthProvider();
+export const twitterProvider = new TwitterAuthProvider();
+export const githubProvider = new GithubAuthProvider();
+export const microsoftProvider = new OAuthProvider('microsoft.com');
+
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export { app };
