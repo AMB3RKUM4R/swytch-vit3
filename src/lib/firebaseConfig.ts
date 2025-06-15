@@ -1,4 +1,3 @@
-"use client";
 
 import { getStorage } from '@firebase/storage';
 import { initializeApp } from 'firebase/app';
