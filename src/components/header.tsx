@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  Home, Gamepad2, DollarSign, Banknote, Shield, CreditCard, Building, Wallet, UserPlus, Coins,
+  Home, Gamepad2, DollarSign, Banknote, Shield, CreditCard, Building, UserPlus,
   UserCheck, MonitorSmartphone, X, Sparkles, Menu, LayoutDashboard, Users,
   Trophy, Settings, LogIn
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import RazorTransaction from '../RazorWithdraw.tsx';
-import PhoneLogin from '../hooks/PhoneLogin.tsx';
-import { useAuthUser } from '../hooks/useAuthUser'; // Import the custom auth hook
+import RazorTransaction from '@/RazorWithdraw';
+import PhoneLogin from '@/hooks/PhoneLogin';
+import { useAuthUser } from '@/hooks/useAuthUser';
 
 // Interfaces
 interface NavItem {
@@ -34,7 +34,7 @@ const navItems: NavItem[] = [
 const paymentItems: PaymentItem[] = [
   { name: 'Pay with Card', icon: CreditCard },
   { name: 'Bank Transfer', icon: Building },
-  { name: 'View Transactions', icon: Wallet },
+  { name: 'View Transactions', icon: Building },
   { name: 'Join Membership', icon: UserPlus },
 ];
 
@@ -43,10 +43,9 @@ const sidebarItems: NavItem[] = [
   { name: 'Community', path: '/community', icon: Users },
   { name: 'Rewards', path: '/GamesPage', icon: Trophy },
   { name: 'Swytch Center', path: '/LandingPage', icon: Settings },
-  { name: 'Energy Vault', path: '/Trust', icon: Coins },
+  { name: 'Energy Vault', path: '/Trust', icon: DollarSign },
   { name: 'Withdraw', path: '/withdraw', icon: Banknote },
   { name: 'Login / Signup', path: '/login', icon: LogIn },
-  { name: 'Connect Wallet', path: '/connect-wallet', icon: Wallet },
 ];
 
 // Animation Variants
@@ -117,53 +116,11 @@ const Modal = ({ title, onClose, children }: {
   </motion.div>
 );
 
-const ConnectWallet: React.FC = () => {
-  const [account, setAccount] = useState<string | null>(null);
-  const [error, setError] = useState('');
-
-  const connectMetaMask = async () => {
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        setAccount(accounts[0]);
-        const { ethers } = await import('ethers');
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        console.log('Connected:', await signer.getAddress());
-      } catch (err: any) {
-        setError('Failed to connect MetaMask: ' + err.message);
-      }
-    } else {
-      setError('MetaMask not detected. Please install MetaMask.');
-    }
-  };
-
-  return (
-    <div className="grid gap-4 text-white">
-      {account ? (
-        <p className="text-rose-400 font-bold">Connected: {account.slice(0, 6)}...{account.slice(-4)}</p>
-      ) : (
-        <>
-          <motion.button
-            className="w-full p-3 bg-rose-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-rose-700"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={connectMetaMask}
-          >
-            <Wallet className="w-5 h-5" /> Connect MetaMask
-          </motion.button>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-        </>
-      )}
-    </div>
-  );
-};
-
 const HeaderComponent: React.FC = () => {
   const location = useLocation();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { user, loading, error, signInWithGoogle, signInWithFacebook, signOutUser } = useAuthUser(); // Use the auth hook
+  const { user, loading, error, signInWithGoogle, signInWithFacebook, signOutUser } = useAuthUser();
 
   // Handle loading state
   if (loading) {
@@ -403,12 +360,6 @@ const HeaderComponent: React.FC = () => {
             </div>
           </Modal>
         );
-      case 'Connect Wallet':
-        return (
-          <Modal title="Connect Wallet" onClose={() => setActiveModal(null)}>
-            <ConnectWallet />
-          </Modal>
-        );
       default:
         return null;
     }
@@ -462,7 +413,7 @@ const HeaderComponent: React.FC = () => {
                 }`}
                 aria-label={item.name}
                 onClick={() => {
-                  if (item.name === 'Login / Signup' || item.name === 'Connect Wallet' || item.name === 'Withdraw') {
+                  if (item.name === 'Login / Signup' || item.name === 'Withdraw') {
                     setActiveModal(item.name);
                   }
                 }}
