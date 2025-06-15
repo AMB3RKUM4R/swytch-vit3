@@ -29,20 +29,7 @@ interface Category {
   items: Content[];
 }
 
-interface Celebrity {
-  id: number;
-  name: string;
-  image: string;
-  description: string;
-  instagramHandle: string;
-}
 
-interface FanClub {
-  id: number;
-  title: string;
-  thumbnail: string;
-  description: string;
-}
 
 const featuredContent: Content[] = [
   {
