@@ -2,7 +2,6 @@
 import { Routes, Route } from 'react-router-dom';
 
 // Global components
-import Header from '@/components/header';
 
 // Page components
 import Home from './pages/Home';
@@ -13,13 +12,14 @@ import GamesPage from './pages/GamesPage';
 import Trust from './pages/Trust';
 import Community from './pages/community';
 import Dashboard from './pages/dashboard';
+import HeaderComponent from '@/components/header';
 
 
 
 export default function App() {
   return (
     <div className="bg-background text-foreground">
-      <Header />
+      <HeaderComponent />
       <main>
         <Routes>
           <Route path="/" element={<Home />} />

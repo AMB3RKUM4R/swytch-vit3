@@ -3,7 +3,18 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    // Common compiler options for better strictness and compatibility
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "jsx": "react-jsx", // Support React JSX (recommended for React 17+)
+    "strict": true, // Enable all strict type-checking options
+    "esModuleInterop": true, // Support for importing CommonJS modules
+    "skipLibCheck": true, // Skip type checking of declaration files for faster builds
+    "forceConsistentCasingInFileNames": true, // Ensure consistent file casing
+    "noEmit": true, // Vite handles emitting, so TypeScript shouldn't
+    "isolatedModules": true // Support Vite's module system
   },
   "files": [],
   "references": [

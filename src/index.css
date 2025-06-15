@@ -61,6 +61,7 @@
     --glass-blur: blur(16px);
     --glass-bg: rgba(75, 0, 130, 0.2); /* Slightly darker purple glass */
   }
+  
 }
 
 @layer base {
