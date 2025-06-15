@@ -5,15 +5,15 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider, TwitterAuthProvider, GithubAuthProvider, OAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// Firebase configuration using environment variables
+// ✅ Firebase configuration for Swytch
 const firebaseConfig = {
-  apiKey: "AIzaSyAScGyvtc7nttn-9MkboB5G-tvuVSWEsnI",
-  authDomain: "bhartiya-matkkka-pub.firebaseapp.com",
-  projectId: "bhartiya-matkkka-pub",
-  storageBucket: "bhartiya-matkkka-pub.appspot.com",
-  messagingSenderId: "766901673732",
-  appId: "1:766901673732:web:2b0a913504dcaed3687a51",
-  databaseURL: "https://bhartiya-matkkka-pub.firebaseio.com",
+  apiKey: "AIzaSyCsAAIDNNDEoeQj76eeBPs4np1BmtXoaME",
+  authDomain: "swytch-338f6.firebaseapp.com",
+  projectId: "swytch-338f6",
+  storageBucket: "swytch-338f6.appspot.com",  // ⚠️ fixed typo (.app → .com)
+  messagingSenderId: "624827141895",
+  appId: "1:624827141895:web:7bbae5c5a42e811026ffa2",
+  // databaseURL is optional if you're not using Realtime Database
 };
 
 // Initialize Firebase
