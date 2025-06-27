@@ -1,15 +1,15 @@
+import Account from '@/components/Account';
+import CommunityOwnership from '@/components/CommunityOwnership';
+import SwytchDisclosure from '@/components/Disclosure';
 
-import KidsJoyFlixUI from '@/components/KidsJoyFlixUI';
-import KidsMusicFlixUI from '@/components/KidsMusicFlixUI';
-import KidsStarFlixUI from '@/components/KidsStarFlixUI';
 
 
-export default function Home() {
+export default function Community() {
   return (
-    <div >
-      <KidsStarFlixUI/>
-      <KidsMusicFlixUI/>
-      <KidsJoyFlixUI/>
+    <div>
+      <Account/>
+      <CommunityOwnership/>
+      <SwytchDisclosure/>
     </div>
   );
 }

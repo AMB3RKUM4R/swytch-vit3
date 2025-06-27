@@ -1,22 +1,17 @@
-import { useState } from 'react';
-import { auth } from '../lib/firebaseConfig';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { useState, useEffect } from 'react';
+import { RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
-
-declare global {
-  interface Window {
-    recaptchaVerifier?: RecaptchaVerifier;
-    confirmationResult?: any;
-  }
-}
+import { useAuthUser } from './useAuthUser';
+import { auth } from '../lib/firebaseConfig';
 
 const PhoneLogin = () => {
+  const { signInWithPhone, loading, error: authError } = useAuthUser();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
 
-  // Animation Variants
   const inputVariants = {
     focus: { scale: 1.02, borderColor: '#E91E63', transition: { duration: 0.2 } },
   };
@@ -31,38 +26,68 @@ const PhoneLogin = () => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
   };
 
-  const sendOtp = async () => {
-    setError(null);
-    try {
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-          callback: (response: any) => {
-            console.log('Recaptcha solved:', response);
-          },
-          'expired-callback': () => {
-            console.warn('Recaptcha expired. Try again.');
-          },
-        });
-        await window.recaptchaVerifier.render();
-      }
+  useEffect(() => {
+    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: () => {
+        console.log('Recaptcha solved');
+      },
+      'expired-callback': () => {
+        setLocalError('reCAPTCHA expired. Please try again.');
+        setRecaptchaVerifier(null);
+      },
+    });
+    setRecaptchaVerifier(verifier);
+    return () => {
+      verifier.clear();
+    };
+  }, []);
 
-      const result = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
+  const sendOtp = async () => {
+    setLocalError(null);
+    if (!phone.match(/^\+\d{10,15}$/)) {
+      setLocalError('Please enter a valid phone number (e.g., +1234567890)');
+      return;
+    }
+    if (!recaptchaVerifier) {
+      setLocalError('reCAPTCHA not ready. Please refresh and try again.');
+      return;
+    }
+    try {
+      const result = await signInWithPhone(phone, recaptchaVerifier);
       setConfirmationResult(result);
     } catch (err: any) {
-      console.error('OTP send failed:', err);
-      setError(err.message || 'Failed to send OTP.');
+      setLocalError(getFriendlyErrorMessage(err.code));
     }
   };
 
   const verifyOtp = async () => {
-    setError(null);
+    setLocalError(null);
+    if (!otp.match(/^\d{6}$/)) {
+      setLocalError('Please enter a valid 6-digit OTP');
+      return;
+    }
     try {
-      await confirmationResult.confirm(otp);
-      alert('Login successful!');
+      await confirmationResult?.confirm(otp);
+      setLocalError(null);
+      setPhone('');
+      setOtp('');
+      setConfirmationResult(null);
     } catch (err: any) {
-      console.error('OTP verify failed:', err);
-      setError('Invalid OTP. Please try again.');
+      setLocalError(getFriendlyErrorMessage(err.code));
+    }
+  };
+
+  const getFriendlyErrorMessage = (code: string) => {
+    switch (code) {
+      case 'auth/invalid-phone-number':
+        return 'Invalid phone number format. Use E.164 format (e.g., +1234567890).';
+      case 'auth/invalid-verification-code':
+        return 'Invalid OTP. Please try again.';
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      default:
+        return 'An error occurred. Please try again.';
     }
   };
 
@@ -83,6 +108,7 @@ const PhoneLogin = () => {
         whileFocus="focus"
         variants={inputVariants}
         aria-label="Phone number"
+        disabled={loading}
       />
       <motion.button
         onClick={sendOtp}
@@ -91,8 +117,9 @@ const PhoneLogin = () => {
         whileHover="hover"
         whileTap="tap"
         aria-label="Send OTP"
+        disabled={loading}
       >
-        Send OTP
+        {loading ? 'Sending...' : 'Send OTP'}
       </motion.button>
       <AnimatePresence>
         {confirmationResult && (
@@ -112,6 +139,7 @@ const PhoneLogin = () => {
               whileFocus="focus"
               variants={inputVariants}
               aria-label="OTP"
+              disabled={loading}
             />
             <motion.button
               onClick={verifyOtp}
@@ -120,14 +148,15 @@ const PhoneLogin = () => {
               whileHover="hover"
               whileTap="tap"
               aria-label="Verify OTP"
+              disabled={loading}
             >
-              Verify
+              {loading ? 'Verifying...' : 'Verify'}
             </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
       <AnimatePresence>
-        {error && (
+        {(authError || localError) && (
           <motion.p
             className="text-rose-400 text-sm text-center"
             variants={errorVariants}
@@ -135,7 +164,7 @@ const PhoneLogin = () => {
             animate="visible"
             exit="hidden"
           >
-            {error}
+            {authError || localError}
           </motion.p>
         )}
       </AnimatePresence>

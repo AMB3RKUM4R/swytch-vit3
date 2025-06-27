@@ -11,6 +11,9 @@ import {
   signOut,
   User,
   onAuthStateChanged,
+  signInWithPhoneNumber,
+  ConfirmationResult,
+  ApplicationVerifier,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth as firebaseAuth, db } from '@/lib/firebaseConfig';
@@ -30,6 +33,7 @@ interface AuthUserHook {
   signInWithMicrosoft: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, name?: string) => Promise<void>;
+  signInWithPhone: (phoneNumber: string, appVerifier: ApplicationVerifier) => Promise<ConfirmationResult>;
   signOutUser: () => Promise<void>;
 }
 
@@ -101,7 +105,6 @@ export const useAuthUser = (): AuthUserHook => {
   const signInWithGithub = () => handleSignInPopup(githubProvider);
   const signInWithMicrosoft = () => handleSignInPopup(microsoftProvider);
 
-  // ✅ Email/Password Sign-In
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     setLoading(true);
     setError(null);
@@ -115,7 +118,6 @@ export const useAuthUser = (): AuthUserHook => {
     }
   }, []);
 
-  // ✅ Email/Password Sign-Up (with optional Name)
   const signUpWithEmail = useCallback(async (email: string, password: string, name?: string) => {
     setLoading(true);
     setError(null);
@@ -136,6 +138,21 @@ export const useAuthUser = (): AuthUserHook => {
     } catch (err: any) {
       setError(err.message || 'Failed to sign up with email');
       console.error('Email sign-up error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const signInWithPhone = useCallback(async (phoneNumber: string, appVerifier: ApplicationVerifier) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const confirmationResult = await signInWithPhoneNumber(firebaseAuth, phoneNumber, appVerifier);
+      return confirmationResult;
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with phone number');
+      console.error('Phone sign-in error:', err);
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -168,6 +185,7 @@ export const useAuthUser = (): AuthUserHook => {
     signInWithMicrosoft,
     signInWithEmail,
     signUpWithEmail,
+    signInWithPhone,
     signOutUser,
   };
 };

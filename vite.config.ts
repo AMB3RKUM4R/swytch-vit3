@@ -1,3 +1,4 @@
+// vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
@@ -7,15 +8,22 @@ export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'), // Correct alias to project root/src
+      '@': path.resolve(__dirname, './src'), // Already perfect for @/ imports
     },
   },
   build: {
     rollupOptions: {
-      external: ['fs', 'path', 'crypto'], // Externalize Node built-ins to prevent Rollup errors
+      external: ['fs', 'path', 'crypto'], // Externalize Node built-ins
     },
+    sourcemap: true, // Added for easier debugging with Web3
   },
   server: {
-    port: 3000, // Optional: Set dev server port
+    port: 3000, // Kept as is
+  },
+  css: {
+    postcss: './postcss.config.js', // Added to ensure Tailwind works
+  },
+  optimizeDeps: {
+    include: ['wagmi', '@rainbow-me/rainbowkit', 'viem'], // Optimize Web3 deps for faster dev
   },
 });

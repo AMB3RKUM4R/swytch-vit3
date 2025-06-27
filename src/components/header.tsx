@@ -6,11 +6,12 @@ import {
   Trophy, Settings, LogIn
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import RazorTransaction from '@/RazorWithdraw';
+import RazorTransaction from '@/RazorWithdraw'; // Adjusted path
 import PhoneLogin from '@/hooks/PhoneLogin';
 import { useAuthUser } from '@/hooks/useAuthUser';
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 // Types
 type MembershipTier = 'membership_basic' | 'membership_pro' | 'membership_premium';
@@ -42,7 +43,7 @@ const navItems: NavItem[] = [
   { name: 'Games', path: '/GamesPage', icon: Gamepad2 },
   { name: 'Landing', path: '/LandingPage', icon: MonitorSmartphone },
   { name: 'Pricing', path: '/Trust', icon: DollarSign },
-  { name: 'Privacy', path: '/Privacy', icon: Shield },
+  { name: 'Privacy', path: '/privacy', icon: Shield }, // Updated to lowercase
   { name: 'Account', path: '/Withdraw', icon: UserCheck },
 ];
 
@@ -59,7 +60,7 @@ const sidebarItems: NavItem[] = [
   { name: 'Rewards', path: '/GamesPage', icon: Trophy },
   { name: 'Swytch Center', path: '/LandingPage', icon: Settings },
   { name: 'Energy Vault', path: '/Trust', icon: DollarSign },
-  { name: 'Withdraw', path: '/withdraw', icon: Banknote },
+  { name: 'Withdraw', path: '/Withdraw', icon: Banknote },
   { name: 'Login / Signup', path: '/login', icon: LogIn },
 ];
 
@@ -90,6 +91,7 @@ const Button = ({ children, onClick, ariaLabel, className }: {
     className={`p-2 rounded-full text-rose-400 hover:bg-rose-600/20 hover:scale-110 transition-all focus:outline-none focus:ring-2 focus:ring-rose-500 ${className}`}
     aria-label={ariaLabel}
     role="button"
+    tabIndex={0} // Added for keyboard accessibility
   >
     {children}
   </button>
@@ -122,6 +124,7 @@ const Modal = ({ title, onClose, children }: {
         whileHover={{ rotate: 90 }}
         aria-label="Close modal"
         role="button"
+        tabIndex={0} // Added for keyboard accessibility
       >
         <X className="w-6 h-6" />
       </motion.button>
@@ -151,6 +154,9 @@ const HeaderComponent: React.FC = () => {
           const userSnap = await getDoc(userRef);
           if (userSnap.exists()) {
             setWalletBalance(userSnap.data().WalletBalance || 0);
+          } else {
+            console.warn('User document not found');
+            setWalletBalance(0);
           }
         } catch (err) {
           console.error('Failed to fetch wallet balance:', err);
@@ -254,35 +260,37 @@ const HeaderComponent: React.FC = () => {
       case 'View Transactions':
         return (
           <Modal title="Transaction History" onClose={() => setActiveModal(null)}>
-            {user ? (
-              <>
-                {transactions.length > 0 ? (
-                  <ul className="text-sm text-gray-200 space-y-3 max-h-60 overflow-y-auto no-scrollbar">
-                    {transactions.map((tx) => (
-                      <li key={tx.transactionId} className="flex items-center gap-2">
-                        <span className={`text-${tx.status === 'success' ? 'green' : tx.status === 'pending' ? 'yellow' : 'red'}-400`}>
-                          {tx.status === 'success' ? '✅' : tx.status === 'pending' ? '🔄' : '❌'}
-                        </span>
-                        {tx.transactionType === 'membership' ? (
-                          <span>Paid ₹{tx.amount} for {tx.itemId?.replace('membership_', '')} membership - {tx.status}</span>
-                        ) : (
-                          <span>{tx.transactionType === 'withdraw' ? 'Withdrawal' : tx.transactionType} of ₹{tx.amount} - {tx.status}</span>
-                        )}
-                        {tx.screenshot && (
-                          <a href={tx.screenshot} target="_blank" rel="noopener noreferrer" className="text-rose-400 underline" aria-label="View transaction screenshot">
-                            View Screenshot
-                          </a>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-200">No transactions found.</p>
-                )}
-              </>
-            ) : (
-              <p className="text-red-400">Please log in to view transactions.</p>
-            )}
+            <div className="grid gap-4 text-white">
+              {user ? (
+                <>
+                  {transactions.length > 0 ? (
+                    <ul className="text-sm text-gray-200 space-y-3 max-h-60 overflow-y-auto no-scrollbar">
+                      {transactions.map((tx) => (
+                        <li key={tx.transactionId} className="flex items-center gap-2">
+                          <span className={`text-${tx.status === 'success' ? 'green' : tx.status === 'pending' ? 'yellow' : 'red'}-400`}>
+                            {tx.status === 'success' ? '✅' : tx.status === 'pending' ? '🔄' : '❌'}
+                          </span>
+                          {tx.transactionType === 'membership' ? (
+                            <span>Paid ₹{tx.amount} for {tx.itemId?.replace('membership_', '')} membership - {tx.status}</span>
+                          ) : (
+                            <span>{tx.transactionType === 'withdraw' ? 'Withdrawal' : tx.transactionType} of ₹{tx.amount} - {tx.status}</span>
+                          )}
+                          {tx.screenshot && (
+                            <a href={tx.screenshot} target="_blank" rel="noopener noreferrer" className="text-rose-400 underline" aria-label="View transaction screenshot">
+                              View Screenshot
+                            </a>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-200">No transactions found.</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-red-400">Please log in to view transactions.</p>
+              )}
+            </div>
           </Modal>
         );
       case 'Join Membership':
@@ -566,6 +574,7 @@ const HeaderComponent: React.FC = () => {
                 >
                   <LogIn className="w-5 h-5" />
                 </Button>
+                <ConnectButton />
               </>
             ) : (
               <>
@@ -588,6 +597,7 @@ const HeaderComponent: React.FC = () => {
                     </motion.span>
                   </motion.div>
                 ))}
+                <ConnectButton />
               </>
             )}
           </div>
