@@ -1,6 +1,6 @@
 
-import EnergyTrustInfo from '@/components/EnergyTrustInfo';
-import PrivateEnergyTrust from '@/components/PrivateEnergyTrust';
+import SwytchDisclosure from '@/components/Disclosure';
+import EnergyExplanation from '@/components/EnergyExplanation';
 import Tokenomics from '@/components/Tokenomics';
 
 
@@ -8,9 +8,11 @@ import Tokenomics from '@/components/Tokenomics';
 export default function Privacy() {
   return (
     <div >
-      <PrivateEnergyTrust/> 
-      <EnergyTrustInfo/>
+      
+      <EnergyExplanation/>
+      
       <Tokenomics/>
+      <SwytchDisclosure/>
         </div>
   );
 }

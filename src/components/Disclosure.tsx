@@ -5,6 +5,12 @@ import {
   Server, Database, Scale, Gavel, Rocket, Sparkles, Code, Link, UserX, Cpu,
   MessageCircle, Vote, Trophy, Send
 } from 'lucide-react';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
+import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAuthUser } from '@/hooks/useAuthUser';
+import Confetti from 'react-confetti';
 
 // Interfaces
 interface ChatMessage {
@@ -72,6 +78,26 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
+// Throttle function
+const throttle = (func: (...args: any[]) => void, limit: number) => {
+  let lastFunc: NodeJS.Timeout;
+  let lastRan: number;
+  return (...args: any[]) => {
+    if (!lastRan) {
+      func(...args);
+      lastRan = Date.now();
+    } else {
+      clearTimeout(lastFunc);
+      lastFunc = setTimeout(() => {
+        if (Date.now() - lastRan >= limit) {
+          func(...args);
+          lastRan = Date.now();
+        }
+      }, limit - (Date.now() - lastRan));
+    }
+  };
+};
+
 // Components
 const Card = ({ children, gradient, className = '' }: { children: React.ReactNode; gradient: string; className?: string }) => (
   <motion.div
@@ -82,19 +108,93 @@ const Card = ({ children, gradient, className = '' }: { children: React.ReactNod
   </motion.div>
 );
 
+const Modal = ({ title, onClose, children }: { title: string; onClose: () => void; children: JSX.Element }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (modalRef.current) {
+      modalRef.current.focus();
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <motion.div
+        ref={modalRef}
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.8 }}
+        className="bg-gray-900 border border-rose-500/20 rounded-xl p-8 w-full max-w-md shadow-2xl backdrop-blur-lg"
+        tabIndex={-1}
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 id="modal-title" className="text-2xl font-bold text-rose-400 flex items-center gap-2">
+            <Sparkles className="w-6 h-6 animate-pulse" /> {title}
+          </h2>
+          <button onClick={onClose} aria-label="Close modal">
+            <text className="text-rose-400 hover:text-red-500 w-6 h-6" />
+          </button>
+        </div>
+        {children}
+      </motion.div>
+    </motion.div>
+  );
+};
 
 const SwytchDisclosure: React.FC = () => {
+  const { user, loading: authLoading } = useAuthUser();
+  const { address, isConnected } = useAccount();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [proposalForm, setProposalForm] = useState({ title: '', description: '', category: 'Quests' });
   const [rankFilter, setRankFilter] = useState<'all' | 'jewels' | 'level'>('all');
+  const [jewels, setJewels] = useState<number>(0);
+  const [showConfetti, setShowConfetti] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
+
+  // User ID (wallet address or Firebase UID)
+  const userId = isConnected && address ? address : user?.uid;
+
+  // Fetch JEWELS balance
+  useEffect(() => {
+    const fetchJewels = async () => {
+      if (userId) {
+        try {
+          const userRef = doc(db, 'users', userId);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setJewels(userSnap.data().jewels || 0);
+          } else {
+            await setDoc(userRef, { jewels: 0, WalletBalance: 0, updatedAt: serverTimestamp() }, { merge: true });
+            setJewels(0);
+          }
+        } catch (err) {
+          console.error('Failed to fetch JEWELS:', err);
+        }
+      }
+    };
+    fetchJewels();
+  }, [userId]);
 
   // Throttled mouse move for lens flares
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMouseMove = throttle((e: MouseEvent) => {
       setMousePosition({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight });
-    };
+    }, 100);
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
@@ -107,20 +207,50 @@ const SwytchDisclosure: React.FC = () => {
   }, []);
 
   // Handle chat message
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) {
+      alert('Please connect your wallet or log in to send messages.');
+      setShowWalletModal(true);
+      return;
+    }
     if (chatMessage.trim()) {
+      const audio = new Audio('/audio/chat.mp3');
+      audio.play().catch((err) => console.error('Audio playback failed:', err));
       alert(`Message sent: ${chatMessage}`);
       setChatMessage('');
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2000);
     }
   };
 
   // Handle proposal submission
-  const handleSubmitProposal = (e: React.FormEvent) => {
+  const handleSubmitProposal = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) {
+      alert('Please connect your wallet or log in to submit a proposal.');
+      setShowWalletModal(true);
+      return;
+    }
+    if (jewels < 500) {
+      alert('You need at least 500 JEWELS to submit a proposal.');
+      return;
+    }
     if (proposalForm.title.trim() && proposalForm.description.trim()) {
-      alert(`Proposal submitted: ${proposalForm.title}`);
-      setProposalForm({ title: '', description: '', category: 'Quests' });
+      try {
+        const userRef = doc(db, 'users', userId);
+        await setDoc(userRef, { jewels: jewels - 500, updatedAt: serverTimestamp() }, { merge: true });
+        setJewels(jewels - 500);
+        const audio = new Audio('/audio/proposal.mp3');
+        audio.play().catch((err) => console.error('Audio playback failed:', err));
+        setShowConfetti(true);
+        alert(`Proposal submitted: ${proposalForm.title}`);
+        setProposalForm({ title: '', description: '', category: 'Quests' });
+        setTimeout(() => setShowConfetti(false), 3000);
+      } catch (err) {
+        console.error('Proposal submission error:', err);
+        alert('Failed to submit proposal. Please try again.');
+      }
     } else {
       alert('Please fill in all fields.');
     }
@@ -138,6 +268,7 @@ const SwytchDisclosure: React.FC = () => {
 
   return (
     <section className="relative py-32 px-6 lg:px-24 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-gray-100 text-left overflow-hidden">
+      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
       {/* Lens Flare and Noise Overlay */}
       <motion.div className="fixed inset-0 pointer-events-none z-10">
         <motion.div
@@ -160,7 +291,7 @@ const SwytchDisclosure: React.FC = () => {
             style={{
               top: `${Math.random() * 100}%`,
               left: `${Math.random() * 100}%`,
-              backgroundColor: i % 2 === 0 ? 'rgba(236, 72, 153, 0.5)' : 'rgba(34, 211, 238, 0.5)'
+              backgroundColor: i % 2 === 0 ? 'rgba(236, 72, 153, 0.5)' : 'rgba(34, 211, 238, 0.5)',
             }}
             variants={particleVariants}
             animate="animate"
@@ -174,6 +305,26 @@ const SwytchDisclosure: React.FC = () => {
         initial="hidden"
         animate="visible"
       >
+        {/* Header with JEWELS Balance */}
+        <motion.div variants={fadeUp} className="text-center">
+          <h1 className="text-5xl lg:text-6xl font-extrabold text-white flex items-center justify-center gap-4">
+            <Sparkles className="text-rose-400 w-12 h-12 animate-pulse" /> Swytch Disclosure
+          </h1>
+          {userId && (
+            <p className="text-gray-300 mt-4 text-center">
+              Your JEWELS: <span className="font-bold text-rose-400">{jewels} JEWELS</span>
+            </p>
+          )}
+          <motion.button
+            className="mt-6 inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group"
+            onClick={() => setShowWalletModal(true)}
+            whileHover={{ scale: 1.05 }}
+          >
+            Connect Wallet
+            <Send className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
+          </motion.button>
+        </motion.div>
+
         {/* Section 1: Terms of Use */}
         <motion.div variants={fadeUp} className="flex flex-col lg:flex-row items-center gap-12">
           <div className="lg:w-1/2 space-y-6">
@@ -419,7 +570,9 @@ const SwytchDisclosure: React.FC = () => {
                         className="w-8 h-8 rounded-full border border-rose-500/20"
                       />
                       <div>
-                        <p className="text-white font-semibold">{msg.user} <span className="text-gray-400 text-xs ml-2">{msg.timestamp}</span></p>
+                        <p className="text-white font-semibold">
+                          {msg.user} <span className="text-gray-400 text-xs ml-2">{msg.timestamp}</span>
+                        </p>
                         <p className="text-gray-300 text-sm">{msg.message}</p>
                       </div>
                     </motion.div>
@@ -434,11 +587,13 @@ const SwytchDisclosure: React.FC = () => {
                   placeholder="Type your message..."
                   className="flex-1 p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-rose-500"
                   aria-label="Chat message"
+                  disabled={authLoading}
                 />
                 <motion.button
                   type="submit"
                   className="px-4 py-2 bg-rose-600 text-white hover:bg-rose-700 rounded-md flex items-center gap-2"
                   whileHover={{ scale: 1.05 }}
+                  disabled={authLoading}
                 >
                   <Send className="w-5 h-5" /> Send
                 </motion.button>
@@ -470,6 +625,7 @@ const SwytchDisclosure: React.FC = () => {
                   className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500"
                   required
                   aria-label="Proposal title"
+                  disabled={authLoading}
                 />
               </div>
               <div>
@@ -484,6 +640,7 @@ const SwytchDisclosure: React.FC = () => {
                   className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500 h-32 resize-y"
                   required
                   aria-label="Proposal description"
+                  disabled={authLoading}
                 />
               </div>
               <div>
@@ -496,6 +653,7 @@ const SwytchDisclosure: React.FC = () => {
                   onChange={(e) => setProposalForm({ ...proposalForm, category: e.target.value })}
                   className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500"
                   aria-label="Proposal category"
+                  disabled={authLoading}
                 >
                   <option value="Quests">Quests</option>
                   <option value="Planets">Planets</option>
@@ -507,6 +665,7 @@ const SwytchDisclosure: React.FC = () => {
                 type="submit"
                 className="w-full px-6 py-3 bg-cyan-600 text-white hover:bg-cyan-700 rounded-md font-semibold flex items-center justify-center gap-2"
                 whileHover={{ scale: 1.05 }}
+                disabled={authLoading}
               >
                 <Vote className="w-5 h-5" /> Submit Proposal
               </motion.button>
@@ -528,6 +687,7 @@ const SwytchDisclosure: React.FC = () => {
                 className={`px-4 py-2 rounded-md font-semibold ${rankFilter === 'all' ? 'bg-rose-600 text-white' : 'bg-gray-800 text-gray-200'}`}
                 onClick={() => setRankFilter('all')}
                 whileHover={{ scale: 1.05 }}
+                disabled={authLoading}
               >
                 All
               </motion.button>
@@ -535,6 +695,7 @@ const SwytchDisclosure: React.FC = () => {
                 className={`px-4 py-2 rounded-md font-semibold ${rankFilter === 'jewels' ? 'bg-rose-600 text-white' : 'bg-gray-800 text-gray-200'}`}
                 onClick={() => setRankFilter('jewels')}
                 whileHover={{ scale: 1.05 }}
+                disabled={authLoading}
               >
                 Top JEWELS
               </motion.button>
@@ -542,6 +703,7 @@ const SwytchDisclosure: React.FC = () => {
                 className={`px-4 py-2 rounded-md font-semibold ${rankFilter === 'level' ? 'bg-rose-600 text-white' : 'bg-gray-800 text-gray-200'}`}
                 onClick={() => setRankFilter('level')}
                 whileHover={{ scale: 1.05 }}
+                disabled={authLoading}
               >
                 Top Levels
               </motion.button>
@@ -568,31 +730,43 @@ const SwytchDisclosure: React.FC = () => {
             </div>
           </Card>
         </motion.div>
-      </motion.div>
 
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .blur-3xl { filter: blur(64px); }
-        .blur-2xl { filter: blur(32px); }
-        .bg-[url('/noise.png')] {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUKpVUKqVRKpVJutxuNRqMhSRJpmkYkSVKpVCqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJKpVIplUqlVColSf4BQUzS2f8eAAAAAElFTkSuQmCC');
-        }
-        input:focus, textarea:focus, select:focus {
-          transition: border-color 0.3s ease, ring-color 0.3s ease;
-        }
-        @media (prefers-reduced-motion) {
-          .animate-pulse, .animate-bounce, [data-animate] {
-            animation: none !important;
-            transition: none !important;
+        {/* Wallet Connection Modal */}
+        <AnimatePresence>
+          {showWalletModal && (
+            <Modal title="Connect to Swytch" onClose={() => setShowWalletModal(false)}>
+              <div className="space-y-4">
+                <ConnectButton />
+                
+              </div>
+            </Modal>
+          )}
+        </AnimatePresence>
+
+        <style>{`
+          .no-scrollbar::-webkit-scrollbar {
+            display: none;
           }
-        }
-      `}</style>
+          .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .blur-3xl { filter: blur(64px); }
+          .blur-2xl { filter: blur(32px); }
+          .bg-[url('/noise.png')] {
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUKpVUKqVRKpVJutxuNRqMhSRJpmkYkSVKpVCqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJKpVIplUqlVColSf4BQUzS2f8eAAAAAElFTkSuQmCC');
+          }
+          input:focus, textarea:focus, select:focus {
+            transition: border-color 0.3s ease, ring-color 0.3s ease;
+          }
+          @media (prefers-reduced-motion) {
+            .animate-pulse, .animate-bounce, [data-animate] {
+              animation: none !important;
+              transition: none !important;
+            }
+          }
+        `}</style>
+      </motion.div>
     </section>
   );
 };

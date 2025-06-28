@@ -1,152 +1,216 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import {
-  ShieldCheck, Banknote, LockKeyhole, LibraryBig, Users, Globe2, PiggyBank, Gamepad2, Sparkles, AlertTriangle, Wallet, ArrowRight, X
-} from 'lucide-react';
+  ShieldCheck, Banknote, LockKeyhole, LibraryBig, Users, Globe2, PiggyBank, Gamepad2, Sparkles, AlertTriangle, Wallet, ArrowRight, X, Target} from 'lucide-react';
 import {
-  FaWallet, FaCoins, FaLock, FaGoogleWallet, FaDollarSign, FaChartPie, FaCogs
+  FaWallet, FaCoins, FaLock, FaGoogleWallet, FaDollarSign, FaChartPie, FaCogs, FaGem, FaRocket, FaShieldAlt
 } from 'react-icons/fa';
+import { useAccount, useConnect } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
+import Confetti from 'react-confetti';
+
+// Interfaces (aligned with Tokenomics.tsx)
+interface SavedState {
+  jewels: number;
+  quests: Quest[];
+  clicks: number;
+  lastVisit: string | null;
+  streak: number;
+  achievements: Achievement[];
+  WalletBalance: number;
+  membership: 'none' | 'membership_basic' | 'membership_pro' | 'membership_premium';
+  network?: string;
+  token?: string;
+}
+
+interface Quest {
+  id: string;
+  title: string;
+  progress: number;
+  goal: number;
+  rewardJEWELS: number;
+  rewardXP: number;
+  completed: boolean;
+}
+
+interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  unlocked: boolean;
+}
+
+interface Benefit {
+  title: string;
+  description: string;
+  details: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+interface BusinessModel {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  details: string;
+}
+
+interface Dont {
+  title: string;
+  description: string;
+  details: string;
+}
+
+interface Wallet {
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+interface Reward {
+  jewels: number;
+  xp: number;
+  message: string;
+}
 
 // Data
-const benefits = [
+const benefits: Benefit[] = [
   {
     title: 'Unbreakable Security',
-    description: 'Your assets live on a decentralized network of nodes, immune to hacks, outages, or centralized failures. Smart contracts enforce rules without human interference.',
-    details: 'Swytch PET leverages blockchain’s immutability and Avalanche’s high-throughput consensus to ensure your JEWELS and SWYT are safe. No single point of failure can compromise your Energy Vault.',
+    description: 'Your assets live on a decentralized network, immune to hacks or centralized failures.',
+    details: 'Swytch PET leverages Avalanche’s Subnet architecture and audited smart contracts to secure your JEWELS and SWYT.',
     icon: LockKeyhole,
   },
   {
     title: 'Absolute Privacy',
-    description: 'You hold the keys to your data, choosing full anonymity or selective sharing. No third party can access your identity or transactions without your consent.',
-    details: 'Using zero-knowledge proofs and self-custodial wallets, Swytch PET ensures your financial and spiritual journey remains private. Share only what you want, when you want, via WAGMI-integrated DApps.',
+    description: 'You control your data with self-custodial wallets and zero-knowledge proofs.',
+    details: 'Your financial and spiritual journey stays private. Share only what you choose via WAGMI-integrated DApps.',
     icon: ShieldCheck,
   },
   {
     title: 'Crystal Transparency',
-    description: 'Every transaction, quest, and reward is logged on a public ledger, verifiable by anyone, ensuring trust without reliance on intermediaries.',
-    details: 'The Avalanche blockchain records all Swytch PET actions—swaps, stakes, or JEWELS claims—in real time. Explore the ledger to see how your Energy fuels the Petaverse’s 3.3% monthly yield.',
+    description: 'Every transaction and reward is verifiable on a public ledger.',
+    details: 'Avalanche’s blockchain logs all actions—swaps, stakes, JEWELS claims—in real time for full trust.',
     icon: Banknote,
   },
   {
     title: 'Minimal Costs',
-    description: 'By cutting out middlemen, Swytch PET offers low gas fees and operational costs, maximizing your Energy’s value.',
-    details: 'Avalanche’s low-cost transactions and optimized smart contracts keep fees under $0.01 for most actions. Your JEWELS and SWYT go further, whether trading NFTs or staking in the Energy Vault.',
+    description: 'Low gas fees maximize your Energy’s value.',
+    details: 'Avalanche’s optimized transactions keep costs under $0.01 for most actions, from NFT trades to staking.',
     icon: PiggyBank,
   },
   {
     title: 'Community Power',
-    description: 'A DAO-driven ecosystem lets PETs vote on features, rewards, and growth, fostering loyalty and shared ownership.',
-    details: 'Stake SWYT to join the Swytch DAO, where your vote shapes quests, yield tiers, and partnerships. The Petaverse thrives on collective wisdom, not top-down control.',
+    description: 'A DAO-driven ecosystem lets PETs vote on features and rewards.',
+    details: 'Stake SWYT to shape quests, yield tiers, and partnerships in the Swytch DAO.',
     icon: Users,
   },
   {
     title: 'Tax Efficiency',
-    description: 'Enjoy tax-deferred income, pass-through taxation, and potential capital gains through tokenized Energy assets.',
-    details: 'JEWELS and SWYT are structured as utility tokens, potentially reducing tax burdens in compliant jurisdictions. Consult a tax advisor to optimize your Petaverse earnings.',
-    icon: Banknote,
+    description: 'Utility tokens like JEWELS and SWYT may reduce tax burdens.',
+    details: 'Structured for tax-deferred income in compliant jurisdictions. Consult a tax advisor for optimization.',
+    icon: FaDollarSign,
   },
   {
     title: 'Energy as Wealth',
-    description: 'JEWELS represent your earned Energy, redeemable for NFTs, games, services, or real-world value in the Petaverse.',
-    details: 'Earn JEWELS through quests, check-ins, or staking in the Energy Vault. Redeem them for exclusive NFTs, game boosts, or P2P payments, turning your effort into tangible wealth.',
-    icon: Sparkles,
+    description: 'JEWELS are earned through quests and redeemable for NFTs or real-world value.',
+    details: 'Earn JEWELS via quests or staking, then redeem for game boosts, NFTs, or P2P payments.',
+    icon: FaGem,
   },
   {
     title: 'Sovereign Identity',
-    description: 'Join via a Private Member Association (PMA), securing your autonomy outside traditional systems while protecting your spiritual and legal rights.',
-    details: 'Swytch PET’s PMA framework lets you operate as a sovereign PET, free from centralized oversight. Your wallet is your passport to the Petaverse’s decentralized future.',
-    icon: ShieldCheck,
+    description: 'Join via a PMA for autonomy outside traditional systems.',
+    details: 'Your wallet is your passport to the Petaverse, free from centralized oversight.',
+    icon: FaShieldAlt,
   },
   {
     title: 'Gamified Growth',
-    description: 'Level up through quests, achievements, and wisdom tiers to unlock higher yields and exclusive Petaverse rewards.',
-    details: 'Complete daily quests like “View Transactions” or “Share Referral” to earn JEWELS and XP. Higher wisdom levels boost your Energy Vault yield, up to 36% APY at Mythic PET status.',
+    description: 'Level up through quests to unlock higher yields and rewards.',
+    details: 'Complete quests to earn JEWELS and XP, boosting your Energy Vault yield up to 36% APY.',
     icon: Gamepad2,
   },
   {
     title: 'Purpose-Driven Rewards',
-    description: 'Earn Energy through learning, contribution, and engagement, not speculation or luck, aligning wealth with wisdom.',
-    details: 'Swytch PET rewards active PETs with JEWELS for completing educational quests or contributing to the DAO. Your growth in the Petaverse reflects your real-world impact.',
+    description: 'Earn Energy through learning and contribution, not speculation.',
+    details: 'Educational quests and DAO contributions reward JEWELS, aligning wealth with wisdom.',
     icon: LibraryBig,
   },
   {
     title: 'Self-Custodied Vaults',
-    description: 'Your funds are locked in audited smart contracts, inaccessible to admins or external actors, ensuring true ownership.',
-    details: 'The Energy Vault uses multi-signature contracts audited by top firms. Only your wallet can withdraw JEWELS or SWYT, giving you full control over your Energy.',
-    icon: LockKeyhole,
+    description: 'Your funds are locked in audited smart contracts, accessible only by you.',
+    details: 'Multi-signature Energy Vault contracts ensure only your wallet can withdraw JEWELS or SWYT.',
+    icon: FaLock,
   },
   {
     title: 'Code as Law',
-    description: 'Smart contracts govern every action—logins, payouts, quests—enforcing fairness and eliminating trust in humans.',
-    details: 'Swytch PET’s contracts, written in Solidity, automate yields, referrals, and governance. Verified on Etherscan, they ensure every PET gets their fair share, no exceptions.',
+    description: 'Smart contracts enforce fairness for all actions.',
+    details: 'Solidity contracts automate yields and governance, verified on Etherscan for transparency.',
     icon: ShieldCheck,
   },
   {
     title: 'P2P Freedom',
-    description: 'Use JEWELS or SWYT for instant payments, peer-to-peer transfers, or real-world purchases within the Petaverse ecosystem.',
-    details: 'Pay for services, trade NFTs, or send SWYT to friends with near-zero fees. Swytch PET integrates with DeFi protocols for seamless, borderless transactions.',
+    description: 'Use JEWELS or SWYT for instant, borderless transactions.',
+    details: 'Pay for services, trade NFTs, or send SWYT with near-zero fees via DeFi protocols.',
     icon: Banknote,
   },
   {
     title: 'Cross-Chain Freedom',
-    description: 'The PET protocol spans EVM chains, letting you move assets and identity across Avalanche, Polygon, and more.',
-    details: 'WAGMI integration ensures your wallet and JEWELS work on multiple chains. Bridge SWYT to Polygon for NFT trades or stake on Optimism for extra yield, all while keeping your PET identity.',
+    description: 'Move assets across Avalanche, Polygon, and other EVM chains.',
+    details: 'WAGMI integration lets you bridge SWYT or stake on Optimism while keeping your PET identity.',
     icon: Globe2,
   },
 ];
 
-const businessModel = [
+const businessModel: BusinessModel[] = [
   {
     icon: FaDollarSign,
     title: 'NFT & Game Marketplace',
-    description: 'Trade exclusive Swytch NFTs and play-to-earn (P2E) items, with royalties and lifetime value tokenized for creators and PETs.',
-    details: 'Mint Vault Guardian NFTs to boost your Energy Vault yield or trade them on the Swytch marketplace. P2E games like “PET Quest” reward JEWELS for skill, not chance, with royalties paid in SWYT.',
+    description: 'Trade NFTs and P2E items with tokenized royalties.',
+    details: 'Mint Vault Guardian NFTs or trade them on the Swytch marketplace. P2E games reward JEWELS for skill.',
   },
   {
     icon: FaChartPie,
     title: 'Energy Yield System',
-    description: 'Earn up to 36% APY on JEWELS through gamified quests, wisdom levels, and AI-driven staking rewards in the Energy Vault.',
-    details: 'Stake SWYT in the Energy Vault to earn JEWELS, with yields tied to your PET level (e.g., 3.3% monthly at Mythic). AI-powered arbitrage across Uniswap, SushiSwap, and Curve maximizes returns.',
-    
+    description: 'Earn up to 36% APY through quests and staking.',
+    details: 'Stake SWYT in the Energy Vault for JEWELS, with AI-driven arbitrage maximizing returns.',
   },
   {
     icon: FaCogs,
     title: 'Decentralized Operations',
-    description: 'From staking to DAO governance, every Swytch PET action is on-chain, gamified, and secured by smart contracts.',
-    details: 'Vote on new quests or yield tiers in the Swytch DAO using SWYT. Swap tokens, stake assets, or manage your Web3 identity via WAGMI, all powered by Avalanche’s Subnet architecture.',
-    
+    description: 'On-chain staking, governance, and identity management.',
+    details: 'Vote in the Swytch DAO or manage your Web3 identity via WAGMI on Avalanche’s Subnet.',
   },
 ];
 
-const donts = [
+const donts: Dont[] = [
   {
     title: 'Never Share Keys',
-    description: 'Your private keys or recovery phrase are your vault’s only access. Sharing them risks losing all JEWELS, SWYT, and NFTs forever.',
-    details: 'Use a hardware wallet like Ledger to store keys offline. Never enter your seed phrase on websites, even if they mimic MetaMask or Swytch PET.',
+    description: 'Sharing private keys risks losing all your assets.',
+    details: 'Store keys offline with a Ledger. Never enter your seed phrase on unverified websites.',
   },
   {
     title: 'Avoid Shady DApps',
-    description: 'Malicious DApps can trick you into signing contracts that drain your wallet or steal your Energy.',
-    details: 'Check DApp permissions before connecting your wallet. Use trusted platforms like Swytch PET, verified by the community, and revoke approvals via Etherscan if unsure.',
+    description: 'Malicious DApps can drain your wallet.',
+    details: 'Verify DApp permissions and revoke approvals via Etherscan if suspicious.',
   },
   {
     title: 'Beware Phishing Scams',
-    description: 'Fake websites or messages can mimic Swytch PET to steal your keys or funds. Always verify URLs and signatures.',
-    details: 'Bookmark swytch.io and check for HTTPS. Never sign wallet prompts from unsolicited DMs or emails, even if they claim to be Swytch support.',
+    description: 'Fake sites or messages can steal your funds.',
+    details: 'Bookmark swytch.io, use HTTPS, and avoid signing prompts from unsolicited sources.',
   },
   {
     title: 'Stay Rational',
-    description: 'Hype and FOMO can lead to bad investments. Research token utility and project fundamentals before committing Energy.',
-    details: 'Swytch PET’s JEWELS and SWYT have clear utility (quests, NFTs, yields). Avoid tokens with no use case or projects promising unrealistic gains.',
+    description: 'Hype can lead to poor investment choices.',
+    details: 'Focus on JEWELS and SWYT utility. Avoid projects with no clear use case.',
   },
   {
     title: 'Ditch Centralized Custody',
-    description: 'Exchanges like Coinbase or Binance can freeze or lose your funds during hacks, outages, or regulatory actions.',
-    details: 'Move JEWELS and SWYT to a self-custodial wallet like MetaMask or Trust Wallet. Swytch PET’s smart contracts ensure you, not a CEO, control your Energy.',
+    description: 'Exchanges can freeze or lose your funds.',
+    details: 'Use MetaMask or Trust Wallet for self-custody of JEWELS and SWYT.',
   },
 ];
 
-const wallets = [
+const wallets: Wallet[] = [
   { name: 'MetaMask', icon: FaWallet },
   { name: 'Rainbow', icon: FaGoogleWallet },
   { name: 'Trust Wallet', icon: FaWallet },
@@ -159,36 +223,135 @@ const wallets = [
   { name: 'OKX Wallet', icon: FaWallet },
 ];
 
-const tokens = [
+const tokens: string[] = [
   'ETH', 'USDT', 'DAI', 'MATIC', 'BNB', 'AVAX', 'OP', 'ARB', 'FTM', 'JEWELS', 'FDMT', 'SWYT'
 ];
 
+const initialQuests: Quest[] = [
+  { id: 'explore-benefits', title: 'Explore PET Benefits', progress: 0, goal: 3, rewardJEWELS: 15, rewardXP: 20, completed: false },
+  { id: 'connect-wallet', title: 'Connect Your Wallet', progress: 0, goal: 1, rewardJEWELS: 10, rewardXP: 10, completed: false },
+];
+
+const initialAchievements: Achievement[] = [
+  { id: 'first-connection', title: 'First Connection', description: 'Connect your wallet to Swytch PET.', unlocked: false },
+  { id: 'benefits-3', title: 'Knowledge Explorer', description: 'Explore 3 PET Benefits.', unlocked: false },
+];
+
+// Animation Variants
+const sectionVariants = {
+  hidden: { opacity: 0, y: 50, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } }
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
+};
+
+const orbitVariants = {
+  animate: { rotate: 360, transition: { duration: 20, repeat: Infinity, ease: 'linear' } }
+};
+
+const flareVariants = {
+  animate: { scale: [1, 1.2, 1], opacity: [0.6, 0.8, 0.6], transition: { duration: 4, repeat: Infinity, ease: 'easeInOut' } }
+};
+
+const particleVariants = {
+  animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } }
+};
+
+const infiniteScroll = {
+  animate: { x: ['0%', '-50%'], transition: { x: { repeat: Infinity, repeatType: 'loop', duration: 30, ease: 'linear' } } }
+};
+
+const rewardVariants = {
+  initial: { opacity: 0, scale: 0.8, y: 50 },
+  animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+  exit: { opacity: 0, scale: 0.8, y: -50, transition: { duration: 0.3 } }
+};
+
 // Component
 const TrustBenefits: React.FC = () => {
+  const { address, isConnected } = useAccount();
+  useConnect();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [expandedBenefit, setExpandedBenefit] = useState<string | null>(null);
+  const [quests, setQuests] = useState<Quest[]>(initialQuests);
+  const [achievements, setAchievements] = useState<Achievement[]>(initialAchievements);
+  const [jewelsBalance, setJewelsBalance] = useState(0);
+  const [showReward, setShowReward] = useState<Reward | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const rewardAudioRef = useRef<HTMLAudioElement>(null);
 
-  // Animation Variants
-  const sectionVariants = {
-    hidden: { opacity: 0, y: 50, scale: 0.95 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } }
-  };
+  // Load state from Firebase
+  useEffect(() => {
+    const fetchState = async () => {
+      if (isConnected && address) {
+        try {
+          const userRef = doc(db, 'users', address);
+          const userSnap = await getDoc(userRef);
+          const data = userSnap.exists() ? (userSnap.data() as SavedState) : undefined;
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
-  };
+          if (data) {
+            setJewelsBalance(data.jewels || 0);
+            setQuests(data.quests?.filter(q => initialQuests.some(iq => iq.id === q.id)) || initialQuests);
+            setAchievements(data.achievements?.filter(a => initialAchievements.some(ia => ia.id === a.id)) || initialAchievements);
+          } else {
+            await setDoc(userRef, {
+              jewels: 0,
+              quests: initialQuests,
+              clicks: 0,
+              lastVisit: new Date().toISOString().split('T')[0],
+              streak: 1,
+              achievements: initialAchievements,
+              WalletBalance: 0,
+              membership: 'none',
+              updatedAt: serverTimestamp()
+            }, { merge: true });
+            setJewelsBalance(0);
+            setQuests(initialQuests);
+            setAchievements(initialAchievements);
+          }
+        } catch (err) {
+          console.error('Failed to fetch state:', err);
+          alert('Failed to load user data. Please try again.');
+        }
+      }
+    };
+    fetchState();
+  }, [isConnected, address]);
 
-  const orbitVariants = {
-    animate: { rotate: 360, transition: { duration: 20, repeat: Infinity, ease: 'linear' } }
-  };
+  // Save state to Firebase
+  useEffect(() => {
+    const saveState = async () => {
+      if (isConnected && address) {
+        try {
+          const userRef = doc(db, 'users', address);
+          await setDoc(userRef, {
+            jewels: jewelsBalance,
+            quests,
+            achievements,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        } catch (err) {
+          console.error('Failed to save state:', err);
+          alert('Failed to save user data. Please try again.');
+        }
+      }
+    };
+    saveState();
+  }, [jewelsBalance, quests, achievements, isConnected, address]);
 
-  const infiniteScroll = {
-    animate: { x: ['0%', '-50%'], transition: { x: { repeat: Infinity, repeatType: 'loop', duration: 30, ease: 'linear' } } }
-  };
+  // Auto-dismiss reward popup
+  useEffect(() => {
+    if (showReward) {
+      const timer = setTimeout(() => setShowReward(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showReward]);
 
   // Parallax Effect
   useEffect(() => {
@@ -229,19 +392,111 @@ const TrustBenefits: React.FC = () => {
     }
   }, [showWalletModal]);
 
+  // Unlock Achievement
+  const unlockAchievement = async (id: string) => {
+    setAchievements(prev =>
+      prev.map(a => (a.id === id && !a.unlocked ? { ...a, unlocked: true } : a))
+    );
+    let reward: Reward | null = null;
+    if (id === 'first-connection') {
+      reward = { jewels: 5, xp: 10, message: 'Achievement Unlocked: First Connection!' };
+    } else if (id === 'benefits-3') {
+      reward = { jewels: 15, xp: 20, message: 'Achievement Unlocked: Knowledge Explorer!' };
+    }
+    if (reward) {
+      setShowReward(reward);
+      setJewelsBalance(prev => prev + reward.jewels);
+      rewardAudioRef.current?.play();
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2000);
+      if (isConnected && address) {
+        const userRef = doc(db, 'users', address);
+        await setDoc(userRef, {
+          jewels: jewelsBalance + reward.jewels,
+          achievements,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+    }
+  };
+
   // Toggle Expanded Benefit
-  const toggleBenefit = (title: string) => {
+  const toggleBenefit = async (title: string) => {
+    if (!isConnected || !address) {
+      alert('Please connect your wallet to explore benefits.');
+      setShowWalletModal(true);
+      return;
+    }
     setExpandedBenefit(expandedBenefit === title ? null : title);
+    if (expandedBenefit !== title) {
+      const exploreQuest = quests.find(q => q.id === 'explore-benefits');
+      if (exploreQuest && !exploreQuest.completed) {
+        const newProgress = Math.min(exploreQuest.progress + 1, exploreQuest.goal);
+        const isQuestCompleted = newProgress >= exploreQuest.goal;
+        setQuests(prev =>
+          prev.map(q =>
+            q.id === 'explore-benefits'
+              ? { ...q, progress: newProgress, completed: isQuestCompleted }
+              : q
+          )
+        );
+        if (isQuestCompleted) {
+          setJewelsBalance(prev => prev + exploreQuest.rewardJEWELS);
+          setShowReward({
+            jewels: exploreQuest.rewardJEWELS,
+            xp: exploreQuest.rewardXP,
+            message: `Quest Completed: ${exploreQuest.title}!`
+          });
+          rewardAudioRef.current?.play();
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 2000);
+          if (newProgress >= 3) {
+            await unlockAchievement('benefits-3');
+          }
+        }
+        if (isConnected && address) {
+          const userRef = doc(db, 'users', address);
+          await setDoc(userRef, { quests, updatedAt: serverTimestamp() }, { merge: true });
+        }
+      }
+    }
   };
 
   // Wallet Connect Handler
-  const handleWalletConnect = (wallet: string) => {
-    alert(`Connecting ${wallet}...`);
-    setShowWalletModal(false);
-  };
 
   return (
     <>
+      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
+      {/* Visual Effects */}
+      <motion.div className="fixed inset-0 pointer-events-none z-10">
+        <motion.div
+          className="absolute w-96 h-96 bg-gradient-to-br from-rose-400/50 via-pink-500/40 to-cyan-500/30 rounded-full opacity-30 blur-3xl"
+          variants={flareVariants}
+          animate="animate"
+          style={{ top: `${mousePosition.y * 100}%`, left: `${mousePosition.x * 100}%` }}
+        />
+        <motion.div
+          className="absolute w-64 h-64 bg-gradient-to-br from-cyan-400/40 via-rose-500/30 to-pink-400/20 rounded-full opacity-20 blur-2xl"
+          variants={flareVariants}
+          animate="animate"
+          style={{ top: `${50 + mousePosition.y * 50}%`, left: `${50 + mousePosition.x * 50}%` }}
+        />
+        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-15 bg-repeat bg-[length:64px_64px]" />
+        {[...Array(15)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1.5 h-1.5 rounded-full"
+            style={{
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              backgroundColor: i % 2 === 0 ? 'rgba(236, 72, 153, 0.5)' : 'rgba(34, 211, 238, 0.5)'
+            }}
+            variants={particleVariants}
+            animate="animate"
+          />
+        ))}
+      </motion.div>
+
       {/* Hero Section */}
       <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-center overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(236,72,153,0.08)_0%,_transparent_70%)] pointer-events-none" />
@@ -251,7 +506,7 @@ const TrustBenefits: React.FC = () => {
           animate="visible"
           className="relative max-w-7xl mx-auto"
           style={{
-            backgroundImage: `url(/bg (59).jpg)`,
+            backgroundImage: `url(/bg (59).jpg), url(/fallback-bg.jpg)`,
             backgroundSize: 'cover',
             backgroundPosition: `${50 + mousePosition.x * 5}% ${50 + mousePosition.y * 5}%`
           }}
@@ -266,23 +521,112 @@ const TrustBenefits: React.FC = () => {
               className="text-5xl sm:text-7xl font-extrabold text-rose-400 flex items-center justify-center gap-4"
               animate={{ y: [0, -10, 0], transition: { duration: 3, repeat: Infinity, ease: 'easeInOut' } }}
             >
-              <Sparkles className="w-12 h-12 animate-pulse" /> Why Swytch PET?
+              <FaRocket className="w-12 h-12 animate-pulse" /> Why Swytch PET?
             </motion.h2>
             <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto">
-              The Swytch Private Energy Trust (PET) is your path to financial and spiritual sovereignty. Harness decentralized technology, earn JEWELS through gamified quests, and shape a future where your Energy is your wealth.
+              The Swytch Private Energy Trust (PET) empowers you with financial and spiritual sovereignty through decentralized technology and gamified rewards.
             </p>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-              Built on Avalanche, Swytch PET combines AI-driven yields, NFT marketplaces, and DAO governance to empower PETs—Private Energy Traders—in a trustless, transparent Petaverse.
+              Built on Avalanche with WAGMI integration, Swytch PET offers AI-driven yields, NFT marketplaces, and DAO governance for a trustless Petaverse.
             </p>
-            <motion.button
-              className="inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group"
-              onClick={() => setShowWalletModal(true)}
-              whileHover={{ scale: 1.05 }}
-              aria-label="Join the Swytch Private Energy Trust"
-            >
-              Join the Petaverse
-              <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
-            </motion.button>
+            {isConnected && (
+              <p className="text-gray-300 text-center">
+                Your JEWELS: <span className="font-bold text-rose-400">{jewelsBalance} JEWELS</span>
+              </p>
+            )}
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <motion.button
+                  className="inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group"
+                  onClick={() => {
+                    if (!isConnected) openConnectModal();
+                    else alert('Wallet already connected!');
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  aria-label="Join the Swytch Private Energy Trust"
+                >
+                  {isConnected ? 'Wallet Connected' : 'Join the Petaverse'}
+                  <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
+                </motion.button>
+              )}
+            </ConnectButton.Custom>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Featured Quest Section */}
+      <section className="py-24 px-6 sm:px-8 lg:px-24 bg-gray-950 text-center">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="max-w-6xl mx-auto space-y-12"
+        >
+          <h3 className="text-4xl font-extrabold text-white flex items-center justify-center gap-4">
+            <Target className="w-10 h-10 text-cyan-400 animate-pulse" /> Featured Quests
+          </h3>
+          <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+            Start your Petaverse journey with these quests to earn JEWELS and XP!
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            {quests.map(quest => (
+              <motion.div
+                key={quest.id}
+                className="bg-gray-900/60 p-6 rounded-xl border border-cyan-500/20 shadow-xl hover:shadow-cyan-500/40 transition-all backdrop-blur-md"
+                variants={sectionVariants}
+                whileHover={{ scale: 1.05 }}
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Target className="w-6 h-6 text-cyan-400 animate-pulse" />
+                    <h4 className="text-xl font-semibold text-white">{quest.title}</h4>
+                  </div>
+                  <p className="text-sm text-gray-300">
+                    Progress: {quest.progress}/{quest.goal} | Reward: {quest.rewardJEWELS} JEWELS, {quest.rewardXP} XP
+                  </p>
+                  <div className="w-32 bg-gray-900 rounded-full h-2 mx-auto">
+                    <div
+                      className="bg-cyan-500 h-2 rounded-full"
+                      style={{ width: `${(quest.progress / quest.goal) * 100}%` }}
+                    />
+                  </div>
+                  <motion.button
+                    className={`px-4 py-2 rounded-lg font-semibold ${quest.progress >= quest.goal && !quest.completed ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
+                    onClick={async () => {
+                      if (quest.progress >= quest.goal && !quest.completed) {
+                        setQuests(prev =>
+                          prev.map(q =>
+                            q.id === quest.id ? { ...q, completed: true } : q
+                          )
+                        );
+                        setJewelsBalance(prev => prev + quest.rewardJEWELS);
+                        setShowReward({
+                          jewels: quest.rewardJEWELS,
+                          xp: quest.rewardXP,
+                          message: `Quest Completed: ${quest.title}!`
+                        });
+                        rewardAudioRef.current?.play();
+                        setShowConfetti(true);
+                        setTimeout(() => setShowConfetti(false), 2000);
+                        if (isConnected && address) {
+                          const userRef = doc(db, 'users', address);
+                          await setDoc(userRef, {
+                            jewels: jewelsBalance + quest.rewardJEWELS,
+                            quests,
+                            updatedAt: serverTimestamp()
+                          }, { merge: true });
+                        }
+                      }
+                    }}
+                    disabled={quest.completed || quest.progress < quest.goal}
+                    whileHover={{ scale: quest.progress >= quest.goal && !quest.completed ? 1.05 : 1 }}
+                    aria-label={`Claim ${quest.title} reward`}
+                  >
+                    {quest.completed ? 'Claimed' : 'Claim'}
+                  </motion.button>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
       </section>
@@ -296,15 +640,15 @@ const TrustBenefits: React.FC = () => {
           className="max-w-7xl mx-auto space-y-12"
         >
           <h3 className="text-4xl font-extrabold text-white flex items-center justify-center gap-4">
-            <ShieldCheck className="w-10 h-10 text-rose-400 animate-pulse" /> PET Benefits
+            <FaShieldAlt className="w-10 h-10 text-rose-400 animate-pulse" /> PET Benefits
           </h3>
           <p className="text-lg text-gray-300 max-w-3xl mx-auto">
-            Swytch PET redefines wealth by aligning your Energy—your time, effort, and wisdom—with decentralized freedom. Explore the pillars that make the Petaverse a sovereign ecosystem.
+            Swytch PET aligns your Energy with decentralized freedom. Discover the pillars of the Petaverse.
           </p>
           <div className="relative overflow-hidden">
             <motion.div
               ref={scrollRef}
-              className="flex gap-6"
+              className="flex gap-6 no-scrollbar"
               variants={infiniteScroll}
               animate="animate"
             >
@@ -354,7 +698,7 @@ const TrustBenefits: React.FC = () => {
             <FaCogs className="w-10 h-10 text-pink-400 animate-spin-slow" /> Swytch Ecosphere
           </h3>
           <p className="text-lg text-gray-300 max-w-3xl mx-auto">
-            The Petaverse is a decentralized universe where NFTs, yields, and governance converge. Your Energy fuels a self-sustaining economy, powered by Avalanche and WAGMI.
+            A decentralized universe of NFTs, yields, and governance, powered by Avalanche and WAGMI.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {businessModel.map((item, index) => (
@@ -389,7 +733,7 @@ const TrustBenefits: React.FC = () => {
             <AlertTriangle className="w-10 h-10 animate-pulse" /> Crypto Pitfalls to Avoid
           </h3>
           <p className="text-lg text-gray-300 max-w-3xl mx-auto">
-            The Petaverse empowers you, but crypto’s wild west has traps. Learn these pitfalls to protect your JEWELS, SWYT, and sovereignty.
+            Protect your JEWELS and SWYT by avoiding these common crypto traps.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {donts.map((item, idx) => (
@@ -423,10 +767,10 @@ const TrustBenefits: React.FC = () => {
           className="max-w-6xl mx-auto space-y-12"
         >
           <h3 className="text-4xl font-extrabold text-white flex items-center justify-center gap-4">
-            <Wallet className="w-10 h-10 text-rose-400 animate-pulse" /> Supported Wallets & Tokens
+            <FaWallet className="w-10 h-10 text-rose-400 animate-pulse" /> Supported Wallets & Tokens
           </h3>
           <p className="text-lg text-gray-300 max-w-3xl mx-auto">
-            Swytch PET integrates with WAGMI for seamless wallet connections and supports a range of tokens across EVM chains. Your Energy, your choice.
+            Connect seamlessly with WAGMI and use tokens across EVM chains in the Petaverse.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 mb-16">
             {wallets.map((wallet, i) => (
@@ -441,7 +785,7 @@ const TrustBenefits: React.FC = () => {
           </div>
           <h4 className="text-xl font-semibold text-rose-400 mb-4">Supported Tokens</h4>
           <p className="text-sm text-gray-400 max-w-2xl mx-auto mb-6">
-            Use native tokens like JEWELS and SWYT for Petaverse actions, or bridge stablecoins and EVM tokens for flexibility.
+            Use JEWELS and SWYT for Petaverse actions or bridge stablecoins for flexibility.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             {tokens.map((token, i) => (
@@ -468,23 +812,30 @@ const TrustBenefits: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-rose-500/10 rounded-3xl" />
           <div className="relative space-y-8">
             <h3 className="text-4xl font-extrabold text-white flex items-center justify-center gap-4">
-              <Sparkles className="w-10 h-10 text-pink-400 animate-pulse" /> Ignite Your Sovereignty
+              <FaRocket className="w-10 h-10 text-pink-400 animate-pulse" /> Ignite Your Sovereignty
             </h3>
             <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-              The Swytch Private Energy Trust is more than a platform—it’s a rebellion against centralized control. Earn JEWELS, govern the Petaverse, and build wealth on your terms.
+              Swytch PET is a rebellion against centralized control. Earn JEWELS, govern the Petaverse, and build wealth on your terms.
             </p>
             <p className="text-sm text-gray-400 max-w-xl mx-auto">
-              Start today. Connect your wallet, claim your first quest, and become a PET in a decentralized future where your Energy is your power.
+              Connect your wallet, claim your first quest, and become a PET in a decentralized future.
             </p>
-            <motion.button
-              className="inline-flex items-center px-8 py-4 bg-pink-600 text-white hover:bg-pink-700 rounded-full text-lg font-semibold group"
-              onClick={() => setShowWalletModal(true)}
-              whileHover={{ scale: 1.05 }}
-              aria-label="Join the Swytch Private Energy Trust"
-            >
-              Become a PET
-              <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
-            </motion.button>
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <motion.button
+                  className="inline-flex items-center px-8 py-4 bg-pink-600 text-white hover:bg-pink-700 rounded-full text-lg font-semibold group"
+                  onClick={() => {
+                    if (!isConnected) openConnectModal();
+                    else alert('Wallet already connected!');
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  aria-label="Join the Swytch Private Energy Trust"
+                >
+                  Become a PET
+                  <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
+                </motion.button>
+              )}
+            </ConnectButton.Custom>
           </div>
         </motion.div>
       </section>
@@ -518,27 +869,20 @@ const TrustBenefits: React.FC = () => {
                 <X className="w-8 h-8" />
               </motion.button>
               <h3 id="modal-title" className="text-3xl font-bold text-rose-400 mb-6 flex items-center gap-3">
-                <Wallet className="w-8 h-8 animate-pulse" /> Connect to Swytch
+                <FaWallet className="w-8 h-8 animate-pulse" /> Connect to Swytch
               </h3>
               <div className="space-y-4">
-                <motion.button
-                  className="w-full p-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => handleWalletConnect('MetaMask')}
-                >
-                  <FaWallet className="w-5 h-5" /> Connect MetaMask
-                </motion.button>
-                <motion.button
-                  className="w-full p-3 bg-pink-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => handleWalletConnect('WalletConnect')}
-                >
-                  <FaWallet className="w-5 h-5" /> Connect WalletConnect
-                </motion.button>
+                <ConnectButton
+                  label="Connect Wallet"
+                  showBalance={false}
+                  accountStatus="address"
+                  chainStatus="none"
+                />
                 <motion.button
                   className="w-full p-3 bg-gray-800 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
                   whileHover={{ scale: 1.05 }}
-                  onClick={() => handleWalletConnect('New Wallet')}
+                  onClick={() => alert('Redirecting to wallet creation guide...')}
+                  aria-label="Create New Wallet"
                 >
                   <FaWallet className="w-5 h-5" /> Create New Wallet
                 </motion.button>
@@ -547,6 +891,30 @@ const TrustBenefits: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Reward Popup */}
+      <AnimatePresence>
+        {showReward && (
+          <motion.div
+            variants={rewardVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed bottom-20 right-4 max-w-sm w-full bg-gray-900 border border-rose-500/20 rounded-xl shadow-2xl p-4 backdrop-blur-lg z-50"
+          >
+            <div className="flex items-center gap-4">
+              <Sparkles className="w-8 h-8 text-rose-400 animate-pulse" />
+              <div>
+                <p className="text-white font-bold">{showReward.message}</p>
+                <p className="text-sm text-gray-300">+{showReward.jewels} JEWELS, +{showReward.xp} XP</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Audio */}
+      <audio ref={rewardAudioRef} src="/audio/reward.mp3" preload="auto" />
 
       <style>
         {`
@@ -559,6 +927,12 @@ const TrustBenefits: React.FC = () => {
           }
           .animate-spin-slow {
             animation: spin 3s linear infinite;
+          }
+          .blur-3xl {
+            filter: blur(64px);
+          }
+          .blur-2xl {
+            filter: blur(32px);
           }
           @keyframes spin {
             from { transform: rotate(0deg); }
@@ -573,6 +947,9 @@ const TrustBenefits: React.FC = () => {
               animation: none !important;
               transition: none !important;
             }
+          }
+          .bg-[url('/noise.png')] {
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TqCRZQqlUKqlaVSqlUKqVqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC');
           }
         `}
       </style>

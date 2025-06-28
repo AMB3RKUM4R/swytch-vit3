@@ -1,8 +1,16 @@
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import {
-  Vote, Sparkles, Wallet, ArrowRight, X, Trophy, Heart, MessageSquare, Globe2,
-  Send, Star, Rocket, ShieldCheck, MessageCircle} from 'lucide-react';
+  Vote, Sparkles, ArrowRight, X, Trophy, Heart, MessageSquare, Globe2,
+  Send, Star, Rocket, ShieldCheck, MessageCircle,
+} from 'lucide-react';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
+import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAuthUser } from '@/hooks/useAuthUser';
+import Confetti from 'react-confetti';
 
 // Interfaces
 interface DAOProposal {
@@ -187,6 +195,8 @@ const Modal = ({ title, onClose, children }: { title: string; onClose: () => voi
 };
 
 const CommunityOwnership: React.FC = () => {
+  const { user, loading: authLoading } = useAuthUser();
+  const { address, isConnected } = useAccount();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<number | null>(null);
@@ -197,7 +207,33 @@ const CommunityOwnership: React.FC = () => {
   const [chatMessage, setChatMessage] = useState('');
   const [proposalForm, setProposalForm] = useState({ title: '', description: '', category: 'Quests' });
   const [rankFilter, setRankFilter] = useState<'all' | 'jewels' | 'level'>('all');
+  const [jewels, setJewels] = useState<number>(0);
+  const [showConfetti, setShowConfetti] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
+
+  // User ID (wallet address or Firebase UID)
+  const userId = isConnected && address ? address : user?.uid;
+
+  // Fetch JEWELS balance
+  useEffect(() => {
+    const fetchJewels = async () => {
+      if (userId) {
+        try {
+          const userRef = doc(db, 'users', userId);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setJewels(userSnap.data().jewels || 0);
+          } else {
+            await setDoc(userRef, { jewels: 0, WalletBalance: 0, updatedAt: serverTimestamp() }, { merge: true });
+            setJewels(0);
+          }
+        } catch (err) {
+          console.error('Failed to fetch JEWELS:', err);
+        }
+      }
+    };
+    fetchJewels();
+  }, [userId]);
 
   // Throttled mouse move
   useEffect(() => {
@@ -221,41 +257,95 @@ const CommunityOwnership: React.FC = () => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
-  }, [chatMessages]);
+  }, []);
 
   // Handle email signup
-  const handleEmailSignup = (e: React.FormEvent) => {
+  const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) {
+      alert('Please connect your wallet or log in to proceed.');
+      setShowWalletModal(true);
+      return;
+    }
     setEmail('');
     alert('Welcome to the PETverse! Check your inbox for DAO onboarding details.');
   };
 
   // Handle voting simulation
-  const handleVote = (proposalId: number, choice: 'for' | 'against') => {
+  const handleVote = async (proposalId: number, choice: 'for' | 'against') => {
+    if (!userId) {
+      alert('Please connect your wallet to vote.');
+      setShowWalletModal(true);
+      return;
+    }
+    if (jewels < 100) {
+      alert('You need at least 100 JEWELS to vote.');
+      return;
+    }
     setSelectedProposal(proposalId);
     setVoteChoice(choice);
-    setTimeout(() => {
-      alert(`Your vote "${choice}" for "${daoProposals.find(p => p.id === proposalId)?.title}" has been recorded!`);
-      setSelectedProposal(null);
-      setVoteChoice(null);
-    }, 1000);
+    try {
+      const userRef = doc(db, 'users', userId);
+      await setDoc(userRef, { jewels: jewels - 100, updatedAt: serverTimestamp() }, { merge: true });
+      setJewels(jewels - 100);
+      const audio = new Audio('/audio/vote.mp3');
+      audio.play().catch((err) => console.error('Audio playback failed:', err));
+      setShowConfetti(true);
+      setTimeout(() => {
+        alert(`Your vote "${choice}" for "${daoProposals.find((p) => p.id === proposalId)?.title}" has been recorded!`);
+        setSelectedProposal(null);
+        setVoteChoice(null);
+        setShowConfetti(false);
+      }, 1000);
+    } catch (err) {
+      console.error('Vote submission error:', err);
+      alert('Failed to record vote. Please try again.');
+    }
   };
 
   // Handle chat message
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) {
+      alert('Please connect your wallet to send messages.');
+      setShowWalletModal(true);
+      return;
+    }
     if (chatMessage.trim()) {
+      const audio = new Audio('/audio/chat.mp3');
+      audio.play().catch((err) => console.error('Audio playback failed:', err));
       alert(`Message sent: ${chatMessage}`);
       setChatMessage('');
     }
   };
 
   // Handle proposal submission
-  const handleSubmitProposal = (e: React.FormEvent) => {
+  const handleSubmitProposal = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) {
+      alert('Please connect your wallet to submit a proposal.');
+      setShowWalletModal(true);
+      return;
+    }
+    if (jewels < 500) {
+      alert('You need at least 500 JEWELS to submit a proposal.');
+      return;
+    }
     if (proposalForm.title.trim() && proposalForm.description.trim()) {
-      alert(`Proposal submitted: ${proposalForm.title}`);
-      setProposalForm({ title: '', description: '', category: 'Quests' });
+      try {
+        const userRef = doc(db, 'users', userId);
+        await setDoc(userRef, { jewels: jewels - 500, updatedAt: serverTimestamp() }, { merge: true });
+        setJewels(jewels - 500);
+        const audio = new Audio('/audio/proposal.mp3');
+        audio.play().catch((err) => console.error('Audio playback failed:', err));
+        setShowConfetti(true);
+        alert(`Proposal submitted: ${proposalForm.title}`);
+        setProposalForm({ title: '', description: '', category: 'Quests' });
+        setTimeout(() => setShowConfetti(false), 3000);
+      } catch (err) {
+        console.error('Proposal submission error:', err);
+        alert('Failed to submit proposal. Please try again.');
+      }
     } else {
       alert('Please fill in all fields.');
     }
@@ -273,6 +363,7 @@ const CommunityOwnership: React.FC = () => {
 
   return (
     <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white overflow-hidden">
+      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
       {/* Lens Flare and Noise Overlay */}
       <motion.div className="fixed inset-0 pointer-events-none z-10">
         <motion.div
@@ -295,7 +386,7 @@ const CommunityOwnership: React.FC = () => {
             style={{
               top: `${Math.random() * 100}%`,
               left: `${Math.random() * 100}%`,
-              backgroundColor: i % 2 === 0 ? 'rgba(236, 72, 153, 0.5)' : 'rgba(34, 211, 238, 0.5)'
+              backgroundColor: i % 2 === 0 ? 'rgba(236, 72, 153, 0.5)' : 'rgba(34, 211, 238, 0.5)',
             }}
             variants={particleVariants}
             animate="animate"
@@ -310,10 +401,7 @@ const CommunityOwnership: React.FC = () => {
         animate="visible"
       >
         {/* Hero Section */}
-        <motion.div
-          variants={sectionVariants}
-          className="relative text-center"
-        >
+        <motion.div variants={sectionVariants} className="relative text-center">
           <Card gradient="from-rose-500/10 to-pink-500/10">
             <motion.div
               className="relative rounded-3xl p-12"
@@ -355,13 +443,15 @@ const CommunityOwnership: React.FC = () => {
               </div>
             </motion.div>
           </Card>
+          {userId && (
+            <p className="text-gray-300 mt-4 text-center">
+              Your JEWELS: <span className="font-bold text-rose-400">{jewels} JEWELS</span>
+            </p>
+          )}
         </motion.div>
 
         {/* Governance Explainer Video */}
-        <motion.div
-          variants={sectionVariants}
-          className="relative space-y-6 text-center"
-        >
+        <motion.div variants={sectionVariants} className="relative space-y-6 text-center">
           <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
             <Rocket className="w-8 h-8 text-pink-400 animate-pulse" /> How Swytch Governance Works
           </h3>
@@ -392,10 +482,7 @@ const CommunityOwnership: React.FC = () => {
         </motion.div>
 
         {/* Community Chat Room */}
-        <motion.div
-          variants={sectionVariants}
-          className="relative space-y-6"
-        >
+        <motion.div variants={sectionVariants} className="relative space-y-6">
           <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
             <MessageCircle className="w-8 h-8 text-rose-400 animate-pulse" /> PET Chat Room
           </h3>
@@ -404,10 +491,7 @@ const CommunityOwnership: React.FC = () => {
           </p>
           <Card gradient="from-rose-500/10 to-pink-500/10">
             <div className="space-y-4">
-              <div
-                ref={chatRef}
-                className="h-[300px] overflow-y-auto no-scrollbar p-4 bg-gray-900/80 rounded-lg"
-              >
+              <div ref={chatRef} className="h-[300px] overflow-y-auto no-scrollbar p-4 bg-gray-900/80 rounded-lg">
                 <AnimatePresence>
                   {chatMessages.map((msg) => (
                     <motion.div
@@ -417,13 +501,11 @@ const CommunityOwnership: React.FC = () => {
                       exit={{ opacity: 0, y: -20 }}
                       className="flex items-start gap-3 mb-4"
                     >
-                      <img
-                        src={msg.avatar}
-                        alt={msg.user}
-                        className="w-8 h-8 rounded-full border border-rose-500/20"
-                      />
+                      <img src={msg.avatar} alt={msg.user} className="w-8 h-8 rounded-full border border-rose-500/20" />
                       <div>
-                        <p className="text-white font-semibold">{msg.user} <span className="text-gray-400 text-xs ml-2">{msg.timestamp}</span></p>
+                        <p className="text-white font-semibold">
+                          {msg.user} <span className="text-gray-400 text-xs ml-2">{msg.timestamp}</span>
+                        </p>
                         <p className="text-gray-300 text-sm">{msg.message}</p>
                       </div>
                     </motion.div>
@@ -438,11 +520,13 @@ const CommunityOwnership: React.FC = () => {
                   placeholder="Type your message..."
                   className="flex-1 p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-rose-500"
                   aria-label="Chat message"
+                  disabled={authLoading}
                 />
                 <motion.button
                   type="submit"
                   className="px-4 py-2 bg-rose-600 text-white hover:bg-rose-700 rounded-md flex items-center gap-2"
                   whileHover={{ scale: 1.05 }}
+                  disabled={authLoading}
                 >
                   <Send className="w-5 h-5" /> Send
                 </motion.button>
@@ -452,10 +536,7 @@ const CommunityOwnership: React.FC = () => {
         </motion.div>
 
         {/* Community Voting Form */}
-        <motion.div
-          variants={sectionVariants}
-          className="relative space-y-6"
-        >
+        <motion.div variants={sectionVariants} className="relative space-y-6">
           <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
             <Vote className="w-8 h-8 text-cyan-400 animate-pulse" /> Submit a Proposal
           </h3>
@@ -477,6 +558,7 @@ const CommunityOwnership: React.FC = () => {
                   className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500"
                   required
                   aria-label="Proposal title"
+                  disabled={authLoading}
                 />
               </div>
               <div>
@@ -491,6 +573,7 @@ const CommunityOwnership: React.FC = () => {
                   className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500 h-32 resize-y"
                   required
                   aria-label="Proposal description"
+                  disabled={authLoading}
                 />
               </div>
               <div>
@@ -503,6 +586,7 @@ const CommunityOwnership: React.FC = () => {
                   onChange={(e) => setProposalForm({ ...proposalForm, category: e.target.value })}
                   className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500"
                   aria-label="Proposal category"
+                  disabled={authLoading}
                 >
                   <option value="Quests">Quests</option>
                   <option value="Planets">Planets</option>
@@ -514,6 +598,7 @@ const CommunityOwnership: React.FC = () => {
                 type="submit"
                 className="w-full px-6 py-3 bg-cyan-600 text-white hover:bg-cyan-700 rounded-md font-semibold flex items-center justify-center gap-2"
                 whileHover={{ scale: 1.05 }}
+                disabled={authLoading}
               >
                 <Vote className="w-5 h-5" /> Submit Proposal
               </motion.button>
@@ -522,10 +607,7 @@ const CommunityOwnership: React.FC = () => {
         </motion.div>
 
         {/* DAO Proposal Voting Simulator */}
-        <motion.div
-          variants={sectionVariants}
-          className="relative space-y-6"
-        >
+        <motion.div variants={sectionVariants} className="relative space-y-6">
           <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
             <Vote className="w-8 h-8 text-rose-400 animate-pulse" /> Live DAO Proposals
           </h3>
@@ -551,26 +633,22 @@ const CommunityOwnership: React.FC = () => {
                     <div className="flex gap-4">
                       <motion.button
                         className={`flex-1 py-2 rounded-md font-semibold ${
-                          selectedProposal === proposal.id && voteChoice === 'for'
-                            ? 'bg-green-600'
-                            : 'bg-rose-600 hover:bg-rose-700'
+                          selectedProposal === proposal.id && voteChoice === 'for' ? 'bg-green-600' : 'bg-rose-600 hover:bg-rose-700'
                         }`}
                         onClick={() => handleVote(proposal.id, 'for')}
                         whileHover={{ scale: 1.05 }}
-                        disabled={selectedProposal === proposal.id}
+                        disabled={selectedProposal === proposal.id || authLoading}
                         aria-label={`Vote for ${proposal.title}`}
                       >
                         Vote For
                       </motion.button>
                       <motion.button
                         className={`flex-1 py-2 rounded-md font-semibold ${
-                          selectedProposal === proposal.id && voteChoice === 'against'
-                            ? 'bg-red-600'
-                            : 'bg-rose-600 hover:bg-rose-700'
+                          selectedProposal === proposal.id && voteChoice === 'against' ? 'bg-red-600' : 'bg-rose-600 hover:bg-rose-700'
                         }`}
                         onClick={() => handleVote(proposal.id, 'against')}
                         whileHover={{ scale: 1.05 }}
-                        disabled={selectedProposal === proposal.id}
+                        disabled={selectedProposal === proposal.id || authLoading}
                         aria-label={`Vote against ${proposal.title}`}
                       >
                         Vote Against
@@ -584,10 +662,7 @@ const CommunityOwnership: React.FC = () => {
         </motion.div>
 
         {/* Community Rankings */}
-        <motion.div
-          variants={sectionVariants}
-          className="relative space-y-6"
-        >
+        <motion.div variants={sectionVariants} className="relative space-y-6">
           <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
             <Trophy className="w-8 h-8 text-pink-400 animate-pulse" /> Community Rankings
           </h3>
@@ -600,6 +675,7 @@ const CommunityOwnership: React.FC = () => {
                 className={`px-4 py-2 rounded-md font-semibold ${rankFilter === 'all' ? 'bg-rose-600 text-white' : 'bg-gray-800 text-gray-200'}`}
                 onClick={() => setRankFilter('all')}
                 whileHover={{ scale: 1.05 }}
+                disabled={authLoading}
               >
                 All
               </motion.button>
@@ -607,6 +683,7 @@ const CommunityOwnership: React.FC = () => {
                 className={`px-4 py-2 rounded-md font-semibold ${rankFilter === 'jewels' ? 'bg-rose-600 text-white' : 'bg-gray-800 text-gray-200'}`}
                 onClick={() => setRankFilter('jewels')}
                 whileHover={{ scale: 1.05 }}
+                disabled={authLoading}
               >
                 Top JEWELS
               </motion.button>
@@ -614,6 +691,7 @@ const CommunityOwnership: React.FC = () => {
                 className={`px-4 py-2 rounded-md font-semibold ${rankFilter === 'level' ? 'bg-rose-600 text-white' : 'bg-gray-800 text-gray-200'}`}
                 onClick={() => setRankFilter('level')}
                 whileHover={{ scale: 1.05 }}
+                disabled={authLoading}
               >
                 Top Levels
               </motion.button>
@@ -625,13 +703,11 @@ const CommunityOwnership: React.FC = () => {
                   className="flex items-center gap-4 bg-gray-900/80 p-4 rounded-lg border border-rose-500/20"
                   whileHover={{ scale: 1.02 }}
                 >
-                  <img
-                    src={pet.avatar}
-                    alt={pet.name}
-                    className="w-12 h-12 rounded-full border border-rose-500/20"
-                  />
+                  <img src={pet.avatar} alt={pet.name} className="w-12 h-12 rounded-full border border-rose-500/20" />
                   <div className="flex-1">
-                    <p className="text-white font-bold">#{pet.rank} {pet.name}</p>
+                    <p className="text-white font-bold">
+                      #{pet.rank} {pet.name}
+                    </p>
                     <p className="text-sm text-gray-400">{pet.level}</p>
                   </div>
                   <p className="text-rose-400 font-semibold">{pet.jewels} JEWELS</p>
@@ -642,10 +718,7 @@ const CommunityOwnership: React.FC = () => {
         </motion.div>
 
         {/* PET Contribution Leaderboard */}
-        <motion.div
-          variants={sectionVariants}
-          className="relative space-y-6"
-        >
+        <motion.div variants={sectionVariants} className="relative space-y-6">
           <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
             <Trophy className="w-8 h-8 text-rose-400 animate-pulse" /> PET Leaderboard
           </h3>
@@ -660,13 +733,11 @@ const CommunityOwnership: React.FC = () => {
                   className="flex items-center gap-4 bg-gray-900/80 p-4 rounded-lg border border-rose-500/20"
                   whileHover={{ scale: 1.02 }}
                 >
-                  <img
-                    src={pet.avatar}
-                    alt={pet.name}
-                    className="w-12 h-12 rounded-full border border-rose-500/20"
-                  />
+                  <img src={pet.avatar} alt={pet.name} className="w-12 h-12 rounded-full border border-rose-500/20" />
                   <div className="flex-1">
-                    <p className="text-white font-bold">#{pet.rank} {pet.name}</p>
+                    <p className="text-white font-bold">
+                      #{pet.rank} {pet.name}
+                    </p>
                     <p className="text-sm text-gray-400">{pet.level}</p>
                   </div>
                   <p className="text-rose-400 font-semibold">{pet.jewels} JEWELS</p>
@@ -677,10 +748,7 @@ const CommunityOwnership: React.FC = () => {
         </motion.div>
 
         {/* Testimonials Carousel */}
-        <motion.div
-          variants={sectionVariants}
-          className="relative space-y-6"
-        >
+        <motion.div variants={sectionVariants} className="relative space-y-6">
           <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
             <Heart className="w-8 h-8 text-pink-400 animate-pulse" /> PET Voices
           </h3>
@@ -705,10 +773,7 @@ const CommunityOwnership: React.FC = () => {
         </motion.div>
 
         {/* Key Community Features */}
-        <motion.div
-          variants={sectionVariants}
-          className="relative space-y-6"
-        >
+        <motion.div variants={sectionVariants} className="relative space-y-6">
           <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
             <Star className="w-8 h-8 text-rose-400 animate-pulse" /> Why PETs Own Swytch
           </h3>
@@ -749,11 +814,7 @@ const CommunityOwnership: React.FC = () => {
               },
             ].map((feature, i) => (
               <Card key={i} gradient={feature.gradient}>
-                <motion.div
-                  variants={sectionVariants}
-                  whileHover={{ scale: 1.02, y: -10 }}
-                  transition={{ delay: i * 0.1 }}
-                >
+                <motion.div variants={sectionVariants} whileHover={{ scale: 1.02, y: -10 }} transition={{ delay: i * 0.1 }}>
                   <div className="flex items-center mb-4">
                     {feature.icon}
                     <h4 className="ml-3 text-xl font-bold text-white">{feature.title}</h4>
@@ -766,10 +827,7 @@ const CommunityOwnership: React.FC = () => {
         </motion.div>
 
         {/* Join the DAO CTA */}
-        <motion.div
-          variants={sectionVariants}
-          className="relative space-y-6 text-center"
-        >
+        <motion.div variants={sectionVariants} className="relative space-y-6 text-center">
           <h3 className="text-4xl font-bold text-white flex items-center justify-center gap-4">
             <Sparkles className="w-10 h-10 text-rose-400 animate-pulse" /> Join the PETverse DAO
           </h3>
@@ -786,11 +844,13 @@ const CommunityOwnership: React.FC = () => {
                 className="flex-1 p-3 bg-gray-800 text-white rounded-md border border-rose-500/20 focus:border-rose-500"
                 required
                 aria-label="Email for DAO signup"
+                disabled={authLoading}
               />
               <motion.button
                 type="submit"
                 className="px-6 py-3 bg-rose-600 text-white hover:bg-rose-700 rounded-md font-semibold flex items-center justify-center gap-2"
                 whileHover={{ scale: 1.05 }}
+                disabled={authLoading}
               >
                 Join Now <Send className="w-5 h-5" />
               </motion.button>
@@ -818,26 +878,7 @@ const CommunityOwnership: React.FC = () => {
         <AnimatePresence>
           {showWalletModal && (
             <Modal title="Connect to Swytch" onClose={() => setShowWalletModal(false)}>
-              <div className="space-y-4">
-                <motion.button
-                  className="w-full p-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <Wallet className="w-5 h-5" /> Connect MetaMask
-                </motion.button>
-                <motion.button
-                  className="w-full p-3 bg-pink-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <Wallet className="w-5 h-5" /> Connect WalletConnect
-                </motion.button>
-                <motion.button
-                  className="w-full p-3 bg-gray-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <Wallet className="w-5 h-5" /> Generate New Wallet
-                </motion.button>
-              </div>
+             <ConnectButton />
             </Modal>
           )}
         </AnimatePresence>

@@ -1,9 +1,30 @@
+"use client";
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   TrendingUp, Star, ShieldCheck, Brain, BarChart2, Sparkles, Gift, BookOpen, ScrollText,
   Trophy, Flashlight, CircleDollarSign, Wallet, ArrowRight, X, Zap, Target, Users, Award
 } from 'lucide-react';
+import { useAccount, useConnect, useDisconnect, useWriteContract, useChainId } from 'wagmi';
+import { parseUnits } from 'viem';
+import { wagmiConfig } from '../lib/wagmi'; // Adjust path to your wagmiConfig file
+
+// USDT Contract Details
+const USDT_CONTRACT_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // Ethereum USDT (update if needed)
+const TRUST_WALLET_ADDRESS = '0xYourTrustWalletAddress'; // Replace with your MetaMask Trust wallet address
+const USDT_ABI = [
+  {
+    constant: false,
+    inputs: [
+      { name: '_to', type: 'address' },
+      { name: '_value', type: 'uint256' }
+    ],
+    name: 'transfer',
+    outputs: [{ name: '', type: 'bool' }],
+    type: 'function'
+  }
+] as const;
 
 // Interfaces
 interface Level {
@@ -107,14 +128,16 @@ const levels: Level[] = [
 const initialQuests: Quest[] = [
   { id: 'collect', title: 'Collect 10 SWYT from Energy Orb', progress: 0, goal: 10, rewardSWYT: 10, rewardXP: 20, completed: false },
   { id: 'view-perk', title: 'View a Level Perk', progress: 0, goal: 1, rewardSWYT: 5, rewardXP: 10, completed: false },
-  { id: 'connect-wallet', title: 'Connect Your Wallet', progress: 0, goal: 1, rewardSWYT: 15, rewardXP: 30, completed: false }
+  { id: 'connect-wallet', title: 'Connect Your Wallet', progress: 0, goal: 1, rewardSWYT: 15, rewardXP: 30, completed: false },
+  { id: 'purchase-level', title: 'Purchase a Level', progress: 0, goal: 1, rewardSWYT: 20, rewardXP: 50, completed: false }
 ];
 
 const achievements: Achievement[] = [
   { id: 'first-login', title: 'First Login', description: 'Log in to Swytch for the first time.', unlocked: false },
   { id: 'level-2', title: 'Apprentice Reached', description: 'Reach Level 2.', unlocked: false },
   { id: 'streak-3', title: '3-Day Streak', description: 'Log in for 3 consecutive days.', unlocked: false },
-  { id: 'swyt-100', title: 'Energy Collector', description: 'Collect 100 SWYT.', unlocked: false }
+  { id: 'swyt-100', title: 'Energy Collector', description: 'Collect 100 SWYT.', unlocked: false },
+  { id: 'purchase-level', title: 'Level Purchaser', description: 'Purchase a level with USDT.', unlocked: false }
 ];
 
 const leaderboard: LeaderboardEntry[] = [
@@ -214,6 +237,61 @@ const Modal = ({ title, onClose, children }: { title: string; onClose: () => voi
   );
 };
 
+const ConnectWalletButton = ({ onQuestComplete }: { onQuestComplete: () => void }) => {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const metaMaskConnector = connectors.find((c) => c.id === 'metaMask');
+  const walletConnectConnector = connectors.find((c) => c.id === 'walletConnect');
+
+  useEffect(() => {
+    if (isConnected) {
+      onQuestComplete();
+    }
+  }, [isConnected, onQuestComplete]);
+
+  return (
+    <div className="space-y-4">
+      <motion.button
+        onClick={() => (isConnected ? disconnect() : metaMaskConnector && connect({ connector: metaMaskConnector }))}
+        className={`w-full p-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+          isConnected ? 'bg-red-600 hover:bg-red-700' : 'bg-rose-600 hover:bg-rose-700'
+        } text-white transition-all`}
+        whileHover={{ scale: 1.05, boxShadow: '0 0 10px rgba(244, 63, 94, 0.5)' }}
+        whileTap={{ scale: 0.95 }}
+        aria-label={isConnected ? 'Disconnect MetaMask' : 'Connect MetaMask'}
+        disabled={!metaMaskConnector}
+      >
+        <Wallet className="w-5 h-5 text-rose-400 animate-pulse" />
+        {isConnected ? `Disconnect (${address?.slice(0, 6)}...${address?.slice(-4)})` : 'Connect MetaMask'}
+      </motion.button>
+      <motion.button
+        onClick={() => (isConnected ? disconnect() : walletConnectConnector && connect({ connector: walletConnectConnector }))}
+        className={`w-full p-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+          isConnected ? 'bg-red-600 hover:bg-red-700' : 'bg-pink-600 hover:bg-pink-700'
+        } text-white transition-all`}
+        whileHover={{ scale: 1.05, boxShadow: '0 0 10px rgba(236, 72, 153, 0.5)' }}
+        whileTap={{ scale: 0.95 }}
+        aria-label={isConnected ? 'Disconnect WalletConnect' : 'Connect WalletConnect'}
+        disabled={!walletConnectConnector}
+      >
+        <Wallet className="w-5 h-5 text-rose-400 animate-pulse" />
+        {isConnected ? 'Disconnect' : 'Connect WalletConnect'}
+      </motion.button>
+      <motion.button
+        className="w-full p-3 bg-gray-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => alert('Wallet generation not implemented yet.')}
+        aria-label="Generate new wallet"
+      >
+        <Wallet className="w-5 h-5 text-rose-400 animate-pulse" /> Generate New Wallet
+      </motion.button>
+    </div>
+  );
+};
+
+// Main Component
 const LevelsIntro: React.FC = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -229,6 +307,8 @@ const LevelsIntro: React.FC = () => {
   const orbRef = useRef<HTMLCanvasElement>(null);
   const clickAudioRef = useRef<HTMLAudioElement>(null);
   const rewardAudioRef = useRef<HTMLAudioElement>(null);
+  const { address, isConnected, chain } = useAccount();
+  const currentChainId = useChainId();
 
   // Local Storage Keys
   const STORAGE_KEY = 'swytch_game_state';
@@ -269,26 +349,26 @@ const LevelsIntro: React.FC = () => {
       } else {
         unlockAchievement('first-login');
       }
+
+      // Handle daily reset and streak
+      if (lastLogin !== today) {
+        setDailyClicks(0);
+        setQuests(initialQuests.map(q => ({ ...q, progress: 0, completed: false })));
+        const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
+        if (lastLogin === yesterday) {
+          setLoginStreak(prev => {
+            const newStreak = prev + 1;
+            if (newStreak >= 3) unlockAchievement('streak-3');
+            return newStreak;
+          });
+        } else {
+          setLoginStreak(1);
+        }
+        setLastLogin(today);
+      }
     } catch (error) {
       console.error('Error parsing localStorage:', error);
       unlockAchievement('first-login');
-    }
-
-    // Handle daily reset and streak
-    if (lastLogin !== today) {
-      setDailyClicks(0);
-      setQuests(initialQuests.map(q => ({ ...q, progress: 0, completed: false })));
-      const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
-      if (lastLogin === yesterday) {
-        setLoginStreak(prev => {
-          const newStreak = prev + 1;
-          if (newStreak >= 3) unlockAchievement('streak-3');
-          return newStreak;
-        });
-      } else {
-        setLoginStreak(1);
-      }
-      setLastLogin(today);
     }
   }, []); // Empty dependency array to run once on mount
 
@@ -377,6 +457,9 @@ const LevelsIntro: React.FC = () => {
       rewardAudioRef.current?.play().catch(error => console.error('Audio playback failed:', error));
     } else if (id === 'first-login') {
       setShowReward({ swyt: 5, xp: 10, message: 'Achievement Unlocked: First Login!' });
+      rewardAudioRef.current?.play().catch(error => console.error('Audio playback failed:', error));
+    } else if (id === 'purchase-level') {
+      setShowReward({ swyt: 20, xp: 50, message: 'Achievement Unlocked: Level Purchaser!' });
       rewardAudioRef.current?.play().catch(error => console.error('Audio playback failed:', error));
     }
   }, []);
@@ -482,10 +565,8 @@ const LevelsIntro: React.FC = () => {
     );
   }, []);
 
-  // Handle Wallet Connect
-  const handleWalletConnect = useCallback((type: string) => {
-    alert(`Connecting ${type}...`);
-    setShowWalletModal(false);
+  // Handle Wallet Connect Quest
+  const handleWalletConnectQuest = useCallback(() => {
     setQuests(prev =>
       prev.map(q =>
         q.id === 'connect-wallet' && !q.completed
@@ -493,7 +574,152 @@ const LevelsIntro: React.FC = () => {
           : q
       )
     );
+    setShowReward({
+      swyt: 15,
+      xp: 30,
+      message: 'Quest Completed: Connect Your Wallet!'
+    });
+    rewardAudioRef.current?.play().catch(error => console.error('Audio playback failed:', error));
   }, []);
+
+  // Handle Level Purchase
+  const calculateUSDTCost = (energyRequired: string) => {
+    const swyt = parseInt(energyRequired);
+    return parseUnits((swyt * 0.01).toString(), 6); // 1 SWYT = $0.01 USDT, 6 decimals
+  };
+
+  const handlePurchaseLevel = useCallback((level: Level) => {
+    if (!isConnected) {
+      alert('Please connect your wallet first.');
+      setShowWalletModal(true);
+      return;
+    }
+    if (level.level <= currentLevel) {
+      alert('You have already reached or passed this level.');
+      return;
+    }
+    if (currentChainId !== wagmiConfig.chains[0].id) {
+      alert(`Please switch to ${wagmiConfig.chains[0].name} network.`);
+      return;
+    }
+  }, [isConnected, currentLevel, currentChainId]);
+
+  // Level Card Component
+  const LevelCard = ({ tier, index }: { tier: Level; index: number }) => {
+    const usdtAmount = calculateUSDTCost(tier.energyRequired);
+    const { writeContract, isPending, isSuccess, isError, error } = useWriteContract();
+
+    useEffect(() => {
+      if (isSuccess) {
+        setCurrentLevel(tier.level);
+        setEnergyProgress(0);
+        setQuests(prev =>
+          prev.map(q =>
+            q.id === 'purchase-level' && !q.completed
+              ? { ...q, progress: 1, completed: true }
+              : q
+          )
+        );
+        unlockAchievement('purchase-level');
+        setShowReward({
+          swyt: 0,
+          xp: 100,
+          message: `Level Purchased! Welcome to ${tier.title}!`
+        });
+        rewardAudioRef.current?.play().catch(err => console.error('Audio playback failed:', err));
+      }
+    }, [isSuccess]);
+
+    useEffect(() => {
+      if (isError && error) {
+        alert(`Transaction failed: ${error.message}`);
+      }
+    }, [isError, error]);
+
+    return (
+      <motion.div
+        key={tier.level}
+        className="relative bg-gray-900/60 border border-rose-500/20 rounded-xl p-6 backdrop-blur-md shadow-xl hover:shadow-rose-500/40 transition-all"
+        variants={sectionVariants}
+        whileHover={{ scale: 1.02, y: -10 }}
+        transition={{ delay: index * 0.1 }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 to-pink-500/10 rounded-xl" />
+        <div className="relative">
+          <img
+            src={tier.image}
+            alt={tier.title}
+            className="w-full h-32 object-cover rounded-lg border border-rose-500/20 mb-4"
+          />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-rose-500/10 rounded-full">{tier.icon}</div>
+            <div>
+              <h4 className="text-xl font-bold text-white">Level {tier.level}: {tier.title}</h4>
+              <p className="text-sm text-rose-300">+{tier.reward} Monthly Yield</p>
+            </div>
+          </div>
+          <p className="text-gray-300 mb-2">
+            Required: <span className="text-white font-semibold">{tier.energyRequired}</span> (~${(parseInt(tier.energyRequired) * 0.01).toFixed(2)} USDT)
+          </p>
+          <ul className="list-disc list-inside text-gray-400 space-y-1 relative mb-4">
+            {tier.perks.map((perk, j) => (
+              <li
+                key={j}
+                className="cursor-pointer hover:text-rose-300"
+                onMouseEnter={() => handlePerkHover(tier.level, perk)}
+                onMouseLeave={() => setHoveredPerk(null)}
+              >
+                {perk}
+                {hoveredPerk?.level === tier.level && hoveredPerk.perk === perk && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute z-10 bg-gray-800 border border-rose-500/20 p-2 rounded-md text-sm text-gray-300 mt-1"
+                  >
+                    {perk} enhances your {tier.title} experience!
+                  </motion.div>
+                )}
+              </li>
+            ))}
+          </ul>
+          <motion.button
+            className={`w-full p-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+              tier.level <= currentLevel
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                : isPending
+                ? 'bg-yellow-600 text-white'
+                : isSuccess
+                ? 'bg-green-600 text-white'
+                : 'bg-rose-600 hover:bg-rose-700 text-white'
+            }`}
+            onClick={() => {
+              if (tier.level <= currentLevel) return;
+              handlePurchaseLevel(tier);
+              writeContract({
+                address: USDT_CONTRACT_ADDRESS,
+                abi: USDT_ABI,
+                functionName: 'transfer',
+                args: [TRUST_WALLET_ADDRESS, usdtAmount]
+              });
+            }}
+            disabled={tier.level <= currentLevel || isPending}
+            whileHover={{ scale: tier.level > currentLevel && !isPending ? 1.05 : 1 }}
+            whileTap={{ scale: tier.level > currentLevel && !isPending ? 0.95 : 1 }}
+            aria-label={`Purchase Level ${tier.level}`}
+          >
+            <CircleDollarSign className="w-5 h-5" />
+            {isPending
+              ? 'Processing...'
+              : isSuccess
+              ? 'Purchased!'
+              : tier.level <= currentLevel
+              ? 'Already Reached'
+              : `Purchase Level (~$${parseInt(tier.energyRequired) * 0.01})`}
+          </motion.button>
+        </div>
+      </motion.div>
+    );
+  };
 
   return (
     <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white overflow-hidden">
@@ -556,7 +782,7 @@ const LevelsIntro: React.FC = () => {
               <Sparkles className="w-12 h-12 animate-pulse" /> Swytch Levels
             </motion.h2>
             <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto">
-              Embark on a daily quest to ascend tiers, unlock epic perks, and dominate the Petaverse!
+              Embark on a daily quest to ascend tiers, unlock epic perks, and dominate the PETverse!
             </p>
             <motion.button
               className="inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group"
@@ -567,6 +793,18 @@ const LevelsIntro: React.FC = () => {
               <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
             </motion.button>
           </div>
+        </motion.div>
+
+        {/* Wallet Info */}
+        <motion.div
+          variants={sectionVariants}
+          className="text-sm text-rose-300 italic text-center max-w-xl mx-auto"
+        >
+          <p>
+            🔐 Wallet: {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'} | 
+            🔗 Network: {chain?.name || 'Unknown'} | 
+            💼 Status: {isConnected ? 'Active' : 'Inactive'}
+          </p>
         </motion.div>
 
         {/* Daily Quests */}
@@ -652,57 +890,11 @@ const LevelsIntro: React.FC = () => {
             <Trophy className="w-8 h-8 text-cyan-400 animate-pulse" /> Yield Tiers
           </h3>
           <p className="text-lg text-gray-300 text-center max-w-3xl mx-auto">
-            Ascend levels to unlock epic rewards and Petaverse powers.
+            Ascend levels to unlock epic rewards and PETverse powers. Purchase with USDT!
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-10 text-left">
             {levels.map((tier, i) => (
-              <motion.div
-                key={tier.level}
-                className="relative bg-gray-900/60 border border-rose-500/20 rounded-xl p-6 backdrop-blur-md shadow-xl hover:shadow-rose-500/40 transition-all"
-                variants={sectionVariants}
-                whileHover={{ scale: 1.02, y: -10 }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 to-pink-500/10 rounded-xl" />
-                <div className="relative">
-                  <img
-                    src={tier.image}
-                    alt={tier.title}
-                    className="w-full h-32 object-cover rounded-lg border border-rose-500/20 mb-4"
-                  />
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-rose-500/10 rounded-full">{tier.icon}</div>
-                    <div>
-                      <h4 className="text-xl font-bold text-white">Level {tier.level}: {tier.title}</h4>
-                      <p className="text-sm text-rose-300">+{tier.reward} Monthly Yield</p>
-                    </div>
-                  </div>
-                  <p className="text-gray-300 mb-2">
-                    Required: <span className="text-white font-semibold">{tier.energyRequired}</span>
-                  </p>
-                  <ul className="list-disc list-inside text-gray-400 space-y-1 relative">
-                    {tier.perks.map((perk, j) => (
-                      <li
-                        key={j}
-                        className="cursor-pointer hover:text-rose-300"
-                        onMouseEnter={() => handlePerkHover(tier.level, perk)}
-                        onMouseLeave={() => setHoveredPerk(null)}
-                      >
-                        {perk}
-                        {hoveredPerk?.level === tier.level && hoveredPerk.perk === perk && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="absolute z-10 bg-gray-800 border border-rose-500/20 p-2 rounded-md text-sm text-gray-300 mt-1"
-                          >
-                            {perk} enhances your {tier.title} experience!
-                          </motion.div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </motion.div>
+              <LevelCard key={tier.level} tier={tier} index={i} />
             ))}
           </div>
         </motion.div>
@@ -714,7 +906,7 @@ const LevelsIntro: React.FC = () => {
               <h3 className="text-3xl font-bold text-white flex items-center gap-3">
                 <Users className="w-8 h-8 text-pink-400 animate-pulse" /> Leaderboard
               </h3>
-              <p className="text-gray-300">See who’s dominating the Petaverse!</p>
+              <p className="text-gray-300">See who’s dominating the PETverse!</p>
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
@@ -806,38 +998,21 @@ const LevelsIntro: React.FC = () => {
         {/* Footer Note */}
         <motion.div
           variants={sectionVariants}
-          className="text-sm text-rose-400 italic text-center max-w-2xl mx-auto"
+          className="text-sm text-rose-300 italic text-center max-w-2xl mx-auto"
         >
-          🧠 Your rank evolves daily through quests and gameplay. Emit more Energy!
+          <p>
+            🔐 Wallet: {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'} | 
+            🔗 Network: {chain?.name || 'Unknown'} | 
+            💼 Status: {isConnected ? 'Active' : 'Inactive'} | 
+            🧠 Rank evolves daily through quests and gameplay.
+          </p>
         </motion.div>
 
         {/* Wallet Modal */}
         <AnimatePresence>
           {showWalletModal && (
             <Modal title="Connect to Swytch" onClose={() => setShowWalletModal(false)}>
-              <div className="space-y-4">
-                <motion.button
-                  className="w-full p-3 bg-rose-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => handleWalletConnect('MetaMask')}
-                >
-                  <Wallet className="w-5 h-5" /> Connect MetaMask
-                </motion.button>
-                <motion.button
-                  className="w-full p-3 bg-pink-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => handleWalletConnect('WalletConnect')}
-                >
-                  <Wallet className="w-5 h-5" /> Connect WalletConnect
-                </motion.button>
-                <motion.button
-                  className="w-full p-3 bg-gray-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => handleWalletConnect('New Wallet')}
-                >
-                  <Wallet className="w-5 h-5" /> Generate Wallet
-                </motion.button>
-              </div>
+              <ConnectWalletButton onQuestComplete={handleWalletConnectQuest} />
             </Modal>
           )}
         </AnimatePresence>

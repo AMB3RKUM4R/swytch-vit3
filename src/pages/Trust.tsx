@@ -1,12 +1,16 @@
-import EnergyExplanation from '@/components/EnergyExplanation';
-import SwytchVision from '@/components/vision';
+import TrustBenefits from '@/components/TrustBenefits';
+import EnergyTrustInfo from '@/components/EnergyTrustInfo';
+import PrivateEnergyTrust from '@/components/PrivateEnergyTrust';
+import CommunityOwnership from '@/components/CommunityOwnership';
 
-
-export default function Trust() {
+export default function TrustPage() {
   return (
     <div>
-        <SwytchVision/>
-        <EnergyExplanation/>
+      <PrivateEnergyTrust />
+      <TrustBenefits />
+      <EnergyTrustInfo />
+      
+      <CommunityOwnership />
       
     </div>
   );

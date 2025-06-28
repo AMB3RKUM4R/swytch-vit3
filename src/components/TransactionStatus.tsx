@@ -1,8 +1,13 @@
+"use client";
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight, CheckCircle, Gift, ShoppingCart, TrendingUp, Zap, Coins, CreditCard, DollarSign, LineChart, User, Users, Wallet, ArrowRight, X, Sparkles, Trophy, Target, Award
 } from 'lucide-react';
+import { useAccount, useBalance, useConnect, useDisconnect } from 'wagmi';
+import { formatUnits } from 'viem';
+import { wagmiConfig } from '../lib/wagmi'; // Adjust path to your wagmiConfig file
 
 // Interfaces
 interface Transaction {
@@ -61,9 +66,10 @@ interface CardProps {
 }
 
 // Data
+const USDT_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // Mainnet USDT
 const initialTransactions: Transaction[] = [
   {
-    icon: <ArrowUpRight className="text-green-400 w-4 h-4 animate-pulse" />,
+    icon: <ArrowUpRight className="text-cyan-400 w-4 h-4 animate-pulse" />,
     address: '0x4b...d9A3',
     action: 'Swapped',
     amount: '$25 USDT',
@@ -84,7 +90,7 @@ const initialTransactions: Transaction[] = [
     forToken: 'Vault Guardian'
   },
   {
-    icon: <Gift className="text-pink-400 w-4 h-4 animate-pulse" />,
+    icon: <Gift className="text-rose-400 w-4 h-4 animate-pulse" />,
     address: '0x32...BbC0',
     action: 'Claimed',
     amount: '3.3% yield',
@@ -179,6 +185,9 @@ const Card = ({ children, gradient, className = '', onMouseEnter, onClick }: Car
     whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(244, 63, 94, 0.5)' }}
     onMouseEnter={onMouseEnter}
     onClick={onClick}
+    tabIndex={0}
+    role="button"
+    aria-label={onClick ? 'Interactive card' : 'Information card'}
   >
     {children}
   </motion.div>
@@ -230,6 +239,45 @@ const Modal = ({ title, onClose, children }: { title: string; onClose: () => voi
   );
 };
 
+const ConnectWalletButton = () => {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const metaMaskConnector = connectors.find((c) => c.id === 'metaMask');
+  const walletConnectConnector = connectors.find((c) => c.id === 'walletConnect');
+
+  return (
+    <div className="space-y-4">
+      <motion.button
+        onClick={() => (isConnected ? disconnect() : metaMaskConnector && connect({ connector: metaMaskConnector }))}
+        className={`w-full p-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+          isConnected ? 'bg-red-600 hover:bg-red-700' : 'bg-rose-600 hover:bg-rose-700'
+        } text-white transition-all`}
+        whileHover={{ scale: 1.05, boxShadow: '0 0 10px rgba(244, 63, 94, 0.5)' }}
+        whileTap={{ scale: 0.95 }}
+        aria-label={isConnected ? 'Disconnect MetaMask' : 'Connect MetaMask'}
+        disabled={!metaMaskConnector}
+      >
+        <Wallet className="w-5 h-5 text-cyan-400 animate-pulse" />
+        {isConnected ? `Disconnect (${address?.slice(0, 6)}...${address?.slice(-4)})` : 'Connect MetaMask'}
+      </motion.button>
+      <motion.button
+        onClick={() => (isConnected ? disconnect() : walletConnectConnector && connect({ connector: walletConnectConnector }))}
+        className={`w-full p-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+          isConnected ? 'bg-red-600 hover:bg-red-700' : 'bg-pink-600 hover:bg-pink-700'
+        } text-white transition-all`}
+        whileHover={{ scale: 1.05, boxShadow: '0 0 10px rgba(236, 72, 153, 0.5)' }}
+        whileTap={{ scale: 0.95 }}
+        aria-label={isConnected ? 'Disconnect WalletConnect' : 'Connect WalletConnect'}
+        disabled={!walletConnectConnector}
+      >
+        <Wallet className="w-5 h-5 text-cyan-400 animate-pulse" />
+        {isConnected ? 'Disconnect' : 'Connect WalletConnect'}
+      </motion.button>
+    </div>
+  );
+};
+
 // Main Component
 const TransactionStatus: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
@@ -249,14 +297,16 @@ const TransactionStatus: React.FC = () => {
   const vaultRef = useRef<HTMLCanvasElement>(null);
   const clickAudioRef = useRef<HTMLAudioElement>(null);
   const rewardAudioRef = useRef<HTMLAudioElement>(null);
+  const { address, isConnected, chain } = useAccount();
+  const { data: ethBalance } = useBalance({ address, chainId: wagmiConfig.chains[0].id });
+  const { data: usdtBalance } = useBalance({ address, token: USDT_ADDRESS, chainId: wagmiConfig.chains[0].id });
 
   // Local Storage Keys
-  const JEWELS_STORAGE_KEY = 'swytch_exp_game_state'; // Shared with Tokenomics.tsx, SwytchExp.tsx
-  const SWYT_STORAGE_KEY = 'swytch_game_state'; // Shared with LevelsIntro.tsx
+  const JEWELS_STORAGE_KEY = 'swytch_exp_game_state';
+  const SWYT_STORAGE_KEY = 'swytch_game_state';
 
   // Load State
   useEffect(() => {
-    // Load JEWELS state
     const jewelsState = localStorage.getItem(JEWELS_STORAGE_KEY);
     const swytState = localStorage.getItem(SWYT_STORAGE_KEY);
     const today = new Date().toISOString().split('T')[0];
@@ -280,7 +330,6 @@ const TransactionStatus: React.FC = () => {
       setSwytBalance(parsedSwytState.swytBalance || 26);
     }
 
-    // Handle daily reset and streak
     if (lastVisit !== today) {
       setDailyClicks(0);
       setQuests(initialQuests.map(q => ({ ...q, progress: 0, completed: false })));
@@ -426,7 +475,6 @@ const TransactionStatus: React.FC = () => {
       )
     );
 
-    // Particle effect
     const canvas = vaultRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
@@ -505,7 +553,14 @@ const TransactionStatus: React.FC = () => {
 
   // Handle Account Details Click
   const handleAccountDetailsClick = () => {
-    alert(`Balance: ${swytBalance} SWYT, ${jewelsBalance} JEWELS\nWallet: 0xAB...CDEF\nNetwork: Avalanche`);
+    const network = chain?.name || 'Unknown';
+    alert(
+      `Balance: ${swytBalance} SWYT, ${jewelsBalance} JEWELS\n` +
+      `ETH: ${ethBalance ? `${formatUnits(ethBalance.value, ethBalance.decimals)} ETH` : 'N/A'}\n` +
+      `USDT: ${usdtBalance ? `${formatUnits(usdtBalance.value, usdtBalance.decimals)} USDT` : 'N/A'}\n` +
+      `Wallet: ${address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}\n` +
+      `Network: ${network}`
+    );
   };
 
   // Handle Check-In
@@ -515,12 +570,6 @@ const TransactionStatus: React.FC = () => {
     setShowReward({ jewels: reward, xp: 0, message: `Day ${visitStreak} Check-In: +${reward} JEWELS!` });
     rewardAudioRef.current?.play();
     setShowCheckInModal(false);
-  };
-
-  // Handle Wallet Connect
-  const handleWalletConnect = (type: string) => {
-    alert(`Connecting ${type}...`);
-    setShowWalletModal(false);
   };
 
   return (
@@ -721,6 +770,14 @@ const TransactionStatus: React.FC = () => {
             <Coins className="w-8 h-8 text-orange-400 mb-2 animate-pulse" />
             <p className="text-sm text-gray-400">Your Balance</p>
             <p className="text-xl font-bold text-white">{swytBalance} SWYT</p>
+            {isConnected && (
+              <>
+                <p className="text-sm text-gray-400">ETH</p>
+                <p className="text-xl font-bold text-white">{ethBalance ? `${formatUnits(ethBalance.value, ethBalance.decimals)} ETH` : 'Loading...'}</p>
+                <p className="text-sm text-gray-400">USDT</p>
+                <p className="text-xl font-bold text-white">{usdtBalance ? `${formatUnits(usdtBalance.value, usdtBalance.decimals)} USDT` : 'Loading...'}</p>
+              </>
+            )}
           </Card>
           <Card gradient="from-teal-500/10 to-green-500/10" className="flex flex-col items-center" onMouseEnter={handleStatsHover}>
             <LineChart className="w-8 h-8 text-blue-400 mb-2 animate-pulse" />
@@ -841,7 +898,11 @@ const TransactionStatus: React.FC = () => {
           variants={sectionVariants}
           className="text-sm text-rose-300 italic text-center max-w-xl mx-auto"
         >
-          🔐 Wallet: 0xAB...CDEF | 🔗 Network: Avalanche | 💼 Status: Active
+          <p>
+            🔐 Wallet: {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'} | 
+            🔗 Network: {chain?.name || 'Unknown'} | 
+            💼 Status: {isConnected ? 'Active' : 'Inactive'}
+          </p>
         </motion.div>
 
         {/* Final CTA */}
@@ -874,26 +935,13 @@ const TransactionStatus: React.FC = () => {
         {showWalletModal && (
           <Modal title="Connect to the Vault" onClose={() => setShowWalletModal(false)}>
             <div className="space-y-4">
-              <motion.button
-                className="w-full p-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                onClick={() => handleWalletConnect('MetaMask')}
-              >
-                <Wallet className="w-5 h-5" /> Connect MetaMask
-              </motion.button>
-              <motion.button
-                className="w-full p-3 bg-pink-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                onClick={() => handleWalletConnect('WalletConnect')}
-              >
-                <Wallet className="w-5 h-5" /> Connect WalletConnect
-              </motion.button>
+              <ConnectWalletButton />
               <motion.button
                 className="w-full p-3 bg-gray-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
                 whileHover={{ scale: 1.05 }}
-                onClick={() => handleWalletConnect('New Wallet')}
+                onClick={() => alert('Wallet generation not implemented yet.')}
               >
-                <Wallet className="w-5 h-5" /> Generate New Wallet
+                <Wallet className="w-5 h-5 text-cyan-400 animate-pulse" /> Generate New Wallet
               </motion.button>
             </div>
           </Modal>
@@ -957,7 +1005,7 @@ const TransactionStatus: React.FC = () => {
         .blur-3xl { filter: blur(64px); }
         .blur-2xl { filter: blur(32px); }
         .bg-[url('/noise.png')] {
-          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TqCRZQqlUKqlaVSqlUKqVqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC');
+          background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVCqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC');
         }
         button:focus, canvas:focus {
           outline: none;
@@ -973,5 +1021,6 @@ const TransactionStatus: React.FC = () => {
     </section>
   );
 };
+
 
 export default TransactionStatus;

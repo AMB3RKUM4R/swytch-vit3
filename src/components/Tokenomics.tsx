@@ -1,7 +1,12 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
-import { ChevronDown, Wallet, ArrowRight, X, Sparkles, Zap, Gift, ShieldCheck, BookOpen, Target, Users, Award } from 'lucide-react';
+import { ChevronDown, ArrowRight, X, Sparkles, Zap, Gift, ShieldCheck, BookOpen, Target, Users, Award } from 'lucide-react';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
+import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import Confetti from 'react-confetti';
 
 // Interfaces
 interface Token {
@@ -46,6 +51,10 @@ interface SavedState {
   lastVisit: string | null;
   streak: number;
   achievements: Achievement[];
+  WalletBalance: number;
+  membership: 'none' | 'membership_basic' | 'membership_pro' | 'membership_premium';
+  network?: string;
+  token?: string;
 }
 
 // Data
@@ -265,6 +274,7 @@ const Modal = ({ title, onClose, children }: { title: string; onClose: () => voi
 };
 
 const Tokenomics: React.FC = () => {
+  const { address, isConnected } = useAccount();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -276,60 +286,106 @@ const Tokenomics: React.FC = () => {
   const [lastVisit, setLastVisit] = useState<string | null>(null);
   const [visitStreak, setVisitStreak] = useState(0);
   const [, setFaqReadCount] = useState(0);
+  const [showConfetti, setShowConfetti] = useState(false);
   const nodeRef = useRef<HTMLCanvasElement>(null);
   const clickAudioRef = useRef<HTMLAudioElement>(null);
   const rewardAudioRef = useRef<HTMLAudioElement>(null);
+  const investAudioRef = useRef<HTMLAudioElement>(null);
 
-  // Local Storage Keys
-  const STORAGE_KEY = 'swytch_exp_game_state'; // Shared with SwytchExp.tsx
-
-  // Load state from localStorage
+  // Load state from Firebase
   useEffect(() => {
-    const savedState = localStorage.getItem(STORAGE_KEY);
-    const today = new Date().toISOString().split('T')[0];
-    if (savedState) {
-      const parsedState: SavedState = JSON.parse(savedState);
-      const { jewels, quests, clicks, lastVisit: lastVisitFromStorage, streak, achievements } = parsedState;
-      setJewelsBalance(jewels);
-      setQuests(quests.filter(q => initialQuests.some(iq => iq.id === q.id))); // Ensure only valid quests
-      setDailyClicks(clicks);
-      setLastVisit(lastVisitFromStorage);
-      setVisitStreak(streak);
-      setAchievementsState(achievements);
-      setFaqReadCount(achievements.find(a => a.id === 'faq-3')?.unlocked ? 3 : 0);
-    } else {
-      unlockAchievement('first-visit');
-    }
+    const fetchState = async () => {
+      if (isConnected && address) {
+        try {
+          const userRef = doc(db, 'users', address);
+          const userSnap = await getDoc(userRef);
+          const today = new Date().toISOString().split('T')[0];
+          const data = userSnap.exists() ? (userSnap.data() as SavedState) : undefined;
 
-    // Handle daily reset and streak
-    if (lastVisit !== today) {
-      setDailyClicks(0);
-      setQuests(initialQuests.map(q => ({ ...q, progress: 0, completed: false })));
-      const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
-      if (lastVisit === yesterday) {
-        setVisitStreak(prev => {
-          const newStreak = prev + 1;
-          if (newStreak >= 3) unlockAchievement('streak-3');
-          return newStreak;
-        });
-      } else {
-        setVisitStreak(1);
+          if (data) {
+            setJewelsBalance(data.jewels || 0);
+            setQuests(data.quests?.filter(q => initialQuests.some(iq => iq.id === q.id)) || initialQuests);
+            setDailyClicks(data.clicks || 0);
+            setLastVisit(data.lastVisit);
+            setVisitStreak(data.streak || 0);
+            setAchievementsState(data.achievements || achievements);
+            setFaqReadCount(data.achievements?.find(a => a.id === 'faq-3')?.unlocked ? 3 : 0);
+          } else {
+            await setDoc(userRef, {
+              jewels: 0,
+              quests: initialQuests,
+              clicks: 0,
+              lastVisit: today,
+              streak: 1,
+              achievements,
+              WalletBalance: 0,
+              membership: 'none',
+              updatedAt: serverTimestamp()
+            }, { merge: true });
+            setJewelsBalance(0);
+            setQuests(initialQuests);
+            setDailyClicks(0);
+            setLastVisit(today);
+            setVisitStreak(1);
+            setAchievementsState(achievements);
+            unlockAchievement('first-visit');
+          }
+
+          // Handle daily reset and streak
+          if (data?.lastVisit !== today) {
+            setDailyClicks(0);
+            const resetQuests = initialQuests.map(q => ({ ...q, progress: 0, completed: false }));
+            setQuests(resetQuests);
+            const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
+            if (data?.lastVisit === yesterday) {
+              setVisitStreak(prev => {
+                const newStreak = prev + 1;
+                if (newStreak >= 3) unlockAchievement('streak-3');
+                return newStreak;
+              });
+            } else {
+              setVisitStreak(1);
+            }
+            setLastVisit(today);
+            await setDoc(userRef, { 
+              lastVisit: today, 
+              clicks: 0, 
+              quests: resetQuests, 
+              updatedAt: serverTimestamp() 
+            }, { merge: true });
+          }
+        } catch (err) {
+          console.error('Failed to fetch state:', err);
+          alert('Failed to load user data. Please try again.');
+        }
       }
-      setLastVisit(today);
-    }
-  }, []);
+    };
+    fetchState();
+  }, [isConnected, address]);
 
-  // Save state to localStorage
+  // Save state to Firebase
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      jewels: jewelsBalance,
-      quests,
-      clicks: dailyClicks,
-      lastVisit,
-      streak: visitStreak,
-      achievements: achievementsState
-    }));
-  }, [jewelsBalance, quests, dailyClicks, lastVisit, visitStreak, achievementsState]);
+    const saveState = async () => {
+      if (isConnected && address) {
+        try {
+          const userRef = doc(db, 'users', address);
+          await setDoc(userRef, {
+            jewels: jewelsBalance,
+            quests,
+            clicks: dailyClicks,
+            lastVisit,
+            streak: visitStreak,
+            achievements: achievementsState,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        } catch (err) {
+          console.error('Failed to save state:', err);
+          alert('Failed to save user data. Please try again.');
+        }
+      }
+    };
+    saveState();
+  }, [jewelsBalance, quests, dailyClicks, lastVisit, visitStreak, achievementsState, isConnected, address]);
 
   // Auto-dismiss reward popup
   useEffect(() => {
@@ -374,27 +430,44 @@ const Tokenomics: React.FC = () => {
   }, []);
 
   // Unlock Achievement
-  const unlockAchievement = (id: string) => {
+  const unlockAchievement = async (id: string) => {
     setAchievementsState(prev =>
       prev.map(a => a.id === id && !a.unlocked ? { ...a, unlocked: true } : a)
     );
+    let reward: Reward | null = null;
     if (id === 'first-visit') {
-      setShowReward({ jewels: 5, xp: 10, message: 'Achievement Unlocked: First Visit!' });
-      rewardAudioRef.current?.play();
+      reward = { jewels: 5, xp: 10, message: 'Achievement Unlocked: First Visit!' };
     } else if (id === 'faq-3') {
-      setShowReward({ jewels: 15, xp: 30, message: 'Achievement Unlocked: Knowledge Seeker!' });
-      rewardAudioRef.current?.play();
+      reward = { jewels: 15, xp: 30, message: 'Achievement Unlocked: Knowledge Seeker!' };
     } else if (id === 'streak-3') {
-      setShowReward({ jewels: 20, xp: 30, message: 'Achievement Unlocked: 3-Day Streak!' });
-      rewardAudioRef.current?.play();
+      reward = { jewels: 20, xp: 30, message: 'Achievement Unlocked: 3-Day Streak!' };
     } else if (id === 'jewels-100') {
-      setShowReward({ jewels: 10, xp: 20, message: 'Achievement Unlocked: JEWELS Collector!' });
+      reward = { jewels: 10, xp: 20, message: 'Achievement Unlocked: JEWELS Collector!' };
+    }
+    if (reward) {
+      setShowReward(reward);
+      setJewelsBalance(prev => prev + reward.jewels);
       rewardAudioRef.current?.play();
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2000);
+      if (isConnected && address) {
+        const userRef = doc(db, 'users', address);
+        await setDoc(userRef, {
+          jewels: jewelsBalance + reward.jewels,
+          achievements: achievementsState,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
     }
   };
 
   // Handle Energy Node Click
-  const handleNodeClick = () => {
+  const handleNodeClick = async () => {
+    if (!isConnected || !address) {
+      alert('Please connect your wallet to collect JEWELS.');
+      setShowWalletModal(true);
+      return;
+    }
     if (dailyClicks >= 10) {
       alert('Daily click limit reached! Come back tomorrow.');
       return;
@@ -413,10 +486,12 @@ const Tokenomics: React.FC = () => {
     setQuests(prev =>
       prev.map(q =>
         q.id === 'view-chart' && !q.completed
-          ? { ...q, progress: Math.min(q.progress + 1, q.goal) }
+          ? { ...q, progress: Math.min(q.progress + 1, q.goal), completed: q.progress + 1 >= q.goal }
           : q
       )
     );
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 2000);
 
     // Particle effect
     const canvas = nodeRef.current;
@@ -444,10 +519,25 @@ const Tokenomics: React.FC = () => {
         }, 250);
       }
     }
+
+    if (isConnected && address) {
+      const userRef = doc(db, 'users', address);
+      await setDoc(userRef, {
+        jewels: jewelsBalance + jewelsGain,
+        clicks: dailyClicks + 1,
+        quests,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
   };
 
   // Handle Quest Completion
-  const handleClaimQuest = (questId: string) => {
+  const handleClaimQuest = async (questId: string) => {
+    if (!isConnected || !address) {
+      alert('Please connect your wallet to claim quests.');
+      setShowWalletModal(true);
+      return;
+    }
     const quest = quests.find(q => q.id === questId);
     if (!quest || quest.completed || quest.progress < quest.goal) return;
 
@@ -463,10 +553,26 @@ const Tokenomics: React.FC = () => {
       message: `Quest Completed: ${quest.title}!`
     });
     rewardAudioRef.current?.play();
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 2000);
+
+    if (isConnected && address) {
+      const userRef = doc(db, 'users', address);
+      await setDoc(userRef, {
+        jewels: jewelsBalance + quest.rewardJEWELS,
+        quests,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
   };
 
   // Handle FAQ Toggle
-  const handleFaqToggle = (index: number) => {
+  const handleFaqToggle = async (index: number) => {
+    if (!isConnected || !address) {
+      alert('Please connect your wallet to read FAQs.');
+      setShowWalletModal(true);
+      return;
+    }
     setOpenFaq(openFaq === index ? null : index);
     if (openFaq !== index) {
       setFaqReadCount(prev => {
@@ -483,28 +589,66 @@ const Tokenomics: React.FC = () => {
             : q
         )
       );
+      if (isConnected && address) {
+        const userRef = doc(db, 'users', address);
+        await setDoc(userRef, {
+          quests,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
     }
   };
 
-  // Handle Investment Form Focus
-  const handleInvestmentFocus = () => {
-    setQuests(prev =>
-      prev.map(q =>
-        q.id === 'visit-investment' && !q.completed
-          ? { ...q, progress: 1, completed: true }
-          : q
-      )
-    );
-  };
-
-  // Handle Wallet Connect
-  const handleWalletConnect = (type: string) => {
-    alert(`Connecting ${type}...`);
-    setShowWalletModal(false);
+  // Handle Investment Submission
+  const handleInvestmentSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!isConnected || !address) {
+      alert('Please connect your wallet to submit an investment.');
+      setShowWalletModal(true);
+      return;
+    }
+    const form = e.currentTarget;
+    const amount = parseFloat(form['amount'].value);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid investment amount.');
+      return;
+    }
+    const jewelAmount = amount * 100 * 10; // 1 USD = 100 INR = 1000 JEWELS
+    try {
+      const userRef = doc(db, 'users', address);
+      await setDoc(userRef, {
+        jewels: jewelsBalance + jewelAmount,
+        WalletBalance: amount,
+        network: 'Avalanche',
+        token: 'USDT',
+        updatedAt: serverTimestamp(),
+        quests: quests.map(q =>
+          q.id === 'visit-investment' && !q.completed
+            ? { ...q, progress: 1, completed: true }
+            : q
+        )
+      }, { merge: true });
+      setJewelsBalance(jewelsBalance + jewelAmount);
+      setQuests(prev =>
+        prev.map(q =>
+          q.id === 'visit-investment' && !q.completed
+            ? { ...q, progress: 1, completed: true }
+            : q
+        )
+      );
+      investAudioRef.current?.play();
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2000);
+      alert(`Successfully invested ${amount} USDT (${jewelAmount} JEWELS)! Admin will process payout using your address: ${address}.`);
+    } catch (err) {
+      console.error('Investment error:', err);
+      alert('Failed to submit investment. Please try again.');
+    }
   };
 
   return (
     <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white overflow-hidden">
+      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
       {/* Visual Effects */}
       <motion.div className="fixed inset-0 pointer-events-none z-10">
         <motion.div
@@ -546,7 +690,7 @@ const Tokenomics: React.FC = () => {
           variants={sectionVariants}
           className="relative text-center bg-gray-900/50 backdrop-blur-lg rounded-3xl p-12 border border-rose-500/30 shadow-2xl hover:shadow-rose-500/40 transition-all"
           style={{
-            backgroundImage: `url(/bg (59).jpg)`,
+            backgroundImage: `url(/bg (59).jpg), url(/fallback-bg.jpg)`,
             backgroundSize: 'cover',
             backgroundPosition: `${50 + mousePosition.x * 5}% ${50 + mousePosition.y * 5}%`
           }}
@@ -566,14 +710,30 @@ const Tokenomics: React.FC = () => {
             <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto">
               A sustainable economy powered by purpose, not speculation. Your contributions fuel rewards, secured by smart contracts.
             </p>
-            <motion.button
-              className="inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group"
-              onClick={() => setShowWalletModal(true)}
-              whileHover={{ scale: 1.05 }}
-            >
-              Join the Economy
-              <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
-            </motion.button>
+            {isConnected && (
+              <p className="text-gray-300 text-center">
+                Your JEWELS: <span className="font-bold text-rose-400">{jewelsBalance} JEWELS</span>
+              </p>
+            )}
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <motion.button
+                  className="inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group"
+                  onClick={() => {
+                    if (!isConnected) {
+                      openConnectModal();
+                    } else {
+                      alert('Wallet already connected!');
+                    }
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  aria-label="Join the Economy"
+                >
+                  {isConnected ? 'Wallet Connected' : 'Join the Economy'}
+                  <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
+                </motion.button>
+              )}
+            </ConnectButton.Custom>
           </div>
         </motion.div>
 
@@ -605,6 +765,7 @@ const Tokenomics: React.FC = () => {
                       onClick={() => handleClaimQuest(quest.id)}
                       disabled={quest.completed || quest.progress < quest.goal}
                       whileHover={{ scale: quest.progress >= quest.goal && !quest.completed ? 1.05 : 1 }}
+                      aria-label={`Claim ${quest.title} reward`}
                     >
                       {quest.completed ? 'Claimed' : 'Claim'}
                     </motion.button>
@@ -654,7 +815,12 @@ const Tokenomics: React.FC = () => {
           {tokenData.map((token, i) => (
             <Card key={i} gradient="from-cyan-500/10 to-blue-500/10">
               <div className="flex items-center mb-4 text-rose-400">
-                <img src={token.icon} alt={token.title} className="w-8 h-8 mr-3 rounded-md animate-pulse" />
+                <img
+                  src={token.icon}
+                  alt={token.title}
+                  className="w-8 h-8 mr-3 rounded-md animate-pulse"
+                  onError={(e) => { e.currentTarget.src = '/fallback-icon.png'; }}
+                />
                 <h4 className="text-xl font-bold">{token.title}</h4>
               </div>
               <p className="text-gray-300 text-sm">{token.description}</p>
@@ -869,13 +1035,18 @@ const Tokenomics: React.FC = () => {
               className="relative"
               whileHover={{ scale: 1.1 }}
             >
-              <img src="/qr_donation.png" alt="Donate to Swytch" className="w-40 h-40 rounded-lg border border-rose-500/30" />
+              <img
+                src="/qr_donation.png"
+                alt="Donate to Swytch"
+                className="w-40 h-40 rounded-lg border border-rose-500/30"
+                onError={(e) => { e.currentTarget.src = '/fallback-qr.png'; }}
+              />
               <div className="absolute inset-0 bg-gradient-to-r from-rose-500/20 to-transparent rounded-lg" />
             </motion.div>
             <motion.form
               className="relative bg-gray-900/60 p-6 max-w-xl w-full rounded-xl border border-rose-500/20 backdrop-blur-md space-y-4"
               whileHover={{ scale: 1.03 }}
-              onFocus={handleInvestmentFocus}
+              onSubmit={handleInvestmentSubmit}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 to-pink-500/10 rounded-xl" />
               <div className="relative">
@@ -884,18 +1055,24 @@ const Tokenomics: React.FC = () => {
                   type="text"
                   placeholder="Your Wallet Address"
                   className="w-full p-3 bg-gray-900 text-white rounded-md border border-rose-500/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-500"
+                  value={address || ''}
+                  disabled
                   aria-label="Wallet Address"
                 />
                 <input
                   type="number"
+                  name="amount"
                   placeholder="Amount in USDT"
                   className="w-full p-3 mt-3 bg-gray-900 text-white rounded-md border border-rose-500/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-500"
                   aria-label="Investment Amount in USDT"
+                  min="0"
+                  step="0.01"
                 />
                 <motion.button
+                  type="submit"
                   className="mt-4 w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold"
-                  onClick={(e) => { e.preventDefault(); setShowWalletModal(true); }}
                   whileHover={{ scale: 1.05 }}
+                  aria-label="Submit Investment"
                 >
                   Submit Investment
                 </motion.button>
@@ -915,7 +1092,7 @@ const Tokenomics: React.FC = () => {
           <p className="text-lg text-gray-300 max-w-2xl mx-auto">
             Deposit <span className="text-rose-400 font-semibold">$100</span> at <span className="text-rose-400 font-semibold">3.3% monthly</span>...
           </p>
-          <p className="text-2xl font-bold text-rose-300">
+          <p className="text-2xl font-bold text-rose-400">
             Grow to ≈ ${earningsYearly.toFixed(2)} by year’s end!
           </p>
         </motion.div>
@@ -934,27 +1111,12 @@ const Tokenomics: React.FC = () => {
         {showWalletModal && (
           <Modal title="Connect to Swytch" onClose={() => setShowWalletModal(false)}>
             <div className="space-y-4">
-              <motion.button
-                className="w-full p-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                onClick={() => handleWalletConnect('MetaMask')}
-              >
-                <Wallet className="w-5 h-5" /> Connect MetaMask
-              </motion.button>
-              <motion.button
-                className="w-full p-3 bg-pink-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                onClick={() => handleWalletConnect('WalletConnect')}
-              >
-                <Wallet className="w-5 h-5" /> Connect WalletConnect
-              </motion.button>
-              <motion.button
-                className="w-full p-3 bg-gray-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                onClick={() => handleWalletConnect('New Wallet')}
-              >
-                <Wallet className="w-5 h-5" /> Generate New Wallet
-              </motion.button>
+              <ConnectButton
+                label="Connect Wallet"
+                showBalance={false}
+                accountStatus="address"
+                chainStatus="none"
+              />
             </div>
           </Modal>
         )}
@@ -984,6 +1146,7 @@ const Tokenomics: React.FC = () => {
       {/* Audio */}
       <audio ref={clickAudioRef} src="/audio/click.mp3" preload="auto" />
       <audio ref={rewardAudioRef} src="/audio/reward.mp3" preload="auto" />
+      <audio ref={investAudioRef} src="/audio/invest.mp3" preload="auto" />
 
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }

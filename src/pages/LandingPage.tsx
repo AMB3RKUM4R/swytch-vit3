@@ -1,8 +1,9 @@
 
 
 import SwytchMembership from '@/components/Membership';
-import EcosystemIntro from '@/components/EcosystemIntro';
 import JoinPETverse from '@/components/Ecosystem';
+import PrivateEnergyTrust from '@/components/PrivateEnergyTrust';
+import CommunityOwnership from '@/components/CommunityOwnership';
 
 
 
@@ -10,8 +11,9 @@ export default function LandingPage () {
   return (
     <div >
       <JoinPETverse/>
-     <EcosystemIntro/>
+    <PrivateEnergyTrust/>
     <SwytchMembership/>
+    <CommunityOwnership/>
    
     
     

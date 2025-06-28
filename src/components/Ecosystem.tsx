@@ -1,9 +1,13 @@
+"use client";
+
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Flame, Star, Wallet, ArrowRight, X, Zap, Shield, Rocket, HeartHandshake,
   Quote, Users, BookOpenCheck, Vote
 } from 'lucide-react';
+import { WagmiProvider, useAccount, useConnect, useDisconnect } from 'wagmi';
+import { wagmiConfig } from '../lib/wagmi'; // Adjust path to your wagmiConfig file
 
 const features = [
   {
@@ -63,31 +67,72 @@ const loreSnippets = [
   }
 ];
 
+// Animation variants
+const sectionVariants = {
+  hidden: { opacity: 0, y: 50, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } }
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
+};
+
+const flareVariants = {
+  animate: { scale: [1, 1.3, 1], opacity: [0.5, 0.7, 0.5], transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' } }
+};
+
+const particleVariants = {
+  animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } }
+};
+
+const ConnectWalletButton = () => {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const metaMaskConnector = connectors.find((c) => c.id === 'metaMask');
+  const walletConnectConnector = connectors.find((c) => c.id === 'walletConnect');
+
+  return (
+    <div className="space-y-4">
+      <motion.button
+        onClick={() => (isConnected ? disconnect() : metaMaskConnector && connect({ connector: metaMaskConnector }))}
+        className={`w-full p-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+          isConnected ? 'bg-red-600 hover:bg-red-700' : 'bg-rose-600 hover:bg-rose-700'
+        } text-white transition-all`}
+        whileHover={{ scale: 1.05, boxShadow: '0 0 10px rgba(244, 63, 94, 0.5)' }}
+        whileTap={{ scale: 0.95 }}
+        aria-label={isConnected ? 'Disconnect MetaMask' : 'Connect MetaMask'}
+        disabled={!metaMaskConnector}
+      >
+        <Wallet className="w-5 h-5 text-rose-400 animate-pulse" />
+        {isConnected ? `Disconnect (${address?.slice(0, 6)}...${address?.slice(-4)})` : 'Connect MetaMask'}
+      </motion.button>
+      <motion.button
+        onClick={() => (isConnected ? disconnect() : walletConnectConnector && connect({ connector: walletConnectConnector }))}
+        className={`w-full p-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+          isConnected ? 'bg-red-600 hover:bg-red-700' : 'bg-pink-600 hover:bg-pink-700'
+        } text-white transition-all`}
+        whileHover={{ scale: 1.05, boxShadow: '0 0 10px rgba(236, 72, 153, 0.5)' }}
+        whileTap={{ scale: 0.95 }}
+        aria-label={isConnected ? 'Disconnect WalletConnect' : 'Connect WalletConnect'}
+        disabled={!walletConnectConnector}
+      >
+        <Wallet className="w-5 h-5 text-rose-400 animate-pulse" />
+        {isConnected ? 'Disconnect' : 'Connect WalletConnect'}
+      </motion.button>
+    </div>
+  );
+};
+
+// Main Component
 const JoinPETverse: React.FC = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [email, setEmail] = useState('');
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const modalRef = useRef<HTMLDivElement | null>(null);
-
-  // Animation variants
-  const sectionVariants = {
-    hidden: { opacity: 0, y: 50, scale: 0.95 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } }
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
-  };
-
-  const flareVariants = {
-    animate: { scale: [1, 1.3, 1], opacity: [0.5, 0.7, 0.5], transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' } }
-  };
-
-  const particleVariants = {
-    animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } }
-  };
+  const { address, isConnected, chain } = useAccount();
 
   // Parallax effect
   useEffect(() => {
@@ -206,6 +251,18 @@ const JoinPETverse: React.FC = () => {
               <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
             </motion.button>
           </div>
+        </motion.div>
+
+        {/* Wallet Info */}
+        <motion.div
+          variants={sectionVariants}
+          className="text-sm text-rose-300 italic text-center max-w-xl mx-auto"
+        >
+          <p>
+            🔐 Wallet: {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'} | 
+            🔗 Network: {chain?.name || 'Unknown'} | 
+            💼 Status: {isConnected ? 'Active' : 'Inactive'}
+          </p>
         </motion.div>
 
         {/* Features Section */}
@@ -411,29 +468,15 @@ const JoinPETverse: React.FC = () => {
                   <Wallet className="w-8 h-8 animate-pulse" /> Enter the PETverse
                 </h3>
                 <div className="space-y-4">
-                  <motion.button
-                    className="w-full p-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Connect with MetaMask"
-                  >
-                    <Wallet className="w-5 h-5" /> Connect MetaMask
-                  </motion.button>
-                  <motion.button
-                    className="w-full p-3 bg-pink-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Connect with WalletConnect"
-                  >
-                    <Wallet className="w-5 h-5" /> Connect WalletConnect
-                  </motion.button>
+                  <ConnectWalletButton />
                   <motion.button
                     className="w-full p-3 bg-gray-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    onClick={() => alert('Wallet generation not implemented yet.')}
                     aria-label="Generate new wallet"
                   >
-                    <Wallet className="w-5 h-5" /> Generate New Wallet
+                    <Wallet className="w-5 h-5 text-rose-400 animate-pulse" /> Generate New Wallet
                   </motion.button>
                 </div>
               </motion.div>
@@ -458,7 +501,6 @@ const JoinPETverse: React.FC = () => {
           .blur-2xl {
             filter: blur(32px);
           }
-          /* Noise texture placeholder */
           .bg-[url('/noise.png')] {
             background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiQpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUKpVKqVRKpVJutxuNRqMhSRJpmkYkSVKpVCqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJKpVIplUqlVColSf4BQUzS2f8eAAAAAElFTkSuQmCC');
             background-repeat: repeat;
@@ -470,4 +512,11 @@ const JoinPETverse: React.FC = () => {
   );
 };
 
-export default JoinPETverse;
+// Wrap JoinPETverse with WagmiProvider
+const JoinPETverseWithProvider: React.FC = () => (
+  <WagmiProvider config={wagmiConfig}>
+    <JoinPETverse />
+  </WagmiProvider>
+);
+
+export default JoinPETverseWithProvider;

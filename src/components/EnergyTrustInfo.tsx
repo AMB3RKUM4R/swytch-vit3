@@ -1,6 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { Lock, Book, Zap, Globe, ArrowRight, Wallet, RefreshCw, Send, Sparkles, Star, Coins, ShieldCheck, Key, Terminal, FileText } from 'lucide-react';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
+import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import Confetti from 'react-confetti';
 
 // Interfaces
 interface InfoCard {
@@ -15,6 +20,14 @@ interface YieldResult {
   bonusYield: number;
   totalYield: number;
   tier: string;
+}
+
+interface YieldForm {
+  deposit: string;
+  quests: string;
+  network: string;
+  withdraw: string;
+  token: string;
 }
 
 // Data
@@ -141,12 +154,15 @@ const Modal = ({ title, onClose, children }: { title: string; onClose: () => voi
 };
 
 const EnergyTrustInfo: React.FC = () => {
+  const { address, isConnected } = useAccount();
   const [selectedCard, setSelectedCard] = useState<InfoCard | null>(null);
   const [showStepsModal, setShowStepsModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [yieldForm, setYieldForm] = useState({ deposit: '', quests: '0' });
+  const [yieldForm, setYieldForm] = useState<YieldForm>({ deposit: '', quests: '0', network: 'Avalanche', withdraw: '', token: 'USDT' });
   const [yieldResult, setYieldResult] = useState<YieldResult | null>(null);
+  const [jewels, setJewels] = useState<number>(0);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Parallax effect
   useEffect(() => {
@@ -157,9 +173,35 @@ const EnergyTrustInfo: React.FC = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  // Fetch JEWELS balance
+  useEffect(() => {
+    const fetchJewels = async () => {
+      if (isConnected && address) {
+        try {
+          const userRef = doc(db, 'users', address);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setJewels(userSnap.data().jewels || 0);
+          } else {
+            await setDoc(userRef, { jewels: 0, WalletBalance: 0, updatedAt: serverTimestamp() }, { merge: true });
+            setJewels(0);
+          }
+        } catch (err) {
+          console.error('Failed to fetch JEWELS:', err);
+        }
+      }
+    };
+    fetchJewels();
+  }, [address, isConnected]);
+
   // Calculate yield
-  const handleCalculateYield = (e: React.FormEvent) => {
+  const handleCalculateYield = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isConnected || !address) {
+      alert('Please connect your wallet to calculate yield.');
+      setShowWalletModal(true);
+      return;
+    }
     const deposit = parseFloat(yieldForm.deposit);
     const quests = parseInt(yieldForm.quests);
 
@@ -184,10 +226,85 @@ const EnergyTrustInfo: React.FC = () => {
     const totalYield = baseYield + bonusYield;
 
     setYieldResult({ baseYield, bonusYield, totalYield, tier });
+    const audio = new Audio('/audio/calculate.mp3');
+    audio.play().catch((err) => console.error('Audio playback failed:', err));
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 2000);
+  };
+
+  // Handle deposit
+  const handleDeposit = async (amount: string, network: string) => {
+    if (!isConnected || !address) {
+      alert('Please connect your wallet to deposit JEWELS.');
+      setShowWalletModal(true);
+      return;
+    }
+    const depositAmount = parseFloat(amount);
+    if (isNaN(depositAmount) || depositAmount <= 0) {
+      alert('Please enter a valid deposit amount.');
+      return;
+    }
+    try {
+      const jewelAmount = depositAmount * 10; // 1 INR = 10 JEWELS, $1 = 100 INR
+      const userRef = doc(db, 'users', address);
+      await setDoc(userRef, {
+        jewels: jewels + jewelAmount,
+        WalletBalance: depositAmount,
+        updatedAt: serverTimestamp(),
+        network // Store network for admin payout tracking
+      }, { merge: true });
+      setJewels(jewels + jewelAmount);
+      const audio = new Audio('/audio/deposit.mp3');
+      audio.play().catch((err) => console.error('Audio playback failed:', err));
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2000);
+      alert(`Successfully deposited ${jewelAmount} JEWELS on ${network}! Admin will process payout using your address: ${address}.`);
+    } catch (err) {
+      console.error('Deposit error:', err);
+      alert('Failed to deposit JEWELS. Please try again.');
+    }
+  };
+
+  // Handle withdraw
+  const handleWithdraw = async (amount: string, token: string) => {
+    if (!isConnected || !address) {
+      alert('Please connect your wallet to withdraw JEWELS.');
+      setShowWalletModal(true);
+      return;
+    }
+    const withdrawAmount = parseFloat(amount);
+    if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
+      alert('Please enter a valid withdrawal amount.');
+      return;
+    }
+    const jewelAmount = withdrawAmount * 10; // 1 INR = 10 JEWELS, $1 = 100 INR
+    if (jewelAmount > jewels) {
+      alert('Insufficient JEWELS balance.');
+      return;
+    }
+    try {
+      const userRef = doc(db, 'users', address);
+      await setDoc(userRef, {
+        jewels: jewels - jewelAmount,
+        WalletBalance: withdrawAmount,
+        updatedAt: serverTimestamp(),
+        token // Store token for admin payout tracking
+      }, { merge: true });
+      setJewels(jewels - jewelAmount);
+      const audio = new Audio('/audio/withdraw.mp3');
+      audio.play().catch((err) => console.error('Audio playback failed:', err));
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2000);
+      alert(`Successfully withdrew ${jewelAmount} JEWELS as ${token}! Admin will process payout using your address: ${address}.`);
+    } catch (err) {
+      console.error('Withdraw error:', err);
+      alert('Failed to withdraw JEWELS. Please try again.');
+    }
   };
 
   return (
     <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white overflow-hidden">
+      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
       {/* Lens Flare and Noise Overlay */}
       <motion.div className="fixed inset-0 pointer-events-none z-10">
         <motion.div
@@ -249,10 +366,16 @@ const EnergyTrustInfo: React.FC = () => {
             <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
               Swytch is a declaration of sovereignty—encoded in smart contracts and fueled by Energy.
             </p>
+            {isConnected && (
+              <p className="text-gray-300 text-center">
+                Your JEWELS: <span className="font-bold text-rose-400">{jewels} JEWELS</span>
+              </p>
+            )}
             <motion.button
               onClick={() => setShowWalletModal(true)}
               className="inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group"
               whileHover={{ scale: 1.05 }}
+              aria-label="Claim Your Sovereignty"
             >
               Claim Your Sovereignty
               <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
@@ -268,7 +391,7 @@ const EnergyTrustInfo: React.FC = () => {
           <p className="text-lg text-gray-300 max-w-3xl mx-auto text-center">
             Discover the pillars of the Private Energy Trust, empowering your autonomy.
           </p>
-          <div className="relative overflow-hidden">
+          <div className="relative overflow-hidden no-scrollbar">
             <motion.div className="flex gap-6" variants={infiniteScroll} animate="animate">
               {[...infoCards, ...infoCards].map((card, i) => (
                 <motion.div
@@ -315,20 +438,12 @@ const EnergyTrustInfo: React.FC = () => {
               <h4 className="text-2xl font-semibold text-white flex items-center gap-3">
                 <Wallet className="w-6 h-6 text-rose-400 animate-pulse" /> Connect Wallet
               </h4>
-              <input
-                type="text"
-                placeholder="0x..."
-                className="w-full p-3 rounded bg-gray-900 text-white border border-gray-700 focus:border-rose-500"
-                aria-label="Wallet address"
-              />
+              {isConnected ? (
+                <p className="text-gray-300">Connected: {address?.slice(0, 6)}...{address?.slice(-4)}</p>
+              ) : (
+                <ConnectButton />
+              )}
               <p className="text-gray-400 text-sm">Use your Avalanche-compatible address.</p>
-              <motion.button
-                className="w-full py-3 px-4 bg-rose-600 text-white rounded-lg hover:bg-rose-700 font-semibold"
-                whileHover={{ scale: 1.05 }}
-                onClick={() => alert('Connecting wallet...')}
-              >
-                Connect
-              </motion.button>
             </div>
           </Card>
 
@@ -341,20 +456,23 @@ const EnergyTrustInfo: React.FC = () => {
                 type="number"
                 placeholder="Amount in USDT"
                 className="w-full p-3 rounded bg-gray-900 text-white border border-gray-700 focus:border-cyan-500"
+                onChange={(e) => setYieldForm({ ...yieldForm, deposit: e.target.value })}
                 aria-label="Deposit amount"
               />
               <select
                 className="w-full p-3 rounded bg-gray-900 text-white border border-gray-700 focus:border-cyan-500"
+                onChange={(e) => setYieldForm({ ...yieldForm, network: e.target.value })}
+                value={yieldForm.network}
                 aria-label="Network selection"
               >
-                <option>Choose Network</option>
-                <option>Avalanche</option>
-                <option>Polygon</option>
+                <option value="Avalanche">Avalanche</option>
+                <option value="Polygon">Polygon</option>
               </select>
               <motion.button
                 className="w-full py-3 px-4 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 font-semibold"
                 whileHover={{ scale: 1.05 }}
-                onClick={() => alert('Depositing JEWELS...')}
+                onClick={() => handleDeposit(yieldForm.deposit, yieldForm.network)}
+                aria-label="Deposit JEWELS"
               >
                 Deposit
               </motion.button>
@@ -370,21 +488,24 @@ const EnergyTrustInfo: React.FC = () => {
                 type="number"
                 placeholder="Amount to Withdraw"
                 className="w-full p-3 rounded bg-gray-900 text-white border border-gray-700 focus:border-pink-500"
+                onChange={(e) => setYieldForm({ ...yieldForm, withdraw: e.target.value })}
                 aria-label="Withdraw amount"
               />
               <select
                 className="w-full p-3 rounded bg-gray-900 text-white border border-gray-700 focus:border-pink-500"
+                onChange={(e) => setYieldForm({ ...yieldForm, token: e.target.value })}
+                value={yieldForm.token}
                 aria-label="Target token"
               >
-                <option>Select Target Token</option>
-                <option>USDT</option>
-                <option>FDMT</option>
-                <option>JSIT</option>
+                <option value="USDT">USDT</option>
+                <option value="FDMT">FDMT</option>
+                <option value="JSIT">JSIT</option>
               </select>
               <motion.button
                 className="w-full py-3 px-4 bg-pink-600 text-white rounded-lg hover:bg-pink-700 font-semibold"
                 whileHover={{ scale: 1.05 }}
-                onClick={() => alert('Swapping and withdrawing...')}
+                onClick={() => handleWithdraw(yieldForm.withdraw, yieldForm.token)}
+                aria-label="Swap and Withdraw"
               >
                 Swap & Withdraw
               </motion.button>
@@ -438,6 +559,7 @@ const EnergyTrustInfo: React.FC = () => {
                 type="submit"
                 className="w-full px-6 py-3 bg-cyan-600 text-white hover:bg-cyan-700 rounded-md font-semibold flex items-center justify-center gap-2"
                 whileHover={{ scale: 1.05 }}
+                aria-label="Calculate Yield"
               >
                 <Coins className="w-5 h-5" /> Calculate Yield
               </motion.button>
@@ -471,6 +593,7 @@ const EnergyTrustInfo: React.FC = () => {
                 onClick={() => setShowStepsModal(true)}
                 className="px-8 py-4 bg-rose-600 text-white rounded-full hover:bg-rose-700 font-semibold"
                 whileHover={{ scale: 1.05 }}
+                aria-label="Discover the Steps"
               >
                 Discover the Steps
               </motion.button>
@@ -498,9 +621,9 @@ const EnergyTrustInfo: React.FC = () => {
             <Modal title="Your Swytch Initiation" onClose={() => setShowStepsModal(false)}>
               <div className="space-y-4">
                 <ol className="list-decimal list-inside text-gray-300 space-y-4 text-lg">
-                  <li><strong>Connect Email:</strong> Register with a verified email.</li>
-                  <li><strong>Mint Wallet:</strong> Generate a self-sovereign wallet.</li>
-                  <li><strong>Earn Energy:</strong> Use your wallet to earn and unlock utility.</li>
+                  <li><strong>Connect Wallet:</strong> Link a self-sovereign wallet via MetaMask or WalletConnect.</li>
+                  <li><strong>Deposit JEWELS:</strong> Fund your vault to earn and unlock utility.</li>
+                  <li><strong>Earn Energy:</strong> Complete quests and actions to grow your JEWELS.</li>
                 </ol>
               </div>
             </Modal>
@@ -511,27 +634,7 @@ const EnergyTrustInfo: React.FC = () => {
           {showWalletModal && (
             <Modal title="Connect to Swytch" onClose={() => setShowWalletModal(false)}>
               <div className="space-y-4">
-                <motion.button
-                  className="w-full p-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => alert('Connecting MetaMask...')}
-                >
-                  <Wallet className="w-5 h-5" /> Connect MetaMask
-                </motion.button>
-                <motion.button
-                  className="w-full p-3 bg-pink-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => alert('Connecting WalletConnect...')}
-                >
-                  <Wallet className="w-5 h-5" /> Connect WalletConnect
-                </motion.button>
-                <motion.button
-                  className="w-full p-3 bg-gray-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => alert('Generating new wallet...')}
-                >
-                  <Wallet className="w-5 h-5" /> Generate New Wallet
-                </motion.button>
+                <ConnectButton />
               </div>
             </Modal>
           )}

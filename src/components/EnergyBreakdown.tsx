@@ -14,6 +14,12 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
+import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAuthUser } from '@/hooks/useAuthUser';
+import Confetti from 'react-confetti';
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -81,26 +87,26 @@ const chartConfig = {
         label: 'Monthly Reward (%)',
         data: [1.0, 1.3, 1.6, 1.9, 2.2, 2.5, 2.8, 3.1, 3.3],
         backgroundColor: [
-          'hsla(340, 75%, 55%, 0.6)', // Rose
-          'hsla(340, 75%, 55%, 0.65)',
-          'hsla(340, 75%, 55%, 0.7)',
-          'hsla(180, 100%, 50%, 0.6)', // Cyan
-          'hsla(180, 100%, 50%, 0.65)',
-          'hsla(180, 100%, 50%, 0.7)',
-          'hsla(340, 75%, 55%, 0.6)', // Rose
-          'hsla(340, 75%, 55%, 0.65)',
-          'hsla(340, 75%, 55%, 0.7)',
+          'rgba(244, 63, 94, 0.6)', // Rose
+          'rgba(244, 63, 94, 0.65)',
+          'rgba(244, 63, 94, 0.7)',
+          'rgba(34, 211, 238, 0.6)', // Cyan
+          'rgba(34, 211, 238, 0.65)',
+          'rgba(34, 211, 238, 0.7)',
+          'rgba(244, 63, 94, 0.6)', // Rose
+          'rgba(244, 63, 94, 0.65)',
+          'rgba(244, 63, 94, 0.7)',
         ],
         borderColor: [
-          'hsl(340, 75%, 55%)', // Rose
-          'hsl(340, 75%, 55%)',
-          'hsl(340, 75%, 55%)',
-          'hsl(180, 100%, 50%)', // Cyan
-          'hsl(180, 100%, 50%)',
-          'hsl(180, 100%, 50%)',
-          'hsl(340, 75%, 55%)', // Rose
-          'hsl(340, 75%, 55%)',
-          'hsl(340, 75%, 55%)',
+          '#F43F5E', // Rose
+          '#F43F5E',
+          '#F43F5E',
+          '#22D3EE', // Cyan
+          '#22D3EE',
+          '#22D3EE',
+          '#F43F5E',
+          '#F43F5E',
+          '#F43F5E',
         ],
         borderWidth: 1,
       },
@@ -112,22 +118,22 @@ const chartConfig = {
     scales: {
       y: {
         beginAtZero: true,
-        title: { display: true, text: 'Reward (%)', color: 'hsl(0, 0%, 100%)' }, // White
-        ticks: { color: 'hsl(0, 0%, 100%)' },
-        grid: { color: 'hsla(270, 20%, 25%, 0.2)' }, // Dark purple
+        title: { display: true, text: 'Reward (%)', color: '#FFFFFF' }, // White
+        ticks: { color: '#FFFFFF' },
+        grid: { color: 'rgba(168, 85, 247, 0.2)' }, // Purple
       },
       x: {
-        title: { display: true, text: 'Tier', color: 'hsl(0, 0%, 100%)' }, // White
-        ticks: { color: 'hsl(0, 0%, 100%)' },
-        grid: { color: 'hsla(270, 20%, 25%, 0.2)' },
+        title: { display: true, text: 'Tier', color: '#FFFFFF' }, // White
+        ticks: { color: '#FFFFFF' },
+        grid: { color: 'rgba(168, 85, 247, 0.2)' },
       },
     },
     plugins: {
-      legend: { labels: { color: 'hsl(0, 0%, 100%)' } }, // White
+      legend: { labels: { color: '#FFFFFF' } }, // White
       title: {
         display: true,
         text: 'Reward Progression by Tier',
-        color: 'hsl(0, 0%, 100%)', // White
+        color: '#FFFFFF',
         font: { size: 18 },
       },
     },
@@ -157,52 +163,92 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
+// Throttle function
+const throttle = (func: (...args: any[]) => void, limit: number) => {
+  let lastFunc: NodeJS.Timeout;
+  let lastRan: number;
+  return (...args: any[]) => {
+    if (!lastRan) {
+      func(...args);
+      lastRan = Date.now();
+    } else {
+      clearTimeout(lastFunc);
+      lastFunc = setTimeout(() => {
+        if (Date.now() - lastRan >= limit) {
+          func(...args);
+          lastRan = Date.now();
+        }
+      }, limit - (Date.now() - lastRan));
+    }
+  };
+};
+
 // Components
 const Card = ({ children, gradient, className = '' }: { children: React.ReactNode; gradient: string; className?: string }) => (
   <motion.div
-    className={`relative bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-6 rounded-2xl shadow-xl glass hover:shadow-[hsl(var(--primary))/30] transition-all bg-gradient-to-r ${gradient} ${className}`}
-    whileHover={{ scale: 1.05, boxShadow: '0 0 15px hsla(340, 75%, 55%, 0.5)' }}
+    className={`relative bg-gray-900/50 border border-rose-500/20 p-6 rounded-2xl shadow-xl backdrop-blur-md hover:shadow-rose-500/30 transition-all bg-gradient-to-r ${gradient} ${className}`}
+    whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(244, 63, 94, 0.5)' }}
   >
     {children}
   </motion.div>
 );
 
 const FeatureCard = ({ icon: Icon, title, description }: { icon: any; title: string; description: string }) => (
-  <Card gradient="from-[hsl(var(--primary))/10] to-[hsl(var(--secondary))/10]">
+  <Card gradient="from-rose-500/10 to-pink-500/10">
     <div className="flex items-start space-x-6">
-      <div className="p-4 bg-[hsl(var(--primary))/20] rounded-full shadow-lg">
-        <Icon className="w-8 h-8 text-[hsl(var(--primary))] animate-pulse" aria-hidden="true" />
+      <div className="p-4 bg-rose-500/20 rounded-full shadow-lg">
+        <Icon className="w-8 h-8 text-rose-500 animate-pulse" aria-hidden="true" />
       </div>
       <div>
-        <h3 className="text-2xl font-extrabold text-[hsl(var(--foreground))] mb-3 tracking-tight">{title}</h3>
-        <p className="text-[hsl(var(--muted-foreground))] text-lg leading-relaxed">{description}</p>
+        <h3 className="text-2xl font-extrabold text-gray-100 mb-3 tracking-tight">{title}</h3>
+        <p className="text-gray-300 text-lg leading-relaxed">{description}</p>
       </div>
     </div>
   </Card>
 );
 
 const EnergyBreakdown: React.FC = () => {
+  const { user, loading: authLoading } = useAuthUser();
+  const { address, isConnected } = useAccount();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [depositAmount, setDepositAmount] = useState('');
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [jewels, setJewels] = useState<number>(0);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
-  // Debounced Parallax effect
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    setMousePosition({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight });
-  }, []);
+  // User ID (wallet address or Firebase UID)
+  const userId = isConnected && address ? address : user?.uid;
 
+  // Fetch JEWELS balance
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    const debouncedMouseMove = (e: MouseEvent) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => handleMouseMove(e), 50);
+    const fetchJewels = async () => {
+      if (userId) {
+        try {
+          const userRef = doc(db, 'users', userId);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setJewels(userSnap.data().jewels || 0);
+          } else {
+            await setDoc(userRef, { jewels: 0, WalletBalance: 0, updatedAt: serverTimestamp() }, { merge: true });
+            setJewels(0);
+          }
+        } catch (err) {
+          console.error('Failed to fetch JEWELS:', err);
+        }
+      }
     };
-    window.addEventListener('mousemove', debouncedMouseMove);
-    return () => {
-      window.removeEventListener('mousemove', debouncedMouseMove);
-      clearTimeout(timeout);
-    };
-  }, [handleMouseMove]);
+    fetchJewels();
+  }, [userId]);
+
+  // Throttled mouse move for lens flares
+  useEffect(() => {
+    const handleMouseMove = throttle((e: MouseEvent) => {
+      setMousePosition({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight });
+    }, 100);
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   // Auto-rotate testimonials
   useEffect(() => {
@@ -231,33 +277,76 @@ const EnergyBreakdown: React.FC = () => {
     return { tier, monthlyReward };
   }, []);
 
-  const handleDepositCalculate = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const result = calculateReward(depositAmount);
-      if (result) {
-        alert(`Deposit: $${depositAmount}\nTier: ${result.tier.title}\nMonthly Reward: ${result.tier.reward} ($${result.monthlyReward})`);
-      } else {
-        alert('Please enter a valid deposit amount ($100 or more).');
+  const handleDepositCalculate = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!userId) {
+        alert('Please connect your wallet or log in to calculate rewards.');
+        setShowWalletModal(true);
+        return;
       }
-    } catch (error) {
-      console.error('Error calculating reward:', error);
-      alert('An error occurred. Please try again.');
-    }
-  }, [depositAmount, calculateReward]);
+      try {
+        const result = calculateReward(depositAmount);
+        if (result) {
+          const audio = new Audio('/audio/deposit.mp3');
+          audio.play().catch((err) => console.error('Audio playback failed:', err));
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 2000);
+          alert(`Deposit: $${depositAmount}\nTier: ${result.tier.title}\nMonthly Reward: ${result.tier.reward} ($${result.monthlyReward})`);
+        } else {
+          alert('Please enter a valid deposit amount ($100 or more).');
+        }
+      } catch (error) {
+        console.error('Error calculating reward:', error);
+        alert('An error occurred. Please try again.');
+      }
+    },
+    [depositAmount, calculateReward, userId]
+  );
+
+  const handleDepositNow = useCallback(
+    async (tier: Tier) => {
+      if (!userId) {
+        alert('Please connect your wallet or log in to deposit.');
+        setShowWalletModal(true);
+        return;
+      }
+      const minDeposit = parseFloat(tier.deposit.split('-')[0].replace('$', '')) || parseFloat(tier.deposit.replace('$', '').replace('+', ''));
+      const jewelCost = minDeposit * 10; // 1 INR = 10 JEWELS, assuming $1 = 100 INR for simplicity
+      if (jewels < jewelCost) {
+        alert(`You need at least ${jewelCost} JEWELS to deposit for ${tier.title} tier.`);
+        return;
+      }
+      try {
+        const userRef = doc(db, 'users', userId);
+        await setDoc(userRef, { jewels: jewels - jewelCost, WalletBalance: minDeposit, updatedAt: serverTimestamp() }, { merge: true });
+        setJewels(jewels - jewelCost);
+        const audio = new Audio('/audio/deposit.mp3');
+        audio.play().catch((err) => console.error('Audio playback failed:', err));
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+        alert(`Deposited ${tier.deposit} for ${tier.title} tier! ${jewelCost} JEWELS deducted.`);
+      } catch (err) {
+        console.error('Deposit error:', err);
+        alert('Failed to process deposit. Please try again.');
+      }
+    },
+    [jewels, userId]
+  );
 
   return (
-    <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-background text-foreground overflow-hidden">
+    <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-gray-100 overflow-hidden">
+      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
       {/* Lens Flare and Noise Overlay */}
       <motion.div className="fixed inset-0 pointer-events-none z-10">
         <motion.div
-          className="absolute w-96 h-96 bg-gradient-to-br from-[hsl(var(--primary))/50] via-[hsl(var(--secondary))/40] to-[hsl(var(--accent))/30] rounded-full opacity-30 blur-3xl"
+          className="absolute w-96 h-96 bg-gradient-to-br from-rose-400/50 via-pink-500/40 to-cyan-500/30 rounded-full opacity-30 blur-3xl"
           variants={flareVariants}
           animate="animate"
           style={{ top: `${mousePosition.y * 100}%`, left: `${mousePosition.x * 100}%` }}
         />
         <motion.div
-          className="absolute w-64 h-64 bg-gradient-to-br from-[hsl(var(--secondary))/40] via-[hsl(var(--primary))/30] to-[hsl(var(--accent))/20] rounded-full opacity-20 blur-2xl"
+          className="absolute w-64 h-64 bg-gradient-to-br from-cyan-400/40 via-rose-500/30 to-pink-400/20 rounded-full opacity-20 blur-2xl"
           variants={flareVariants}
           animate="animate"
           style={{ top: `${50 + mousePosition.y * 50}%`, left: `${50 + mousePosition.x * 50}%` }}
@@ -270,7 +359,7 @@ const EnergyBreakdown: React.FC = () => {
             style={{
               top: `${Math.random() * 100}%`,
               left: `${Math.random() * 100}%`,
-              backgroundColor: i % 2 === 0 ? 'hsla(340, 75%, 55%, 0.5)' : 'hsla(180, 100%, 50%, 0.5)',
+              backgroundColor: i % 2 === 0 ? 'rgba(244, 63, 94, 0.5)' : 'rgba(34, 211, 238, 0.5)',
             }}
             variants={particleVariants}
             animate="animate"
@@ -287,29 +376,34 @@ const EnergyBreakdown: React.FC = () => {
         {/* Hero Section */}
         <motion.div
           variants={sectionVariants}
-          className="relative text-center bg-[hsl(var(--card))] glass rounded-3xl p-12 border border-[hsl(var(--border))] shadow-2xl hover:shadow-[hsl(var(--primary))/40] transition-all"
+          className="relative text-center bg-gray-900/50 glass rounded-3xl p-12 border border-rose-500/20 shadow-2xl hover:shadow-rose-500/40 transition-all"
           style={{
             backgroundImage: `url(/bg (59).jpg)`,
             backgroundSize: 'cover',
             backgroundPosition: `${50 + mousePosition.x * 5}% ${50 + mousePosition.y * 5}%`,
           }}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--primary))/60] to-[hsl(var(--secondary))/60] rounded-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-r from-rose-500/60 to-pink-500/60 rounded-3xl" />
           <div className="relative space-y-6">
-            <h2 className="text-5xl sm:text-7xl font-extrabold text-[hsl(var(--primary))] tracking-tight flex items-center justify-center gap-4">
+            <h2 className="text-5xl sm:text-7xl font-extrabold text-rose-400 tracking-tight flex items-center justify-center gap-4">
               <Sparkles className="w-12 h-12 animate-pulse" /> The Petaverse
             </h2>
-            <p className="text-xl sm:text-2xl text-[hsl(var(--muted-foreground))] max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
               A rebellion powered by Energy, governed by purpose, and built for PETs—People of Energy & Truth.
             </p>
-            <motion.a
-              href="#join"
-              className="inline-flex items-center px-8 py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--accent))] rounded-full text-lg font-semibold group"
+            {userId && (
+              <p className="text-gray-300 text-center">
+                Your JEWELS: <span className="font-bold text-rose-400">{jewels} JEWELS</span>
+              </p>
+            )}
+            <motion.button
+              onClick={() => setShowWalletModal(true)}
+              className="inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group"
               whileHover={{ scale: 1.05 }}
             >
               Join the Rebellion
               <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
-            </motion.a>
+            </motion.button>
           </div>
         </motion.div>
 
@@ -325,16 +419,16 @@ const EnergyBreakdown: React.FC = () => {
 
         {/* Deposit Calculator */}
         <motion.div variants={sectionVariants} className="space-y-6">
-          <h2 className="text-4xl font-extrabold text-[hsl(var(--foreground))] text-center flex items-center justify-center gap-4">
-            <DollarSign className="w-10 h-10 text-[hsl(var(--primary))] animate-pulse" /> Calculate Your Rewards
+          <h2 className="text-4xl font-extrabold text-gray-100 text-center flex items-center justify-center gap-4">
+            <DollarSign className="w-10 h-10 text-rose-500 animate-pulse" /> Calculate Your Rewards
           </h2>
-          <p className="text-lg text-[hsl(var(--muted-foreground))] max-w-3xl mx-auto text-center">
+          <p className="text-lg text-gray-300 max-w-3xl mx-auto text-center">
             Enter your deposit amount to see your tier and monthly Energy rewards.
           </p>
-          <Card gradient="from-[hsl(var(--primary))/10] to-[hsl(var(--secondary))/10]">
+          <Card gradient="from-rose-500/10 to-pink-500/10">
             <form onSubmit={handleDepositCalculate} className="space-y-4 max-w-md mx-auto">
               <div>
-                <label htmlFor="deposit-amount" className="block text-sm font-medium text-[hsl(var(--muted-foreground))] mb-1">
+                <label htmlFor="deposit-amount" className="block text-sm font-medium text-gray-300 mb-1">
                   Deposit Amount ($)
                 </label>
                 <input
@@ -343,16 +437,18 @@ const EnergyBreakdown: React.FC = () => {
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
                   placeholder="Enter amount (min $100)"
-                  className="w-full p-3 bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] rounded-md border border-[hsl(var(--border))] focus:border-[hsl(var(--primary))]"
+                  className="w-full p-3 bg-gray-800 text-gray-100 rounded-md border border-gray-700 focus:border-rose-500"
                   min="100"
                   required
                   aria-label="Deposit amount"
+                  disabled={authLoading}
                 />
               </div>
               <motion.button
                 type="submit"
-                className="w-full py-3 bg-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] text-[hsl(var(--primary-foreground))] rounded-lg font-semibold flex items-center justify-center gap-2"
+                className="w-full py-3 bg-rose-600 text-white hover:bg-rose-700 rounded-lg font-semibold flex items-center justify-center gap-2"
                 whileHover={{ scale: 1.05 }}
+                disabled={authLoading}
               >
                 <DollarSign className="w-5 h-5" /> Calculate Reward
               </motion.button>
@@ -365,10 +461,10 @@ const EnergyBreakdown: React.FC = () => {
           variants={sectionVariants}
           className="space-y-8"
         >
-          <h2 className="text-4xl font-extrabold text-[hsl(var(--foreground))] text-center flex items-center justify-center gap-4">
-            <Trophy className="w-10 h-10 text-[hsl(var(--primary))] animate-pulse" /> Energy Gains ⚡
+          <h2 className="text-4xl font-extrabold text-gray-100 text-center flex items-center justify-center gap-4">
+            <Trophy className="w-10 h-10 text-rose-500 animate-pulse" /> Energy Gains ⚡
           </h2>
-          <p className="text-lg text-[hsl(var(--muted-foreground))] max-w-3xl mx-auto text-center">
+          <p className="text-lg text-gray-300 max-w-3xl mx-auto text-center">
             Deposit JEWELS to earn up to 3.3% monthly Energy, plus education bonuses via Raziel.
           </p>
           <div className="relative overflow-hidden">
@@ -380,24 +476,25 @@ const EnergyBreakdown: React.FC = () => {
               {[...tiers, ...tiers].map((tier, i) => (
                 <motion.div
                   key={`${tier.level}-${i}`}
-                  className="flex-shrink-0 w-[300px] bg-[hsl(var(--card))] rounded-xl p-6 border border-[hsl(var(--border))] shadow-xl hover:shadow-[hsl(var(--primary))/30] transition-all glass"
+                  className="flex-shrink-0 w-[300px] bg-gray-900/50 rounded-xl p-6 border border-rose-500/20 shadow-xl hover:shadow-rose-500/30 transition-all backdrop-blur-md"
                   whileHover={{ scale: 1.05, y: -10 }}
                 >
                   <img
                     src={tier.image}
                     alt={tier.title}
                     className="w-full h-40 object-cover rounded-lg mb-4"
-                    onError={(e) => { e.currentTarget.src = '/fallback.jpg'; }} // Fallback image
+                    onError={(e) => { e.currentTarget.src = '/fallback.jpg'; }}
                   />
-                  <h3 className="text-xl font-bold text-[hsl(var(--primary))] flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-rose-400 flex items-center gap-2">
                     <Star className="w-5 h-5" /> Level {tier.level}: {tier.title}
                   </h3>
-                  <p className="text-[hsl(var(--foreground))] mb-2">Reward: {tier.reward} Monthly</p>
-                  <p className="text-[hsl(var(--muted-foreground))] text-sm mb-4">Deposit: {tier.deposit}</p>
+                  <p className="text-gray-100 mb-2">Reward: {tier.reward} Monthly</p>
+                  <p className="text-gray-300 text-sm mb-4">Deposit: {tier.deposit}</p>
                   <motion.button
-                    className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] text-[hsl(var(--primary-foreground))] px-4 py-2 rounded-lg w-full font-semibold"
-                    onClick={() => alert(`Depositing ${tier.deposit} for ${tier.title} tier...`)}
+                    className="bg-rose-600 text-white hover:bg-rose-700 px-4 py-2 rounded-lg w-full font-semibold"
+                    onClick={() => handleDepositNow(tier)}
                     whileHover={{ scale: 1.05 }}
+                    disabled={authLoading}
                   >
                     Deposit Now
                   </motion.button>
@@ -409,13 +506,13 @@ const EnergyBreakdown: React.FC = () => {
 
         {/* Tier Progression Visualizer */}
         <motion.div variants={sectionVariants} className="space-y-6">
-          <h2 className="text-4xl font-extrabold text-[hsl(var(--foreground))] text-center flex items-center justify-center gap-4">
-            <BarChart3 className="w-10 h-10 text-[hsl(var(--primary))] animate-pulse" /> Tier Progression
+          <h2 className="text-4xl font-extrabold text-gray-100 text-center flex items-center justify-center gap-4">
+            <BarChart3 className="w-10 h-10 text-rose-500 animate-pulse" /> Tier Progression
           </h2>
-          <p className="text-lg text-[hsl(var(--muted-foreground))] max-w-3xl mx-auto text-center">
+          <p className="text-lg text-gray-300 max-w-3xl mx-auto text-center">
             Track your journey from Initiate to Mythic PET with increasing rewards.
           </p>
-          <Card gradient="from-[hsl(var(--secondary))/10] to-[hsl(var(--primary))/10]">
+          <Card gradient="from-pink-500/10 to-rose-500/10">
             <div className="p-4 h-96">
               <Bar data={chartConfig.data} options={chartConfig.options} />
             </div>
@@ -424,13 +521,13 @@ const EnergyBreakdown: React.FC = () => {
 
         {/* PET Testimonials */}
         <motion.div variants={sectionVariants} className="space-y-6">
-          <h2 className="text-4xl font-extrabold text-[hsl(var(--foreground))] text-center flex items-center justify-center gap-4">
-            <Quote className="w-10 h-10 text-[hsl(var(--primary))] animate-pulse" /> PET Testimonials
+          <h2 className="text-4xl font-extrabold text-gray-100 text-center flex items-center justify-center gap-4">
+            <Quote className="w-10 h-10 text-rose-500 animate-pulse" /> PET Testimonials
           </h2>
-          <p className="text-lg text-[hsl(var(--muted-foreground))] max-w-3xl mx-auto text-center">
+          <p className="text-lg text-gray-300 max-w-3xl mx-auto text-center">
             Hear from PETs shaping the Petaverse.
           </p>
-          <Card gradient="from-[hsl(var(--primary))/10] to-[hsl(var(--secondary))/10]">
+          <Card gradient="from-rose-500/10 to-pink-500/10">
             <div className="relative h-[200px] overflow-hidden">
               <AnimatePresence initial={false}>
                 <motion.div
@@ -445,11 +542,11 @@ const EnergyBreakdown: React.FC = () => {
                     <img
                       src={testimonials[currentTestimonial].avatar}
                       alt={testimonials[currentTestimonial].author}
-                      className="w-16 h-16 rounded-full mx-auto mb-4 border border-[hsl(var(--border))]"
-                      onError={(e) => { e.currentTarget.src = '/fallback-avatar.jpg'; }} // Fallback avatar
+                      className="w-16 h-16 rounded-full mx-auto mb-4 border border-rose-500/20"
+                      onError={(e) => { e.currentTarget.src = '/fallback-avatar.jpg'; }}
                     />
-                    <p className="text-[hsl(var(--muted-foreground))] italic mb-2">"{testimonials[currentTestimonial].quote}"</p>
-                    <p className="text-[hsl(var(--primary))] font-semibold">{testimonials[currentTestimonial].author}</p>
+                    <p className="text-gray-300 italic mb-2">"{testimonials[currentTestimonial].quote}"</p>
+                    <p className="text-rose-400 font-semibold">{testimonials[currentTestimonial].author}</p>
                   </div>
                 </motion.div>
               </AnimatePresence>
@@ -459,7 +556,7 @@ const EnergyBreakdown: React.FC = () => {
                 <button
                   key={i}
                   onClick={() => setCurrentTestimonial(i)}
-                  className={`w-3 h-3 rounded-full ${i === currentTestimonial ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted))]'}`}
+                  className={`w-3 h-3 rounded-full ${i === currentTestimonial ? 'bg-rose-600' : 'bg-gray-600'}`}
                   aria-label={`View testimonial ${i + 1}`}
                 />
               ))}
@@ -472,32 +569,66 @@ const EnergyBreakdown: React.FC = () => {
           variants={sectionVariants}
           className="relative text-center"
         >
-          <Card gradient="from-[hsl(var(--primary))/10] to-[hsl(var(--secondary))/10]">
+          <Card gradient="from-rose-500/10 to-pink-500/10">
             <div className="space-y-6">
-              <h2 className="text-4xl font-extrabold text-[hsl(var(--foreground))] flex items-center justify-center gap-4">
-                <Globe className="w-10 h-10 text-[hsl(var(--primary))] animate-pulse" /> Shape the Petaverse
+              <h2 className="text-4xl font-extrabold text-gray-100 flex items-center justify-center gap-4">
+                <Globe className="w-10 h-10 text-rose-500 animate-pulse" /> Shape the Petaverse
               </h2>
-              <p className="text-lg text-[hsl(var(--muted-foreground))] max-w-3xl mx-auto">
+              <p className="text-lg text-gray-300 max-w-3xl mx-auto">
                 Become a PET and harness your Energy to build a decentralized future.
               </p>
-              <motion.a
-                href="#join"
-                className="inline-flex items-center px-8 py-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--accent))] rounded-full text-lg font-semibold group"
+              <motion.button
+                onClick={() => setShowWalletModal(true)}
+                className="inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group"
                 whileHover={{ scale: 1.05 }}
               >
                 Start Your Journey
                 <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
-              </motion.a>
+              </motion.button>
             </div>
           </Card>
         </motion.div>
+
+        {/* Wallet Connection Modal */}
+        <AnimatePresence>
+          {showWalletModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-6"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="modal-title"
+            >
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.8 }}
+                className="bg-gray-900/50 border border-rose-500/20 rounded-xl p-8 w-full max-w-md shadow-2xl backdrop-blur-md"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h2 id="modal-title" className="text-2xl font-bold text-rose-400 flex items-center gap-2">
+                    <Sparkles className="w-6 h-6 animate-pulse" /> Connect to Swytch
+                  </h2>
+                  <button onClick={() => setShowWalletModal(false)} aria-label="Close modal">
+                    <text className="text-rose-400 hover:text-red-500 w-6 h-6" />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <ConnectButton />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .blur-3xl { filter: blur(64px); background: rgba(0, 0, 0, 0.5); }
-        .blur-2xl { filter: blur(32px); background: rgba(0, 0, 0, 0.3); }
+        .blur-3xl { filter: blur(64px); }
+        .blur-2xl { filter: blur(32px); }
         .bg-[url('/noise.png')] {
           background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUKpVUKqVRKpVJutxuNRqMhSRJpmkYkSVKpVCqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJKpVIplUqlVColSf4BQUzS2f8eAAAAAElFTkSuQmCC');
         }

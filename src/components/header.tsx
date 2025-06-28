@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
@@ -6,12 +7,13 @@ import {
   Trophy, Settings, LogIn
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import RazorTransaction from '@/RazorWithdraw'; // Adjusted path
+import RazorTransaction from '@/RazorWithdraw';
 import PhoneLogin from '@/hooks/PhoneLogin';
 import { useAuthUser } from '@/hooks/useAuthUser';
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount } from 'wagmi';
 
 // Types
 type MembershipTier = 'membership_basic' | 'membership_pro' | 'membership_premium';
@@ -43,7 +45,7 @@ const navItems: NavItem[] = [
   { name: 'Games', path: '/GamesPage', icon: Gamepad2 },
   { name: 'Landing', path: '/LandingPage', icon: MonitorSmartphone },
   { name: 'Pricing', path: '/Trust', icon: DollarSign },
-  { name: 'Privacy', path: '/privacy', icon: Shield }, // Updated to lowercase
+  { name: 'Privacy', path: '/privacy', icon: Shield },
   { name: 'Account', path: '/Withdraw', icon: UserCheck },
 ];
 
@@ -91,7 +93,7 @@ const Button = ({ children, onClick, ariaLabel, className }: {
     className={`p-2 rounded-full text-rose-400 hover:bg-rose-600/20 hover:scale-110 transition-all focus:outline-none focus:ring-2 focus:ring-rose-500 ${className}`}
     aria-label={ariaLabel}
     role="button"
-    tabIndex={0} // Added for keyboard accessibility
+    tabIndex={0}
   >
     {children}
   </button>
@@ -124,7 +126,7 @@ const Modal = ({ title, onClose, children }: {
         whileHover={{ rotate: 90 }}
         aria-label="Close modal"
         role="button"
-        tabIndex={0} // Added for keyboard accessibility
+        tabIndex={0}
       >
         <X className="w-6 h-6" />
       </motion.button>
@@ -144,18 +146,20 @@ const HeaderComponent: React.FC = () => {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [selectedTier, setSelectedTier] = useState<MembershipTier | null>(null);
   const { user, membership, loading, error, signInWithGoogle, signInWithFacebook, signInWithTwitter, signInWithGithub, signInWithMicrosoft, signOutUser } = useAuthUser();
+  const { address, isConnected } = useAccount();
 
-  // Fetch wallet balance
+  // Fetch wallet balance using wallet address or Firebase user
   useEffect(() => {
     const fetchWalletBalance = async () => {
-      if (user) {
+      const userId = isConnected && address ? address : user?.uid;
+      if (userId) {
         try {
-          const userRef = doc(db, 'users', user.uid);
+          const userRef = doc(db, 'users', userId);
           const userSnap = await getDoc(userRef);
           if (userSnap.exists()) {
             setWalletBalance(userSnap.data().WalletBalance || 0);
           } else {
-            console.warn('User document not found');
+            await setDoc(userRef, { WalletBalance: 0, updatedAt: new Date() }, { merge: true });
             setWalletBalance(0);
           }
         } catch (err) {
@@ -164,14 +168,16 @@ const HeaderComponent: React.FC = () => {
       }
     };
     fetchWalletBalance();
-  }, [user]);
+  }, [user, address, isConnected]);
 
   // Fetch transactions when View Transactions modal opens
   useEffect(() => {
-    if (activeModal === 'View Transactions' && user) {
+    if (activeModal === 'View Transactions' && (user || (isConnected && address))) {
       const fetchTransactions = async () => {
         try {
-          const q = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+          const userId = isConnected && address ? address : user?.uid;
+          if (!userId) return;
+          const q = query(collection(db, 'transactions'), where('userId', '==', userId));
           const querySnapshot = await getDocs(q);
           const txs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as unknown as Transaction[];
           setTransactions(txs);
@@ -181,15 +187,15 @@ const HeaderComponent: React.FC = () => {
       };
       fetchTransactions();
     }
-  }, [activeModal, user]);
+  }, [activeModal, user, address, isConnected]);
 
   // Handle loading state
-  if (loading) {
+  if (loading && !isConnected) {
     return <div className="min-h-screen flex items-center justify-center text-white">Loading...</div>;
   }
 
   // Handle error state
-  if (error) {
+  if (error && !isConnected) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
         <div className="text-center">
@@ -208,16 +214,17 @@ const HeaderComponent: React.FC = () => {
   }
 
   const renderModalContent = () => {
+    const userId = isConnected && address ? address : user?.uid;
     switch (activeModal) {
       case 'Pay with Card':
         return (
           <Modal title="Pay with Card" onClose={() => setActiveModal(null)}>
             <div className="grid gap-4 text-white">
-              {user ? (
+              {userId ? (
                 <p className="text-gray-200">This feature is not available for memberships. Please use "Join Membership" to purchase a plan.</p>
               ) : (
                 <>
-                  <p className="text-red-400">Please log in to proceed.</p>
+                  <p className="text-rose-400">Please log in or connect your wallet to proceed.</p>
                   <div className="flex flex-wrap gap-4 justify-center">
                     <motion.button onClick={signInWithGoogle} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Google">
                       Sign in with Google
@@ -234,6 +241,7 @@ const HeaderComponent: React.FC = () => {
                     <motion.button onClick={signInWithMicrosoft} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Microsoft">
                       Sign in with Microsoft
                     </motion.button>
+                    <ConnectButton />
                   </div>
                 </>
               )}
@@ -261,7 +269,7 @@ const HeaderComponent: React.FC = () => {
         return (
           <Modal title="Transaction History" onClose={() => setActiveModal(null)}>
             <div className="grid gap-4 text-white">
-              {user ? (
+              {userId ? (
                 <>
                   {transactions.length > 0 ? (
                     <ul className="text-sm text-gray-200 space-y-3 max-h-60 overflow-y-auto no-scrollbar">
@@ -273,7 +281,7 @@ const HeaderComponent: React.FC = () => {
                           {tx.transactionType === 'membership' ? (
                             <span>Paid ₹{tx.amount} for {tx.itemId?.replace('membership_', '')} membership - {tx.status}</span>
                           ) : (
-                            <span>{tx.transactionType === 'withdraw' ? 'Withdrawal' : tx.transactionType} of ₹{tx.amount} - {tx.status}</span>
+                            <span>{tx.transactionType === 'withdraw' ? 'Withdrawal' : tx.transactionType === 'deposit' ? 'Deposit' : 'Content Purchase'} of ₹{tx.amount} - {tx.status}</span>
                           )}
                           {tx.screenshot && (
                             <a href={tx.screenshot} target="_blank" rel="noopener noreferrer" className="text-rose-400 underline" aria-label="View transaction screenshot">
@@ -288,7 +296,7 @@ const HeaderComponent: React.FC = () => {
                   )}
                 </>
               ) : (
-                <p className="text-red-400">Please log in to view transactions.</p>
+                <p className="text-rose-400">Please log in or connect your wallet to view transactions.</p>
               )}
             </div>
           </Modal>
@@ -297,7 +305,7 @@ const HeaderComponent: React.FC = () => {
         return (
           <Modal title="Join Swytch Membership" onClose={() => setActiveModal(null)}>
             <div className="grid gap-4 text-white">
-              {user ? (
+              {userId ? (
                 <>
                   {membership && membership !== 'none' ? (
                     <p className="text-rose-400">You already have an active {membership.replace('membership_', '')} membership.</p>
@@ -341,6 +349,7 @@ const HeaderComponent: React.FC = () => {
                           amount={MEMBERSHIP_TIERS[selectedTier].amount}
                           itemId={selectedTier}
                           transactionType="membership"
+                          userId={userId}
                           onSuccess={() => {
                             setSelectedTier(null);
                             setActiveModal(null);
@@ -352,7 +361,7 @@ const HeaderComponent: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <p className="text-red-400">Please log in to proceed with membership.</p>
+                  <p className="text-rose-400">Please log in or connect your wallet to proceed with membership.</p>
                   <div className="flex flex-wrap gap-4 justify-center">
                     <motion.button onClick={signInWithGoogle} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Google">
                       Sign in with Google
@@ -369,6 +378,7 @@ const HeaderComponent: React.FC = () => {
                     <motion.button onClick={signInWithMicrosoft} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Microsoft">
                       Sign in with Microsoft
                     </motion.button>
+                    <ConnectButton />
                   </div>
                 </>
               )}
@@ -379,17 +389,77 @@ const HeaderComponent: React.FC = () => {
         return (
           <Modal title="Access Energy Vault" onClose={() => setActiveModal(null)}>
             <div className="text-white space-y-4">
-              <p className="text-gray-200">Your Wallet Balance: <span className="font-bold text-rose-400">₹{walletBalance}</span></p>
-              <p className="text-gray-200">Current Yield: <span className="font-bold text-rose-400">2.5% Monthly</span></p>
-              <motion.button
-                onClick={() => alert('Yield claiming is coming soon!')}
-                className="w-full bg-rose-600 text-white py-2 rounded-lg font-bold hover:bg-rose-700 opacity-50 cursor-not-allowed"
-                disabled
-                role="button"
-                aria-label="Claim Yield (Disabled)"
-              >
-                Claim Yield (Coming Soon)
-              </motion.button>
+              {isConnected && address ? (
+                <>
+                  <p className="text-gray-200">Your Wallet Balance: <span className="font-bold text-rose-400">₹{walletBalance}</span></p>
+                  <p className="text-gray-200">Current Yield: <span className="font-bold text-rose-400">2.5% Monthly</span></p>
+                  <div className="flex flex-col gap-2">
+                    <motion.button
+                      onClick={() => setActiveModal('Deposit to Energy Vault')}
+                      className="w-full bg-rose-600 text-white py-2 rounded-lg font-bold hover:bg-rose-700"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      role="button"
+                      aria-label="Deposit to Energy Vault"
+                    >
+                      Deposit to Energy Vault
+                    </motion.button>
+                    <motion.button
+                      onClick={() => alert('Yield claiming is coming soon!')}
+                      className="w-full bg-rose-600 text-white py-2 rounded-lg font-bold hover:bg-rose-700 opacity-50 cursor-not-allowed"
+                      disabled
+                      role="button"
+                      aria-label="Claim Yield (Disabled)"
+                    >
+                      Claim Yield (Coming Soon)
+                    </motion.button>
+                  </div>
+                </>
+              ) : user ? (
+                <>
+                  <p className="text-gray-200">Your Wallet Balance: <span className="font-bold text-rose-400">₹{walletBalance}</span></p>
+                  <p className="text-gray-200">Current Yield: <span className="font-bold text-rose-400">2.5% Monthly</span></p>
+                  <p className="text-rose-400">Please connect your wallet to deposit funds.</p>
+                  <ConnectButton />
+                </>
+              ) : (
+                <>
+                  <p className="text-rose-400">Please connect your wallet to access the Energy Vault.</p>
+                  <ConnectButton />
+                </>
+              )}
+            </div>
+          </Modal>
+        );
+      case 'Deposit to Energy Vault':
+        return (
+          <Modal title="Deposit to Energy Vault" onClose={() => setActiveModal(null)}>
+            <div className="grid gap-4 text-white">
+              {isConnected && address ? (
+                <>
+                  <p className="text-gray-200">Deposit funds to your Energy Vault (Minimum ₹50).</p>
+                  <RazorTransaction
+                    amount={50}
+                    itemId="energy_vault_deposit"
+                    transactionType="deposit"
+                    userId={address}
+                    onSuccess={() => {
+                      setWalletBalance(walletBalance + 50);
+                      setActiveModal(null);
+                    }}
+                  />
+                </>
+              ) : user ? (
+                <>
+                  <p className="text-rose-400">Please connect your wallet to deposit funds.</p>
+                  <ConnectButton />
+                </>
+              ) : (
+                <>
+                  <p className="text-rose-400">Please connect your wallet to deposit funds.</p>
+                  <ConnectButton />
+                </>
+              )}
             </div>
           </Modal>
         );
@@ -397,20 +467,24 @@ const HeaderComponent: React.FC = () => {
         return (
           <Modal title="Withdraw Funds" onClose={() => setActiveModal(null)}>
             <div className="grid gap-4 text-white">
-              {user ? (
+              {userId ? (
                 walletBalance >= 50 ? (
                   <RazorTransaction
                     amount={50}
-                    itemId="membership_basic" // Dummy value, not used for withdraw
+                    itemId="withdraw"
                     transactionType="withdraw"
-                    onSuccess={() => setActiveModal(null)}
+                    userId={userId}
+                    onSuccess={() => {
+                      setWalletBalance(walletBalance - 50);
+                      setActiveModal(null);
+                    }}
                   />
                 ) : (
-                  <p className="text-red-400">Insufficient wallet balance. Minimum withdrawal is ₹50.</p>
+                  <p className="text-rose-400">Insufficient wallet balance. Minimum withdrawal is ₹50.</p>
                 )
               ) : (
                 <>
-                  <p className="text-red-400">Please log in to withdraw funds.</p>
+                  <p className="text-rose-400">Please log in or connect your wallet to withdraw funds.</p>
                   <div className="flex flex-wrap gap-4 justify-center">
                     <motion.button onClick={signInWithGoogle} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Google">
                       Sign in with Google
@@ -427,6 +501,7 @@ const HeaderComponent: React.FC = () => {
                     <motion.button onClick={signInWithMicrosoft} className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold hover:bg-rose-700" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} role="button" aria-label="Sign in with Microsoft">
                       Sign in with Microsoft
                     </motion.button>
+                    <ConnectButton />
                   </div>
                 </>
               )}
@@ -523,7 +598,7 @@ const HeaderComponent: React.FC = () => {
                 }`}
                 aria-label={item.name}
                 onClick={(e) => {
-                  if (item.name === 'Login / Signup' || item.name === 'Withdraw') {
+                  if (item.name === 'Login / Signup' || item.name === 'Withdraw' || item.name === 'Energy Vault') {
                     e.preventDefault();
                     setActiveModal(item.name);
                   }
@@ -564,16 +639,18 @@ const HeaderComponent: React.FC = () => {
             Swytch
           </Link>
           <div className="flex gap-2 items-center">
-            {user ? (
+            {user || (isConnected && address) ? (
               <>
-                <span className="text-white text-sm">Welcome, {user.displayName || 'User'}</span>
-                <Button
-                  ariaLabel="Sign out"
-                  onClick={signOutUser}
-                  className="text-red-400 hover:text-red-500"
-                >
-                  <LogIn className="w-5 h-5" />
-                </Button>
+                <span className="text-white text-sm">{isConnected && address ? `Welcome, ${address.slice(0, 6)}...${address.slice(-4)}` : `Welcome, ${user?.displayName || 'User'}`}</span>
+                {user && (
+                  <Button
+                    ariaLabel="Sign out"
+                    onClick={signOutUser}
+                    className="text-red-400 hover:text-red-500"
+                  >
+                    <LogIn className="w-5 h-5" />
+                  </Button>
+                )}
                 <ConnectButton />
               </>
             ) : (

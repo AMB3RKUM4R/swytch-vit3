@@ -1,15 +1,14 @@
-import Account from '@/components/Account';
-import CommunityOwnership from '@/components/CommunityOwnership';
-import SwytchDisclosure from '@/components/Disclosure';
+import EcosystemIntro from '@/components/EcosystemIntro';
+import EnergyExplanation from '@/components/EnergyExplanation';
+import EnergyBreakdown from '@/components/EnergyBreakdown';
 
-
-
-export default function Community() {
+export default function Home() {
   return (
     <div>
-      <Account/>
-      <CommunityOwnership/>
-      <SwytchDisclosure/>
+      <EcosystemIntro />
+      <EnergyExplanation />
+      <EnergyBreakdown />
+     
     </div>
   );
 }

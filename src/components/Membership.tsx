@@ -1,34 +1,45 @@
-import { motion, AnimatePresence } from 'framer-motion';
+"use client";
+
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import {
-  Key, Users, Sparkles, Rocket, Trophy,
-  BookOpen, Globe, Lock, Star, CircleDollarSign, TrendingUp,
-  ScrollText, ShieldCheck, Brain, BarChart2, Flashlight, 
-  Heart, Zap, X
+  Key, Users, Sparkles, Rocket, Trophy, Star, CircleDollarSign, TrendingUp,
+  ScrollText, ShieldCheck, Brain, BarChart2, Flashlight, Heart, Zap, X, Wallet, Target
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { WagmiProvider, useAccount, useBalance, useConnect, useDisconnect, useContractWrite } from 'wagmi';
+import { parseUnits, formatUnits } from 'viem';
+import { wagmiConfig } from '../lib/wagmi'; // Adjust path to your wagmiConfig file
+
+const USDT_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // Mainnet USDT
+const ENERGY_TRUST_ADDRESS = '0xDE9978913D9a969d799A2ba9381FB82450b92CE0'; // Provided Energy Trust address
 
 const levels = [
-  { level: 1, title: 'Initiate', reward: '1.0%', energyRequired: '100 SWYT', perks: ['Basic Vault Access', 'Library Quests', 'NFT View Mode'], icon: <TrendingUp className="w-6 h-6 text-rose-400" />, image: '/bg (29).jpg' },
-  { level: 2, title: 'Apprentice', reward: '1.3%', energyRequired: '250 SWYT', perks: ['Chatbot Assistant', 'NFT Discounts'], icon: <Star className="w-6 h-6 text-pink-400" />, image: '/bg (28).jpg' },
-  { level: 3, title: 'Seeker', reward: '1.6%', energyRequired: '500 SWYT', perks: ['Quest Expansion', 'PET ID Perks'], icon: <ScrollText className="w-6 h-6 text-amber-400" />, image: '/bg (22).jpg' },
-  { level: 4, title: 'Guardian', reward: '1.9%', energyRequired: '1000 SWYT', perks: ['Vault Yield Boost', 'Private Vault Channels'], icon: <ShieldCheck className="w-6 h-6 text-orange-400" />, image: '/bg (6).jpg' },
-  { level: 5, title: 'Sage', reward: '2.2%', energyRequired: '3000 SWYT', perks: ['Beta Testing Rights', 'Voting Access'], icon: <Brain className="w-6 h-6 text-pink-400" />, image: '/bg (8).jpg' },
-  { level: 6, title: 'Archon', reward: '2.5%', energyRequired: '5000 SWYT', perks: ['Early Launch Drops', 'DAO Incentives'], icon: <BarChart2 className="w-6 h-6 text-yellow-400" />, image: '/bg (9).jpg' },
-  { level: 7, title: 'Alchemist', reward: '2.8%', energyRequired: '7500 SWYT', perks: ['Smart Contract Access', 'NFT Mint Tools'], icon: <Flashlight className="w-6 h-6 text-violet-400" />, image: '/bg (10).jpg' },
-  { level: 8, title: 'Elder', reward: '3.1%', energyRequired: '9000 SWYT', perks: ['Legend Quests', 'Energy Bonus Boost'], icon: <Trophy className="w-6 h-6 text-lime-400" />, image: '/bg (12).jpg' },
-  { level: 9, title: 'Mythic PET', reward: '3.3%', energyRequired: '10000 SWYT', perks: ['Max Yield', 'Revenue Sharing', 'Game Designer Roles'], icon: <CircleDollarSign className="w-6 h-6 text-rose-400" />, image: '/bg (11).jpg' }
+  { level: 1, title: 'Initiate', reward: '1.0%', energyRequired: '100 SWYT', perks: ['Basic Vault Access', 'Library Quests', 'NFT View Mode'], icon: <TrendingUp className="w-6 h-6 text-neon-green" />, image: '/bg (29).jpg' },
+  { level: 2, title: 'Apprentice', reward: '1.3%', energyRequired: '250 SWYT', perks: ['Chatbot Assistant', 'NFT Discounts'], icon: <Star className="w-6 h-6 text-neon-green" />, image: '/bg (28).jpg' },
+  { level: 3, title: 'Seeker', reward: '1.6%', energyRequired: '500 SWYT', perks: ['Quest Expansion', 'PET ID Perks'], icon: <ScrollText className="w-6 h-6 text-neon-green" />, image: '/bg (22).jpg' },
+  { level: 4, title: 'Guardian', reward: '1.9%', energyRequired: '1000 SWYT', perks: ['Vault Yield Boost', 'Private Vault Channels'], icon: <ShieldCheck className="w-6 h-6 text-neon-green" />, image: '/bg (6).jpg' },
+  { level: 5, title: 'Sage', reward: '2.2%', energyRequired: '3000 SWYT', perks: ['Beta Testing Rights', 'Voting Access'], icon: <Brain className="w-6 h-6 text-neon-green" />, image: '/bg (8).jpg' },
+  { level: 6, title: 'Archon', reward: '2.5%', energyRequired: '5000 SWYT', perks: ['Early Launch Drops', 'DAO Incentives'], icon: <BarChart2 className="w-6 h-6 text-neon-green" />, image: '/bg (9).jpg' },
+  { level: 7, title: 'Alchemist', reward: '2.8%', energyRequired: '7500 SWYT', perks: ['Smart Contract Access', 'NFT Mint Tools'], icon: <Flashlight className="w-6 h-6 text-neon-green" />, image: '/bg (10).jpg' },
+  { level: 8, title: 'Elder', reward: '3.1%', energyRequired: '9000 SWYT', perks: ['Legend Quests', 'Energy Bonus Boost'], icon: <Trophy className="w-6 h-6 text-neon-green" />, image: '/bg (12).jpg' },
+  { level: 9, title: 'Mythic PET', reward: '3.3%', energyRequired: '10000 SWYT', perks: ['Max Yield', 'Revenue Sharing', 'Game Designer Roles'], icon: <CircleDollarSign className="w-6 h-6 text-neon-green" />, image: '/bg (11).jpg' }
 ];
 
-const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } } };
-const fadeLeft = { hidden: { opacity: 0, x: -50 }, visible: { opacity: 1, x: 0, transition: { duration: 0.8, ease: 'easeOut' } } };
-const fadeRight = { hidden: { opacity: 0, x: 50 }, visible: { opacity: 1, x: 0, transition: { duration: 0.8, ease: 'easeOut' } } };
-const scaleUp = { hidden: { opacity: 0, scale: 0.8 }, visible: { opacity: 1, scale: 1, transition: { duration: 0.7, ease: 'easeOut' } } };
-const infiniteScroll = { animate: { x: ['0%', '-100%'], transition: { x: { repeat: Infinity, repeatType: 'loop', duration: 20, ease: 'linear' } } } };
-const dustVariants = { animate: { scale: [1, 1.2, 1], opacity: [0.6, 0.8, 0.6], transition: { duration: 2, repeat: Infinity, ease: 'easeInOut' } } };
+const fadeUp: Variants = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } } };
+const fadeLeft: Variants = { hidden: { opacity: 0, x: -50 }, visible: { opacity: 1, x: 0, transition: { duration: 0.8, ease: 'easeOut' } } };
+const fadeRight: Variants = { hidden: { opacity: 0, x: 50 }, visible: { opacity: 1, x: 0, transition: { duration: 0.8, ease: 'easeOut' } } };
+const scaleUp: Variants = { hidden: { opacity: 0, scale: 0.8 }, visible: { opacity: 1, scale: 1, transition: { duration: 0.7, ease: 'easeOut' } } };
+const infiniteScroll: Variants = { animate: { x: ['0%', '-100%'], transition: { x: { repeat: Infinity, repeatType: 'loop', duration: 20, ease: 'linear' } } } };
+const flareVariants: Variants = { animate: { scale: [1, 1.2, 1], opacity: [0.6, 0.8, 0.6], transition: { duration: 4, repeat: Infinity, ease: 'easeInOut' } } };
+const rewardVariants: Variants = {
+  initial: { opacity: 0, scale: 0.8, y: 50 },
+  animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+  exit: { opacity: 0, scale: 0.8, y: -50, transition: { duration: 0.3 } }
+};
 
-interface ModalProps { title: string; content: string; onClose: () => void; }
+interface ModalProps { title: string; content: string; onClose: () => void; children?: React.ReactNode; }
 
-const Modal = ({ title, content, onClose }: ModalProps) => {
+const Modal = ({ title, content, onClose, children }: ModalProps) => {
   const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -55,24 +66,25 @@ const Modal = ({ title, content, onClose }: ModalProps) => {
         initial={{ scale: 0.8 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.8 }}
-        className="bg-gray-900 p-8 rounded-2xl max-w-md w-full border border-rose-500/20 shadow-2xl backdrop-blur-md"
+        className="bg-gray-900/80 p-8 rounded-2xl max-w-md w-full border border-neon-green/20 shadow-2xl backdrop-blur-md"
         tabIndex={-1}
       >
         <motion.button
-          className="absolute top-4 right-4 text-rose-400 hover:text-red-500"
+          className="absolute top-4 right-4 text-neon-green hover:text-red-500"
           onClick={onClose}
           whileHover={{ rotate: 90 }}
           aria-label="Close modal"
         >
           <X className="w-6 h-6" />
         </motion.button>
-        <h3 className="text-2xl font-bold text-rose-400 mb-4 flex items-center gap-2">
-          <Sparkles className="w-6 h-6 animate-pulse" /> {title}
+        <h3 className="text-2xl font-bold text-purple-500 font-poppins mb-4 flex items-center gap-2">
+          <Sparkles className="w-6 h-6 text-neon-green animate-pulse" /> {title}
         </h3>
-        <p className="text-gray-300 mb-6">{content}</p>
+        <p className="text-gray-300 font-inter mb-6">{content}</p>
+        {children}
         <button
           onClick={onClose}
-          className="px-6 py-3 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all"
+          className="px-6 py-3 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-all font-poppins"
         >
           Close
         </button>
@@ -81,391 +93,345 @@ const Modal = ({ title, content, onClose }: ModalProps) => {
   );
 };
 
+const ConnectWalletButton = () => {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const metaMaskConnector = connectors.find((c) => c.id === 'metaMask');
+  const walletConnectConnector = connectors.find((c) => c.id === 'walletConnect');
+
+  return (
+    <div className="space-y-4">
+      <motion.button
+        onClick={() => (isConnected ? disconnect() : metaMaskConnector && connect({ connector: metaMaskConnector }))}
+        className={`w-full p-3 rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins ${
+          isConnected ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-500 hover:bg-purple-600'
+        } text-white transition-all`}
+        whileHover={{ scale: 1.05, boxShadow: '0 0 10px rgba(57, 255, 20, 0.5)' }}
+        whileTap={{ scale: 0.95 }}
+        aria-label={isConnected ? 'Disconnect MetaMask' : 'Connect MetaMask'}
+        disabled={!metaMaskConnector}
+      >
+        <Wallet className="w-5 h-5 text-neon-green animate-pulse" />
+        {isConnected ? `Disconnect (${address?.slice(0, 6)}...${address?.slice(-4)})` : 'Connect MetaMask'}
+      </motion.button>
+      <motion.button
+        onClick={() => (isConnected ? disconnect() : walletConnectConnector && connect({ connector: walletConnectConnector }))}
+        className={`w-full p-3 rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins ${
+          isConnected ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-500 hover:bg-purple-600'
+        } text-white transition-all`}
+        whileHover={{ scale: 1.05, boxShadow: '0 0 10px rgba(57, 255, 20, 0.5)' }}
+        whileTap={{ scale: 0.95 }}
+        aria-label={isConnected ? 'Disconnect WalletConnect' : 'Connect WalletConnect'}
+        disabled={!walletConnectConnector}
+      >
+        <Wallet className="w-5 h-5 text-neon-green animate-pulse" />
+        {isConnected ? 'Disconnect' : 'Connect WalletConnect'}
+      </motion.button>
+    </div>
+  );
+};
+
 const SwytchMembership: React.FC = () => {
   const [showModal, setShowModal] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isMember, setIsMember] = useState(false);
+  const [showReward, setShowReward] = useState<string | null>(null);
   const extendedLevels = [...levels, ...levels];
+  const { address, isConnected, chain } = useAccount();
+  const { data: usdtBalance } = useBalance({ address, token: USDT_ADDRESS, chainId: wagmiConfig.chains[0].id });
+  const { writeContract, isPending, isSuccess, error } = useContractWrite();
+
+  // Local Storage for Membership Status
+  useEffect(() => {
+    const storedMembership = localStorage.getItem('swytch_membership');
+    if (storedMembership) {
+      setIsMember(JSON.parse(storedMembership).isMember || false);
+    }
+  }, []);
 
   useEffect(() => {
+    localStorage.setItem('swytch_membership', JSON.stringify({ isMember }));
+  }, [isMember]);
+
+  // Parallax Effect
+  useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+      setMousePosition({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight });
     };
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  // Auto-dismiss Reward Popup
+  useEffect(() => {
+    if (showReward) {
+      const timer = setTimeout(() => setShowReward(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showReward]);
+
+  // Handle Membership Payment
+  const payMembership = async () => {
+    if (!isConnected) {
+      setShowModal('Connect Wallet');
+      return;
+    }
+    if (chain?.id !== wagmiConfig.chains[0].id) {
+      alert('Please switch to Ethereum Mainnet.');
+      return;
+    }
+    if (usdtBalance && Number(formatUnits(usdtBalance.value, usdtBalance.decimals)) < 10) {
+      alert('Insufficient USDT balance. You need at least 10 USDT.');
+      return;
+    }
+
+    try {
+      await writeContract({
+        address: USDT_ADDRESS,
+        abi: [
+          {
+            name: 'transfer',
+            type: 'function',
+            inputs: [
+              { name: '_to', type: 'address' },
+              { name: '_value', type: 'uint256' }
+            ],
+            outputs: [{ type: 'bool' }],
+            stateMutability: 'nonpayable'
+          }
+        ],
+        functionName: 'transfer',
+        args: [ENERGY_TRUST_ADDRESS, parseUnits('10', 6)]
+      });
+    } catch (err) {
+      console.error('Payment error:', err);
+      alert('Payment failed. Please try again.');
+    }
+  };
+
+  // Handle Payment Success
+  useEffect(() => {
+    if (isSuccess) {
+      setIsMember(true);
+      setShowReward('Swytch PET Purchased! Welcome to the PETverse.');
+      setShowModal(null);
+    }
+  }, [isSuccess]);
+
+  // Handle Payment Error
+  useEffect(() => {
+    if (error) {
+      alert(`Payment error: ${error.message}`);
+    }
+  }, [error]);
+
   return (
-    <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-black text-gray-100 overflow-hidden">
-      <motion.div className="fixed inset-0 pointer-events-none z-10">
+    <WagmiProvider config={wagmiConfig}>
+      <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-gradient-to-br from-dark-gray via-purple-500/20 to-black text-white overflow-hidden">
         <motion.div
-          className="absolute w-96 h-96 bg-gradient-to-br from-rose-400/50 via-pink-500/40 to-cyan-500/30 rounded-full opacity-30 blur-3xl"
-          variants={dustVariants}
+          className="absolute inset-0 pointer-events-none"
+          variants={flareVariants}
           animate="animate"
-          style={{ top: `${mousePosition.y - 192}px`, left: `${mousePosition.x - 192}px` }}
-        />
+        >
+          <div className="absolute w-96 h-96 bg-gradient-to-br from-neon-green/50 via-purple-500/40 to-cyan-500/30 rounded-full opacity-30 blur-3xl" style={{ top: `${mousePosition.y * 100}%`, left: `${mousePosition.x * 100}%` }} />
+          <div className="absolute w-64 h-64 bg-gradient-to-br from-cyan-400/40 via-purple-500/30 to-neon-green/20 rounded-full opacity-20 blur-2xl" style={{ top: `${50 + mousePosition.y * 50}%`, left: `${50 + mousePosition.x * 50}%` }} />
+        </motion.div>
+
         <motion.div
-          className="absolute w-64 h-64 bg-gradient-to-br from-cyan-400/40 via-rose-500/30 to-pink-400/20 rounded-full opacity-20 blur-2xl"
-          variants={dustVariants}
-          animate="animate"
-          style={{ top: `${mousePosition.y - 128}px`, left: `${mousePosition.x - 128}px` }}
-        />
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-15" />
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1.5 h-1.5 rounded-full"
-            style={{
-              top: `${mousePosition.y - 50 + Math.random() * 100}px`,
-              left: `${mousePosition.x - 50 + Math.random() * 100}px`,
-              backgroundColor: i % 2 === 0 ? 'rgba(236, 72, 153, 0.5)' : 'rgba(34, 211, 238, 0.5)'
-            }}
-            variants={dustVariants}
-            animate="animate"
-          />
-        ))}
-      </motion.div>
-
-      <motion.div className="relative z-20 max-w-7xl mx-auto space-y-32">
-        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="text-center space-y-8">
-          <h2 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-rose-400 flex items-center justify-center gap-4">
-            <Sparkles className="w-12 h-12 animate-pulse" /> Welcome to Swytch
-          </h2>
-          <p className="text-lg sm:text-xl text-gray-200 max-w-4xl mx-auto leading-relaxed">
-            Swytch is a psychological awakening, a socio-economic rebellion, and a self-sustaining ecosystem governed by PETs: People of Energy & Truth. Join us to redefine wealth, identity, and freedom.
-          </p>
-          <motion.button
-            className="px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowModal('Join PETverse')}
-            aria-label="Join the PETverse"
-          >
-            Become a PET
-          </motion.button>
-        </motion.div>
-
-        <motion.div variants={fadeLeft} initial="hidden" animate="visible" className="flex flex-col lg:flex-row items-center gap-12">
-          <div className="lg:w-1/2 space-y-6">
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-white flex items-center gap-4">
-              <Brain className="text-rose-400 w-12 h-12 animate-pulse" /> Psychological Shift
+          className="relative z-10 max-w-7xl mx-auto space-y-24"
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.2 } } }}
+        >
+          {/* Hero Section */}
+          <motion.div variants={fadeUp} className="text-center">
+            <h2 className="text-5xl sm:text-7xl font-extrabold text-purple-500 font-poppins mb-6 flex items-center justify-center gap-4">
+              <Rocket className="w-12 h-12 text-neon-green animate-pulse" /> Swytch PET Membership
             </h2>
-            <p className="text-lg text-gray-300 leading-relaxed">
-              In Swytch, you’re a Beneficiary, not a user. This validates your existence as worthy of wealth, empowering you to earn through value creation.
+            <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto font-inter">
+              Join the Swytch Energy Trust as a PET to unlock AI-driven yields, exclusive gameplay rewards, and governance in our decentralized ecosystem.
             </p>
-            <ul className="list-none space-y-4 text-lg text-gray-300">
-              <li className="flex items-start gap-3"><Star className="text-pink-400 w-6 h-6" /> Active creator, not passive player</li>
-              <li className="flex items-start gap-3"><Heart className="text-rose-400 w-6 h-6" /> Validated for contribution</li>
-              <li className="flex items-start gap-3"><Trophy className="text-yellow-400 w-6 h-6" /> Earn through participation</li>
-            </ul>
-          </div>
-          <motion.div variants={scaleUp} className="lg:w-1/2">
-            <div className="bg-gray-800/50 p-8 rounded-2xl shadow-2xl border-2 border-rose-500/30 hover:scale-105 transition-transform duration-300">
-              <p className="text-lg text-gray-200 italic">“You are a PET, entitled to earn.”</p>
-            </div>
-          </motion.div>
-        </motion.div>
-
-        <motion.div variants={fadeRight} initial="hidden" animate="visible" className="relative bg-gray-900/30 p-10 rounded-2xl shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-cyan-500/10 rounded-2xl" />
-          <div className="relative space-y-8 text-center">
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-white flex items-center justify-center gap-4">
-              <Users className="text-pink-400 w-12 h-12 animate-pulse" /> Social Architecture
-            </h2>
-            <p className="text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed">
-              The Community Panel is Swytch’s digital heart, where PETs vote, propose, and earn reputation without hierarchy, guided by NPCs.
-            </p>
-            <motion.div variants={fadeUp} className="max-w-3xl mx-auto">
-              <svg viewBox="0 0 600 400" className="w-full h-auto">
-                <defs>
-                  <linearGradient id="communityGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: '#ec4899', stopOpacity: 0.8 }} />
-                    <stop offset="100%" style={{ stopColor: '#22d3ee', stopOpacity: 0.8 }} />
-                  </linearGradient>
-                </defs>
-                <rect x="0" y="0" width="600" height="400" fill="url(#communityGradient)" opacity="0.1" rx="20" />
-                <circle cx="300" cy="200" r="100" fill="none" stroke="#ec4899" strokeWidth="4" />
-                <text x="300" y="200" textAnchor="middle" fill="#fff" fontSize="20" fontWeight="bold">Community Panel</text>
-                {['Voting', 'Proposals', 'Reputation', 'Quests'].map((item, i) => (
-                  <g key={i} transform={`rotate(${i * 90} 300 200) translate(300 100)`}>
-                    <circle r="40" fill="#22d3ee" opacity="0.3" />
-                    <text textAnchor="middle" y="5" fill="#fff" fontSize="14">{item}</text>
-                  </g>
-                ))}
-              </svg>
-              <p className="text-sm text-gray-400 mt-2">Diagram: Decentralized Community Panel for voting and reputation.</p>
-            </motion.div>
-          </div>
-        </motion.div>
-
-        <motion.div variants={fadeLeft} initial="hidden" animate="visible" className="flex flex-col lg:flex-row-reverse items-center gap-12">
-          <div className="lg:w-1/2 space-y-6">
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-white flex items-center gap-4">
-              <CircleDollarSign className="text-rose-400 w-12 h-12 animate-pulse" /> Economic Flow
-            </h2>
-            <p className="text-lg text-gray-300 leading-relaxed">
-              Earn Energy through games, convert to Swytch Stablecoin (tied to USDT), and withdraw via swytchpet.io, fueling your financial freedom.
-            </p>
-            <motion.div variants={fadeUp}>
-              <svg viewBox="0 0 600 400" className="w-full h-auto">
-                <defs>
-                  <linearGradient id="economicGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: '#ec4899', stopOpacity: 0.8 }} />
-                    <stop offset="100%" style={{ stopColor: '#22d3ee', stopOpacity: 0.8 }} />
-                  </linearGradient>
-                </defs>
-                <rect x="0" y="0" width="600" height="400" fill="url(#economicGradient)" opacity="0.1" rx="20" />
-                <g>
-                  <rect x="50" y="50" width="100" height="60" fill="#ec4899" opacity="0.4" rx="10" />
-                  <text x="100" y="80" textAnchor="middle" fill="#fff" fontSize="14">Play Games</text>
-                  <path d="M150 80 L200 80" fill="none" stroke="#22d3ee" strokeWidth="2" markerEnd="url(#arrow)" />
-                  <rect x="200" y="50" width="100" height="60" fill="#22d3ee" opacity="0.4" rx="10" />
-                  <text x="250" y="80" textAnchor="middle" fill="#fff" fontSize="14">Earn Energy</text>
-                  <path d="M300 80 L350 80" fill="none" stroke="#ec4899" strokeWidth="2" markerEnd="url(#arrow)" />
-                  <rect x="350" y="50" width="100" height="60" fill="#ec4899" opacity="0.4" rx="10" />
-                  <text x="400" y="80" textAnchor="middle" fill="#fff" fontSize="14">Stablecoin</text>
-                  <path d="M450 80 L500 80" fill="none" stroke="#22d3ee" strokeWidth="2" markerEnd="url(#arrow)" />
-                  <rect x="500" y="50" width="100" height="60" fill="#22d3ee" opacity="0.4" rx="10" />
-                  <text x="550" y="80" textAnchor="middle" fill="#fff" fontSize="14">Withdraw</text>
-                </g>
-                <defs>
-                  <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-                    <path d="M0,0 L10,5 L0,10 Z" fill="#fff" />
-                  </marker>
-                </defs>
-              </svg>
-              <p className="text-sm text-gray-400 mt-2">Diagram: Energy flow from gameplay to withdrawal.</p>
-            </motion.div>
-          </div>
-          <motion.div variants={scaleUp} className="lg:w-1/2">
-            <div className="bg-gray-800/50 p-8 rounded-2xl shadow-2xl border-2 border-rose-500/30 hover:scale-105 transition-transform duration-300">
-              <p className="text-lg text-gray-200 italic">“Energy is your currency.”</p>
-            </div>
-          </motion.div>
-        </motion.div>
-
-        <motion.div variants={fadeRight} initial="hidden" animate="visible" className="relative bg-gray-900/30 p-10 rounded-2xl shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 to-pink-500/10 rounded-2xl" />
-          <div className="relative space-y-8 text-center">
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-white flex items-center justify-center gap-4">
-              <Key className="text-rose-400 w-12 h-12 animate-pulse" /> Private Membership Association
-            </h2>
-            <p className="text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed">
-              Swytch’s PMA protects members from external interference, offering a private financial ecosphere for $10 USDT.
-            </p>
-            <motion.div variants={fadeUp} className="max-w-3xl mx-auto">
-              <svg viewBox="0 0 600 400" className="w-full h-auto">
-                <defs>
-                  <linearGradient id="pmaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: '#ec4899', stopOpacity: 0.8 }} />
-                    <stop offset="100%" style={{ stopColor: '#22d3ee', stopOpacity: 0.8 }} />
-                  </linearGradient>
-                </defs>
-                <rect x="0" y="0" width="600" height="400" fill="url(#pmaGradient)" opacity="0.1" rx="20" />
-                <circle cx="300" cy="200" r="100" fill="none" stroke="#ec4899" strokeWidth="4" />
-                <text x="300" y="200" textAnchor="middle" fill="#fff" fontSize="20" fontWeight="bold">PMA</text>
-                <g transform="translate(100 50)">
-                  <rect width="100" height="60" fill="#22d3ee" opacity="0.4" rx="10" />
-                  <text x="50" y="35" textAnchor="middle" fill="#fff" fontSize="14">Members</text>
-                </g>
-                <g transform="translate(400 50)">
-                  <rect width="100" height="60" fill="#ec4899" opacity="0.4" rx="10" />
-                  <text x="50" y="35" textAnchor="middle" fill="#fff" fontSize="14">Arbitration</text>
-                </g>
-                <g transform="translate(100 290)">
-                  <rect width="100" height="60" fill="#ec4899" opacity="0.4" rx="10" />
-                  <text x="50" y="35" textAnchor="middle" fill="#fff" fontSize="14">Rights</text>
-                </g>
-                <g transform="translate(400 290)">
-                  <rect width="100" height="60" fill="#22d3ee" opacity="0.4" rx="10" />
-                  <text x="50" y="35" textAnchor="middle" fill="#fff" fontSize="14">Freedom</text>
-                </g>
-              </svg>
-              <p className="text-sm text-gray-400 mt-2">Diagram: PMA structure with members, rights, and arbitration.</p>
-            </motion.div>
-            <button
-              className="px-6 py-3 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all"
-              onClick={() => setShowModal('Join PMA')}
+            <motion.button
+              className={`mt-8 px-8 py-4 rounded-lg text-lg font-semibold text-white font-poppins ${isMember ? 'bg-gray-600 cursor-not-allowed' : 'bg-purple-500 hover:bg-purple-600'}`}
+              onClick={isMember ? undefined : payMembership}
+              disabled={isMember || isPending}
+              whileHover={{ scale: isMember || isPending ? 1 : 1.05, boxShadow: '0 0 10px rgba(57, 255, 20, 0.5)' }}
+              whileTap={{ scale: isMember || isPending ? 1 : 0.95 }}
+              aria-label={isMember ? 'Already a PET' : isPending ? 'Processing Payment' : 'Buy Swytch PET for $10 USDT'}
             >
-              Join PMA ($10 USDT)
-            </button>
-          </div>
-        </motion.div>
+              {isMember ? 'PET Member' : isPending ? 'Processing...' : 'Buy Swytch PET for $10 USDT'}
+            </motion.button>
+          </motion.div>
 
-        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="space-y-10 text-center">
-          <h2 className="text-4xl lg:text-5xl font-extrabold text-white flex items-center justify-center gap-4">
-            <Trophy className="text-rose-400 w-12 h-12 animate-pulse" /> Levels & Rewards
-          </h2>
-          <p className="text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            Progress through 9 levels, earning up to 3.3% monthly yield and unlocking perks like voting and NFT minting.
-          </p>
-          <div className="relative overflow-hidden">
-            <motion.div className="flex gap-6" variants={infiniteScroll} animate="animate">
-              {extendedLevels.map((tier, i) => (
-                <motion.div
-                  key={`${tier.level}-${i}`}
-                  className="bg-gray-900/60 border border-rose-500/20 rounded-xl p-6 backdrop-blur-md min-w-[300px] hover:scale-[1.02] transition-all"
-                  whileHover={{ y: -10 }}
-                >
-                  <img src={tier.image} alt={tier.title} className="w-16 h-16 mb-4 rounded-lg border border-rose-500/20" />
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-rose-500/10 rounded-full">{tier.icon}</div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white">Level {tier.level}: {tier.title}</h3>
-                      <p className="text-sm text-rose-300">+{tier.reward} Monthly Yield</p>
+          {/* Gameplay Rewards */}
+          <motion.div variants={fadeUp}>
+            <div className="bg-gray-900/50 backdrop-blur-lg rounded-2xl p-8 border border-neon-green/20 shadow-2xl hover:shadow-neon-green/40 transition-all">
+              <h3 className="text-3xl font-bold text-white flex items-center gap-3 mb-6 font-poppins">
+                <Target className="w-8 h-8 text-neon-green animate-pulse" /> Gameplay Rewards
+              </h3>
+              <p className="text-lg text-gray-300 mb-6 font-inter">
+                Earn JEWELS through daily quests, Energy Vault interactions, and referrals. Convert JEWELS to SWYT, our stablecoin, to fuel your decentralized financial journey or swap for USDT.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="p-4 bg-gray-800/50 rounded-lg border border-neon-green/20">
+                  <p className="text-white font-semibold font-poppins">Daily Quests</p>
+                  <p className="text-sm text-gray-400 font-inter">Complete tasks like viewing transactions or sharing referrals to earn JEWELS and XP.</p>
+                </div>
+                <div className="p-4 bg-gray-800/50 rounded-lg border border-neon-green/20">
+                  <p className="text-white font-semibold font-poppins">Energy Vault</p>
+                  <p className="text-sm text-gray-400 font-inter">Click the vault daily to collect JEWELS, powering your PET progression.</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Membership Levels */}
+          <motion.div variants={fadeLeft}>
+            <h3 className="text-3xl font-bold text-white flex items-center gap-3 mb-6 font-poppins">
+              <Trophy className="w-8 h-8 text-neon-green animate-pulse" /> Membership Levels
+            </h3>
+            <p className="text-lg text-gray-300 mb-6 font-inter">
+              Progress through PET levels by earning SWYT via gameplay and arbitrage, unlocking higher yields and exclusive perks.
+            </p>
+            <div className="relative overflow-hidden">
+              <motion.div
+                className="flex space-x-6"
+                variants={infiniteScroll}
+                animate="animate"
+              >
+                {extendedLevels.map((level, index) => (
+                  <motion.div
+                    key={`${level.level}-${index}`}
+                    className="min-w-[250px] bg-gray-900/50 p-6 rounded-lg border border-neon-green/20 hover:shadow-neon-green/30 transition-all backdrop-blur-md"
+                    style={{ backgroundImage: `url(${level.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-dark-gray/80 rounded-lg" />
+                    <div className="relative">
+                      <div className="flex items-center gap-2 mb-4">
+                        {level.icon}
+                        <h4 className="text-xl font-bold text-white font-poppins">{level.title}</h4>
+                      </div>
+                      <p className="text-neon-green font-semibold font-poppins">{level.reward} Monthly Yield</p>
+                      <p className="text-gray-400 text-sm font-inter">{level.energyRequired} Required</p>
+                      <ul className="mt-4 space-y-2 text-gray-300 text-sm font-inter">
+                        {level.perks.map((perk, i) => (
+                          <li key={i} className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-neon-green" /> {perk}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  </div>
-                  <p className="text-gray-300 mb-2">Required: <span className="text-white font-semibold">{tier.energyRequired}</span></p>
-                  <ul className="list-disc list-inside text-gray-400 space-y-1">
-                    {tier.perks.map((perk, j) => <li key={j}>{perk}</li>)}
-                  </ul>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-          <button className="mt-6 px-6 py-3 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all">
-            Deposit Energy
-          </button>
-        </motion.div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </motion.div>
 
-        <motion.div variants={fadeRight} initial="hidden" animate="visible" className="relative bg-gray-900/30 p-10 rounded-2xl shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-rose-500/10 rounded-2xl" />
-          <div className="relative space-y-8">
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-white flex items-center gap-4">
-              <BookOpen className="text-cyan-400 w-12 h-12 animate-pulse" /> Know Your Freedom
-            </h2>
-            <p className="text-lg text-gray-300 leading-relaxed">
-              Explore your rights in the Raziel tab, earning up to 0.3% extra yield for education.
+          {/* Benefits */}
+          <motion.div variants={fadeRight}>
+            <h3 className="text-3xl font-bold text-white flex items-center gap-3 mb-6 font-poppins">
+              <Heart className="w-8 h-8 text-neon-green animate-pulse" /> PET Benefits
+            </h3>
+            <p className="text-lg text-gray-300 mb-6 font-inter">
+              As a Swytch PET, you gain access to exclusive rewards, voting rights, and a vibrant community driving decentralized finance and gaming.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
-                { article: 1, text: 'All human beings are born free and equal in dignity and rights.' },
-                { article: 17, text: 'Everyone has the right to own property alone or with others.' },
-                { article: 19, text: 'Everyone has the right to freedom of opinion and expression.' },
-                { article: 20, text: 'Everyone has the right to freedom of peaceful assembly and association.' }
-              ].map((item, i) => (
+                { icon: <Key className="w-6 h-6 text-neon-green" />, title: 'Exclusive Access', desc: 'Unlock private channels, beta features, and premium content.' },
+                { icon: <Users className="w-6 h-6 text-neon-green" />, title: 'Community Governance', desc: 'Vote on platform upgrades and shape the Swytch ecosystem.' },
+                { icon: <Zap className="w-6 h-6 text-neon-green" />, title: 'AI-Driven Yields', desc: 'Earn up to 3.3% monthly yield through AI-powered arbitrage.' }
+              ].map((benefit, index) => (
                 <motion.div
-                  key={i}
-                  variants={fadeUp}
-                  className="bg-gray-800/50 p-6 rounded-lg hover:bg-gray-800/70 transition"
+                  key={index}
+                  className="p-6 bg-gray-900/50 rounded-lg border border-neon-green/20 hover:shadow-neon-green/30 transition-all backdrop-blur-md"
+                  whileHover={{ scale: 1.05 }}
                 >
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Star className="text-rose-400 w-6 h-6" /> Article {item.article}
-                  </h3>
-                  <p className="text-gray-300">{item.text}</p>
+                  <div className="flex items-center gap-2 mb-4">
+                    {benefit.icon}
+                    <p className="text-white font-semibold font-poppins">{benefit.title}</p>
+                  </div>
+                  <p className="text-gray-400 text-sm font-inter">{benefit.desc}</p>
                 </motion.div>
               ))}
             </div>
-            <button
-              className="px-6 py-3 rounded-full bg-cyan-600 text-white hover:bg-cyan-700 transition-all"
-              onClick={() => setShowModal('Know Your Freedom')}
-            >
-              Explore Rights
-            </button>
-          </div>
-        </motion.div>
+          </motion.div>
 
-        <motion.div variants={fadeLeft} initial="hidden" animate="visible" className="flex flex-col lg:flex-row items-center gap-12">
-          <div className="lg:w-1/2 space-y-6">
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-white flex items-center gap-4">
-              <Zap className="text-rose-400 w-12 h-12 animate-pulse" /> JEWELS Energy
-            </h2>
-            <p className="text-lg text-gray-300 leading-relaxed">
-              JEWELS powers Swytch, converting gameplay Energy into Stablecoin for real-world value.
+          {/* Wallet Info */}
+          <motion.div variants={fadeUp} className="text-center text-sm text-neon-green italic font-mono">
+            <p>
+              🔐 Wallet: {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'} | 
+              🔗 Network: {chain?.name || 'Unknown'} | 
+              💼 Status: {isMember ? 'PET Member' : 'Non-Member'}
             </p>
-            <ul className="list-none space-y-4 text-lg text-gray-300">
-              <li className="flex items-start gap-3"><Rocket className="text-pink-400 w-6 h-6" /> Fuels financial freedom</li>
-              <li className="flex items-start gap-3"><Heart className="text-rose-400 w-6 h-6" /> Transforms participation</li>
-            </ul>
-          </div>
-          <motion.div variants={scaleUp} className="lg:w-1/2">
-            <div className="bg-gray-800/50 p-8 rounded-2xl shadow-2xl border-2 border-rose-500/30 hover:scale-105 transition-transform duration-300">
-              <p className="text-lg text-gray-200 italic">“JEWELS: Your energy, your wealth.”</p>
-            </div>
+          </motion.div>
+
+          {/* Final CTA */}
+          <motion.div variants={scaleUp} className="text-center">
+            <h3 className="text-4xl font-extrabold text-white flex items-center justify-center gap-4 mb-6 font-poppins">
+              <Sparkles className="w-10 h-10 text-neon-green animate-pulse" /> Join the PETverse
+            </h3>
+            <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-8 font-inter">
+              Become a Swytch PET for just $10 USDT (₹830) to access exclusive gameplay, earn JEWELS, and power your decentralized financial journey.
+            </p>
+            <motion.button
+              className={`px-8 py-4 rounded-lg text-lg font-semibold text-white font-poppins ${isMember ? 'bg-gray-600 cursor-not-allowed' : 'bg-purple-500 hover:bg-purple-600'}`}
+              onClick={isMember ? undefined : payMembership}
+              disabled={isMember || isPending}
+              whileHover={{ scale: isMember || isPending ? 1 : 1.05, boxShadow: '0 0 10px rgba(57, 255, 20, 0.5)' }}
+              whileTap={{ scale: isMember || isPending ? 1 : 0.95 }}
+              aria-label={isMember ? 'Already a PET' : isPending ? 'Processing Payment' : 'Buy Swytch PET for $10 USDT'}
+            >
+              {isMember ? 'PET Member' : isPending ? 'Processing...' : 'Buy Swytch PET for $10 USDT'}
+            </motion.button>
           </motion.div>
         </motion.div>
 
-        <motion.div variants={fadeRight} initial="hidden" animate="visible" className="relative bg-gray-900/30 p-10 rounded-2xl shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 to-cyan-500/10 rounded-2xl" />
-          <div className="relative space-y-8">
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-white flex items-center gap-4">
-              <Globe className="text-rose-400 w-12 h-12 animate-pulse" /> Decentralization Benefits
-            </h2>
-            <p className="text-lg text-gray-300 leading-relaxed">
-              Swytch’s decentralized platform ensures security, privacy, and community ownership.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <motion.div variants={fadeUp} className="bg-gray-800/50 p-6 rounded-lg hover:bg-gray-800/70 transition">
-                <ShieldCheck className="text-rose-400 w-8 h-8 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-white">Security</h3>
-                <p className="text-gray-300">Distributed nodes prevent failures.</p>
-              </motion.div>
-              <motion.div variants={fadeUp} className="bg-gray-800/50 p-6 rounded-lg hover:bg-gray-800/70 transition">
-                <Lock className="text-pink-400 w-8 h-8 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-white">Privacy</h3>
-                <p className="text-gray-300">Control your data anonymously.</p>
-              </motion.div>
-              <motion.div className="bg-gray-800/70 p-6 rounded-lg hover:bg-gray-800/70 transition">
-                <Users className="text-cyan-400 w-8 h-8 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-white">Ownership</h3>
-                <p className="text-gray-300">Shape Swytch with votes.</p>
-              </motion.div>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div variants={fadeUp} initial="hidden" className="text-center space-y-8">
-          <h2 className="text-4xl lg:text-5xl font-extrabold text-white flex items-center justify-center gap-4">
-            <Rocket className="text-rose-400 w-12 h-12 animate-pulse" /> Join the Rebellion
-          </h2>
-          <p className="text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            Pay $10 USDT to become a PET and build a future where energy is currency.
-          </p>
-          <motion.button
-            className="px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold"
-            onClick={() => setShowModal('Join PETverse')}
-            aria-label="Join the PETverse"
-          >
-            Swytch Now
-          </motion.button>
-        </motion.div>
-
+        {/* Modals */}
         <AnimatePresence>
-          {showModal === 'Join PETverse' && (
+          {showModal === 'Connect Wallet' && (
             <Modal
-              title="Join the PETverse"
-              content="Pay $10 USDT to become a PET, unlocking Swytch with the Omertà: 'We honor Energy. We protect Truth. We uphold the Freedom to Earn.'"
-              onClose={() => setShowModal('')}
-            />
+              title="Connect to the Vault"
+              content="Connect your wallet to join the Swytch Energy Trust and start earning rewards."
+              onClose={() => setShowModal(null)}
+            >
+              <ConnectWalletButton />
+            </Modal>
           )}
-          {showModal === 'Join PMA' && (
+          {showModal === 'Learn More' && (
             <Modal
-              title="Join the PMA"
-              content="For $10 USDT, join Swytch’s PMA, accessing a private financial ecosystem protected by constitutional rights."
-              onClose={() => setShowModal('')}
-            />
-          )}
-          {showModal === 'Know Your Freedom' && (
-            <Modal
-              title="Know Your Freedom"
-              content="Explore the Universal Declaration of Human Rights in the Raziel tab to earn up to 0.3% extra yield."
-              onClose={() => setShowModal('')}
+              title="About Swytch PET"
+              content="Swytch PET Membership grants access to AI-driven yields, exclusive gameplay, and governance in our decentralized ecosystem. Earn JEWELS through quests and vault interactions, and convert to SWYT for trading or USDT."
+              onClose={() => setShowModal(null)}
             />
           )}
         </AnimatePresence>
 
-        <style>{`
-          .no-scrollbar::-webkit-scrollbar { display: none; }
-          .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-          .blur-3xl { filter: blur(64px); }
-          .blur-2xl { filter: blur(32px); }
-          .bg-[url('/noise.png')] {
-            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAZZnQ1BAACxzwv8YQUAAAAJcEhZswAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSSSO4ro0Q0v/UQk4cZJnTf90EQBF3X9UIIH8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUKpVUKkVRKpVJutxuNRqMhSRJpmkYkSVKpVCqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJKpVIplUqlVColSf4BQUzS2f8eAAAAAElFTkSuQzCC');
-            background-repeat: repeat;
-            background-size: 64px 64px;
-          }
-        `}</style>
-      </motion.div>
-    </section>
+        {/* Reward Popup */}
+        <AnimatePresence>
+          {showReward && (
+            <motion.div
+              variants={rewardVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="fixed bottom-20 right-4 max-w-sm w-full bg-gray-900 border border-neon-green/20 rounded-xl shadow-2xl p-4 backdrop-blur-lg z-50"
+            >
+              <div className="flex items-center gap-4">
+                <Sparkles className="w-8 h-8 text-neon-green animate-pulse" />
+                <div>
+                  <p className="text-white font-bold font-poppins">{showReward}</p>
+                  <p className="text-sm text-gray-300 font-inter">Welcome to the Swytch Energy Trust!</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+       
+      </section>
+    </WagmiProvider>
   );
 };
 

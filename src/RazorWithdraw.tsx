@@ -1,3 +1,4 @@
+
 import { useState, useRef } from 'react';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -9,11 +10,12 @@ import { MembershipTier, MEMBERSHIP_TIERS } from '@/lib/types';
 interface RazorTransactionProps {
   amount: number;
   itemId?: string;
-  transactionType: 'membership' | 'withdraw' | 'content_purchase';
+  transactionType: 'membership' | 'withdraw' | 'content_purchase' | 'deposit';
+  userId: string; // Added userId
   onSuccess: (itemId?: string) => void;
 }
 
-const RazorTransaction: React.FC<RazorTransactionProps> = ({ amount, itemId, transactionType, onSuccess }) => {
+const RazorTransaction: React.FC<RazorTransactionProps> = ({ amount, itemId, transactionType, userId, onSuccess }) => {
   const { user, membership, loading: authLoading } = useAuthUser();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -52,16 +54,15 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({ amount, itemId, tra
   };
 
   const checkActiveMembership = async () => {
-    if (!user) return false;
-    const userRef = doc(db, 'users', user.uid);
+    const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
     return userData?.membership && userData.membership !== 'none';
   };
 
   const handleSubmission = async () => {
-    if (!user) {
-      setError('Please log in to proceed.');
+    if (!userId) {
+      setError('User authentication required. Please connect your wallet or log in.');
       return;
     }
 
@@ -87,6 +88,17 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({ amount, itemId, tra
     } else if (transactionType === 'content_purchase' && !itemId) {
       setError('Content ID is required for purchase.');
       return;
+    } else if (transactionType === 'deposit' && amount < 50) {
+      setError('Minimum deposit amount is ₹50.');
+      return;
+    } else if (transactionType === 'withdraw') {
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.data();
+      if (!userData || userData.WalletBalance < amount) {
+        setError('Insufficient wallet balance for withdrawal.');
+        return;
+      }
     }
 
     setError(null);
@@ -99,15 +111,15 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({ amount, itemId, tra
 
       let screenshotUrl = '';
       if (screenshot) {
-        const path = `tx_screenshots/${user.uid}_${Date.now()}`;
+        const path = `tx_screenshots/${userId}_${Date.now()}`;
         const fileRef = ref(storage, path);
         await uploadBytes(fileRef, screenshot);
         screenshotUrl = await getDownloadURL(fileRef);
       }
 
-      const transactionId = `${user.uid}_${Date.now()}`;
+      const transactionId = `${userId}_${Date.now()}`;
       const data = {
-        userId: user.uid,
+        userId,
         amount: amount.toString(),
         transactionId,
         transactionType,
@@ -120,12 +132,22 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({ amount, itemId, tra
       await setDoc(doc(db, 'transactions', transactionId), data);
 
       if (transactionType === 'membership' && itemId) {
-        await setDoc(doc(db, 'users', user.uid), { membership: itemId }, { merge: true });
+        await setDoc(doc(db, 'users', userId), { membership: itemId }, { merge: true });
+      } else if (transactionType === 'deposit') {
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        const currentBalance = userSnap.exists() ? userSnap.data().WalletBalance || 0 : 0;
+        await setDoc(userRef, { WalletBalance: currentBalance + amount, updatedAt: serverTimestamp() }, { merge: true });
+      } else if (transactionType === 'withdraw') {
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        const currentBalance = userSnap.exists() ? userSnap.data().WalletBalance || 0 : 0;
+        await setDoc(userRef, { WalletBalance: currentBalance - amount, updatedAt: serverTimestamp() }, { merge: true });
       }
 
       onSuccess(itemId);
 
-      alert(`${transactionType === 'membership' ? 'Membership payment' : transactionType === 'content_purchase' ? 'Content purchase' : 'Withdrawal request'} submitted! Awaiting admin verification. Transaction ID: ${transactionId}`);
+      alert(`${transactionType === 'membership' ? 'Membership payment' : transactionType === 'content_purchase' ? 'Content purchase' : transactionType === 'deposit' ? 'Deposit' : 'Withdrawal request'} submitted! Awaiting admin verification. Transaction ID: ${transactionId}`);
     } catch (err: any) {
       setError(err.message || 'Failed to submit request.');
       console.error('Submission error:', err);
@@ -147,13 +169,13 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({ amount, itemId, tra
     >
       {authLoading ? (
         <p className="text-gray-200 text-sm">Loading authentication...</p>
-      ) : !user ? (
-        <p className="text-rose-400 text-sm">Please log in to proceed.</p>
+      ) : !userId ? (
+        <p className="text-rose-400 text-sm">Please connect your wallet or log in to proceed.</p>
       ) : transactionType === 'membership' && membershipDetails ? (
         <>
           <div className="text-sm text-gray-200">
             <p>
-              Hello, <span className="font-bold text-rose-400">{user.displayName || 'User'}</span>!
+              Hello, <span className="font-bold text-rose-400">{user?.displayName || userId.slice(0, 6) + '...' + userId.slice(-4)}</span>!
             </p>
             {membership && membership !== 'none' ? (
               <p className="text-rose-400">You already have an active {MEMBERSHIP_TIERS[membership as MembershipTier]?.name || 'membership'}.</p>
@@ -227,10 +249,10 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({ amount, itemId, tra
             </>
           ) : null}
         </>
-      ) : transactionType === 'content_purchase' ? (
+      ) : transactionType === 'content_purchase' || transactionType === 'deposit' ? (
         <>
           <div className="text-sm text-gray-200">
-            <p>Purchase content for ₹{amount}.</p>
+            <p>{transactionType === 'content_purchase' ? `Purchase content for ₹${amount}.` : `Deposit ₹${amount} to Energy Vault.`}</p>
             <p>{isMobile ? 'Tap the QR code or "Pay Now" to pay via UPI app (e.g., Google Pay, PhonePe):' : 'Scan the QR code below to pay via UPI (e.g., Google Pay, PhonePe):'}</p>
             {isMobile ? (
               <a href={upiIntentUri} target="_blank" rel="noopener noreferrer" aria-label="Open UPI app to pay">
@@ -286,7 +308,7 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({ amount, itemId, tra
             variants={buttonVariants}
             whileHover={loading || !screenshot ? {} : 'hover'}
             whileTap={loading || !screenshot ? {} : 'tap'}
-            aria-label="Submit content purchase"
+            aria-label={`Submit ${transactionType === 'content_purchase' ? 'content purchase' : 'deposit'} payment`}
             role="button"
           >
             {loading ? 'Processing...' : 'Submit Payment'}

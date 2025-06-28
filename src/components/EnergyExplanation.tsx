@@ -2,6 +2,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Bolt, ShieldCheck, BookOpen, Landmark, Scale, Zap, FileText, Wallet, Sparkles, Trophy, Star, ArrowRight } from 'lucide-react';
 import throttle from 'lodash.throttle';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
+import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import Confetti from 'react-confetti';
 
 // Interfaces
 interface RewardTier {
@@ -25,9 +30,13 @@ const rewardTiers: RewardTier[] = [
 ];
 
 const EnergyExplanation: React.FC = () => {
+  const { address, isConnected } = useAccount();
   const [modalOpen, setModalOpen] = useState(false);
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isScrolling, setIsScrolling] = useState(true);
+  const [jewels, setJewels] = useState<number>(0);
+  const [showConfetti, setShowConfetti] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Animation variants
@@ -66,6 +75,27 @@ const EnergyExplanation: React.FC = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [handleMouseMove]);
 
+  // Fetch JEWELS balance
+  useEffect(() => {
+    const fetchJewels = async () => {
+      if (isConnected && address) {
+        try {
+          const userRef = doc(db, 'users', address);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setJewels(userSnap.data().jewels || 0);
+          } else {
+            await setDoc(userRef, { jewels: 0, WalletBalance: 0, updatedAt: serverTimestamp() }, { merge: true });
+            setJewels(0);
+          }
+        } catch (err) {
+          console.error('Failed to fetch JEWELS:', err);
+        }
+      }
+    };
+    fetchJewels();
+  }, [address, isConnected]);
+
   // Infinite scroll with pause on hover
   useEffect(() => {
     const scrollContainer = scrollRef.current;
@@ -84,8 +114,42 @@ const EnergyExplanation: React.FC = () => {
     return () => cancelAnimationFrame(frameId);
   }, [isScrolling]);
 
+  // Handle tier unlock
+  const handleUnlockTier = useCallback(
+    async (tier: RewardTier) => {
+      if (!isConnected || !address) {
+        alert('Please connect your wallet to unlock a tier.');
+        setWalletModalOpen(true);
+        return;
+      }
+      const minDeposit = tier.requirement.includes('Deposit')
+        ? parseFloat(tier.requirement.match(/\$([\d,]+)/)?.[1].replace(',', '') || '0')
+        : 0;
+      const jewelCost = minDeposit * 10; // 1 INR = 10 JEWELS, assuming $1 = 100 INR
+      if (jewels < jewelCost) {
+        alert(`You need at least ${jewelCost} JEWELS to unlock ${tier.title} tier.`);
+        return;
+      }
+      try {
+        const userRef = doc(db, 'users', address);
+        await setDoc(userRef, { jewels: jewels - jewelCost, WalletBalance: minDeposit, updatedAt: serverTimestamp() }, { merge: true });
+        setJewels(jewels - jewelCost);
+        const audio = new Audio('/audio/unlock.mp3');
+        audio.play().catch((err) => console.error('Audio playback failed:', err));
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 2000);
+        alert(`Unlocked ${tier.title} tier! ${jewelCost} JEWELS deducted.`);
+      } catch (err) {
+        console.error('Unlock error:', err);
+        alert('Failed to unlock tier. Please try again.');
+      }
+    },
+    [address, isConnected, jewels]
+  );
+
   return (
     <section className="relative py-32 px-6 sm:px-8 lg:px-24 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white overflow-hidden">
+      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
       {/* Lens Flare and Noise Overlay */}
       <motion.div className="fixed inset-0 pointer-events-none z-10">
         <motion.div
@@ -147,8 +211,13 @@ const EnergyExplanation: React.FC = () => {
             <motion.p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
               In Swytch, Energy is your sovereign signal—a bridge between effort and value. Measured in JEWELS, it powers your digital existence, tracks your contributions, and honors your time.
             </motion.p>
+            {isConnected && (
+              <p className="text-gray-300 text-center">
+                Your JEWELS: <span className="font-bold text-rose-400">{jewels} JEWELS</span>
+              </p>
+            )}
             <motion.button
-              onClick={() => setModalOpen(true)}
+              onClick={() => setWalletModalOpen(true)}
               className="inline-flex items-center px-8 py-4 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-lg font-semibold group focus:outline-none focus:ring-2 focus:ring-rose-500"
               whileHover={{ scale: 1.05 }}
               aria-label="Explore Your Freedom"
@@ -178,7 +247,7 @@ const EnergyExplanation: React.FC = () => {
               <p className="text-lg text-gray-300">
                 Energy is your proof-of-action in Swytch. Earn it through play, learning, and growth. Stored in your Private Energy Trust, it grows up to 3.3% monthly—no staking, just contribution.
               </p>
-              <img src="/bg (57).jpg" alt="Swytch Energy Cycle" className="rounded-xl border border-rose-500/20 shadow-md w-full" />
+              <img src="/bg (57).jpg" alt="Swytch Energy Cycle" className="rounded-xl border border-rose-500/20 shadow-md w-full" onError={(e) => { e.currentTarget.src = '/fallback.jpg'; }} />
             </div>
           </motion.div>
 
@@ -196,7 +265,7 @@ const EnergyExplanation: React.FC = () => {
               <p className="text-lg text-gray-300">
                 Swytch never touches your wallet. Connect a self-custodial wallet, and you retain full control. Your keys, your JEWELS, your sovereignty.
               </p>
-              <img src="/bg (79).jpg" alt="JEWELS Growth Chart" className="rounded-xl border border-cyan-500/20 shadow-md w-full" />
+              <img src="/bg (79).jpg" alt="JEWELS Growth Chart" className="rounded-xl border border-cyan-500/20 shadow-md w-full" onError={(e) => { e.currentTarget.src = '/fallback.jpg'; }} />
             </div>
           </motion.div>
 
@@ -255,7 +324,7 @@ const EnergyExplanation: React.FC = () => {
                 <motion.li whileHover={{ x: 5 }}>Grow rewards via Raziel Archive learning</motion.li>
                 <motion.li whileHover={{ x: 5 }}>Use JEWELS to unlock realms, missions, and items</motion.li>
               </ul>
-              <img src="/bg (123).jpg" alt="Self-Sovereign Energy" className="mt-6 rounded-xl border border-rose-500/20 shadow-md w-full sm:max-w-lg mx-auto" />
+              <img src="/bg (123).jpg" alt="Self-Sovereign Energy" className="mt-6 rounded-xl border border-rose-500/20 shadow-md w-full sm:max-w-lg mx-auto" onError={(e) => { e.currentTarget.src = '/fallback.jpg'; }} />
             </div>
           </motion.div>
         </motion.div>
@@ -286,7 +355,7 @@ const EnergyExplanation: React.FC = () => {
                   className="flex-shrink-0 w-[280px] bg-gray-900/60 rounded-xl p-6 border border-rose-500/20 shadow-xl hover:shadow-rose-500/40 transition-all backdrop-blur-md"
                   whileHover={{ scale: 1.05, y: -10 }}
                 >
-                  <img src={tier.image} alt={`${tier.title} Tier`} className="w-full h-36 object-cover rounded-lg mb-4" />
+                  <img src={tier.image} alt={`${tier.title} Tier`} className="w-full h-36 object-cover rounded-lg mb-4" onError={(e) => { e.currentTarget.src = '/fallback.jpg'; }} />
                   <h3 className="text-xl font-bold text-rose-300 flex items-center gap-2">
                     <Star className="w-5 h-5 animate-pulse" aria-hidden="true" /> {tier.title}
                   </h3>
@@ -295,7 +364,7 @@ const EnergyExplanation: React.FC = () => {
                   <motion.button
                     className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg w-full font-semibold focus:outline-none focus:ring-2 focus:ring-rose-500"
                     whileHover={{ scale: 1.05 }}
-                    onClick={() => alert(`Unlocking ${tier.title} tier...`)}
+                    onClick={() => handleUnlockTier(tier)}
                     aria-label={`Unlock ${tier.title} Tier`}
                   >
                     Unlock Tier
@@ -320,7 +389,7 @@ const EnergyExplanation: React.FC = () => {
               Join the Swytch Petaverse and harness your Energy to shape a decentralized future. Your journey to sovereignty starts now.
             </p>
             <motion.button
-              onClick={() => setModalOpen(true)}
+              onClick={() => setWalletModalOpen(true)}
               className="inline-flex items-center px-8 py-4 bg-pink-600 text-white hover:bg-pink-700 rounded-full text-lg font-semibold group focus:outline-none focus:ring-2 focus:ring-pink-500"
               whileHover={{ scale: 1.05 }}
               aria-label="Start Your Journey"
@@ -375,6 +444,40 @@ const EnergyExplanation: React.FC = () => {
                   >
                     <ShieldCheck className="w-5 h-5" /> Close Disclosure
                   </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Wallet Connection Modal */}
+        <AnimatePresence>
+          {walletModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-6"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="wallet-modal-title"
+            >
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.8 }}
+                className="bg-gray-900/50 border border-rose-500/20 rounded-xl p-8 w-full max-w-md shadow-2xl backdrop-blur-md"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h2 id="wallet-modal-title" className="text-2xl font-bold text-rose-400 flex items-center gap-2">
+                    <Sparkles className="w-6 h-6 animate-pulse" /> Connect to Swytch
+                  </h2>
+                  <button onClick={() => setWalletModalOpen(false)} aria-label="Close wallet modal">
+                    <X className="text-rose-400 hover:text-red-500 w-6 h-6" />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <ConnectButton />
                 </div>
               </motion.div>
             </motion.div>

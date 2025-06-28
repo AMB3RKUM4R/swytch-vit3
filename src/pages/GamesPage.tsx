@@ -1,14 +1,15 @@
 
-import Ecosystem from '@/components/Ecosystem';
-import LevelsIntro from '@/components/LevelsIntro';
-import TransactionStatus from '@/components/TransactionStatus';
+import Account from '@/components/Account';
+import EnergyBreakdown from '@/components/EnergyBreakdown';
+import EnergyTrustInfo from '@/components/EnergyTrustInfo';
 
 export default function GamesPage() {
   return (
     <div >
-      <Ecosystem/>
-      <LevelsIntro />
-      <TransactionStatus/>
+      <Account />
+      <EnergyBreakdown/>
+      
+      <EnergyTrustInfo/>
     </div>
   );
 }
