@@ -21,7 +21,7 @@ export default function App() {
       <HeaderComponent />
       <main>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/landing" element={<LandingPage />} />
           <Route path="/home" element={<Home />} />
           <Route path="/games" element={<GamesPage />} />

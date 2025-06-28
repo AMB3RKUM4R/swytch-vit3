@@ -1,11 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Gamepad2, DollarSign, Banknote, Shield, CreditCard, Building, UserPlus,
   UserCheck, MonitorSmartphone, X, Sparkles, Menu, LayoutDashboard, Users,
-  Trophy, Settings, LogIn
-} from 'lucide-react';
+  Trophy, Settings, LogIn} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import RazorTransaction from '@/RazorWithdraw';
 import PhoneLogin from '@/hooks/PhoneLogin';
@@ -42,11 +40,11 @@ interface Transaction {
 
 const navItems: NavItem[] = [
   { name: 'Home', path: '/home', icon: Home },
-  { name: 'Games', path: '/GamesPage', icon: Gamepad2 },
-  { name: 'Landing', path: '/LandingPage', icon: MonitorSmartphone },
-  { name: 'Pricing', path: '/Trust', icon: DollarSign },
+  { name: 'Games', path: '/games', icon: Gamepad2 },
+  { name: 'Landing', path: '/landing', icon: MonitorSmartphone },
+  { name: 'Pricing', path: '/trust', icon: DollarSign },
   { name: 'Privacy', path: '/privacy', icon: Shield },
-  { name: 'Account', path: '/Withdraw', icon: UserCheck },
+  { name: 'Account', path: '/withdraw', icon: UserCheck },
 ];
 
 const paymentItems: PaymentItem[] = [
@@ -58,12 +56,12 @@ const paymentItems: PaymentItem[] = [
 
 const sidebarItems: NavItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Community', path: '/community', icon: Users },
-  { name: 'Rewards', path: '/GamesPage', icon: Trophy },
-  { name: 'Swytch Center', path: '/LandingPage', icon: Settings },
-  { name: 'Energy Vault', path: '/Trust', icon: DollarSign },
-  { name: 'Withdraw', path: '/Withdraw', icon: Banknote },
-  { name: 'Login / Signup', path: '/login', icon: LogIn },
+  { name: 'Membership', path: '/membership', icon: Users }, // Added to represent /membership from App.tsx
+  { name: 'Rewards', path: '/games', icon: Trophy },
+  { name: 'Swytch Center', path: '/landing', icon: Settings },
+  { name: 'Energy Vault', path: '/trust', icon: DollarSign },
+  { name: 'Withdraw', path: '/withdraw', icon: Banknote },
+  { name: 'Login / Signup', path: '/membership', icon: LogIn },
 ];
 
 // Animation Variants
