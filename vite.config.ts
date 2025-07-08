@@ -6,6 +6,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
+  assetsInclude: ["**/*.glb", "**/*.png", "**/*.mp3"],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'), // Already perfect for @/ imports
@@ -26,4 +27,5 @@ export default defineConfig({
   optimizeDeps: {
     include: ['wagmi', '@rainbow-me/rainbowkit', 'viem'], // Optimize Web3 deps for faster dev
   },
+
 });

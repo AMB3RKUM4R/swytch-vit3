@@ -1,38 +1,31 @@
-// src/context/ModalContext.tsx
 import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface ModalContextType {
-  openLoginModal: () => void;
-  openMembershipModal: () => void;
-  isLoginModalOpen: boolean;
-  isMembershipModalOpen: boolean;
-  closeModals: () => void;
+  activeModal: string | null;
+  setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
+  showMessage: string;
+  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
+  isPETMember: boolean;
+  setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const ModalContext = createContext<ModalContextType | undefined>(undefined);
+export const ModalContext = createContext<ModalContextType | undefined>(undefined);
 
 export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isMembershipModalOpen, setIsMembershipModalOpen] = useState(false);
-
-  const openLoginModal = () => {
-    setIsLoginModalOpen(true);
-    setIsMembershipModalOpen(false);
-  };
-
-  const openMembershipModal = () => {
-    setIsMembershipModalOpen(true);
-    setIsLoginModalOpen(false);
-  };
-
-  const closeModals = () => {
-    setIsLoginModalOpen(false);
-    setIsMembershipModalOpen(false);
-  };
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [showMessage, setShowMessage] = useState<string>("");
+  const [isPETMember, setIsPETMember] = useState<boolean>(false);
 
   return (
     <ModalContext.Provider
-      value={{ openLoginModal, openMembershipModal, isLoginModalOpen, isMembershipModalOpen, closeModals }}
+      value={{
+        activeModal,
+        setActiveModal,
+        showMessage,
+        setShowMessage,
+        isPETMember,
+        setIsPETMember,
+      }}
     >
       {children}
     </ModalContext.Provider>

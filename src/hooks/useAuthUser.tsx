@@ -17,6 +17,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth as firebaseAuth, db } from '@/lib/firebaseConfig';
+import { useAccount } from 'wagmi';
 
 type MembershipTier = 'membership_basic' | 'membership_pro' | 'membership_premium';
 type MembershipStatus = MembershipTier | 'none' | null;
@@ -24,6 +25,7 @@ type MembershipStatus = MembershipTier | 'none' | null;
 interface AuthUserHook {
   user: User | null;
   membership: MembershipStatus;
+  isPETMember: boolean;
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
@@ -40,8 +42,10 @@ interface AuthUserHook {
 export const useAuthUser = (): AuthUserHook => {
   const [user, setUser] = useState<User | null>(null);
   const [membership, setMembership] = useState<MembershipStatus>(null);
+  const [isPETMember, setIsPETMember] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const { address } = useAccount();
 
   const googleProvider = new GoogleAuthProvider();
   const facebookProvider = new FacebookAuthProvider();
@@ -55,25 +59,34 @@ export const useAuthUser = (): AuthUserHook => {
         setLoading(true);
         setUser(u);
         if (u) {
-          const userRef = doc(db, 'users', u.uid);
+          const userRef = doc(db, 'Players', u.uid);
           const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
             await setDoc(userRef, {
               userId: u.uid,
-              Name: u.displayName || 'User',
+              username: u.displayName || u.email || 'User',
               email: u.email || '',
-              PhoneNumber: u.phoneNumber || '',
-              WalletBalance: 0,
-              IsAdmin: false,
-              CreatedAt: serverTimestamp(),
+              phoneNumber: u.phoneNumber || '',
+              jewels: 0,
+              gold: 0,
+              level: 0,
+              isPETMember: false,
               membership: 'none',
+              walletAddress: address || '',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
             });
           } else {
             const userData = userSnap.data();
             setMembership((userData?.membership as MembershipStatus) || 'none');
+            setIsPETMember(userData?.isPETMember || false);
+            if (address && userData.walletAddress !== address) {
+              await setDoc(userRef, { walletAddress: address, updatedAt: serverTimestamp() }, { merge: true });
+            }
           }
         } else {
           setMembership(null);
+          setIsPETMember(false);
         }
         setError(null);
       } catch (err: any) {
@@ -84,7 +97,7 @@ export const useAuthUser = (): AuthUserHook => {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [address]);
 
   const handleSignInPopup = async (provider: any) => {
     setLoading(true);
@@ -124,16 +137,20 @@ export const useAuthUser = (): AuthUserHook => {
     try {
       const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
       const newUser = userCredential.user;
-      const userRef = doc(db, 'users', newUser.uid);
+      const userRef = doc(db, 'Players', newUser.uid);
       await setDoc(userRef, {
         userId: newUser.uid,
-        Name: name || newUser.email || 'User',
+        username: name || newUser.email || 'User',
         email: newUser.email || '',
-        PhoneNumber: '',
-        WalletBalance: 0,
-        IsAdmin: false,
-        CreatedAt: serverTimestamp(),
+        phoneNumber: '',
+        jewels: 0,
+        gold: 0,
+        level: 0,
+        isPETMember: false,
         membership: 'none',
+        walletAddress: address || '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
     } catch (err: any) {
       setError(err.message || 'Failed to sign up with email');
@@ -141,7 +158,7 @@ export const useAuthUser = (): AuthUserHook => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [address]);
 
   const signInWithPhone = useCallback(async (phoneNumber: string, appVerifier: ApplicationVerifier) => {
     setLoading(true);
@@ -165,6 +182,7 @@ export const useAuthUser = (): AuthUserHook => {
       await signOut(firebaseAuth);
       setUser(null);
       setMembership(null);
+      setIsPETMember(false);
     } catch (err: any) {
       setError(err.message || 'Failed to sign out');
       console.error('Sign-out error:', err);
@@ -176,6 +194,7 @@ export const useAuthUser = (): AuthUserHook => {
   return {
     user,
     membership,
+    isPETMember,
     loading,
     error,
     signInWithGoogle,

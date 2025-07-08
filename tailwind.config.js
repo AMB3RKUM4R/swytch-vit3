@@ -1,3 +1,4 @@
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
@@ -50,6 +51,10 @@ export default {
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
         },
+      },
+      fontFamily: {
+        inter: ['Inter', 'sans-serif'],
+        poppins: ['Poppins', 'sans-serif'],
       },
     },
   },

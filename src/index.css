@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,27 +11,29 @@
     --card-foreground: 0 0% 100%; /* White font */
     --popover: 270 50% 15%; /* Same as card for popovers */
     --popover-foreground: 0 0% 100%; /* White font */
-    --primary: 340 75% 55%; /* Rose for primary highlight */
-    --primary-foreground: 0 0% 100%; /* White font on primary */
-    --secondary: 180 100% 50%; /* Cyan for secondary highlight */
-    --secondary-foreground: 0 0% 100%; /* White font on secondary */
+    --primary: 340 75% 55%; /* Rose-400 for primary highlight */
+    --primary-foreground: 0 0% 100%; /* White font */
+    --secondary: 180 100% 50%; /* Cyan-500 for secondary highlight */
+    --secondary-foreground: 0 0% 100%; /* White font */
     --muted: 270 30% 20%; /* Muted purple for subtle elements */
     --muted-foreground: 270 10% 60%; /* Light purple-gray for muted text */
     --accent: 340 75% 45%; /* Slightly darker rose for accents */
-    --accent-foreground: 0 0% 100%; /* White font on accents */
+    --accent-foreground: 0 0% 100%; /* White font */
     --destructive: 0 84.2% 60.2%; /* Retain default destructive */
     --destructive-foreground: 0 0% 100%; /* White font */
     --border: 270 20% 25%; /* Darker purple for borders */
     --input: 270 20% 25%; /* Same as border for inputs */
-    --ring: 340 75% 55%; /* Rose for focus rings */
-    --chart-1: 340 75% 55%; /* Rose for charts */
-    --chart-2: 180 100% 50%; /* Cyan for charts */
-    --chart-3: 30 80% 55%; /* Retain existing chart colors */
+    --ring: 340 75% 55%; /* Rose-400 for focus rings */
+    --chart-1: 340 75% 55%; /* Rose-400 */
+    --chart-2: 180 100% 50%; /* Cyan-500 */
+    --chart-3: 30 80% 55%; /* Retain chart colors */
     --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%; /* Rose for consistency */
-    --radius: 0.75rem;
-    --glass-blur: blur(16px);
-    --glass-bg: rgba(75, 0, 130, 0.3); /* Dark purple glass effect */
+    --chart-5: 340 75% 55%; /* Rose-400 */
+    --radius: 1rem; /* Larger for dock effect */
+    --glass-blur: blur(20px); /* Strong glass blur */
+    --glass-bg: rgba(75, 0, 130, 0.3); /* Purple glass effect */
+    --glass-bg-light: rgba(200, 200, 200, 0.2); /* Light mode glass */
+    --glass-bg-dark: rgba(30, 30, 30, 0.4); /* Dark mode glass */
   }
 
   .dark {
@@ -40,9 +43,9 @@
     --card-foreground: 0 0% 100%; /* White font */
     --popover: 270 50% 10%; /* Same as card */
     --popover-foreground: 0 0% 100%; /* White font */
-    --primary: 340 75% 55%; /* Rose for primary highlight */
+    --primary: 340 75% 55%; /* Rose-400 */
     --primary-foreground: 0 0% 100%; /* White font */
-    --secondary: 180 100% 50%; /* Cyan for secondary highlight */
+    --secondary: 180 100% 50%; /* Cyan-500 */
     --secondary-foreground: 0 0% 100%; /* White font */
     --muted: 270 30% 15%; /* Darker muted purple */
     --muted-foreground: 270 10% 55%; /* Slightly darker muted text */
@@ -52,24 +55,25 @@
     --destructive-foreground: 0 0% 100%; /* White font */
     --border: 270 20% 20%; /* Darker purple for borders */
     --input: 270 20% 20%; /* Same as border */
-    --ring: 340 75% 55%; /* Rose for focus rings */
-    --chart-1: 340 75% 55%; /* Rose */
-    --chart-2: 180 100% 50%; /* Cyan */
+    --ring: 340 75% 55%; /* Rose-400 */
+    --chart-1: 340 75% 55%; /* Rose-400 */
+    --chart-2: 180 100% 50%; /* Cyan-500 */
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%; /* Rose */
-    --glass-blur: blur(16px);
-    --glass-bg: rgba(75, 0, 130, 0.2); /* Slightly darker purple glass */
+    --chart-5: 340 75% 55%; /* Rose-400 */
+    --glass-blur: blur(20px);
+    --glass-bg: rgba(30, 30, 30, 0.4); /* Darker purple glass */
+    --glass-bg-light: rgba(200, 200, 200, 0.2);
+    --glass-bg-dark: rgba(30, 30, 30, 0.4);
   }
-  
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-gradient-to-br from-[hsl(var(--background))] to-black text-foreground;
+  html, body {
+    @apply min-h-screen bg-gradient-to-br from-[hsl(var(--background))] to-black text-foreground font-['Inter'];
   }
   .glass {
     background: var(--glass-bg);
@@ -77,6 +81,77 @@
     -webkit-backdrop-filter: var(--glass-blur);
     border-radius: var(--radius);
     border: 1px solid hsla(var(--border), 0.3);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+  }
+  .glass-light {
+    background: var(--glass-bg-light);
+  }
+  .glass-dark {
+    background: var(--glass-bg-dark);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-primary-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-secondary hover:text-secondary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 animate-pulse-slow;
+  }
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 animate-pulse-slow;
+  }
+  .btn-accent {
+    @apply bg-accent text-accent-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 animate-pulse-slow;
+  }
+  .card {
+    @apply glass bg-card text-card-foreground p-6 rounded-lg shadow-lg transition-transform duration-300 hover:scale-105 animate-glow;
+  }
+  .popover {
+    @apply glass bg-popover text-popover-foreground p-4 rounded-lg shadow-lg transition-opacity duration-300;
+  }
+  .modal {
+    @apply glass bg-card text-card-foreground p-6 rounded-lg shadow-lg max-w-md w-full mx-auto transition-transform duration-300;
+  }
+  .input {
+    @apply bg-[hsl(var(--input))] text-foreground p-3 rounded-md border border-[hsl(var(--border))] focus:outline-none focus:ring-2 focus:ring-ring font-['Inter'] placeholder-muted-foreground transition-all duration-300;
+  }
+  .nav-dock {
+    @apply fixed left-1/2 transform -translate-x-1/2 z-50 glass flex justify-center gap-4 px-6 py-3 rounded-full max-w-4xl w-full;
+  }
+  .dock-item {
+    @apply flex flex-col items-center justify-center p-3 rounded-full transition-transform duration-200 ease-out;
+  }
+  .dock-item:hover {
+    @apply scale-125 -translate-y-2;
+  }
+  .dock-item:active {
+    @apply scale-95;
+  }
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30v4h4v2h-4v4h-2v-4h-4v-2h4v-4h2zM6 34v4h4v2H6v4H4v-4H0v-2h4v-4h2zm0-30v4h2v4H4v2H0v-2h4v-4H0V4h4V0h2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-size: 60px 60px;
+  }
+}
+
+@layer utilities {
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .animate-bounce-slow {
+    animation: bounce 2s ease-in-out infinite;
+  }
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 5px hsla(var(--primary), 0.3); }
+    50% { box-shadow: 0 0 20px hsla(var(--primary), 0.5); }
   }
 }
