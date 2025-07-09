@@ -1,21 +1,23 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Removed useCallback as it's not directly used
 import { Rocket, Trophy, Users, Sparkles, Star, MessageCircleHeart, X, Wallet } from 'lucide-react';
-import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebaseConfig';
+import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, getDocs, QueryDocumentSnapshot, runTransaction } from 'firebase/firestore'; // runTransaction is used
+import { db, auth } from '../lib/firebaseConfig'; // Corrected path
 import { useNavigate, Link } from 'react-router-dom';
-import { useModal } from '@/context/ModalContext';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useModal } from '../context/ModalContext'; // Corrected path
+import { useAuthUser } from '../hooks/useAuthUser'; // Corrected path
 import { useAccount } from 'wagmi';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Mesh } from 'three';
+import { Mesh } from 'three'; // Explicitly import Mesh from 'three'
 import { OrbitControls, Text } from '@react-three/drei';
-import Modal from '@/components/SwytchModal';
-import AuthModal from '@/components/AuthModal';
-import PaymentModal from '@/components/PaymentModal';
-import SwytchErrorBoundary from '@/components/ErrorBoundaryComponent';
+import Modal from '../components/SwytchModal'; // Corrected path
+import AuthModal from '../components/AuthModal'; // Corrected path
+import PaymentModal from '../components/PaymentModal'; // Corrected path
+import SwytchErrorBoundary from '../components/ErrorBoundaryComponent'; // Corrected path
 import ConfettiExplosion from 'react-confetti-explosion';
 
+
+// --- Type Definitions ---
 interface Bet {
   amount: number;
   multiplier?: number;
@@ -60,6 +62,7 @@ interface GameRoom {
   phase: 'BETTING' | 'FLYING' | 'CRASHED';
   players: string[];
   game: string;
+  roomId: string; // Added roomId for consistency
 }
 
 interface Reward {
@@ -68,6 +71,7 @@ interface Reward {
   message: string;
 }
 
+// --- Animation Variants ---
 const sectionVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } },
@@ -92,7 +96,6 @@ const rewardVariants = {
   exit: { opacity: 0, scale: 0.8, y: -50, transition: { duration: 0.3 } },
 };
 
-
 const STAGES: Stage[] = [
   { name: 'First Stage', threshold: 2, color: '#4b5563', emoji: '🛰️' },
   { name: 'Second Stage', threshold: 5, color: '#9ca3af', emoji: '🚀' },
@@ -113,7 +116,7 @@ const getActiveStages = (multiplier: number): number => {
 };
 
 const RocketModel: React.FC<{ phase: 'BETTING' | 'FLYING' | 'CRASHED' }> = ({ phase }) => {
-  const ref = useRef<Mesh>(null);
+  const ref = useRef<Mesh>(null); // Correctly typed as Mesh
   useFrame(() => {
     if (ref.current && phase === 'FLYING') {
       ref.current.position.y += 0.05;
@@ -158,7 +161,7 @@ interface RocketCrashGameProps {
 const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMember, updatePlayerFirestore }) => {
   const { user: firebaseAuthUser, loading: authLoading } = useAuthUser();
   const { address } = useAccount();
-  const { setActiveModal, setShowMessage } = useModal();
+  const { activeModal, setActiveModal, setShowMessage } = useModal();
   const [jewels, setJewels] = useState<number>(0);
   const [gold, setGold] = useState<number>(0);
   const [stats, setStats] = useState<Stats>({ wins: 0, losses: 0, totalGames: 0, highestMultiplier: 0 });
@@ -196,11 +199,12 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
         const userRef = doc(db, "Players", effectiveUserId);
         const userSnap = await getDoc(userRef);
         const data = userSnap.exists() ? userSnap.data() : {};
+
         if (data.jewels !== undefined) setJewels(data.jewels || 0);
         if (data.gold !== undefined) setGold(data.gold || 0);
         setIsPETMember(data.isPETMember || false);
         const mergedQuests = initialQuests.map((initialQuest) => {
-          const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
+          const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id); // Explicitly type q
           return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
         });
         setQuests(mergedQuests);
@@ -214,7 +218,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
 
         const roomsRef = collection(db, "GameRooms");
         const roomsSnap = await getDocs(roomsRef);
-        let roomId = roomsSnap.docs.find((doc: QueryDocumentSnapshot) => doc.data().phase === "BETTING" && doc.data().game === "rocket-crash")?.id;
+        let roomId = roomsSnap.docs.find((docSnap: QueryDocumentSnapshot) => docSnap.data().phase === "BETTING" && docSnap.data().game === "rocket-crash")?.id; // Use docSnap
         if (!roomId) {
           const newRoomRef = await addDoc(roomsRef, {
             game: "rocket-crash",
@@ -227,15 +231,15 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
           roomId = newRoomRef.id;
         } else {
           await setDoc(doc(db, "GameRooms", roomId), {
-            players: [...(roomsSnap.docs.find((doc) => doc.id === roomId)?.data().players || []), effectiveUserId],
+            players: [...(roomsSnap.docs.find((docSnap) => docSnap.id === roomId)?.data().players || []), effectiveUserId], // Use docSnap
           }, { merge: true });
         }
         setGameRoomId(roomId);
 
         const roomRef = doc(db, "GameRooms", roomId);
-        const unsubscribe = onSnapshot(roomRef, (doc) => {
-          if (doc.exists()) {
-            const data = doc.data() as GameRoom;
+        const unsubscribe = onSnapshot(roomRef, (docSnap) => { // Renamed doc to docSnap to avoid conflict
+          if (docSnap.exists()) {
+            const data = docSnap.data() as GameRoom;
             setGameRoom(data);
             setPlayers(data.players || []);
           }
@@ -257,16 +261,16 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
     };
 
     fetchUserData();
-    rocketSoundRef.current = new Audio("/audio/reward.mp3");
-    cashoutSoundRef.current = new Audio("/audio/reward.mp3");
-    explosionSoundRef.current = new Audio("/audio/reward.mp3");
+    rocketSoundRef.current = new Audio("/audio/reward.mp3"); // Assuming this is the rocket sound
+    cashoutSoundRef.current = new Audio("/audio/reward.mp3"); // Assuming this is the cashout sound
+    explosionSoundRef.current = new Audio("/audio/reward.mp3"); // Assuming this is the explosion sound
     return () => {
       rocketSoundRef.current?.pause();
       cashoutSoundRef.current?.pause();
       explosionSoundRef.current?.pause();
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [effectiveUserId, setShowMessage, setActiveModal, navigate, setIsPETMember]);
+  }, [effectiveUserId, setShowMessage, setActiveModal, navigate, setIsPETMember, updatePlayerFirestore, address]); // Added updatePlayerFirestore and address to dependencies
 
   useEffect(() => {
     if (showReward) {
@@ -298,9 +302,9 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
     if (!effectiveUserId) return;
     try {
       const transactionId = `${effectiveUserId}_${Date.now()}`;
-      await addDoc(collection(db, "Transactions"), {
+      await addDoc(collection(db, "transactions"), { // Use lowercase 'transactions'
         transactionId,
-        userId: effectiveUserId,
+        userId: effectiveUserId, // Use effectiveUserId here
         amount,
         currency: useJewels ? "JEWELS" : "USDT",
         transactionType: type,
@@ -317,14 +321,15 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
     }
   };
 
-  const shareWinOnX = async (): Promise<void> => {
+  const shareWinOnX = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => { // Added event type
+    event.preventDefault(); // Prevent default form submission
     if (!effectiveUserId) {
       setShowMessage("⚠️ Please sign in to share.");
       setActiveModal("auth");
       navigate("/auth");
       return;
     }
-    const shareQuest = quests.find((q) => q.id === "rocketCrash-share");
+    const shareQuest = quests.find((q: Quest) => q.id === "rocketCrash-share"); // Explicitly type q
     if (shareQuest && !shareQuest.completed) {
       const shareText = encodeURIComponent("Cashed out big in Rocket Crash on Swytch PETverse! 🚀 Join at swytch.io! #SwytchPETverse #RocketCrash");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
@@ -333,7 +338,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
       setShowReward({ jewels: shareQuest.rewardJEWELS, xp: shareQuest.rewardXP, message: `Quest Completed: ${shareQuest.title}!` });
       await logTransaction("deposit", shareQuest.rewardJEWELS);
       await updatePlayerFirestore({ quests, jewels: jewels + shareQuest.rewardJEWELS });
-      if (cashoutSoundRef.current) cashoutSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+      if (cashoutSoundRef.current) cashoutSoundRef.current.play().catch((_err: unknown) => console.error("Audio playback failed:", _err)); // Use _err
     }
   };
 
@@ -372,7 +377,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
     if (roomData.phase !== 'BETTING') return;
 
     const crash = generateCrashPoint(Date.now().toString());
-    const updatedBets = { ...roomData.bets, [effectiveUserId]: { bets, cashedOut: false } };
+    const updatedBets = { ...roomData.bets, [effectiveUserId]: { bets, cashedOut: false } }; // Use effectiveUserId here
     await setDoc(roomRef, {
       bets: updatedBets,
       multiplier: 1,
@@ -388,7 +393,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
     }
     await logTransaction("withdraw", bets[0].amount + bets[1].amount);
     if (rocketSoundRef.current) {
-      rocketSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+      rocketSoundRef.current.play().catch((_err: unknown) => console.error("Audio playback failed:", _err)); // Use _err
     }
 
     const animate = () => {
@@ -411,9 +416,9 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
   const cashOut = async (betIndex: number): Promise<void> => {
     if (!effectiveUserId || !gameRoomId || !gameRoom || gameRoom.phase !== 'FLYING' || gameRoom.bets[effectiveUserId]?.bets[betIndex].cashedOut) return;
     const roomRef = doc(db, "GameRooms", gameRoomId);
-    const updatedBets = [...gameRoom.bets[effectiveUserId].bets];
+    const updatedBets = [...gameRoom.bets[effectiveUserId].bets]; // Use effectiveUserId here
     updatedBets[betIndex] = { ...updatedBets[betIndex], multiplier: gameRoom.multiplier, cashedOut: true };
-    const updatedPlayerBets = { ...gameRoom.bets, [effectiveUserId]: { bets: updatedBets, cashedOut: updatedBets.every(bet => bet.cashedOut || bet.amount === 0) } };
+    const updatedPlayerBets = { ...gameRoom.bets, [effectiveUserId]: { bets: updatedBets, cashedOut: updatedBets.every(bet => bet.cashedOut || bet.amount === 0) } }; // Use effectiveUserId here
     await setDoc(roomRef, { bets: updatedPlayerBets }, { merge: true });
 
     const winnings = bets[betIndex].amount * gameRoom.multiplier;
@@ -422,7 +427,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
     } else {
       setGold((prev) => prev + winnings);
     }
-    const newStats = {
+    const newStats = { // Declare newStats here
       wins: stats.wins + 1,
       losses: stats.losses,
       totalGames: stats.totalGames,
@@ -433,10 +438,10 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
     await logTransaction("deposit", winnings);
     setShowReward({ jewels: winnings, xp: 10, message: `Cashed out at ${gameRoom.multiplier}x! +${winnings.toFixed(0)} ${useJewels ? "JEWELS" : "USDT"}` });
     if (cashoutSoundRef.current) {
-      cashoutSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+      cashoutSoundRef.current.play().catch((_err: unknown) => console.error("Audio playback failed:", _err)); // Use _err
     }
 
-    const winQuest = quests.find((q) => q.id === "rocketCrash-wins");
+    const winQuest = quests.find((q: Quest) => q.id === "rocketCrash-wins"); // Explicitly type q
     if (winQuest && !winQuest.completed) {
       const newProgress = Math.min(winQuest.progress + 1, winQuest.goal);
       const isQuestCompleted = newProgress >= winQuest.goal;
@@ -444,22 +449,23 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
         prev.map((q) => (q.id === "rocketCrash-wins" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q))
       );
       if (isQuestCompleted) {
-        setJewels((prev) => prev + winQuest.rewardJEWELS);
-        setShowReward({ jewels: winQuest.rewardJEWELS, xp: winQuest.rewardXP, message: `Quest Completed: ${winQuest.title}!` });
-        await logTransaction("deposit", winQuest.rewardJEWELS);
-        await updatePlayerFirestore({ quests, jewels: jewels + winQuest.rewardJEWELS });
-        if (cashoutSoundRef.current) cashoutSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+        const rewardAmount = winQuest.rewardJEWELS;
+        setJewels((prev) => prev + rewardAmount);
+        setShowReward({ jewels: rewardAmount, xp: winQuest.rewardXP, message: `Quest Completed: ${winQuest.title}!` });
+        await logTransaction("deposit", rewardAmount);
+        await updatePlayerFirestore({ quests, jewels: jewels + rewardAmount });
+        if (cashoutSoundRef.current) cashoutSoundRef.current.play().catch((_err: unknown) => console.error("Audio playback failed:", _err)); // Use _err
       }
     }
 
-    const achievement = achievements.find((a) => a.id === "rocketCrash-master");
+    const achievement = achievements.find((a: Achievement) => a.id === "rocketCrash-master"); // Explicitly type a
     if (achievement && !achievement.unlocked && newStats.wins >= 10) {
       setAchievements((prev) => prev.map((a) => (a.id === "rocketCrash-master" ? { ...a, unlocked: true } : a)));
       setJewels((prev) => prev + 20);
       setShowReward({ jewels: 20, xp: 30, message: "Achievement Unlocked: Rocket Crash Master!" });
       await logTransaction("deposit", 20);
       await updatePlayerFirestore({ achievements, jewels: jewels + 20 });
-      if (cashoutSoundRef.current) cashoutSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+      if (cashoutSoundRef.current) cashoutSoundRef.current.play().catch((_err: unknown) => console.error("Audio playback failed:", _err)); // Use _err
     }
   };
 
@@ -468,10 +474,10 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
     const roomRef = doc(db, "GameRooms", gameRoomId);
     rocketSoundRef.current?.pause();
     if (explosionSoundRef.current) {
-      explosionSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+      explosionSoundRef.current.play().catch((_err: unknown) => console.error("Audio playback failed:", _err)); // Use _err
     }
-    const lost = gameRoom.bets[effectiveUserId!]?.bets.some((bet) => bet.amount > 0 && !bet.cashedOut);
-    const newStats = {
+    const lost = gameRoom.bets[effectiveUserId!]?.bets.some((bet) => bet.amount > 0 && !bet.cashedOut); // Use effectiveUserId!
+    const newStats = { // Declare newStats here
       wins: stats.wins,
       losses: lost ? stats.losses + 1 : stats.losses,
       totalGames: stats.totalGames + 1,
@@ -483,7 +489,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
     }
     await setDoc(roomRef, { phase: 'CRASHED', game: "rocket-crash" }, { merge: true });
 
-    const playQuest = quests.find((q) => q.id === "rocketCrash-play");
+    const playQuest = quests.find((q: Quest) => q.id === "rocketCrash-play"); // Explicitly type q
     if (playQuest && !playQuest.completed) {
       const newProgress = Math.min(playQuest.progress + 1, playQuest.goal);
       const isQuestCompleted = newProgress >= playQuest.goal;
@@ -491,11 +497,12 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
         prev.map((q) => (q.id === "rocketCrash-play" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q))
       );
       if (isQuestCompleted) {
-        setJewels((prev) => prev + playQuest.rewardJEWELS);
-        setShowReward({ jewels: playQuest.rewardJEWELS, xp: playQuest.rewardXP, message: `Quest Completed: ${playQuest.title}!` });
-        await logTransaction("deposit", playQuest.rewardJEWELS);
-        await updatePlayerFirestore({ quests, jewels: jewels + playQuest.rewardJEWELS });
-        if (cashoutSoundRef.current) cashoutSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+        const rewardAmount = playQuest.rewardJEWELS;
+        setJewels((prev) => prev + rewardAmount);
+        setShowReward({ jewels: rewardAmount, xp: playQuest.rewardXP, message: `Quest Completed: ${playQuest.title}!` });
+        await logTransaction("deposit", rewardAmount);
+        await updatePlayerFirestore({ quests, jewels: jewels + rewardAmount });
+        if (cashoutSoundRef.current) cashoutSoundRef.current.play().catch((_err: unknown) => console.error("Audio playback failed:", _err)); // Use _err
       }
     }
 
@@ -532,7 +539,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
     }
   };
 
-  if (authLoading || isLoading || !gameRoom) {
+  if (authLoading || isLoading || !effectiveUserId) { // Added !effectiveUserId to loading check for initial state
     return (
       <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
         <p>Loading Rocket Crash...</p>
@@ -542,7 +549,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
 
   return (
     <section className="relative py-16 px-6 sm:px-8 lg:px-16 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white overflow-hidden font-inter">
-      {gameRoom.phase === 'CRASHED' && gameRoom.bets[effectiveUserId!]?.bets.some(bet => bet.cashedOut && bet.amount > 0) && (
+      {gameRoom?.phase === 'CRASHED' && gameRoom.bets[effectiveUserId!]?.bets.some(bet => bet.amount > 0 && bet.cashedOut) && ( // Check if any bet was cashed out
         <div className="absolute inset-0 flex justify-center items-center">
           <ConfettiExplosion
             force={0.8}
@@ -608,7 +615,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
               value={bets[0].amount}
               onChange={(e) => setBets((prev) => [{ ...prev[0], amount: Number(e.target.value) }, prev[1]])}
               className="bg-gray-800 text-white rounded-lg px-3 py-2 border border-cyan-500/20 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 outline-none font-inter"
-              disabled={gameRoom.phase !== 'BETTING'}
+              disabled={gameRoom?.phase !== 'BETTING'}
             >
               {[10, 50, 100, 250, 500, 1000].map((b) => (
                 <option key={b} value={b}>
@@ -623,7 +630,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
               value={bets[1].amount}
               onChange={(e) => setBets((prev) => [prev[0], { ...prev[1], amount: Number(e.target.value) }])}
               className="bg-gray-800 text-white rounded-lg px-3 py-2 border border-cyan-500/20 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 outline-none font-inter"
-              disabled={gameRoom.phase !== 'BETTING'}
+              disabled={gameRoom?.phase !== 'BETTING'}
             >
               {[0, 10, 50, 100, 250, 500, 1000].map((b) => (
                 <option key={b} value={b}>
@@ -640,7 +647,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
                 checked={useJewels}
                 onChange={() => setUseJewels((prev) => !prev)}
                 className="mr-2"
-                disabled={gameRoom.phase !== 'BETTING'}
+                disabled={gameRoom?.phase !== 'BETTING'}
               />
               <label className="text-white font-semibold font-poppins">Use JEWELS</label>
             </div>
@@ -651,7 +658,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
               checked={autoPlay}
               onChange={() => setAutoPlay((prev) => !prev)}
               className="mr-2"
-              disabled={gameRoom.phase !== 'BETTING'}
+              disabled={gameRoom?.phase !== 'BETTING'}
             />
             <label className="text-white font-semibold font-poppins">Auto-Play</label>
           </div>
@@ -661,11 +668,11 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
           <h3 className="text-xl text-white font-bold mb-3 font-poppins flex items-center gap-2">
             <Users className="w-6 h-6 text-cyan-400 animate-pulse" /> Players
           </h3>
-          {players.map((playerId, _) => (
+          {players.map((playerId, _idx) => (
             <p key={playerId} className="text-cyan-400 font-inter">
               {address && playerId === address.toLowerCase() ? `${address.slice(0, 6)}...${address.slice(-4)}` : `Player ${playerId.slice(0, 6)}...${playerId.slice(-4)}`}
-              {gameRoom.bets[playerId] ? `: Bet ${gameRoom.bets[playerId].bets[0].amount + gameRoom.bets[playerId].bets[1].amount} ${useJewels ? "JEWELS" : "USDT"}` : ""}
-              {gameRoom.bets[playerId]?.cashedOut ? ` (Cashed at ${gameRoom.bets[playerId].multiplier}x)` : ""}
+              {gameRoom?.bets[playerId] ? `: Bet ${gameRoom.bets[playerId].bets[0].amount + gameRoom.bets[playerId].bets[1].amount} ${useJewels ? "JEWELS" : "USDT"}` : ""}
+              {gameRoom?.bets[playerId]?.cashedOut ? ` (Cashed at ${gameRoom.bets[playerId]?.multiplier}x)` : ""} {/* Added null check for multiplier */}
             </p>
           ))}
         </motion.div>
@@ -676,9 +683,9 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
           </div>
           <motion.button
             onClick={startRound}
-            disabled={gameRoom.phase !== 'BETTING'}
-            className={gameRoom.phase !== 'BETTING' ? "px-8 py-4 bg-gray-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins cursor-not-allowed" : "px-8 py-4 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins hover:bg-cyan-500"}
-            whileHover={{ scale: gameRoom.phase !== 'BETTING' ? 1 : 1.05 }}
+            disabled={gameRoom?.phase !== 'BETTING'}
+            className={gameRoom?.phase !== 'BETTING' ? "px-8 py-4 bg-gray-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins cursor-not-allowed" : "px-8 py-4 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins hover:bg-cyan-500"}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             aria-label="Start Launch"
           >
@@ -686,26 +693,24 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
           </motion.button>
         </motion.div>
 
-        {gameRoom.phase !== 'BETTING' && (
+        {gameRoom?.phase !== 'BETTING' && ( // Added null check
           <motion.div variants={sectionVariants} className="relative bg-gray-900/70 p-8 rounded-2xl border border-rose-500/30 backdrop-blur-md bg-gradient-to-r from-rose-500/20 to-cyan-500/20 mb-12 h-[400px]">
-            <SwytchErrorBoundary>
+            <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
               <div className="absolute inset-0 bg-gradient-to-t from-rose-500/20 to-cyan-500/20 rounded-2xl" />
               <div className="relative flex flex-col items-center justify-center h-full">
-                <SwytchErrorBoundary>
-                  <Canvas style={{ height: "300px" }} camera={{ position: [0, 5, 10], fov: 60 }}>
-                    <ambientLight intensity={0.5} />
-                    <pointLight position={[10, 10, 10]} intensity={1} />
-                    <RocketModel phase={gameRoom.phase} />
-                    <OrbitControls enableZoom={false} maxPolarAngle={Math.PI / 2} />
-                    <Text position={[0, 2, 0]} fontSize={1} color="#22d3ee" anchorX="center" anchorY="middle">
-                      {gameRoom.multiplier.toFixed(2)}x
-                    </Text>
-                  </Canvas>
-                </SwytchErrorBoundary>
+                <Canvas style={{ height: "300px", width: "100%" }} camera={{ position: [0, 5, 10], fov: 60 }}>
+                  <ambientLight intensity={0.5} />
+                  <pointLight position={[10, 10, 10]} intensity={1} />
+                  {gameRoom && <RocketModel phase={gameRoom.phase} />} {/* Added null check */}
+                  <OrbitControls enableZoom={false} maxPolarAngle={Math.PI / 2} />
+                  {gameRoom && <Text position={[0, 2, 0]} fontSize={1} color="#22d3ee" anchorX="center" anchorY="middle">
+                    {gameRoom.multiplier.toFixed(2)}x {/* gameRoom.multiplier is guaranteed */}
+                  </Text>}
+                </Canvas>
                 <div className="absolute bottom-12 flex flex-col items-center transition-all duration-300">
                   <AnimatePresence>
-                    {STAGES.map((stage, idx) => {
-                      const activeStages = getActiveStages(gameRoom.multiplier);
+                    {gameRoom && STAGES.map((stage, idx) => { // Added null check for gameRoom
+                      const activeStages = getActiveStages(gameRoom.multiplier); // gameRoom.multiplier is guaranteed
                       if (idx < activeStages) {
                         return (
                           <motion.div
@@ -724,7 +729,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
                       return null;
                     })}
                   </AnimatePresence>
-                  {gameRoom.phase === 'CRASHED' && (
+                  {gameRoom?.phase === 'CRASHED' && (
                     <motion.div
                       className="absolute bottom-0 text-6xl"
                       initial={{ scale: 0 }}
@@ -736,9 +741,9 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
                     </motion.div>
                   )}
                 </div>
-                {gameRoom.phase === 'CRASHED' && (
+                {gameRoom?.phase === 'CRASHED' && (
                   <div className="absolute top-1/2 text-3xl text-red-400 font-bold text-center font-poppins">
-                    Rocket exploded at {gameRoom.crashPoint}x
+                    Rocket exploded at {gameRoom.crashPoint}x {/* gameRoom.crashPoint is guaranteed */}
                   </div>
                 )}
               </div>
@@ -746,14 +751,14 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
           </motion.div>
         )}
 
-        {gameRoom.phase === 'FLYING' && (
+        {gameRoom?.phase === 'FLYING' && ( // Added null check
           <motion.div variants={sectionVariants} className="flex justify-center gap-4 mb-12">
-            {gameRoom.bets[effectiveUserId!]?.bets.map((bet, i) => (
+            {gameRoom.bets[effectiveUserId!]?.bets.map((bet, i) => ( // effectiveUserId!
               bet.amount > 0 && !bet.cashedOut && (
                 <motion.button
                   key={`cashout-${i}`}
                   onClick={() => cashOut(i)}
-                  className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center gap-2 hover:bg-cyan-500 font-poppins"
+                  className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-cyan-500 font-poppins"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   aria-label={`Cash Out Bet ${i + 1}`}
@@ -802,8 +807,8 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 font-poppins">
               <Star className="w-6 h-6 text-cyan-400 animate-pulse" /> Community Wins
             </h3>
-            {mockXPosts.map((post, _) => (
-              <div key={post.timestamp} className="mb-2">
+            {mockXPosts.map((post, index) => ( // Added index for key
+              <div key={index} className="mb-2">
                 <p className="text-sm font-semibold text-white font-poppins">{post.username}</p>
                 <p className="text-sm text-gray-300 font-inter">{post.content}</p>
                 <p className="text-xs text-gray-400 font-inter">
@@ -882,7 +887,14 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
           <Link
             to="/benefits"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-            onClick={() => setShowMessage('🌟 Navigating to Benefits!')}
+            onClick={() => {
+              if (!auth.currentUser) { // Check if user is authenticated before navigating
+                setShowMessage('⚠️ Sign in to access Benefits!');
+                setActiveModal('auth');
+              } else {
+                setShowMessage('🌟 Navigating to Benefits!');
+              }
+            }}
             role="button"
             aria-label="Navigate to Benefits Page"
           >
@@ -891,7 +903,14 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
           <Link
             to="/community"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-            onClick={() => setShowMessage('👥 Navigating to Community!')}
+            onClick={() => {
+              if (!auth.currentUser) { // Check if user is authenticated before navigating
+                setShowMessage('👥 Sign in to access Community!');
+                setActiveModal('auth');
+              } else {
+                setShowMessage('👥 Navigating to Community!');
+              }
+            }}
             role="button"
             aria-label="Navigate to Community Page"
           >
@@ -908,94 +927,44 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
           </Link>
         </motion.div>
 
-        <motion.div variants={sectionVariants} className="text-center mb-12">
-          <motion.button
-            onClick={() => setShowTutorial(true)}
-            className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-cyan-500"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label="Show Rocket Crash Tutorial"
-          >
-            <Users className="w-5 h-5 text-cyan-400 animate-pulse" /> Show Tutorial
-          </motion.button>
-        </motion.div>
-
         <AnimatePresence>
           {showTutorial && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Rocket Crash Tutorial Modal"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-                tabIndex={-1}
-              >
+            <Modal title="Multiplayer Rocket Crash Tutorial" onClose={() => setShowTutorial(false)}>
+              <div className="text-gray-200 text-sm space-y-4 font-inter">
+                <p><b>Objective:</b> Cash out before the rocket crashes to win your bet multiplied by the current multiplier in a multiplayer game.</p>
+                <ul className="list-disc pl-6">
+                  <li>Bet 10–1000 JEWELS or USDT for Bet 1, 0–1000 for Bet 2.</li>
+                  <li>Join other players, click "Start Launch" to begin.</li>
+                  <li>Rocket ascends, multiplier increases. Cash out to win bet × multiplier.</li>
+                  <li>Crash point is random (1.01x to 100x). Auto-play continues rounds.</li>
+                  <li>Complete quests for extra JEWELS and XP.</li>
+                </ul>
                 <motion.button
                   onClick={() => setShowTutorial(false)}
-                  className="absolute top-4 right-4 text-cyan-400 hover:text-red-500"
-                  whileHover={{ rotate: 90 }}
+                  className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   aria-label="Close tutorial modal"
                 >
-                  <X className="w-6 h-6" />
+                  Close
                 </motion.button>
-                <h3 className="text-xl font-bold text-cyan-400 mb-6 flex items-center gap-3 font-poppins">
-                  <Users className="w-6 h-6 text-cyan-400 animate-pulse" /> Rocket Crash Tutorial
-                </h3>
-                <div className="text-gray-200 text-sm space-y-4 font-inter">
-                  <p><b>Objective:</b> Cash out before the rocket crashes to win your bet multiplied by the current multiplier in a multiplayer game.</p>
-                  <ul className="list-disc pl-6">
-                    <li>Bet 10–1000 JEWELS or USDT for Bet 1, 0–1000 for Bet 2.</li>
-                    <li>Join other players, click "Start Launch" to begin.</li>
-                    <li>Rocket ascends, multiplier increases. Cash out to win bet × multiplier.</li>
-                    <li>Crash point is random (1.01x to 100x). Auto-play continues rounds.</li>
-                    <li>Complete quests for extra JEWELS and XP.</li>
-                  </ul>
-                  <motion.button
-                    onClick={() => setShowTutorial(false)}
-                    className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Close tutorial modal"
-                  >
-                    Close
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </Modal>
           )}
-          {setActiveModal && (
+          {activeModal === "auth" && (
             <AuthModal
-              title="Sign In"
-              onClose={() => {
-                setActiveModal(null);
-                setShowMessage("");
-              }}
               setShowMessage={setShowMessage}
             />
           )}
-          {setActiveModal && (
+          {activeModal === "payment" && (
             <PaymentModal
               userId={effectiveUserId}
-              title="Wallet"
-              onClose={() => {
-                setActiveModal(null);
-                setShowMessage("");
-              }}
               setShowMessage={setShowMessage}
               setIsPETMember={setIsPETMember}
               updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
-          {setActiveModal && (
+          {activeModal === "error" && (
             <Modal title="Error" onClose={() => setActiveModal(null)}>
               <div className="space-y-4">
                 <p className="text-rose-400 font-inter">{showReward?.message || "An error occurred. Please try again."}</p>

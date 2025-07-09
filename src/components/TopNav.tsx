@@ -1,13 +1,13 @@
-
 import { FC, SetStateAction, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Sparkles, Menu, X, Gamepad2, Home, Star, Eye, Car, User, FerrisWheel, Rocket, Dice1 } from 'lucide-react';
+// Added 'Horse' to the import list
+import { Wallet, Sparkles, Menu, X, Gamepad2, Home, Star, Eye, Car, User, FerrisWheel, Rocket, Dice1, House } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { NavLink } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
-import Horse from '@/games/horse';
-import HorseRacing from '@/games/horse';
+// Removed or commented out if HorseRacing is only used as an icon here, otherwise keep for the game route itself
+// import HorseRacing from '@/games/horse'; 
 
 // Define TopNavProps to match App.tsx
 interface TopNavProps {
@@ -15,7 +15,7 @@ interface TopNavProps {
   jewelsBalance: number;
   isPETMember: boolean;
   setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  setShowWalletModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowWalletModal: React.Dispatch<SetStateAction<boolean>>;
 }
 
 const navItems = [
@@ -36,11 +36,8 @@ const gameItems = [
   { name: 'Bridge', path: '/games/bridge', icon: <Car className="w-6 h-6" /> },
   { name: 'Caribbean Stud', path: '/games/caribbean-stud', icon: <Car className="w-6 h-6" /> },
   { name: 'Fortune Wheel', path: '/games/fortune-wheel', icon: <FerrisWheel className="w-6 h-6" /> },
-  { name: 'Horse', path: '/games/horse', icon: <HorseRacing userId={null} setIsPETMember={function (_value: SetStateAction<boolean>): void {
-    throw new Error('Function not implemented.');
-  } } updatePlayerFirestore={function (_updates: Partial<any>): Promise<void> {
-    throw new Error('Function not implemented.');
-  } } /> },
+  // --- CHANGE HERE: Replaced HorseRacing component with a simple Horse icon ---
+  { name: 'Horse', path: '/games/horse', icon: <House className="w-6 h-6" /> },
   { name: 'Pontoon', path: '/games/pontoon', icon: <Car className="w-6 h-6" /> },
   { name: 'Red Dog', path: '/games/reddog', icon: <Car className="w-6 h-6" /> },
   { name: 'Rocket Crash', path: '/games/rocketcrash', icon: <Rocket className="w-6 h-6" /> },

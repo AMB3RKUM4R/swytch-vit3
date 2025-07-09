@@ -1,7 +1,9 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -31,9 +33,9 @@
     --chart-5: 340 75% 55%; /* Rose-400 */
     --radius: 1rem; /* Larger for dock effect */
     --glass-blur: blur(20px); /* Strong glass blur */
-    --glass-bg: rgba(75, 0, 130, 0.3); /* Purple glass effect */
-    --glass-bg-light: rgba(200, 200, 200, 0.2); /* Light mode glass */
-    --glass-bg-dark: rgba(30, 30, 30, 0.4); /* Dark mode glass */
+    --glass-bg: rgba(75, 0, 130, 0.3); /* Purple glass effect (light mode default) */
+    --glass-bg-light: rgba(200, 200, 200, 0.2); /* Light mode specific glass */
+    --glass-bg-dark: rgba(30, 30, 30, 0.4); /* Dark mode specific glass */
   }
 
   .dark {
@@ -62,21 +64,21 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%; /* Rose-400 */
     --glass-blur: blur(20px);
-    --glass-bg: rgba(30, 30, 30, 0.4); /* Darker purple glass */
+    --glass-bg: rgba(30, 30, 30, 0.4); /* Darker purple glass for dark mode default */
     --glass-bg-light: rgba(200, 200, 200, 0.2);
     --glass-bg-dark: rgba(30, 30, 30, 0.4);
   }
-}
 
-@layer base {
+  /* Apply global styles */
   * {
     @apply border-border;
   }
   html, body {
     @apply min-h-screen bg-gradient-to-br from-[hsl(var(--background))] to-black text-foreground font-['Inter'];
+    overflow-x: hidden; /* Prevent horizontal scrolling */
   }
   .glass {
-    background: var(--glass-bg);
+    background: hsla(var(--glass-bg)); /* Use HSL variable for base glass background */
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border-radius: var(--radius);
@@ -84,26 +86,27 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
     transition: all 0.3s ease;
   }
+  /* Specific glass styles for light/dark mode, using the defined variables */
   .glass-light {
-    background: var(--glass-bg-light);
+    background: hsla(var(--glass-bg-light));
   }
   .glass-dark {
-    background: var(--glass-bg-dark);
+    background: hsla(var(--glass-bg-dark));
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary text-primary-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-secondary hover:text-secondary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 animate-pulse-slow;
+    @apply bg-primary text-primary-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-secondary hover:text-secondary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300; /* Removed animate-pulse-slow here as it's a utility */
   }
   .btn-secondary {
-    @apply bg-secondary text-secondary-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 animate-pulse-slow;
+    @apply bg-secondary text-secondary-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300; /* Removed animate-pulse-slow here as it's a utility */
   }
   .btn-accent {
-    @apply bg-accent text-accent-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300 animate-pulse-slow;
+    @apply bg-accent text-accent-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300; /* Removed animate-pulse-slow here as it's a utility */
   }
   .card {
-    @apply glass bg-card text-card-foreground p-6 rounded-lg shadow-lg transition-transform duration-300 hover:scale-105 animate-glow;
+    @apply glass bg-card text-card-foreground p-6 rounded-lg shadow-lg transition-transform duration-300 hover:scale-105; /* Removed animate-glow here as it's a utility */
   }
   .popover {
     @apply glass bg-popover text-popover-foreground p-4 rounded-lg shadow-lg transition-opacity duration-300;
@@ -126,32 +129,39 @@
   .dock-item:active {
     @apply scale-95;
   }
-  .bg-noise {
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30v4h4v2h-4v4h-2v-4h-4v-2h4v-4h2zM6 34v4h4v2H6v4H4v-4H0v-2h4v-4h2zm0-30v4h2v4H4v2H0v-2h4v-4H0V4h4V0h2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    background-size: 60px 60px;
-  }
+  /* The bg-noise is a utility, not a component, so it stays in utilities or defined directly */
 }
 
 @layer utilities {
-  .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  .animate-bounce-slow {
-    animation: bounce 2s ease-in-out infinite;
-  }
-  .animate-glow {
-    animation: glow 2s ease-in-out infinite;
-  }
+  /* Define custom animations if they are not standard Tailwind animations */
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
   }
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
   @keyframes bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
   }
+  .animate-bounce-slow {
+    animation: bounce 2s ease-in-out infinite;
+  }
+
   @keyframes glow {
     0%, 100% { box-shadow: 0 0 5px hsla(var(--primary), 0.3); }
     50% { box-shadow: 0 0 20px hsla(var(--primary), 0.5); }
+  }
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+
+  /* The bg-noise utility class */
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30v4h4v2h-4v4h-2v-4h-4v-2h4v-4h2zM6 34v4h4v2H6v4H4v-4H0v-2h4v-4h2zm0-30v4h2v4H4v2H0v-2h4v-4H0V4h4V0h2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-size: 60px 60px;
+    background-repeat: repeat;
   }
 }

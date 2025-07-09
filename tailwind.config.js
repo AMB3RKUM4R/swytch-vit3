@@ -1,4 +1,3 @@
-
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
@@ -56,6 +55,9 @@ export default {
         inter: ['Inter', 'sans-serif'],
         poppins: ['Poppins', 'sans-serif'],
       },
+      // Note: Animations and keyframes are typically defined in CSS layers
+      // and then applied via utility classes in JSX.
+      // If you have custom animations, ensure they are in your index.css @layer utilities.
     },
   },
   plugins: [require("tailwindcss-animate")],

@@ -7,11 +7,19 @@ import { useAccount, useSendTransaction } from 'wagmi';
 import { db } from '../lib/firebaseConfig';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
+// Import the PaymentModalProps interface from your types.ts file
+import { PaymentModalProps } from '../lib/types'; // Assuming types.ts is in lib/types.ts
 
-interface PaymentModalProps {
+// The PaymentModalProps interface is now imported from types.ts.
+// Ensure your types.ts file has this exact interface:
+/*
+export interface PaymentModalProps {
   userId: string | null;
   setShowMessage: React.Dispatch<React.SetStateAction<string>>;
+  setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>; // <-- NEW
+  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>; // <-- NEW
 }
+*/
 
 const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
   const { isDarkMode } = useTheme();
@@ -38,18 +46,23 @@ const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
         to: '0xYourPaymentAddressHere', // Replace with your payment address
         value: BigInt(Number(amount) * 1e18), // Convert to wei
       });
-      await setDoc(doc(db, 'Transactions', transactionId), {
+      // Changed 'Transactions' to 'transactions' for consistency with BingoGame.tsx
+      await setDoc(doc(db, 'transactions', transactionId), {
         transactionId,
         userId,
         amount: Number(amount),
         currency,
-        transactionType: 'deposit',
-        status: 'pending',
+        transactionType: 'deposit', // Assuming crypto payments are deposits
+        status: 'pending', // Set as pending for admin verification
         timestamp: serverTimestamp(),
         walletAddress: address,
+        game: 'general_deposit', // Added game context
       });
       setShowMessage('🎉 Payment initiated! Awaiting confirmation.');
       setActiveModal(null);
+      // You might want to trigger an update to player's jewels/balance here
+      // or rely on a Firestore listener for 'transactions' status change to 'success'.
+      // For now, we'll just show the message.
     } catch (err) {
       console.error('Crypto payment error:', err);
       setShowMessage('⚠️ Failed to process payment. Please try again.');
@@ -101,6 +114,9 @@ const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
                   <option value="ETH">ETH</option>
                   <option value="USD">USD</option>
                   <option value="INR">INR</option>
+                  {/* Added JEWELS and USDT options as they are used in your system */}
+                  <option value="JEWELS">JEWELS</option>
+                  <option value="USDT">USDT</option>
                 </select>
               </div>
               <motion.button

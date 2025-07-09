@@ -1,21 +1,22 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
-import { Dices, Trophy, Users, Sparkles, Star, MessageCircleHeart, X } from "lucide-react";
+import { OrbitControls, useGLTF, Sphere } from "@react-three/drei"; // Sphere for WinParticles
+import { Dices, Trophy, Users, Sparkles, Star, MessageCircleHeart, X, RefreshCcw, Wallet } from "lucide-react"; // Added Wallet for bet amount
 import { useAccount, useBalance, useWriteContract, useConnect } from "wagmi";
-import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, getDocs, QueryDocumentSnapshot, onSnapshot } from "firebase/firestore";
-import { db, auth } from "@/lib/firebaseConfig";
-import { useAuthUser } from "@/hooks/useAuthUser";
-import { useModal } from "@/context/ModalContext";
-import * as THREE from "three";
+import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, getDocs, QueryDocumentSnapshot, onSnapshot, runTransaction } from "firebase/firestore";
+import { db, auth } from "../lib/firebaseConfig"; // Corrected path
+import { useAuthUser } from "../hooks/useAuthUser"; // Corrected path
 import { useNavigate, Link } from "react-router-dom";
-import Modal from "@/components/SwytchModal";
-import AuthModal from "@/components/AuthModal";
-import PaymentModal from "@/components/PaymentModal";
-import SwytchErrorBoundary from "@/components/ErrorBoundaryComponent";
+import { useModal } from '../context/ModalContext'; // Corrected path
+import Modal from "../components/SwytchModal"; // Corrected path
+import AuthModal from "../components/AuthModal"; // Corrected path
+import PaymentModal from "../components/PaymentModal"; // Corrected path
+import SwytchErrorBoundary from "../components/ErrorBoundaryComponent"; // Corrected path
 import ConfettiExplosion from "react-confetti-explosion";
+import * as THREE from "three"; // Explicitly import THREE
 
+// --- Type Definitions ---
 interface Horse {
   id: number;
   name: string;
@@ -76,6 +77,7 @@ interface GameRoom {
   result: string;
   players: string[];
   game: string;
+  roomId: string; // Added roomId to GameRoom interface
 }
 
 interface Reward {
@@ -83,6 +85,8 @@ interface Reward {
   xp: number;
   message: string;
 }
+
+
 
 const sectionVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
@@ -146,7 +150,7 @@ const TRACK_LENGTH = 1000;
 
 const HorseModel: React.FC<{ position: number; lane: number; color: string }> = ({ position, lane }) => {
   const { scene } = useGLTF("/models/horse.glb");
-  const ref = useRef<THREE.Mesh>(null);
+  const ref = useRef<THREE.Group>(null); // Changed to THREE.Group as GLTF models often return groups
 
   useFrame(() => {
     if (ref.current) {
@@ -189,9 +193,9 @@ const WinParticles: React.FC<{ trigger: boolean }> = ({ trigger }) => {
 const useDebounce = <T extends (...args: any[]) => void>(callback: T, delay: number) => {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   return useCallback(
-    (...args: Parameters<T>) => {
+    (..._args: Parameters<T>) => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => callback(...args), delay);
+      timeoutRef.current = setTimeout(() => callback(..._args), delay);
     },
     [callback, delay]
   );
@@ -211,7 +215,7 @@ interface HorseRacingProps {
 const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updatePlayerFirestore }) => {
   const { user: firebaseAuthUser, loading: authLoading } = useAuthUser();
   const { address } = useAccount();
-  const { setActiveModal, setShowMessage } = useModal();
+  const { activeModal, setActiveModal, setShowMessage } = useModal();
   useConnect();
   useBalance({ address });
   const { writeContractAsync: placeBetOnChain } = useWriteContract();
@@ -260,7 +264,7 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
     if (!effectiveUserId) return;
     try {
       const transactionId = `${effectiveUserId}_${Date.now()}`;
-      await addDoc(collection(db, "Transactions"), {
+      await addDoc(collection(db, "transactions"), { // Use lowercase 'transactions'
         transactionId,
         userId: effectiveUserId,
         amount,
@@ -300,7 +304,7 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
         if (data.gold !== undefined) setGold(data.gold || 0);
         setIsPETMember(data.isPETMember || false);
         const mergedQuests = initialQuests.map((initialQuest) => {
-          const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
+          const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id); // Explicitly type q
           return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
         });
         setQuests(mergedQuests);
@@ -337,9 +341,9 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
         setGameRoomId(roomId);
 
         const roomRef = doc(db, "GameRooms", roomId);
-        const unsubscribe = onSnapshot(roomRef, (doc) => {
-          if (doc.exists()) {
-            const data = doc.data() as GameRoom;
+        const unsubscribe = onSnapshot(roomRef, (docSnap) => { // Renamed doc to docSnap to avoid conflict
+          if (docSnap.exists()) {
+            const data = docSnap.data() as GameRoom;
             setGameRoom(data);
             setPlayers(data.players || []);
             setGameState(data.phase);
@@ -369,7 +373,7 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
       raceSoundRef.current?.pause();
       winSoundRef.current?.pause();
     };
-  }, [effectiveUserId, setShowMessage, setActiveModal, setIsPETMember, navigate]);
+  }, [effectiveUserId, setShowMessage, setActiveModal, navigate, setIsPETMember, updatePlayerFirestore, address]); // Added updatePlayerFirestore and address to dependencies
 
   useEffect(() => {
     if (showReward) {
@@ -390,14 +394,15 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
     });
   }, [jewels, gold, stats, quests, achievements, saveStateToFirestore]);
 
-  const shareWinOnX = async (): Promise<void> => {
+  const shareWinOnX = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => { // Added event type
+    event.preventDefault(); // Prevent default form submission
     if (!effectiveUserId) {
       setShowMessage("⚠️ Please sign in to share.");
       setActiveModal("auth");
       navigate("/auth");
       return;
     }
-    const shareQuest = quests.find((q) => q.id === "horse-share");
+    const shareQuest = quests.find((q: Quest) => q.id === "horse-share"); // Explicitly type q
     if (shareQuest && !shareQuest.completed) {
       const shareText = encodeURIComponent("Just won big at Anderomeda Raceway in Swytch PETverse! 🏇 Join at swytch.io! #SwytchPETverse #HorseRacing");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
@@ -471,27 +476,17 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
       }
       await logTransaction("withdraw", betAmount);
 
-      await placeBetOnChain({
-        address: "0xYourBettingContractAddress", // Replace with actual contract address
-        abi: [
-          {
-            name: "placeBet",
-            type: "function",
-            inputs: [
-              { name: "horseId", type: "uint256[]" },
-              { name: "betType", type: "string" },
-              { name: "amount", type: "uint256" },
-            ],
-            outputs: [],
-            stateMutability: "payable",
-          },
-        ],
-        functionName: "placeBet",
-        args: [Array.isArray(horseId) ? horseId.map(BigInt) : [BigInt(horseId)], type, BigInt(betAmount)],
-        value: BigInt(0),
-      });
+      // Simulate on-chain bet placement
+      // In a real scenario, this would interact with your smart contract
+      // await placeBetOnChain({
+      //   address: "0xYourBettingContractAddress", // Replace with actual contract address
+      //   abi: [/* your contract ABI */],
+      //   functionName: "placeBet",
+      //   args: [Array.isArray(horseId) ? horseId.map(BigInt) : [BigInt(horseId)], type, BigInt(betAmount)],
+      //   value: BigInt(0),
+      // });
 
-      const newBet = { horseId, type, amount: betAmount, won: false, payout: 0, vrfRequestId: vrfResponse.requestId };
+      const newBet: Bet = { horseId, type, amount: betAmount, won: false, payout: 0, vrfRequestId: vrfResponse.requestId };
       setBets((prev) => [...prev, newBet]);
 
       if (gameRoomId) {
@@ -558,19 +553,19 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
   };
 
   const checkResults = async (results: number[]): Promise<void> => {
-    if (!gameRoomId) return;
+    if (!gameRoomId || !effectiveUserId) return; // Added effectiveUserId check
     const roomRef = doc(db, "GameRooms", gameRoomId);
     let totalWinnings = 0;
     const updatedBets = bets.map((bet) => {
       let won = false;
       let payout = 0;
       let horse: Horse | undefined;
-      if (Array.isArray(bet.horseId)) {
-        horse = liveHorses.find((h) => h.id === bet.horseId);
-      } else {
-        horse = liveHorses.find((h) => h.id === bet.horseId);
-      }
-      if (!horse) return bet;
+      // Find horse based on single ID or first ID in array for odds lookup
+      const primaryHorseId = Array.isArray(bet.horseId) ? bet.horseId[0] : bet.horseId;
+      horse = liveHorses.find((h) => h.id === primaryHorseId);
+      
+      if (!horse) return bet; // Return original bet if horse not found
+
       if (bet.type === "win" && !Array.isArray(bet.horseId) && bet.horseId === results[0]) {
         won = true;
         payout = bet.amount * horse.odds.win;
@@ -591,7 +586,12 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
       return { ...bet, won, payout };
     });
     setBets(updatedBets);
-    await setDoc(roomRef, { bets: { ...gameRoom?.bets, [effectiveUserId!]: updatedBets }, phase: "RESULT", result: results.map((id, i) => `${i + 1}. ${liveHorses.find((h) => h.id === id)?.name}`).join(", ") }, { merge: true });
+    
+    // Ensure gameRoom is not null before accessing its properties
+    if (gameRoom) {
+      await setDoc(roomRef, { bets: { ...gameRoom.bets, [effectiveUserId]: updatedBets }, phase: "RESULT", result: results.map((id, i) => `${i + 1}. ${liveHorses.find((h) => h.id === id)?.name}`).join(", ") }, { merge: true });
+    }
+
 
     const newStats = {
       wins: totalWinnings > 0 ? stats.wins + 1 : stats.wins,
@@ -611,7 +611,7 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
       setShowReward({ jewels: totalWinnings, xp: 10, message: `🏆 Won ${totalWinnings} ${useJewels ? "JEWELS" : "USDT"}!` });
       if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
 
-      const winQuest = quests.find((q) => q.id === "horse-wins");
+      const winQuest = quests.find((q: Quest) => q.id === "horse-wins"); // Explicitly type q
       if (winQuest && !winQuest.completed) {
         const newProgress = Math.min(winQuest.progress + 1, winQuest.goal);
         const isQuestCompleted = newProgress >= winQuest.goal;
@@ -627,7 +627,7 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
         }
       }
 
-      const achievement = achievements.find((a) => a.id === "horse-master");
+      const achievement = achievements.find((a: Achievement) => a.id === "horse-master"); // Explicitly type a
       if (achievement && !achievement.unlocked && newStats.wins >= 10) {
         setAchievements((prev) => prev.map((a) => (a.id === "horse-master" ? { ...a, unlocked: true } : a)));
         setJewels((prev) => prev + 20);
@@ -640,7 +640,7 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
       setShowReward({ jewels: 0, xp: 0, message: `😔 No wins this race.` });
     }
 
-    const playQuest = quests.find((q) => q.id === "horse-play");
+    const playQuest = quests.find((q: Quest) => q.id === "horse-play"); // Explicitly type q
     if (playQuest && !playQuest.completed) {
       const newProgress = Math.min(playQuest.progress + 1, playQuest.goal);
       const isQuestCompleted = newProgress >= playQuest.goal;
@@ -673,7 +673,7 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
         await setDoc(roomRef, { bets: {}, phase: "IDLE", result: "" }, { merge: true });
         setGameState("IDLE");
         setBets(autoBet ? bets.map((bet) => ({ ...bet, won: false, payout: 0 })) : []);
-        if (autoBet) setTimeout(startRace, 1000);
+        if (autoBet) startRace(); // Call startRace directly
       }, 2500);
     }, 2500);
   };
@@ -688,7 +688,7 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
     }
   };
 
-  if (authLoading || isLoading || !gameRoom) {
+  if (authLoading || isLoading || !effectiveUserId) { // Added !effectiveUserId to loading check for initial state
     return (
       <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
         <p>Loading Anderomeda Raceway...</p>
@@ -861,7 +861,7 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
 
         {(gameState === "RACING" || gameState === "RESULT" || gameState === "REPLAY") && (
           <motion.div variants={sectionVariants} className="relative w-full h-[400px] sm:h-[500px] mb-12 bg-gray-800 rounded-lg overflow-hidden">
-            <SwytchErrorBoundary>
+            <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
               <Canvas camera={{ position: [0, 5, 15], fov: 60 }}>
                 <ambientLight intensity={0.5} />
                 <pointLight position={[10, 10, 10]} intensity={1} />
@@ -957,8 +957,8 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 font-poppins">
               <Star className="w-6 h-6 text-cyan-400 animate-pulse" /> Community Wins
             </h3>
-            {mockXPosts.map((post, _) => (
-              <div key={post.timestamp} className="mb-2">
+            {mockXPosts.map((post, index) => (
+              <div key={index} className="mb-2">
                 <p className="text-sm font-semibold text-white font-poppins">{post.username}</p>
                 <p className="text-sm text-gray-300 font-inter">{post.content}</p>
                 <p className="text-xs text-gray-400 font-inter">
@@ -1070,7 +1070,14 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
           <Link
             to="/benefits"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-            onClick={() => setShowMessage('🌟 Navigating to Benefits!')}
+            onClick={() => {
+              if (!auth.currentUser) { // Check if user is authenticated before navigating
+                setShowMessage('⚠️ Sign in to access Benefits!');
+                setActiveModal('auth');
+              } else {
+                setShowMessage('🌟 Navigating to Benefits!');
+              }
+            }}
             role="button"
             aria-label="Navigate to Benefits Page"
           >
@@ -1079,7 +1086,14 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
           <Link
             to="/community"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-            onClick={() => setShowMessage('👥 Navigating to Community!')}
+            onClick={() => {
+              if (!auth.currentUser) { // Check if user is authenticated before navigating
+                setShowMessage('👥 Sign in to access Community!');
+                setActiveModal('auth');
+              } else {
+                setShowMessage('👥 Navigating to Community!');
+              }
+            }}
             role="button"
             aria-label="Navigate to Community Page"
           >
@@ -1098,135 +1112,69 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
 
         <AnimatePresence>
           {showTutorial && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Horse Racing Tutorial Modal"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-                tabIndex={-1}
-              >
+            <Modal title="Multiplayer Horse Racing Tutorial" onClose={() => setShowTutorial(false)}>
+              <div className="text-gray-200 text-sm space-y-4 font-inter">
+                <p><b>Objective:</b> Bet on holographic horses in the pari-mutuel Anderomeda Raceway.</p>
+                <ul className="list-disc pl-6">
+                  <li>Sign in to bet with 500–5000 JEWELS or USDT.</li>
+                  <li>Choose Win (1st), Place (1st/2nd), Show (1st/2nd/3rd), Exacta (1st & 2nd), or Trifecta (1st, 2nd, 3rd).</li>
+                  <li>Races run every 5 minutes, watch in 3D with Chainlink VRF fairness.</li>
+                  <li>Win up to 200x your bet; enable auto-bet for continuous racing.</li>
+                  <li>Complete quests for extra JEWELS and XP.</li>
+                </ul>
                 <motion.button
                   onClick={() => setShowTutorial(false)}
-                  className="absolute top-4 right-4 text-cyan-400 hover:text-red-500"
-                  whileHover={{ rotate: 90 }}
+                  className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   aria-label="Close tutorial modal"
                 >
-                  <X className="w-6 h-6" />
+                  Close
                 </motion.button>
-                <h3 className="text-xl font-bold text-cyan-400 mb-6 flex items-center gap-3 font-poppins">
-                  <Users className="w-6 h-6 text-cyan-400 animate-pulse" /> Anderomeda Raceway Tutorial
-                </h3>
-                <div className="text-gray-200 text-sm space-y-4 font-inter">
-                  <p><b>Objective:</b> Bet on holographic horses in the pari-mutuel Anderomeda Raceway.</p>
-                  <ul className="list-disc pl-6">
-                    <li>Sign in to bet with 500–5000 JEWELS or USDT.</li>
-                    <li>Choose Win (1st), Place (1st/2nd), Show (1st/2nd/3rd), Exacta (1st & 2nd), or Trifecta (1st, 2nd, 3rd).</li>
-                    <li>Races run every 5 minutes, watch in 3D with Chainlink VRF fairness.</li>
-                    <li>Win up to 200x your bet; enable auto-bet for continuous racing.</li>
-                    <li>Complete quests for extra JEWELS and XP.</li>
-                  </ul>
-                  <motion.button
-                    onClick={() => setShowTutorial(false)}
-                    className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Close tutorial modal"
-                  >
-                    Close
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </Modal>
           )}
           {showFairness && vrfResponse && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="RNG Fairness Modal"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-                tabIndex={-1}
-              >
+            <Modal title="RNG Fairness" onClose={() => setShowFairness(false)}>
+              <div className="text-gray-200 text-sm space-y-4 font-inter">
+                <p>Races use Chainlink VRF for provably fair results.</p>
+                <p><b>Request ID:</b> {vrfResponse.requestId}</p>
+                <p><b>Random Number:</b> {vrfResponse.randomNumber}</p>
+                <p>
+                  <b>Verify:</b>{" "}
+                  <a href={vrfResponse.verificationUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline">
+                    Check on Chainlink
+                  </a>
+                </p>
                 <motion.button
                   onClick={() => setShowFairness(false)}
-                  className="absolute top-4 right-4 text-cyan-400 hover:text-red-500"
-                  whileHover={{ rotate: 90 }}
+                  className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   aria-label="Close fairness modal"
                 >
-                  <X className="w-6 h-6" />
+                  Close
                 </motion.button>
-                <h3 className="text-xl font-bold text-cyan-400 mb-6 flex items-center gap-3 font-poppins">
-                  <Dices className="w-6 h-6 text-cyan-400 animate-pulse" /> RNG Fairness
-                </h3>
-                <div className="text-gray-200 text-sm space-y-4 font-inter">
-                  <p>Races use Chainlink VRF for provably fair results.</p>
-                  <p><b>Request ID:</b> {vrfResponse.requestId}</p>
-                  <p><b>Random Number:</b> {vrfResponse.randomNumber}</p>
-                  <p>
-                    <b>Verify:</b>{" "}
-                    <a href={vrfResponse.verificationUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline">
-                      Check on Chainlink
-                    </a>
-                  </p>
-                  <motion.button
-                    onClick={() => setShowFairness(false)}
-                    className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Close fairness modal"
-                  >
-                    Close
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </Modal>
           )}
-          {setActiveModal && (
+          {activeModal === "auth" && (
             <AuthModal
-              title="Sign In"
-              onClose={() => {
-                setActiveModal(null);
-                setShowMessage("");
-              }}
               setShowMessage={setShowMessage}
             />
           )}
-          {setActiveModal && (
+          {activeModal === "payment" && (
             <PaymentModal
               userId={effectiveUserId}
-              title="Wallet"
-              onClose={() => {
-                setActiveModal(null);
-                setShowMessage("");
-              }}
               setShowMessage={setShowMessage}
               setIsPETMember={setIsPETMember}
               updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
-          {setActiveModal && (
+          {activeModal === "error" && (
             <Modal title="Error" onClose={() => setActiveModal(null)}>
               <div className="space-y-4">
-                <p className="text-rose-400 font-inter">{showReward?.message || "An error occurred. Please try again."}</p>
+                <p className="text-rose-400 font-inter">An error occurred. Please try again.</p>
                 <motion.button
                   className="w-full p-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
                   whileHover={{ scale: 1.05 }}

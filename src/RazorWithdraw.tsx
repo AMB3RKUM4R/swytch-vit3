@@ -51,7 +51,8 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
 
   const checkActiveMembership = async () => {
     if (!userId) return false;
-    const userRef = doc(db, "users", userId);
+    // --- CHANGE HERE: from "users" to "Players" ---
+    const userRef = doc(db, "Players", userId);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
     return userData?.membership && userData.membership !== "none";
@@ -86,7 +87,8 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
       setError("Minimum deposit amount is ₹50.");
       return;
     } else if (transactionType === "withdraw") {
-      const userRef = doc(db, "users", userId);
+      // --- CHANGE HERE: from "users" to "Players" ---
+      const userRef = doc(db, "Players", userId);
       const userSnap = await getDoc(userRef);
       const userData = userSnap.data();
       if (!userData || userData.WalletBalance < amount) {
@@ -124,17 +126,21 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
         ...(screenshotUrl && { screenshot: screenshotUrl }),
       };
 
+      // Transactions collection is already correct
       await setDoc(doc(db, "transactions", transactionId), data);
 
       if (transactionType === "membership" && itemId) {
-        await setDoc(doc(db, "users", userId), { membership: itemId }, { merge: true });
+        // --- CHANGE HERE: from "users" to "Players" ---
+        await setDoc(doc(db, "Players", userId), { membership: itemId }, { merge: true });
       } else if (transactionType === "deposit") {
-        const userRef = doc(db, "users", userId);
+        // --- CHANGE HERE: from "users" to "Players" ---
+        const userRef = doc(db, "Players", userId);
         const userSnap = await getDoc(userRef);
         const currentBalance = userSnap.exists() ? userSnap.data().WalletBalance || 0 : 0;
         await setDoc(userRef, { WalletBalance: currentBalance + amount, updatedAt: serverTimestamp() }, { merge: true });
       } else if (transactionType === "withdraw") {
-        const userRef = doc(db, "users", userId);
+        // --- CHANGE HERE: from "users" to "Players" ---
+        const userRef = doc(db, "Players", userId);
         const userSnap = await getDoc(userRef);
         const currentBalance = userSnap.exists() ? userSnap.data().WalletBalance || 0 : 0;
         await setDoc(userRef, { WalletBalance: currentBalance - amount, updatedAt: serverTimestamp() }, { merge: true });

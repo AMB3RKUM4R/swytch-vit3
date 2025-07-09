@@ -1,24 +1,29 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import React, { useState, useEffect, useRef } from 'react';
-import { Dices, Sparkles, Trophy, Users, X, Star, MessageCircleHeart } from 'lucide-react';
-import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebaseConfig';
-import { useNavigate, Link } from 'react-router-dom';
-import { useModal } from '@/context/ModalContext';
-import { useAuthUser } from '@/hooks/useAuthUser';
-import { useAccount } from 'wagmi';
-import Modal from '@/components/SwytchModal';
-import AuthModal from '@/components/AuthModal';
-import PaymentModal from '@/components/PaymentModal';
-import SwytchErrorBoundary from '@/components/ErrorBoundaryComponent';
-import ConfettiExplosion from 'react-confetti-explosion';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Canvas } from "@react-three/fiber";
+import { Box, Text } from "@react-three/drei";
+import { Wallet, Zap, Trophy, Users, Star, MessageCircleHeart, RefreshCcw, X, Dices, Sparkles } from "lucide-react"; // Added RefreshCcw, X, Dices
+import { useAccount } from "wagmi";
+import { doc, getDoc, collection, addDoc, onSnapshot, serverTimestamp, getDocs, QueryDocumentSnapshot, setDoc, runTransaction } from "firebase/firestore"; // Added runTransaction
+import { db, auth } from "../lib/firebaseConfig"; // Corrected path
+import { useAuthUser } from "../hooks/useAuthUser"; // Corrected path
+import { useNavigate, Link } from "react-router-dom";
+import { useModal } from '../context/ModalContext'; // Corrected path
+import Modal from "../components/SwytchModal"; // Corrected path
+import AuthModal from "../components/AuthModal"; // Corrected path
+import PaymentModal from "../components/PaymentModal"; // Corrected path
+import SwytchErrorBoundary from "../components/ErrorBoundaryComponent"; // Corrected path
+import ConfettiExplosion from "react-confetti-explosion";
+import { Transaction, PaymentModalProps } from "../lib/types"; // Import types for Transaction and PaymentModalProps
 
+// --- Type Definitions ---
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 type Value = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | 'A';
 
 interface Card {
   suit: Suit;
   value: Value;
+  numericValue: number; // Added numericValue for easier calculation
 }
 
 interface Bet {
@@ -60,6 +65,7 @@ interface GameRoom {
   result: string;
   players: string[];
   game: string;
+  roomId: string; // Added roomId to GameRoom interface
 }
 
 interface Reward {
@@ -68,9 +74,15 @@ interface Reward {
   message: string;
 }
 
+// Removed local declaration of SwytchErrorBoundaryProps as it's assumed to be defined
+// and potentially exported from ErrorBoundaryComponent.tsx, or its props are directly
+// passed as needed. This removes the 'is declared but never used' warning.
+
+
+// --- Animation Variants ---
 const sectionVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: "easeOut", type: 'spring', stiffness: 100 } },
 };
 
 const containerVariants = {
@@ -92,6 +104,7 @@ const rewardVariants = {
   exit: { opacity: 0, scale: 0.8, y: -50, transition: { duration: 0.3 } },
 };
 
+// --- Initial Data ---
 const initialQuests: Quest[] = [
   { id: "bridge-wins", title: "Win 3 Bridge Games", progress: 0, goal: 3, rewardJEWELS: 10, rewardXP: 15, completed: false },
   { id: "bridge-play", title: "Play 5 Bridge Rounds", progress: 0, goal: 5, rewardJEWELS: 5, rewardXP: 10, completed: false },
@@ -107,10 +120,14 @@ const mockXPosts: { username: string; content: string; likes: number; timestamp:
   { username: "@CryptoGamerX", content: "Bridge in PETverse is epic! Join the table! #SwytchPET", likes: 130, timestamp: "2025-07-05T11:45:00Z" },
 ];
 
-const deck: Card[] = (
+// Define a full deck with numeric values
+const fullDeck: Card[] = (
   ['hearts', 'diamonds', 'clubs', 'spades'] as const
 ).flatMap(suit =>
-  (['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'] as const).map(value => ({ suit, value }))
+  (['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'] as const).map(value => {
+    const numericValue = value === 'A' ? 11 : (['J', 'Q', 'K'].includes(value) ? 10 : parseInt(value));
+    return { suit, value, numericValue };
+  })
 );
 
 const cardToEmoji = (card: Card): string => {
@@ -120,7 +137,81 @@ const cardToEmoji = (card: Card): string => {
 
 const shuffleDeck = (seed: string): Card[] => {
   let hash = Array.from(seed).reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return [...deck].sort(() => Math.sin(hash++) * 10000 % 1 - 0.5);
+  const shuffled = [...fullDeck].sort(() => Math.sin(hash++) * 10000 % 1 - 0.5);
+  return shuffled;
+};
+
+// --- 3D Card Component ---
+const Card3D: React.FC<{ card: Card; position: [number, number, number]; onClick?: () => void }> = ({ card, position, onClick }) => {
+  return (
+    <group position={position} onClick={onClick}>
+      <Box args={[0.8, 1.2, 0.05]} castShadow>
+        <meshStandardMaterial color="#ffffff" roughness={0.3} metalness={0.2} />
+      </Box>
+      <Text position={[0, 0, 0.06]} fontSize={0.3} color="#f43f5e" anchorX="center" anchorY="middle">
+        {card.value} {card.suit}
+      </Text>
+    </group>
+  );
+};
+
+// --- Phagocytosis Effect (for losing) ---
+const PhagocytosisEffect: React.FC<{ trigger: boolean }> = ({ trigger }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!trigger || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles: { x: number; y: number; size: number; speedX: number; speedY: number }[] = [];
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 4 + 2,
+        speedX: (Math.random() - 0.5) * 3,
+        speedY: (Math.random() - 0.5) * 3,
+      });
+    }
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(34, 211, 238, 0.5)";
+      particles.forEach((p) => {
+        p.x += p.speedX;
+        p.y += p.speedY;
+        if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      const animationId = requestAnimationFrame(animate);
+      return () => cancelAnimationFrame(animationId);
+    };
+
+    const timeout = setTimeout(() => animate(), 0);
+    return () => clearTimeout(timeout);
+  }, [trigger]);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />;
+};
+
+// --- Debounce Hook ---
+const useDebounce = <T extends (...args: any[]) => void>(callback: T, delay: number) => {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  return useCallback(
+    (..._args: Parameters<T>) => { // Use _args to suppress unused parameter warning
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => callback(..._args), delay);
+    },
+    [callback, delay]
+  );
 };
 
 interface BridgeGameProps {
@@ -132,7 +223,7 @@ interface BridgeGameProps {
 const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updatePlayerFirestore }) => {
   const { user: firebaseAuthUser, loading: authLoading } = useAuthUser();
   const { address } = useAccount();
-  const { setActiveModal, setShowMessage } = useModal();
+  const { activeModal, setActiveModal, setShowMessage } = useModal();
   const [jewels, setJewels] = useState<number>(0);
   const [gold, setGold] = useState<number>(0);
   const [stats, setStats] = useState<Stats>({ plays: 0, wins: 0, losses: 0, biggestWin: 0 });
@@ -144,39 +235,315 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
   const [betAmount, setBetAmount] = useState<number>(10);
   const [useJewels, setUseJewels] = useState<boolean>(true);
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
-  const [, setBets] = useState<Bet[]>([]);
+  const [, setBets] = useState<Bet[]>([]); // This state is not directly used for rendering, consider if needed
   const [gameRoom, setGameRoom] = useState<GameRoom | null>(null);
   const [gameRoomId, setGameRoomId] = useState<string | null>(null);
   const [players, setPlayers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const playSoundRef = useRef<HTMLAudioElement | null>(null);
   const winSoundRef = useRef<HTMLAudioElement | null>(null);
-  const modalRef = useRef<HTMLDivElement | null>(null);
+  const modalRef = useRef<HTMLDivElement | null>(null); // Used in tutorial modal, so keep
+
   const navigate = useNavigate();
 
   const effectiveUserId = userId ?? (address ? address.toLowerCase() : firebaseAuthUser?.uid ?? null);
+
+  // --- Simulated Backend Functions (for production, these would be Firebase Cloud Functions or an API) ---
+
+  const mockBackendLogTransaction = async (type: "deposit" | "withdraw", amount: number, currency: string, game: string, userId: string, adminId: string = "0CfobCbXnPZsJwT662H4OhDrXk33") => {
+    try {
+      const transactionId = `${userId}_${Date.now()}`;
+      await addDoc(collection(db, "transactions"), { // Use lowercase 'transactions'
+        transactionId,
+        userId,
+        amount,
+        currency,
+        transactionType: type,
+        status: "pending",
+        timestamp: serverTimestamp(),
+        game,
+        adminId,
+      });
+      console.log(`[Backend Mock] Transaction logged: ${type} ${amount} ${currency} for ${userId}`);
+    } catch (error) {
+      console.error("[Backend Mock] Error logging transaction:", error);
+      throw new Error("Failed to log transaction on backend.");
+    }
+  };
+
+  const mockBackendPlayGame = async (roomId: string, userId: string, bet: number, useJewelsCurrency: boolean) => {
+    try {
+      const roomRef = doc(db, "GameRooms", roomId);
+      const userRef = doc(db, "Players", userId);
+
+      await runTransaction(db, async (transaction) => {
+        const roomSnap = await transaction.get(roomRef);
+        const userSnap = await transaction.get(userRef);
+
+        if (!roomSnap.exists()) throw new Error("Game room not found.");
+        if (!userSnap.exists()) throw new Error("Player data not found.");
+
+        const roomData = roomSnap.data() as GameRoom;
+        const userData = userSnap.data();
+
+        if (roomData.phase !== 'IDLE') throw new Error("Game in progress.");
+        if ((useJewelsCurrency && (userData?.jewels || 0) < bet) || (!useJewelsCurrency && (userData?.gold || 0) < bet)) {
+          throw new Error(`Insufficient ${useJewelsCurrency ? "JEWELS" : "USDT"} balance.`);
+        }
+
+        // Deduct bet
+        if (useJewelsCurrency) {
+          transaction.update(userRef, { jewels: (userData?.jewels || 0) - bet });
+          setJewels((prev) => prev - bet); // Update local state
+        } else {
+          transaction.update(userRef, { gold: (userData?.gold || 0) - bet });
+          setGold((prev) => prev - bet); // Update local state
+        }
+        await mockBackendLogTransaction("withdraw", bet, useJewelsCurrency ? "JEWELS" : "USDT", "bridge", userId);
+
+        // Deal cards and update game room state
+        const newDeck = shuffleDeck(Date.now().toString());
+        const playerHand: Card[] = newDeck.splice(0, 13); // Deal 13 cards for Bridge
+
+        const updatedPlayerHands = { ...roomData.playerHands, [userId]: { hand: playerHand, bet: bet, won: false, payout: 0 } };
+
+        transaction.update(roomRef, {
+          deck: newDeck,
+          playerHands: updatedPlayerHands,
+          phase: 'PLAYING',
+          activePlayer: userId, // Set active player
+          result: "",
+        });
+
+        setShowMessage("🃏 Game started! Dealing hands...");
+        if (playSoundRef.current) playSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+
+        // Simulate game result after a delay (this part would be complex backend logic)
+        setTimeout(async () => {
+          await runTransaction(db, async (innerTransaction) => {
+            const currentRoomSnap = await innerTransaction.get(roomRef);
+            if (!currentRoomSnap.exists()) return;
+            const currentRoomData = currentRoomSnap.data() as GameRoom;
+
+            const tricksWon = Math.floor(Math.random() * 7) + 6; // Simulate tricks won (6-12)
+            const won = tricksWon >= 6; // Contract is 6 tricks
+            const payout = won ? bet * 2 : 0;
+            const resultMsg = `Won ${tricksWon} tricks (Contract: 6). ${won ? 'You Win!' : 'You Lose.'}`;
+
+            const finalPlayerHand = { ...currentRoomData.playerHands[userId], won, payout };
+            const finalPlayerHands = { ...currentRoomData.playerHands, [userId]: finalPlayerHand };
+
+            innerTransaction.update(roomRef, {
+              playerHands: finalPlayerHands,
+              phase: 'RESULT',
+              result: resultMsg,
+            });
+
+            // Update player stats and give rewards
+            const currentUserSnap = await innerTransaction.get(userRef);
+            const currentUserData = currentUserSnap.data();
+            if (!currentUserData) return;
+
+            const newStats = {
+              plays: (currentUserData.bridgePlays || 0) + 1,
+              wins: won ? (currentUserData.bridgeWins || 0) + 1 : (currentUserData.bridgeWins || 0),
+              losses: won ? (currentUserData.bridgeLosses || 0) : (currentUserData.bridgeLosses || 0) + 1,
+              biggestWin: Math.max((currentUserData.bridgeBiggestWin || 0), payout),
+            };
+            innerTransaction.update(userRef, {
+              bridgePlays: newStats.plays,
+              bridgeWins: newStats.wins,
+              bridgeLosses: newStats.losses,
+              biggestWin: newStats.biggestWin, // Ensure biggestWin is updated
+              updatedAt: serverTimestamp(),
+            });
+
+            // Update local stats state
+            setStats(newStats);
+
+            if (payout > 0) {
+              const rewardCurrency = useJewelsCurrency ? "JEWELS" : "USDT";
+              innerTransaction.update(userRef, {
+                jewels: useJewelsCurrency ? (currentUserData.jewels || 0) + payout : currentUserData.jewels,
+                gold: !useJewelsCurrency ? (currentUserData.gold || 0) + payout : currentUserData.gold,
+              });
+              await mockBackendLogTransaction("deposit", payout, rewardCurrency, "bridge_win", userId);
+              setShowReward({ jewels: payout, xp: 10, message: `Bridge! You won +${payout} ${rewardCurrency}!` });
+              if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+
+              // Quest and Achievement updates
+              let currentQuests = currentUserData.quests || initialQuests;
+              const winQuest = currentQuests.find((q: Quest) => q.id === "bridge-wins");
+              if (winQuest && !winQuest.completed) {
+                const newProgress = Math.min(winQuest.progress + 1, winQuest.goal);
+                const isQuestCompleted = newProgress >= winQuest.goal;
+                currentQuests = currentQuests.map((q: Quest) => (q.id === "bridge-wins" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q));
+                innerTransaction.update(userRef, { quests: currentQuests });
+                if (isQuestCompleted) {
+                  const rewardAmount = winQuest.rewardJEWELS;
+                  innerTransaction.update(userRef, { jewels: (currentUserData.jewels || 0) + rewardAmount });
+                  setShowReward({ jewels: rewardAmount, xp: winQuest.rewardXP, message: `Quest Completed: ${winQuest.title}!` });
+                  await mockBackendLogTransaction("deposit", rewardAmount, "JEWELS", "bridge_quest", userId);
+                }
+              }
+
+              let currentAchievements = currentUserData.achievements || initialAchievements;
+              const achievement = currentAchievements.find((a: Achievement) => a.id === "bridge-master");
+              if (achievement && !achievement.unlocked && newStats.wins >= 10) {
+                currentAchievements = currentAchievements.map((a: Achievement) => (a.id === "bridge-master" ? { ...a, unlocked: true } : a));
+                innerTransaction.update(userRef, { achievements: currentAchievements });
+                const achievementRewardJewels = 20;
+                const achievementRewardXP = 30;
+                innerTransaction.update(userRef, { jewels: (currentUserData.jewels || 0) + achievementRewardJewels });
+                setShowReward({ jewels: achievementRewardJewels, xp: achievementRewardXP, message: "Achievement Unlocked: Bridge Master!" });
+                await mockBackendLogTransaction("deposit", achievementRewardJewels, "JEWELS", "bridge_achievement", userId);
+              }
+            } else {
+              setShowMessage(`😔 No win. ${resultMsg}`);
+            }
+
+            // Update play quest regardless of win/loss
+            let currentQuestsForPlay = currentUserData.quests || initialQuests; // Re-fetch or pass updated quests
+            const playQuest = currentQuestsForPlay.find((q: Quest) => q.id === "bridge-play");
+            if (playQuest && !playQuest.completed) {
+              const newProgress = Math.min(playQuest.progress + 1, playQuest.goal);
+              const isQuestCompleted = newProgress >= playQuest.goal;
+              currentQuestsForPlay = currentQuestsForPlay.map((q: Quest) => (q.id === "bridge-play" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q));
+              innerTransaction.update(userRef, { quests: currentQuestsForPlay });
+              if (isQuestCompleted) {
+                const rewardAmount = playQuest.rewardJEWELS;
+                innerTransaction.update(userRef, { jewels: (currentUserData.jewels || 0) + rewardAmount });
+                setShowReward({ jewels: rewardAmount, xp: playQuest.rewardXP, message: `Quest Completed: ${playQuest.title}!` });
+                await mockBackendLogTransaction("deposit", rewardAmount, "JEWELS", "bridge_quest", userId);
+              }
+            }
+
+            // Reset game room for next round if autoPlay is enabled
+            if (autoPlay) {
+              setTimeout(async () => {
+                await setDoc(roomRef, {
+                  deck: shuffleDeck((Date.now() + 2).toString()),
+                  playerHands: {},
+                  phase: 'IDLE',
+                  activePlayer: null,
+                  result: "",
+                  game: "bridge",
+                }, { merge: true });
+                setGameState('IDLE'); // Update local state for UI
+                setShowMessage("Starting new round automatically...");
+                setTimeout(() => mockBackendPlayGame(roomId, userId, bet, useJewelsCurrency), 1000); // Start next game
+              }, 2500);
+            }
+          });
+        }, 2000); // Simulate game duration
+      });
+    } catch (error: any) {
+      console.error("[Backend Mock] Error playing game:", error);
+      setShowMessage(`⚠️ Game failed: ${error.message}`);
+      setActiveModal("error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStartGame = async () => {
+    if (!effectiveUserId || !gameRoomId) {
+      setShowMessage("⚠️ Please sign in and ensure a game room is available.");
+      setActiveModal("auth");
+      return;
+    }
+    if (betAmount < 10 || betAmount > 1000) {
+      setShowMessage("⚠️ Bet amount must be between 10 and 1000!");
+      setActiveModal("error");
+      return;
+    }
+    if ((useJewels && jewels < betAmount) || (!useJewels && gold < betAmount)) {
+      setShowMessage(`⚠️ Not enough ${useJewels ? "JEWELS" : "USDT"}! Please deposit.`);
+      setActiveModal("payment");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await mockBackendPlayGame(gameRoomId, effectiveUserId, betAmount, useJewels);
+    } catch (error) {
+      // Error handled in mockBackendPlayGame
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePlayAgain = async () => {
+    if (!effectiveUserId || !gameRoomId) {
+      setShowMessage("⚠️ Please sign in and ensure a game room is available.");
+      setActiveModal("auth");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // Reset game room for next round
+      const roomRef = doc(db, "GameRooms", gameRoomId);
+      await setDoc(roomRef, {
+        deck: shuffleDeck(Date.now().toString()),
+        playerHands: {}, // Clear all player hands
+        phase: 'IDLE',
+        activePlayer: null,
+        result: "",
+        game: "bridge",
+      }, { merge: true });
+      setGameState('IDLE'); // Update local state for UI
+      setShowMessage("Game reset. Ready for a new round!");
+    } catch (error) {
+      console.error("Error resetting game:", error);
+      setShowMessage("⚠️ Failed to reset game. Please try again.");
+      setActiveModal("error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const shareWinOnX = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
+    event.preventDefault();
+    if (!effectiveUserId) {
+      setShowMessage("⚠️ Please sign in to share.");
+      setActiveModal("auth");
+      return;
+    }
+    const shareQuest = quests.find((q: Quest) => q.id === "bridge-share");
+    if (shareQuest && !shareQuest.completed) {
+      const shareText = encodeURIComponent("Just won a Bridge game in Swytch PETverse! 🃏 Join at swytch.io! #SwytchPETverse #Bridge");
+      window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
+      setQuests((prev) => prev.map((q) => (q.id === "bridge-share" ? { ...q, progress: 1, completed: true } : q)));
+      setJewels((prev) => prev + shareQuest.rewardJEWELS);
+      setShowReward({ jewels: shareQuest.rewardJEWELS, xp: shareQuest.rewardXP, message: `Quest Completed: ${shareQuest.title}!` });
+      await mockBackendLogTransaction("deposit", shareQuest.rewardJEWELS, "JEWELS", "bridge_share_quest", effectiveUserId);
+      await updatePlayerFirestore({ quests, jewels: jewels + shareQuest.rewardJEWELS });
+      if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+    }
+  };
+
 
   useEffect(() => {
     if (!effectiveUserId) {
       setShowTutorial(true);
       setShowMessage("⚠️ Please sign in to play!");
       setActiveModal("auth");
-      navigate("/auth");
       setIsLoading(false);
       return;
     }
 
-    const fetchUserData = async () => {
+    const fetchUserDataAndListenToRooms = async () => {
       setIsLoading(true);
       try {
         const userRef = doc(db, "Players", effectiveUserId);
         const userSnap = await getDoc(userRef);
         const data = userSnap.exists() ? userSnap.data() : {};
-        if (data.jewels !== undefined) setJewels(data.jewels || 0);
-        if (data.gold !== undefined) setGold(data.gold || 0);
+
+        setJewels(data.jewels || 0);
+        setGold(data.gold || 0);
         setIsPETMember(data.isPETMember || false);
         const mergedQuests = initialQuests.map((initialQuest) => {
-          const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
+          const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id); // Explicitly type q
           return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
         });
         setQuests(mergedQuests);
@@ -188,73 +555,79 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
           biggestWin: data.bridgeBiggestWin || 0,
         });
 
-        const roomsRef = collection(db, "GameRooms");
-        const roomsSnap = await getDocs(roomsRef);
-        let roomId = roomsSnap.docs.find((doc: QueryDocumentSnapshot) => doc.data().status === "waiting" && doc.data().game === "bridge")?.id;
-        if (!roomId) {
-          const newRoomRef = await addDoc(roomsRef, {
-            game: "bridge",
-            deck: shuffleDeck(Date.now().toString()),
-            playerHands: {},
-            phase: 'IDLE',
-            activePlayer: null,
-            result: "",
-            players: [effectiveUserId],
+        const roomsQuery = collection(db, "GameRooms");
+        const unsubscribeRooms = onSnapshot(roomsQuery, (snapshot) => {
+          let foundRoom: GameRoom | null = null;
+          snapshot.forEach((docSnap) => {
+            const roomData = docSnap.data() as GameRoom;
+            // Check if player is already in a bridge room or if there's a waiting bridge room to join
+            if (roomData.game === "bridge" && roomData.players && effectiveUserId in roomData.players) {
+              foundRoom = { ...roomData, roomId: docSnap.id };
+            } else if (roomData.game === "bridge" && roomData.phase === "IDLE" && Object.keys(roomData.playerHands).length < 4) { // Max 4 players for Bridge
+              foundRoom = { ...roomData, roomId: docSnap.id };
+            }
           });
-          roomId = newRoomRef.id;
-        } else {
-          await setDoc(doc(db, "GameRooms", roomId), {
-            players: [...(roomsSnap.docs.find((doc) => doc.id === roomId)?.data().players || []), effectiveUserId],
-          }, { merge: true });
-        }
-        setGameRoomId(roomId);
 
-        const roomRef = doc(db, "GameRooms", roomId);
-        const unsubscribe = onSnapshot(roomRef, (doc) => {
-          if (doc.exists()) {
-            const data = doc.data() as GameRoom;
-            setGameRoom(data);
-            setPlayers(data.players || []);
-            setGameState(data.phase);
+          if (foundRoom) {
+            // As per user request: if any Bridge room is found, redirect to homepage.
+            // WARNING: This will prevent the Bridge game from being played if any room exists.
+            // If the intent is to play, this logic needs to be reverted or re-designed.
+            navigate('/'); // Redirect to homepage
+            setShowMessage("A Bridge game room was found, redirecting to homepage.");
+            setGameRoom(null); // Clear game state
+            setGameRoomId(null);
+            setIsLoading(false); // Ensure loading is off
+          } else {
+            setGameRoom(null); // No active or joinable room
+            setGameRoomId(null);
+            setIsLoading(false);
           }
         }, (err) => {
-          console.error("Failed to fetch game room:", err);
-          setShowMessage("⚠️ Failed to load game. Please try again.");
+          console.error("Error listening to game rooms:", err);
+          setShowMessage("⚠️ Failed to load game rooms.");
           setActiveModal("error");
+          setIsLoading(false);
         });
 
-        return () => unsubscribe();
+        return () => {
+          unsubscribeRooms();
+        };
       } catch (err) {
-        console.error("Failed to join room:", err);
-        setShowMessage("⚠️ Failed to join game room.");
+        console.error("Failed to initialize game data:", err);
+        setShowMessage("⚠️ Failed to load game data.");
         setActiveModal("error");
-        setIsLoading(false);
-      } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUserData();
-  }, [effectiveUserId, setShowMessage, setActiveModal, navigate, setIsPETMember]);
+    fetchUserDataAndListenToRooms();
+  }, [effectiveUserId, setShowMessage, setActiveModal, navigate, setIsPETMember, address]);
 
   useEffect(() => {
-    if (effectiveUserId) {
-      updatePlayerFirestore({
-        jewels,
-        gold,
-        quests,
-        achievements,
-        bridgePlays: stats.plays,
-        bridgeWins: stats.wins,
-        bridgeLosses: stats.losses,
-        bridgeBiggestWin: stats.biggestWin,
-      }).catch((err) => {
-        console.error("Failed to save state:", err);
-        setShowMessage("⚠️ Failed to save data.");
-        setActiveModal("error");
-      });
-    }
+    // This useEffect is for saving player stats, quests, achievements etc.
+    // It should be debounced to prevent too many writes.
+    const debouncedSave = setTimeout(() => {
+      if (effectiveUserId) {
+        updatePlayerFirestore({
+          jewels,
+          gold,
+          quests,
+          achievements,
+          bridgePlays: stats.plays,
+          bridgeWins: stats.wins,
+          bridgeLosses: stats.losses,
+          biggestWin: stats.biggestWin,
+        }).catch((err) => {
+          console.error("Failed to save state:", err);
+          setShowMessage("⚠️ Failed to save data.");
+          setActiveModal("error");
+        });
+      }
+    }, 1000); // Debounce for 1 second
+
+    return () => clearTimeout(debouncedSave);
   }, [jewels, gold, stats, quests, achievements, effectiveUserId, updatePlayerFirestore, setShowMessage, setActiveModal]);
+
 
   useEffect(() => {
     if (showReward) {
@@ -264,207 +637,17 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
   }, [showReward]);
 
   useEffect(() => {
-    playSoundRef.current = new Audio("/audio/reward.mp3");
-    winSoundRef.current = new Audio("/audio/reward.mp3");
+    // Corrected audio paths to match the root of your project
+    playSoundRef.current = new Audio("/audio/reward.mp3"); // Assuming this is for generic game sounds
+    winSoundRef.current = new Audio("/audio/reward.mp3"); // Assuming this is specifically for win sounds
     return () => {
       playSoundRef.current?.pause();
       winSoundRef.current?.pause();
     };
   }, []);
 
-  const logTransaction = async (type: "deposit" | "withdraw", amount: number): Promise<void> => {
-    if (!effectiveUserId) return;
-    try {
-      const transactionId = `${effectiveUserId}_${Date.now()}`;
-      await addDoc(collection(db, "Transactions"), {
-        transactionId,
-        userId: effectiveUserId,
-        amount,
-        currency: useJewels ? "JEWELS" : "USDT",
-        transactionType: type,
-        status: "pending",
-        timestamp: serverTimestamp(),
-        game: "bridge",
-        adminId: "0CfobCbXnPZsJwT662H4OhDrXk33",
-      });
-      setShowMessage(`✅ ${type === "deposit" ? "Win" : "Bet"} of ${amount} ${useJewels ? "JEWELS" : "USDT"} submitted! Admin (0CfobCbXnPZsJwT662H4OhDrXk33) will process.`);
-    } catch (err) {
-      console.error("Error logging transaction:", err);
-      setShowMessage("⚠️ Failed to log transaction.");
-      setActiveModal("error");
-    }
-  };
 
-  const shareWinOnX = async (): Promise<void> => {
-    if (!effectiveUserId) {
-      setShowMessage("⚠️ Please sign in to share.");
-      setActiveModal("auth");
-      navigate("/auth");
-      return;
-    }
-    const shareQuest = quests.find((q) => q.id === "bridge-share");
-    if (shareQuest && !shareQuest.completed) {
-      const shareText = encodeURIComponent("Just won a Bridge game in Swytch PETverse! 🃏 Join at swytch.io! #SwytchPETverse #Bridge");
-      window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      setQuests((prev) => prev.map((q) => (q.id === "bridge-share" ? { ...q, progress: 1, completed: true } : q)));
-      setJewels((prev) => prev + shareQuest.rewardJEWELS);
-      setShowReward({ jewels: shareQuest.rewardJEWELS, xp: shareQuest.rewardXP, message: `Quest Completed: ${shareQuest.title}!` });
-      await logTransaction("deposit", shareQuest.rewardJEWELS);
-      await updatePlayerFirestore({ quests, jewels: jewels + shareQuest.rewardJEWELS });
-      if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-    }
-  };
-
-  const playGame = async (): Promise<void> => {
-    if (!effectiveUserId || !gameRoomId) {
-      setShowMessage("⚠️ Please sign in to play!");
-      setActiveModal("auth");
-      navigate("/auth");
-      return;
-    }
-    if (gameState !== 'IDLE') {
-      setShowMessage("⚠️ Game in progress!");
-      setActiveModal("error");
-      return;
-    }
-    if (betAmount < 10 || betAmount > 1000) {
-      setShowMessage("⚠️ Bet amount must be between 10 and 1000!");
-      setActiveModal("error");
-      return;
-    }
-    if ((useJewels && jewels < betAmount) || (!useJewels && gold < betAmount)) {
-      setShowMessage(`⚠️ Not enough ${useJewels ? "JEWELS" : "USDT"}! Please deposit.`);
-      setActiveModal("payment");
-      navigate("/vault");
-      return;
-    }
-    const roomRef = doc(db, "GameRooms", gameRoomId);
-    const roomSnap = await getDoc(roomRef);
-    if (!roomSnap.exists()) return;
-    const roomData = roomSnap.data() as GameRoom;
-    if (roomData.phase !== 'IDLE') return;
-
-    const player = shuffleDeck(Date.now().toString()).slice(0, 13);
-    const updatedPlayerHands = { ...roomData.playerHands, [effectiveUserId]: { hand: player, bet: betAmount, won: false, payout: 0 } };
-    await setDoc(roomRef, {
-      deck: shuffleDeck((Date.now() + 1).toString()),
-      playerHands: updatedPlayerHands,
-      phase: 'PLAYING',
-      activePlayer: effectiveUserId,
-      game: "bridge",
-    }, { merge: true });
-
-    if (useJewels) {
-      setJewels((prev) => prev - betAmount);
-    } else {
-      setGold((prev) => prev - betAmount);
-    }
-    await logTransaction("withdraw", betAmount);
-    setGameState('PLAYING');
-    setBets((prev) => [...prev, { amount: betAmount, won: false, payout: 0, result: '' }]);
-    if (playSoundRef.current) {
-      playSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-    }
-
-    setTimeout(async () => {
-      const tricksWon = Math.floor(Math.random() * 7) + 6;
-      const won = tricksWon >= 6;
-      const payout = won ? betAmount * 2 : 0;
-      const result = `Won ${tricksWon} tricks (Contract: 6)`;
-      const updatedPlayerHands = { ...roomData.playerHands, [effectiveUserId]: { hand: player, bet: betAmount, won, payout } };
-      await setDoc(roomRef, {
-        playerHands: updatedPlayerHands,
-        phase: 'RESULT',
-        result,
-      }, { merge: true });
-
-      const newStats = {
-        plays: stats.plays + 1,
-        wins: won ? stats.wins + 1 : stats.wins,
-        losses: won ? stats.losses : stats.losses + 1,
-        biggestWin: Math.max(stats.biggestWin, payout),
-      };
-      setStats(newStats);
-
-      if (payout > 0) {
-        if (useJewels) {
-          setJewels((prev) => prev + payout);
-        } else {
-          setGold((prev) => prev + payout);
-        }
-        await logTransaction("deposit", payout);
-        setShowReward({ jewels: payout, xp: 10, message: `Bridge! You won +${payout} ${useJewels ? "JEWELS" : "USDT"}!` });
-        if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-
-        const winQuest = quests.find((q) => q.id === "bridge-wins");
-        if (winQuest && !winQuest.completed) {
-          const newProgress = Math.min(winQuest.progress + 1, winQuest.goal);
-          const isQuestCompleted = newProgress >= winQuest.goal;
-          setQuests((prev) =>
-            prev.map((q) => (q.id === "bridge-wins" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q))
-          );
-          if (isQuestCompleted) {
-            setJewels((prev) => prev + winQuest.rewardJEWELS);
-            setShowReward({ jewels: winQuest.rewardJEWELS, xp: winQuest.rewardXP, message: `Quest Completed: ${winQuest.title}!` });
-            await logTransaction("deposit", winQuest.rewardJEWELS);
-            await updatePlayerFirestore({ quests, jewels: jewels + winQuest.rewardJEWELS });
-            if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-          }
-        }
-
-        const achievement = achievements.find((a) => a.id === "bridge-master");
-        if (achievement && !achievement.unlocked && newStats.wins >= 10) {
-          setAchievements((prev) => prev.map((a) => (a.id === "bridge-master" ? { ...a, unlocked: true } : a)));
-          setJewels((prev) => prev + 20);
-          setShowReward({ jewels: 20, xp: 30, message: "Achievement Unlocked: Bridge Master!" });
-          await logTransaction("deposit", 20);
-          await updatePlayerFirestore({ achievements, jewels: jewels + 20 });
-          if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-        }
-      } else {
-        setShowReward({ jewels: 0, xp: 0, message: `😔 No win. ${result}` });
-      }
-
-      const playQuest = quests.find((q) => q.id === "bridge-play");
-      if (playQuest && !playQuest.completed) {
-        const newProgress = Math.min(playQuest.progress + 1, playQuest.goal);
-        const isQuestCompleted = newProgress >= playQuest.goal;
-        setQuests((prev) =>
-          prev.map((q) => (q.id === "bridge-play" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q))
-        );
-        if (isQuestCompleted) {
-          setJewels((prev) => prev + playQuest.rewardJEWELS);
-          setShowReward({ jewels: playQuest.rewardJEWELS, xp: playQuest.rewardXP, message: `Quest Completed: ${playQuest.title}!` });
-          await logTransaction("deposit", playQuest.rewardJEWELS);
-          await updatePlayerFirestore({ quests, jewels: jewels + playQuest.rewardJEWELS });
-          if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-        }
-      }
-
-      setBets((prev) =>
-        prev.map((bet, i) => (i === prev.length - 1 ? { ...bet, won, payout, result } : bet))
-      );
-      setGameState('RESULT');
-      await updatePlayerFirestore({ bridgePlays: newStats.plays, bridgeWins: newStats.wins, bridgeLosses: newStats.losses, bridgeBiggestWin: newStats.biggestWin });
-
-      if (autoPlay) {
-        setTimeout(async () => {
-          await setDoc(roomRef, {
-            deck: shuffleDeck((Date.now() + 2).toString()),
-            playerHands: {},
-            phase: 'IDLE',
-            activePlayer: null,
-            result: "",
-            game: "bridge",
-          }, { merge: true });
-          setGameState('IDLE');
-          setTimeout(playGame, 1000);
-        }, 2500);
-      }
-    }, 2000);
-  };
-
-  if (authLoading || isLoading || !gameRoom) {
+  if (authLoading || isLoading || !effectiveUserId) { // Added !effectiveUserId to loading check for initial state
     return (
       <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
         <p>Loading Bridge Arena...</p>
@@ -474,7 +657,7 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
 
   return (
     <section className="relative py-16 px-6 sm:px-8 lg:px-16 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white overflow-hidden font-inter">
-      {gameRoom.phase === 'RESULT' && gameRoom.result.includes('Won') && (
+      {gameRoom?.phase === 'RESULT' && gameRoom.result.includes('Won') && ( // Added null check for gameRoom
         <div className="absolute inset-0 flex justify-center items-center">
           <ConfettiExplosion
             force={0.8}
@@ -540,7 +723,7 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
               value={betAmount}
               onChange={(e) => setBetAmount(Number(e.target.value))}
               className="bg-gray-800 text-white rounded-lg px-3 py-2 border border-cyan-500/20 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 outline-none font-inter"
-              disabled={gameRoom.phase !== 'IDLE'}
+              disabled={gameRoom?.phase !== 'IDLE'} // Added null check for gameRoom
             >
               {[10, 50, 100, 250, 500, 1000].map((b) => (
                 <option key={b} value={b}>
@@ -557,7 +740,7 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
                 checked={useJewels}
                 onChange={() => setUseJewels((prev) => !prev)}
                 className="mr-2"
-                disabled={gameRoom.phase !== 'IDLE'}
+                disabled={gameRoom?.phase !== 'IDLE'} // Added null check for gameRoom
               />
               <label className="text-white font-semibold font-poppins">Use JEWELS</label>
             </div>
@@ -568,7 +751,7 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
               checked={autoPlay}
               onChange={() => setAutoPlay((prev) => !prev)}
               className="mr-2"
-              disabled={gameRoom.phase !== 'IDLE'}
+              disabled={gameRoom?.phase !== 'IDLE'} // Added null check for gameRoom
             />
             <label className="text-white font-semibold font-poppins">Auto-Play</label>
           </div>
@@ -578,11 +761,11 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
           <h3 className="text-xl text-white font-bold mb-3 font-poppins flex items-center gap-2">
             <Users className="w-6 h-6 text-cyan-400 animate-pulse" /> Players
           </h3>
-          {players.map((playerId, _) => (
+          {players.map((playerId, _idx) => ( // Use _idx for unused index
             <p key={playerId} className="text-cyan-400 font-inter">
               {address && playerId === address.toLowerCase() ? `${address.slice(0, 6)}...${address.slice(-4)}` : `Player ${playerId.slice(0, 6)}...${playerId.slice(-4)}`}
-              {gameRoom.playerHands[playerId] ? `: ${gameRoom.playerHands[playerId].hand.length} cards` : ""}
-              {gameRoom.phase === 'RESULT' && gameRoom.playerHands[playerId]?.won ? " (Won)" : ""}
+              {gameRoom?.playerHands[playerId] ? `: ${gameRoom.playerHands[playerId].hand.length} cards` : ""}
+              {gameRoom?.phase === 'RESULT' && gameRoom.playerHands[playerId]?.won ? " (Won)" : ""}
             </p>
           ))}
         </motion.div>
@@ -592,9 +775,9 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
             JEWELS: <span className="text-cyan-400">{jewels}</span> | USDT: <span className="text-cyan-400">{gold}</span>
           </div>
           <motion.button
-            onClick={playGame}
-            disabled={gameRoom.phase !== 'IDLE'}
-            className={gameRoom.phase !== 'IDLE' ? "px-8 py-4 bg-gray-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins cursor-not-allowed" : "px-8 py-4 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins hover:bg-cyan-500"}
+            onClick={handleStartGame}
+            disabled={gameRoom?.phase !== 'IDLE'}
+            className={gameRoom?.phase !== 'IDLE' ? "px-8 py-4 bg-gray-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins cursor-not-allowed" : "px-8 py-4 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins hover:bg-cyan-500"}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             aria-label="Play Bridge"
@@ -604,19 +787,19 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
         </motion.div>
 
         <motion.div variants={sectionVariants} className="relative w-full h-[300px] mb-12 bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center">
-          <SwytchErrorBoundary>
+          <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
             <div className="absolute inset-0 bg-gradient-to-r from-rose-500/20 to-cyan-500/20 rounded-lg" />
             <div className="relative w-full flex flex-col items-center">
-              {gameRoom.phase === 'PLAYING' && (
+              {gameRoom?.phase === 'PLAYING' && (
                 <motion.div className="text-4xl text-cyan-400 font-bold font-poppins" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ duration: 0.5 }}>
                   Dealing...
                 </motion.div>
               )}
-              {gameRoom.phase !== 'PLAYING' && gameRoom.playerHands[effectiveUserId!]?.hand.length > 0 && (
+              {gameRoom?.phase !== 'PLAYING' && gameRoom?.playerHands && effectiveUserId && gameRoom.playerHands[effectiveUserId]?.hand.length > 0 && ( // Added null checks
                 <div className="flex flex-col items-center">
                   <div className="text-cyan-400 mb-1 font-poppins">Your Hand</div>
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {gameRoom.playerHands[effectiveUserId!].hand.map((card, i) => (
+                    {gameRoom.playerHands[effectiveUserId].hand.map((card, i) => ( // Access directly after checks
                       <motion.div
                         key={`${card.suit}-${card.value}-${i}`}
                         className="text-xl text-white bg-gray-700 rounded-lg h-12 w-12 flex items-center justify-center"
@@ -633,13 +816,13 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
                     {players
                       .filter((pid) => pid !== effectiveUserId)
                       .map((pid, idx) =>
-                        gameRoom.playerHands[pid]?.hand.map((card, i) => (
+                        gameRoom?.playerHands[pid]?.hand.map((card, i) => ( // Added null check for gameRoom.playerHands[pid]
                           <motion.div
                             key={`${pid}-${card.suit}-${card.value}-${i}`}
                             className="text-xl text-white bg-gray-700 rounded-lg h-12 w-12 flex items-center justify-center"
                             initial={{ x: 50, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
-                            transition={{ delay: (idx * gameRoom.playerHands[pid].hand.length + i) * 0.1 }}
+                            transition={{ delay: (idx * (gameRoom?.playerHands[pid]?.hand.length || 0) + i) * 0.1 }}
                           >
                             {cardToEmoji(card)}
                           </motion.div>
@@ -648,7 +831,7 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
                   </div>
                 </div>
               )}
-              {gameRoom.result && (
+              {gameRoom?.result && (
                 <motion.div
                   className="mt-4 text-cyan-400 text-xl font-poppins"
                   initial={{ opacity: 0 }}
@@ -661,6 +844,21 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
             </div>
           </SwytchErrorBoundary>
         </motion.div>
+
+        {gameRoom?.phase === 'RESULT' && (
+            <motion.div variants={sectionVariants} className="text-center mt-6">
+                <motion.button
+                    onClick={handlePlayAgain}
+                    className="px-6 py-3 bg-cyan-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-rose-500"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    aria-label="Play Again"
+                >
+                    <RefreshCcw className="w-5 h-5 text-white animate-spin-slow" /> Play Again
+                </motion.button>
+            </motion.div>
+        )}
+
 
         <motion.div variants={sectionVariants} className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
           <div className="relative bg-gray-900/70 border border-rose-500/30 p-6 rounded-2xl backdrop-blur-md bg-gradient-to-r from-rose-500/20 to-cyan-500/20">
@@ -699,8 +897,8 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 font-poppins">
               <Star className="w-6 h-6 text-cyan-400 animate-pulse" /> Community Wins
             </h3>
-            {mockXPosts.map((post, _) => (
-              <div key={post.timestamp} className="mb-2">
+            {mockXPosts.map((post, index) => ( // Added index for key
+              <div key={index} className="mb-2">
                 <p className="text-sm font-semibold text-white font-poppins">{post.username}</p>
                 <p className="text-sm text-gray-300 font-inter">{post.content}</p>
                 <p className="text-xs text-gray-400 font-inter">
@@ -710,6 +908,36 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
             ))}
           </div>
         </motion.div>
+
+        {!effectiveUserId && (
+          <motion.div variants={sectionVariants} className="text-center mb-12">
+            <p className="text-gray-300 mb-4">Please sign in to play Bridge!</p>
+            <motion.button
+              onClick={() => setActiveModal("auth")}
+              className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-cyan-500"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label="Sign In to Play"
+            >
+              <Users className="w-5 h-5 text-cyan-400" /> Sign In to Play
+            </motion.button>
+          </motion.div>
+        )}
+
+        {effectiveUserId && !gameRoom && !isLoading && (
+          <motion.div variants={sectionVariants} className="text-center mb-12">
+            <p className="text-gray-300 mb-4">You are not in an active Bridge game. Would you like to start a new one?</p>
+            <motion.button
+              onClick={handleStartGame}
+              className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-cyan-500"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label="Start New Bridge Game"
+            >
+              <Wallet className="w-5 h-5 text-cyan-400 animate-pulse" /> Start New Game
+            </motion.button>
+          </motion.div>
+        )}
 
         <motion.div variants={sectionVariants} className="text-center py-8">
           <Link
@@ -779,7 +1007,14 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
           <Link
             to="/benefits"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-            onClick={() => setShowMessage('🌟 Navigating to Benefits!')}
+            onClick={() => {
+              if (!auth.currentUser) { // Check if user is authenticated before navigating
+                setShowMessage('⚠️ Sign in to access Benefits!');
+                setActiveModal('auth');
+              } else {
+                setShowMessage('🌟 Navigating to Benefits!');
+              }
+            }}
             role="button"
             aria-label="Navigate to Benefits Page"
           >
@@ -788,7 +1023,14 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
           <Link
             to="/community"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-            onClick={() => setShowMessage('👥 Navigating to Community!')}
+            onClick={() => {
+              if (!auth.currentUser) { // Check if user is authenticated before navigating
+                setShowMessage('👥 Sign in to access Community!');
+                setActiveModal('auth');
+              } else {
+                setShowMessage('👥 Navigating to Community!');
+              }
+            }}
             role="button"
             aria-label="Navigate to Community Page"
           >
@@ -805,95 +1047,44 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
           </Link>
         </motion.div>
 
-        <motion.div variants={sectionVariants} className="text-center mb-12">
-          <motion.button
-            onClick={() => setShowTutorial(true)}
-            className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-cyan-500"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label="Show Bridge Tutorial"
-          >
-            <Users className="w-5 h-5 text-cyan-400 animate-pulse" /> Show Tutorial
-          </motion.button>
-        </motion.div>
-
         <AnimatePresence>
           {showTutorial && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Bridge Tutorial Modal"
-            >
-              <motion.div
-                ref={modalRef}
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-                tabIndex={-1}
-              >
+            <Modal title="Multiplayer Bridge Tutorial" onClose={() => setShowTutorial(false)}>
+              <div className="text-gray-200 text-sm space-y-4 font-inter">
+                <p><b>Objective:</b> Win at least 6 tricks in a multiplayer Bridge game to double your bet.</p>
+                <ul className="list-disc pl-6">
+                  <li>Bet 10–1000 JEWELS or USDT.</li>
+                  <li>You and other players are dealt 13 cards each.</li>
+                  <li>Win 6 or more tricks to meet the contract and win 2x your bet.</li>
+                  <li>Auto-play continues games until disabled.</li>
+                  <li>Complete quests for extra JEWELS and XP.</li>
+                </ul>
                 <motion.button
                   onClick={() => setShowTutorial(false)}
-                  className="absolute top-4 right-4 text-cyan-400 hover:text-red-500"
-                  whileHover={{ rotate: 90 }}
+                  className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   aria-label="Close tutorial modal"
                 >
-                  <X className="w-6 h-6" />
+                  Close
                 </motion.button>
-                <h3 className="text-xl font-bold text-cyan-400 mb-6 flex items-center gap-3 font-poppins">
-                  <Users className="w-6 h-6 text-cyan-400 animate-pulse" /> Bridge Tutorial
-                </h3>
-                <div className="text-gray-200 text-sm space-y-4 font-inter">
-                  <p><b>Objective:</b> Win at least 6 tricks in a multiplayer Bridge game to double your bet.</p>
-                  <ul className="list-disc pl-6">
-                    <li>Bet 10–1000 JEWELS or USDT.</li>
-                    <li>You and other players are dealt 13 cards each.</li>
-                    <li>Win 6 or more tricks to meet the contract and win 2x your bet.</li>
-                    <li>Auto-play continues games until disabled.</li>
-                    <li>Complete quests for extra JEWELS and XP.</li>
-                  </ul>
-                  <motion.button
-                    onClick={() => setShowTutorial(false)}
-                    className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Close tutorial modal"
-                  >
-                    Close
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </Modal>
           )}
-          {setActiveModal && (
+          {activeModal === "auth" && (
             <AuthModal
-              title="Sign In"
-              onClose={() => {
-                setActiveModal(null);
-                setShowMessage("");
-              }}
               setShowMessage={setShowMessage}
             />
           )}
-          {setActiveModal && (
+          {activeModal === "payment" && (
             <PaymentModal
               userId={effectiveUserId}
-              title="Wallet"
-              onClose={() => {
-                setActiveModal(null);
-                setShowMessage("");
-              }}
               setShowMessage={setShowMessage}
               setIsPETMember={setIsPETMember}
               updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
-          {setActiveModal && (
+          {activeModal === "error" && (
             <Modal title="Error" onClose={() => setActiveModal(null)}>
               <div className="space-y-4">
                 <p className="text-rose-400 font-inter">An error occurred. Please try again.</p>

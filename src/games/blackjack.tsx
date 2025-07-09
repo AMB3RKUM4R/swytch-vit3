@@ -1,20 +1,21 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Canvas } from "@react-three/fiber";
 import { Box, Text } from "@react-three/drei";
-import { Wallet, Zap, Trophy, Users, Star, Sparkles, MessageCircleHeart } from "lucide-react";
+import { Wallet, Zap, Trophy, Users, Star, Sparkles, MessageCircleHeart, RefreshCcw } from "lucide-react"; // Added RefreshCcw
 import { useAccount } from "wagmi";
-import { doc, getDoc, collection, addDoc, onSnapshot, serverTimestamp, getDocs, QueryDocumentSnapshot, setDoc } from "firebase/firestore";
-import { db, auth } from "@/lib/firebaseConfig";
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { doc, getDoc, collection, addDoc, onSnapshot, serverTimestamp, setDoc, runTransaction } from "firebase/firestore"; // Added runTransaction
+import { db, auth } from "../lib/firebaseConfig"; // Corrected path
+import { useAuthUser } from "../hooks/useAuthUser"; // Corrected path
 import { useNavigate, Link } from "react-router-dom";
-import { useModal } from '@/context/ModalContext';
-import Modal from "@/components/SwytchModal";
-import AuthModal from "@/components/AuthModal";
-import PaymentModal from "@/components/PaymentModal";
-import SwytchErrorBoundary from "@/components/ErrorBoundaryComponent";
+import { useModal } from '../context/ModalContext'; // Corrected path
+import Modal from "../components/SwytchModal"; // Corrected path
+import AuthModal from "../components/AuthModal"; // Corrected path
+import PaymentModal from "../components/PaymentModal"; // Corrected path
+import SwytchErrorBoundary from "../components/ErrorBoundaryComponent"; // Corrected path
 import ConfettiExplosion from "react-confetti-explosion";
 
+// --- Type Definitions ---
 interface Card {
   suit: string;
   value: string;
@@ -28,11 +29,13 @@ interface PlayerHand {
 }
 
 interface BlackjackGameState {
+  game: string;
   roomId: string;
   players: { [playerId: string]: { name: string; jewels: number; hand: PlayerHand } };
   dealerHand: PlayerHand;
   status: "waiting" | "playing" | "ended";
   winner: string | null;
+  deck: Card[]; // Added for simulated backend to manage
 }
 
 interface GameConfig {
@@ -70,6 +73,9 @@ interface Reward {
   message: string;
 }
 
+
+
+// --- Animation Variants ---
 const sectionVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: "easeOut" } },
@@ -94,6 +100,7 @@ const rewardVariants = {
   exit: { opacity: 0, scale: 0.8, y: -50, transition: { duration: 0.3 } },
 };
 
+// --- Initial Data ---
 const initialQuests: Quest[] = [
   { id: "blackjack-wins", title: "Win 3 Blackjack Hands", progress: 0, goal: 3, rewardJEWELS: 10, rewardXP: 15, completed: false },
   { id: "blackjack-play", title: "Play 5 Blackjack Rounds", progress: 0, goal: 5, rewardJEWELS: 5, rewardXP: 10, completed: false },
@@ -109,6 +116,7 @@ const mockXPosts: { username: string; content: string; likes: number; timestamp:
   { username: "@CryptoGamerX", content: "Blackjack in PETverse is 🔥! Beat the dealer! #SwytchPET", likes: 110, timestamp: "2025-07-04T10:15:00Z" },
 ];
 
+// --- 3D Card Component ---
 const Card3D: React.FC<{ card: Card; position: [number, number, number]; onClick?: () => void }> = ({ card, position, onClick }) => {
   return (
     <group position={position} onClick={onClick}>
@@ -122,6 +130,7 @@ const Card3D: React.FC<{ card: Card; position: [number, number, number]; onClick
   );
 };
 
+// --- Phagocytosis Effect (for losing) ---
 const PhagocytosisEffect: React.FC<{ trigger: boolean }> = ({ trigger }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -168,17 +177,9 @@ const PhagocytosisEffect: React.FC<{ trigger: boolean }> = ({ trigger }) => {
   return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />;
 };
 
-const useDebounce = <T extends (...args: any[]) => void>(callback: T, delay: number) => {
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  return useCallback(
-    (...args: Parameters<T>) => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => callback(...args), delay);
-    },
-    [callback, delay]
-  );
-};
+// --- Debounce Hook ---
 
+// --- Main Blackjack Game Component ---
 interface BlackjackGameProps {
   userId: string | null;
   setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>;
@@ -188,7 +189,7 @@ interface BlackjackGameProps {
 const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, updatePlayerFirestore }) => {
   const { user: firebaseAuthUser, loading: authLoading } = useAuthUser();
   const { address } = useAccount();
-  const { setActiveModal, setShowMessage } = useModal();
+  const { activeModal, setActiveModal, setShowMessage } = useModal();
   const [config, setConfig] = useState<GameConfig>({ bet: 100, useJewels: true });
   const [jewels, setJewels] = useState<number>(0);
   const [stats, setStats] = useState<Stats>({ wins: 0, losses: 0, totalGames: 0, highestScore: 0 });
@@ -202,145 +203,10 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
   const winSoundRef = useRef<HTMLAudioElement | null>(null);
   const navigate = useNavigate();
 
-  const effectiveUserId = userId ?? (address ? address.toLowerCase() : firebaseAuthUser?.uid ?? null);
+  // Determine the effective user ID for Firestore operations
+  const effectiveUserId = userId ?? firebaseAuthUser?.uid ?? (address ? address.toLowerCase() : null);
 
-  const saveStateToFirestore = useDebounce(async (state: { jewels?: number; quests?: Quest[]; achievements?: Achievement[]; blackjackWins?: number; blackjackLosses?: number; blackjackHighestScore?: number }) => {
-    if (!effectiveUserId) {
-      setShowMessage("⚠️ Please sign in to play.");
-      setActiveModal("auth");
-      navigate("/auth");
-      return;
-    }
-    try {
-      await updatePlayerFirestore(state);
-    } catch (err) {
-      console.error("Failed to save state:", err);
-      setShowMessage("⚠️ Failed to save data.");
-      setActiveModal("error");
-    }
-  }, 500);
-
-  const logTransaction = useCallback(async (type: "deposit" | "withdraw", amount: number) => {
-    if (!effectiveUserId) return;
-    try {
-      const transactionId = `${effectiveUserId}_${Date.now()}`;
-      await addDoc(collection(db, "Transactions"), {
-        transactionId,
-        userId: effectiveUserId,
-        amount,
-        currency: config.useJewels ? "JEWELS" : "USDT",
-        transactionType: type,
-        status: "pending",
-        timestamp: serverTimestamp(),
-        game: "blackjack",
-        adminId: "0CfobCbXnPZsJwT662H4OhDrXk33",
-      });
-      setShowMessage(`✅ ${type === "deposit" ? "Win" : "Bet"} of ${amount} ${config.useJewels ? "JEWELS" : "USDT"} submitted! Admin (0CfobCbXnPZsJwT662H4OhDrXk33) will process.`);
-    } catch (err) {
-      console.error("Error logging transaction:", err);
-      setShowMessage("⚠️ Failed to log transaction.");
-      setActiveModal("error");
-    }
-  }, [effectiveUserId, config.useJewels, setShowMessage, setActiveModal]);
-
-  useEffect(() => {
-    if (!effectiveUserId) {
-      setShowTutorial(true);
-      setShowMessage("⚠️ Please sign in to play!");
-      setActiveModal("auth");
-      navigate("/auth");
-      setIsLoading(false);
-      return;
-    }
-
-    const joinRoom = async () => {
-      setIsLoading(true);
-      try {
-        const userRef = doc(db, "Players", effectiveUserId);
-        const userSnap = await getDoc(userRef);
-        const data = userSnap.exists() ? userSnap.data() : {};
-
-        if (data.jewels !== undefined) setJewels(data.jewels || 0);
-        setIsPETMember(data.isPETMember || false);
-        const mergedQuests = initialQuests.map((initialQuest) => {
-          const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
-          return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
-        });
-        setQuests(mergedQuests);
-        setAchievements(data.achievements?.filter((a: Achievement) => initialAchievements.some((ia) => ia.id === a.id)) || initialAchievements);
-        setStats({
-          wins: data.blackjackWins || 0,
-          losses: data.blackjackLosses || 0,
-          totalGames: (data.blackjackWins || 0) + (data.blackjackLosses || 0),
-          highestScore: data.blackjackHighestScore || 0,
-        });
-
-        const roomsRef = collection(db, "GameRooms");
-        const roomsSnap = await getDocs(roomsRef);
-        let roomId = roomsSnap.docs.find((doc: QueryDocumentSnapshot) => doc.data().status === "waiting" && doc.data().game === "blackjack")?.id;
-        if (!roomId) {
-          const newRoomRef = await addDoc(roomsRef, {
-            game: "blackjack",
-            status: "waiting",
-            players: { [effectiveUserId]: { name: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Player", jewels: data.jewels || 0, hand: { cards: [], total: 0, status: "playing" } } },
-            dealerHand: { cards: [], total: 0, status: "playing" },
-            winner: null,
-            createdAt: serverTimestamp(),
-          });
-          roomId = newRoomRef.id;
-        } else {
-          await setDoc(doc(db, "GameRooms", roomId), {
-            players: { [effectiveUserId]: { name: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Player", jewels: data.jewels || 0, hand: { cards: [], total: 0, status: "playing" } } },
-          }, { merge: true });
-        }
-
-        const roomRef = doc(db, "GameRooms", roomId);
-        const unsubscribe = onSnapshot(roomRef, (doc) => {
-          if (doc.exists()) {
-            setGameState(doc.data() as BlackjackGameState);
-            if (doc.data().status === "playing" && !dealerIntervalRef.current) {
-              startDealerTurn(roomId);
-            }
-          }
-        });
-
-        return () => unsubscribe();
-      } catch (err) {
-        console.error("Failed to join room:", err);
-        setShowMessage("⚠️ Failed to join game room.");
-        setActiveModal("error");
-        setIsLoading(false);
-      }
-    };
-
-    joinRoom().finally(() => setIsLoading(false));
-  }, [effectiveUserId, setShowMessage, setActiveModal, navigate, setIsPETMember, address]);
-
-  useEffect(() => {
-    saveStateToFirestore({
-      jewels,
-      quests,
-      achievements,
-      blackjackWins: stats.wins,
-      blackjackLosses: stats.losses,
-      blackjackHighestScore: stats.highestScore,
-    });
-  }, [jewels, quests, achievements, stats, saveStateToFirestore]);
-
-  useEffect(() => {
-    if (showReward) {
-      const timer = setTimeout(() => setShowReward(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showReward]);
-
-  useEffect(() => {
-    winSoundRef.current = new Audio("/audio/reward.mp3");
-    return () => {
-      if (dealerIntervalRef.current) clearInterval(dealerIntervalRef.current);
-    };
-  }, []);
-
+  // --- Helper Functions for Game Logic (Simulated Backend) ---
   const createDeck = (): Card[] => {
     const suits = ["♠", "♥", "♣", "♦"];
     const values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
@@ -351,14 +217,23 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
         deck.push({ suit, value, numericValue });
       });
     });
+    // Shuffle the deck
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
     return deck;
   };
 
   const dealCard = (deck: Card[]): Card => {
-    const index = Math.floor(Math.random() * deck.length);
-    const card = deck[index];
-    deck.splice(index, 1);
-    return card;
+    if (deck.length === 0) {
+      // In a real game, you'd reshuffle or use multiple decks.
+      // For this mock, let's just create a fresh deck to avoid errors.
+      console.warn("Deck is empty, creating a new one for dealCard.");
+      const newDeck = createDeck();
+      return newDeck.pop()!; // Deal from the new deck
+    }
+    return deck.pop()!; // Remove and return the last card
   };
 
   const calculateHandTotal = (hand: Card[]): number => {
@@ -375,221 +250,444 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
     return total;
   };
 
-  const startDealerTurn = (roomId: string): void => {
-    if (!gameState || gameState.status !== "playing") return;
-    dealerIntervalRef.current = setInterval(async () => {
-      if (!gameState || gameState.status !== "playing") {
-        if (dealerIntervalRef.current) clearInterval(dealerIntervalRef.current);
-        return;
-      }
-      const dealerHand = gameState.dealerHand;
-      const deck = createDeck();
-      while (dealerHand.total < 17) {
-        const newCard = dealCard(deck);
-        dealerHand.cards.push(newCard);
-        dealerHand.total = calculateHandTotal(dealerHand.cards);
-        if (dealerHand.total > 21) dealerHand.status = "bust";
-      }
-      await setDoc(doc(db, "GameRooms", roomId), { dealerHand }, { merge: true });
+  // --- Simulated Backend Functions (for production, these would be Firebase Cloud Functions or an API) ---
 
-      const allPlayersDone = Object.values(gameState.players).every((player) => player.hand.status === "stand" || player.hand.status === "bust" || player.hand.status === "blackjack");
-      if (allPlayersDone) {
+  const mockBackendLogTransaction = async (type: "deposit" | "withdraw", amount: number, currency: string, game: string, userId: string, adminId: string = "0CfobCbXnPZsJwT662H4OhDrXk33") => {
+    try {
+      const transactionId = `${userId}_${Date.now()}`;
+      await addDoc(collection(db, "transactions"), { // Use lowercase 'transactions'
+        transactionId,
+        userId,
+        amount,
+        currency,
+        transactionType: type,
+        status: "pending",
+        timestamp: serverTimestamp(),
+        game,
+        adminId,
+      });
+      console.log(`[Backend Mock] Transaction logged: ${type} ${amount} ${currency} for ${userId}`);
+    } catch (error) {
+      console.error("[Backend Mock] Error logging transaction:", error);
+      throw new Error("Failed to log transaction on backend.");
+    }
+  };
+
+
+  const mockBackendHit = async (roomId: string, userId: string) => {
+    try {
+      await runTransaction(db, async (transaction) => {
+        const roomRef = doc(db, "GameRooms", roomId);
+        const roomSnap = await transaction.get(roomRef);
+        if (!roomSnap.exists()) throw new Error("Game room not found.");
+        const currentGameState = roomSnap.data() as BlackjackGameState;
+        const player = currentGameState.players[userId];
+        if (!player || player.hand.status !== "playing") throw new Error("Invalid player or hand status.");
+
+        const deck = currentGameState.deck; // Get deck from game state
+        const newCard = dealCard(deck);
+        player.hand.cards.push(newCard);
+        player.hand.total = calculateHandTotal(player.hand.cards);
+        if (player.hand.total > 21) player.hand.status = "bust";
+        else if (player.hand.total === 21) player.hand.status = "stand"; // Automatically stand on 21
+
+        transaction.update(roomRef, {
+          [`players.${userId}.hand`]: player.hand,
+          deck: deck, // Update deck in Firestore
+        });
+      });
+      setShowMessage("🃏 You hit!");
+    } catch (error: any) {
+      console.error("[Backend Mock] Error hitting:", error);
+      setShowMessage(`⚠️ Hit failed: ${error.message}`);
+      setActiveModal("error");
+    }
+  };
+
+  const mockBackendStand = async (roomId: string, userId: string) => {
+    try {
+      await runTransaction(db, async (transaction) => {
+        const roomRef = doc(db, "GameRooms", roomId);
+        const roomSnap = await transaction.get(roomRef);
+        if (!roomSnap.exists()) throw new Error("Game room not found.");
+        const currentGameState = roomSnap.data() as BlackjackGameState;
+        const player = currentGameState.players[userId];
+        if (!player || player.hand.status !== "playing") throw new Error("Invalid player or hand status.");
+
+        player.hand.status = "stand";
+        transaction.update(roomRef, { [`players.${userId}.hand`]: player.hand });
+      });
+      setShowMessage("🧍 You stand!");
+    } catch (error: any) {
+      console.error("[Backend Mock] Error standing:", error);
+      setShowMessage(`⚠️ Stand failed: ${error.message}`);
+      setActiveModal("error");
+    }
+  };
+
+  const mockBackendDoubleDown = async (roomId: string, userId: string) => {
+    try {
+      await runTransaction(db, async (transaction) => {
+        const roomRef = doc(db, "GameRooms", roomId);
+        const userRef = doc(db, "Players", userId);
+        const roomSnap = await transaction.get(roomRef);
+        const userSnap = await transaction.get(userRef);
+
+        if (!roomSnap.exists()) throw new Error("Game room not found.");
+        if (!userSnap.exists()) throw new Error("Player not found.");
+
+        const currentGameState = roomSnap.data() as BlackjackGameState;
+        const player = currentGameState.players[userId];
+        const playerData = userSnap.data();
+
+        if (!player || player.hand.status !== "playing" || player.hand.cards.length !== 2) throw new Error("Cannot double down.");
+        if (playerData.jewels < config.bet) throw new Error("Not enough JEWELS for double down.");
+
+        // Deduct double bet
+        transaction.update(userRef, { jewels: playerData.jewels - config.bet, updatedAt: serverTimestamp() });
+        setJewels(playerData.jewels - config.bet); // Update client-side jewels
+        await mockBackendLogTransaction("withdraw", config.bet, config.useJewels ? "JEWELS" : "USDT", "blackjack_doubledown", userId);
+
+        const deck = currentGameState.deck;
+        const newCard = dealCard(deck);
+        player.hand.cards.push(newCard);
+        player.hand.total = calculateHandTotal(player.hand.cards);
+        player.hand.status = player.hand.total > 21 ? "bust" : "stand"; // Auto stand after double down hit
+
+        transaction.update(roomRef, {
+          [`players.${userId}.hand`]: player.hand,
+          deck: deck,
+        });
+      });
+      setShowMessage("📈 Doubled down!");
+    } catch (error: any) {
+      console.error("[Backend Mock] Error doubling down:", error);
+      setShowMessage(`⚠️ Double down failed: ${error.message}`);
+      setActiveModal("error");
+    }
+  };
+
+  const mockBackendDetermineWinnerAndDistributeRewards = async (roomId: string) => {
+    try {
+      await runTransaction(db, async (transaction) => {
+        const roomRef = doc(db, "GameRooms", roomId);
+        const roomSnap = await transaction.get(roomRef);
+        if (!roomSnap.exists()) throw new Error("Game room not found.");
+        const currentGameState = roomSnap.data() as BlackjackGameState;
+        if (currentGameState.status !== "playing") return; // Only process if game is playing
+
+        const dealerHand = currentGameState.dealerHand;
         let winnerId: string | null = null;
+        let highestPlayerTotal = 0;
+
+        // Find best player hand
+        Object.entries(currentGameState.players).forEach(([, player]) => {
+          if (player.hand.status !== "bust" && player.hand.total <= 21 && player.hand.total > highestPlayerTotal) {
+            highestPlayerTotal = player.hand.total;
+          }
+        });
+
         if (dealerHand.status === "bust") {
-          winnerId = Object.keys(gameState.players).find((id) => gameState.players[id].hand.status !== "bust" && gameState.players[id].hand.total <= 21) || null;
+          // Dealer busted, all non-busted players win
+          Object.entries(currentGameState.players).forEach(([id, player]) => {
+            if (player.hand.status !== "bust" && player.hand.total <= 21) {
+              // Mark as winner if not busted
+              if (!winnerId) winnerId = id; // Just take the first valid winner for now
+              // Reward this player (transaction logic inside)
+              handlePlayerWin(id, currentGameState, transaction);
+            } else {
+              handlePlayerLoss(id, currentGameState, transaction);
+            }
+          });
         } else {
-          let highestTotal = dealerHand.total;
-          Object.entries(gameState.players).forEach(([id, player]) => {
-            if (player.hand.status !== "bust" && player.hand.total <= 21 && player.hand.total > highestTotal) {
-              winnerId = id;
-              highestTotal = player.hand.total;
+          // Compare player hands to dealer's hand
+          Object.entries(currentGameState.players).forEach(([id, player]) => {
+            if (player.hand.status === "blackjack") { // Blackjack is automatic win
+                handlePlayerWin(id, currentGameState, transaction);
+                if (!winnerId) winnerId = id;
+            } else if (player.hand.status === "bust") {
+              handlePlayerLoss(id, currentGameState, transaction);
+            } else if (player.hand.total > dealerHand.total) {
+              handlePlayerWin(id, currentGameState, transaction);
+              if (!winnerId) winnerId = id;
+            } else if (player.hand.total === dealerHand.total) {
+              // Push (tie), no win/loss, bet returned (handled by initial bet logic)
+              setShowMessage(`Push with dealer for ${player.name}`);
+            } else {
+              handlePlayerLoss(id, currentGameState, transaction);
             }
           });
         }
-        await setDoc(doc(db, "GameRooms", roomId), { status: "ended", winner: winnerId }, { merge: true });
-        if (dealerIntervalRef.current) clearInterval(dealerIntervalRef.current);
 
-        if (effectiveUserId) {
-          const newStats = {
-            wins: winnerId === effectiveUserId ? stats.wins + 1 : stats.wins,
-            losses: winnerId !== effectiveUserId ? stats.losses + 1 : stats.losses,
-            totalGames: stats.totalGames + 1,
-            highestScore: Math.max(stats.highestScore, gameState.players[effectiveUserId]?.hand.total || 0),
-          };
-          setStats(newStats);
-          if (winnerId === effectiveUserId) {
-            const winnings = config.bet * Object.keys(gameState.players).length;
-            setJewels((prev) => prev + winnings);
-            await logTransaction("deposit", winnings);
-            setShowReward({ jewels: winnings, xp: 10, message: `Blackjack! You won +${winnings} JEWELS!` });
-            if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+        transaction.update(roomRef, { status: "ended", winner: winnerId });
+        setShowMessage("Game ended! Results are in.");
+      });
+    } catch (error) {
+      console.error("[Backend Mock] Error determining winner:", error);
+      setShowMessage("⚠️ Failed to determine winner.");
+      setActiveModal("error");
+    }
+  };
 
-            const winQuest = quests.find((q) => q.id === "blackjack-wins");
-            if (winQuest && !winQuest.completed) {
-              const newProgress = Math.min(winQuest.progress + 1, winQuest.goal);
-              const isQuestCompleted = newProgress >= winQuest.goal;
-              setQuests((prev) =>
-                prev.map((q) => (q.id === "blackjack-wins" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q))
-              );
-              if (isQuestCompleted) {
-                setJewels((prev) => prev + winQuest.rewardJEWELS);
-                setShowReward({ jewels: winQuest.rewardJEWELS, xp: winQuest.rewardXP, message: `Quest Completed: ${winQuest.title}!` });
-                await logTransaction("deposit", winQuest.rewardJEWELS);
-                await updatePlayerFirestore({ quests, jewels: jewels + winQuest.rewardJEWELS });
-                if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-              }
-            }
+  const handlePlayerWin = async (playerId: string, gameState: BlackjackGameState, transaction: any) => {
+    const winnings = config.bet * 2; // Standard Blackjack payout (1:1 win + original bet back)
+    const userRef = doc(db, "Players", playerId);
+    const userSnap = await transaction.get(userRef);
+    const userData = userSnap.data();
+    if (!userData) return;
 
-            const achievement = achievements.find((a) => a.id === "blackjack-master");
-            if (achievement && !achievement.unlocked && newStats.wins >= 10) {
-              setAchievements((prev) => prev.map((a) => (a.id === "blackjack-master" ? { ...a, unlocked: true } : a)));
-              setJewels((prev) => prev + 20);
-              setShowReward({ jewels: 20, xp: 30, message: "Achievement Unlocked: Blackjack Master!" });
-              await logTransaction("deposit", 20);
-              await updatePlayerFirestore({ achievements, jewels: jewels + 20 });
-              if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-            }
-          }
-          await updatePlayerFirestore({ blackjackWins: newStats.wins, blackjackLosses: newStats.losses, blackjackHighestScore: newStats.highestScore });
-        }
+    let currentJewels = (userData.jewels || 0) + winnings;
+    let currentWins = (userData.blackjackWins || 0) + 1;
+    let totalGames = (userData.totalGames || 0) + 1;
+    let highestScore = Math.max(userData.blackjackHighestScore || 0, gameState.players[playerId]?.hand.total || 0);
 
-        const playQuest = quests.find((q) => q.id === "blackjack-play");
-        if (playQuest && !playQuest.completed) {
-          const newProgress = Math.min(playQuest.progress + 1, playQuest.goal);
-          const isQuestCompleted = newProgress >= playQuest.goal;
-          setQuests((prev) =>
-            prev.map((q) => (q.id === "blackjack-play" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q))
-          );
-          if (isQuestCompleted) {
-            setJewels((prev) => prev + playQuest.rewardJEWELS);
-            setShowReward({ jewels: playQuest.rewardJEWELS, xp: playQuest.rewardXP, message: `Quest Completed: ${playQuest.title}!` });
-            await logTransaction("deposit", playQuest.rewardJEWELS);
-            await updatePlayerFirestore({ quests, jewels: jewels + playQuest.rewardJEWELS });
-            if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-          }
-        }
+    transaction.update(userRef, {
+      jewels: currentJewels,
+      blackjackWins: currentWins,
+      totalGames: totalGames,
+      blackjackHighestScore: highestScore,
+      updatedAt: serverTimestamp(),
+    });
+    // Update client state based on the transaction outcome
+    if (playerId === effectiveUserId) {
+        setJewels(currentJewels);
+        setStats(prev => ({ ...prev, wins: currentWins, totalGames: totalGames, highestScore: highestScore }));
+        setShowReward({ jewels: winnings, xp: 10, message: `You won +${winnings} JEWELS!` });
+        if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+    }
+    await mockBackendLogTransaction("deposit", winnings, "JEWELS", "blackjack_win", playerId);
+
+    // Quest and Achievement updates (also part of the transaction)
+    let currentQuests = userData.quests || initialQuests;
+    const winQuest = currentQuests.find((q: Quest) => q.id === "blackjack-wins");
+    if (winQuest && !winQuest.completed) {
+      const newProgress = Math.min(winQuest.progress + 1, winQuest.goal);
+      const isQuestCompleted = newProgress >= winQuest.goal;
+      currentQuests = currentQuests.map((q: Quest) => (q.id === "blackjack-wins" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q));
+      transaction.update(userRef, { quests: currentQuests });
+      if (isQuestCompleted) {
+        const rewardAmount = winQuest.rewardJEWELS;
+        transaction.update(userRef, { jewels: currentJewels + rewardAmount });
+        if (playerId === effectiveUserId) setShowReward({ jewels: rewardAmount, xp: winQuest.rewardXP, message: `Quest Completed: ${winQuest.title}!` });
+        await mockBackendLogTransaction("deposit", rewardAmount, "JEWELS", "blackjack_quest", playerId);
       }
-    }, 2000);
+    }
+
+    let currentAchievements = userData.achievements || initialAchievements;
+    const achievement = currentAchievements.find((a: Achievement) => a.id === "blackjack-master");
+    if (achievement && !achievement.unlocked && currentWins >= 10) {
+      currentAchievements = currentAchievements.map((a: Achievement) => (a.id === "blackjack-master" ? { ...a, unlocked: true } : a));
+      transaction.update(userRef, { achievements: currentAchievements });
+      const achievementRewardJewels = 20;
+      const achievementRewardXP = 30;
+      transaction.update(userRef, { jewels: currentJewels + achievementRewardJewels });
+      if (playerId === effectiveUserId) setShowReward({ jewels: achievementRewardJewels, xp: achievementRewardXP, message: "Achievement Unlocked: Blackjack Master!" });
+      await mockBackendLogTransaction("deposit", achievementRewardJewels, "JEWELS", "blackjack_achievement", playerId);
+    }
   };
 
-  const hit = async (roomId: string): Promise<void> => {
-    if (!gameState || gameState.status !== "playing" || !effectiveUserId) return;
-    const playerHand = gameState.players[effectiveUserId]?.hand;
-    if (!playerHand || playerHand.status !== "playing") return;
+  const handlePlayerLoss = async (playerId: string, _gameState: BlackjackGameState, transaction: any) => {
+    const userRef = doc(db, "Players", playerId);
+    const userSnap = await transaction.get(userRef);
+    const userData = userSnap.data();
+    if (!userData) return;
 
-    const deck = createDeck();
-    const newCard = dealCard(deck);
-    playerHand.cards.push(newCard);
-    playerHand.total = calculateHandTotal(playerHand.cards);
-    if (playerHand.total > 21) playerHand.status = "bust";
-    else if (playerHand.cards.length === 2 && playerHand.total === 21) playerHand.status = "blackjack";
+    let currentLosses = (userData.blackjackLosses || 0) + 1;
+    let totalGames = (userData.totalGames || 0) + 1;
 
-    await setDoc(doc(db, "GameRooms", roomId), {
-      players: { ...gameState.players, [effectiveUserId]: { ...gameState.players[effectiveUserId], hand: playerHand } },
-    }, { merge: true });
+    transaction.update(userRef, {
+      blackjackLosses: currentLosses,
+      totalGames: totalGames,
+      updatedAt: serverTimestamp(),
+    });
+    if (playerId === effectiveUserId) {
+        setStats(prev => ({ ...prev, losses: currentLosses, totalGames: totalGames }));
+        setShowMessage("You lost.");
+    }
   };
 
-  const stand = async (roomId: string): Promise<void> => {
-    if (!gameState || gameState.status !== "playing" || !effectiveUserId) return;
-    const playerHand = gameState.players[effectiveUserId]?.hand;
-    if (!playerHand || playerHand.status !== "playing") return;
 
-    playerHand.status = "stand";
-    await setDoc(doc(db, "GameRooms", roomId), {
-      players: { ...gameState.players, [effectiveUserId]: { ...gameState.players[effectiveUserId], hand: playerHand } },
-    }, { merge: true });
-  };
-
-  const doubleDown = async (roomId: string): Promise<void> => {
-    if (!gameState || gameState.status !== "playing" || !effectiveUserId) return;
-    const playerHand = gameState.players[effectiveUserId]?.hand;
-    if (!playerHand || playerHand.status !== "playing" || playerHand.cards.length !== 2) return;
-    if (config.useJewels && jewels < config.bet * 2) {
-      setShowMessage("⚠️ Not enough JEWELS to double down!");
-      setActiveModal("payment");
-      navigate("/vault");
+  // --- Game Initialization & Listeners ---
+  useEffect(() => {
+    if (!effectiveUserId) {
+      setShowTutorial(true);
+      setShowMessage("⚠️ Please sign in to play!");
+      setActiveModal("auth");
+      setIsLoading(false);
       return;
     }
 
-    await logTransaction("withdraw", config.bet);
-    const deck = createDeck();
-    const newCard = dealCard(deck);
-    playerHand.cards.push(newCard);
-    playerHand.total = calculateHandTotal(playerHand.cards);
-    playerHand.status = playerHand.total > 21 ? "bust" : "stand";
-    await setDoc(doc(db, "GameRooms", roomId), {
-      players: { ...gameState.players, [effectiveUserId]: { ...gameState.players[effectiveUserId], hand: playerHand } },
-    }, { merge: true });
-  };
+    const joinRoomAndListen = async () => {
+      setIsLoading(true);
+      try {
+        const userRef = doc(db, "Players", effectiveUserId);
+        const userSnap = await getDoc(userRef);
+        const data = userSnap.exists() ? userSnap.data() : {};
 
-  const shareWinOnX = async (): Promise<void> => {
-    if (!effectiveUserId) {
-      setShowMessage("⚠️ Please sign in to share.");
-      setActiveModal("auth");
-      navigate("/auth");
-      return;
-    }
-    const shareQuest = quests.find((q) => q.id === "blackjack-share");
-    if (shareQuest && !shareQuest.completed) {
-      const shareText = encodeURIComponent("Just won a Blackjack in Swytch PETverse! 🃏 Join at swytch.io! #SwytchPETverse #Blackjack");
-      window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      setQuests((prev) => prev.map((q) => (q.id === "blackjack-share" ? { ...q, progress: 1, completed: true } : q)));
-      setJewels((prev) => prev + shareQuest.rewardJEWELS);
-      setShowReward({ jewels: shareQuest.rewardJEWELS, xp: shareQuest.rewardXP, message: `Quest Completed: ${shareQuest.title}!` });
-      await logTransaction("deposit", shareQuest.rewardJEWELS);
-      await updatePlayerFirestore({ quests, jewels: jewels + shareQuest.rewardJEWELS });
-      if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-    }
-  };
+        setJewels(data.jewels || 0);
+        setIsPETMember(data.isPETMember || false);
+        const mergedQuests = initialQuests.map((initialQuest) => {
+          const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
+          return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
+        });
+        setQuests(mergedQuests);
+        setAchievements(data.achievements?.filter((a: Achievement) => initialAchievements.some((ia) => ia.id === a.id)) || initialAchievements);
+        setStats({
+          wins: data.blackjackWins || 0,
+          losses: data.blackjackLosses || 0,
+          totalGames: (data.blackjackWins || 0) + (data.blackjackLosses || 0),
+          highestScore: data.blackjackHighestScore || 0,
+        });
 
-  const startGame = async (roomId: string): Promise<void> => {
+        const roomsQuery = collection(db, "GameRooms");
+        const unsubscribeRooms = onSnapshot(roomsQuery, (snapshot) => {
+          let foundRoom: BlackjackGameState | null = null;
+          snapshot.forEach((docSnap) => {
+            const roomData = docSnap.data() as BlackjackGameState;
+            if (roomData.game === "blackjack" && roomData.players && effectiveUserId in roomData.players) {
+              foundRoom = { ...roomData, roomId: docSnap.id };
+            } else if (roomData.game === "blackjack" && roomData.status === "waiting" && Object.keys(roomData.players).length < 2) { // Max 2 players for now
+              foundRoom = { ...roomData, roomId: docSnap.id };
+            }
+          });
+
+          if (foundRoom) {
+            // User explicitly requested to apply Bingo's 'exit to homepage' logic
+            // WARNING: This will prevent the Blackjack game from being played if any room exists.
+            // If the intent is to play, this logic needs to be reverted or re-designed.
+            navigate('/'); // Redirect to homepage
+            setShowMessage("A Blackjack game room was found, redirecting to homepage.");
+            setGameState(null); // Clear game state
+            setIsLoading(false); // Ensure loading is off
+          } else {
+            setGameState(null);
+            setIsLoading(false);
+          }
+        }, (err) => {
+          console.error("Error listening to game rooms:", err);
+          setShowMessage("⚠️ Failed to load game rooms.");
+          setActiveModal("error");
+          setIsLoading(false);
+        });
+
+        return () => {
+          unsubscribeRooms();
+          if (dealerIntervalRef.current) clearInterval(dealerIntervalRef.current);
+        };
+      } catch (err) {
+        console.error("Failed to initialize game data:", err);
+        setShowMessage("⚠️ Failed to load game data.");
+        setActiveModal("error");
+        setIsLoading(false);
+      }
+    };
+
+    joinRoomAndListen();
+  }, [effectiveUserId, setShowMessage, setActiveModal, navigate, setIsPETMember, address]);
+
+  useEffect(() => {
+    saveStateToFirestore({
+      jewels,
+      quests,
+      achievements,
+      blackjackWins: stats.wins,
+      blackjackLosses: stats.losses,
+      blackjackHighestScore: stats.highestScore,
+      totalGames: stats.totalGames, // Save totalGames stat
+    });
+  }, [jewels, quests, achievements, stats, saveStateToFirestore]);
+
+  useEffect(() => {
+    if (showReward) {
+      const timer = setTimeout(() => setShowReward(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showReward]);
+
+  useEffect(() => {
+    winSoundRef.current = new Audio("/audio/reward.mp3");
+  }, []);
+
+  const handleStartGame = async () => {
     if (!effectiveUserId) {
-      setShowMessage("⚠️ Please sign in to play.");
+      setShowMessage("⚠️ Please sign in to play!");
       setActiveModal("auth");
-      navigate("/auth");
       return;
     }
     if (config.useJewels && jewels < config.bet) {
       setShowMessage("⚠️ Not enough JEWELS! Please deposit.");
       setActiveModal("payment");
-      navigate("/vault");
       return;
     }
-    if (!config.useJewels) {
-      setShowMessage("ℹ️ Initiating USDT payment... Admin (0CfobCbXnPZsJwT662H4OhDrXk33) will process.");
-      setActiveModal("payment");
-      await logTransaction("withdraw", config.bet);
-      navigate("/vault");
-      return;
+    setIsLoading(true);
+    try {
+      // Once game is started by backend, client will listen via onSnapshot
+      // We don't directly set game state here, rely on the listener.
+    } catch (error) {
+      // Error handled in mockBackendStartGame
+    } finally {
+      setIsLoading(false);
     }
-    await logTransaction("withdraw", config.bet);
-
-    const deck = createDeck();
-    const newPlayers = { ...gameState?.players };
-    Object.keys(newPlayers).forEach((id) => {
-      newPlayers[id].hand = {
-        cards: [dealCard(deck), dealCard(deck)],
-        total: 0,
-        status: "playing",
-      };
-      newPlayers[id].hand.total = calculateHandTotal(newPlayers[id].hand.cards);
-      if (newPlayers[id].hand.cards.length === 2 && newPlayers[id].hand.total === 21) {
-        newPlayers[id].hand.status = "blackjack";
-      }
-    });
-    const dealerHand = {
-      cards: [dealCard(deck), dealCard(deck)],
-      total: 0,
-      status: "playing",
-    };
-    dealerHand.total = calculateHandTotal(dealerHand.cards);
-
-    await setDoc(doc(db, "GameRooms", roomId), {
-      status: "playing",
-      players: newPlayers,
-      dealerHand,
-    }, { merge: true });
   };
+
+  const handlePlayAgain = async () => {
+    if (!effectiveUserId) {
+      setShowMessage("⚠️ Please sign in to play!");
+      setActiveModal("auth");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const roomRef = doc(db, "GameRooms", gameState!.roomId);
+      await setDoc(roomRef, {
+        players: {
+          [effectiveUserId]: {
+            ...gameState!.players[effectiveUserId],
+            hand: { cards: [], total: 0, status: "playing" }, // Reset player hand
+          }
+        },
+        dealerHand: { cards: [], total: 0, status: "playing" }, // Reset dealer hand
+        status: "waiting", // Back to waiting
+        winner: null,
+        deck: createDeck(), // New deck for next round
+      }, { merge: true });
+
+      // If this was the only player, reset the room status completely
+      const roomSnap = await getDoc(roomRef);
+      const currentPlayers = roomSnap.data()?.players;
+      if (currentPlayers && Object.keys(currentPlayers).length === 1 && currentPlayers[effectiveUserId]) {
+        await setDoc(roomRef, { status: "waiting" }, { merge: true });
+      }
+      setShowMessage("Game reset. Ready for a new round!");
+    } catch (error) {
+      console.error("Error resetting game:", error);
+      setShowMessage("⚠️ Failed to reset game. Please try again.");
+      setActiveModal("error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const hit = async (): Promise<void> => {
+    if (!gameState || !effectiveUserId || !gameState.roomId) return;
+    await mockBackendHit(gameState.roomId, effectiveUserId);
+  };
+
+  const stand = async (): Promise<void> => {
+    if (!gameState || !effectiveUserId || !gameState.roomId) return;
+    await mockBackendStand(gameState.roomId, effectiveUserId);
+    // After player stands, if all players are done, trigger dealer's turn
+    const allPlayersDone = Object.values(gameState.players).every(p => p.hand.status !== "playing");
+    if (allPlayersDone) {
+      mockBackendDetermineWinnerAndDistributeRewards(gameState.roomId); // Dealer's turn and winner
+    }
+  };
+
+  const doubleDown = async (): Promise<void> => {
+    if (!gameState || !effectiveUserId || !gameState.roomId) return;
+    await mockBackendDoubleDown(gameState.roomId, effectiveUserId);
+  };
+
 
   if (authLoading || isLoading) {
     return (
@@ -597,6 +695,10 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
         <p>Loading Multiplayer Blackjack Arena...</p>
       </div>
     );
+  }
+
+function shareWinOnX(_event: React.MouseEvent<HTMLButtonElement>): void {
+    throw new Error("Function not implemented.");
   }
 
   return (
@@ -689,36 +791,42 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
 
         {gameState && (
           <motion.div variants={sectionVariants} className="mb-12">
-            <SwytchErrorBoundary>
+            <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
               <div className="relative bg-gray-900/70 p-8 rounded-2xl border border-rose-500/30 backdrop-blur-md bg-gradient-to-r from-rose-500/20 to-cyan-500/20">
-                <h3 className="text-xl font-bold text-white mb-4 font-poppins">Dealer Hand</h3>
+                <h3 className="text-xl font-bold text-white mb-4 font-poppins">Dealer Hand (Total: {gameState.dealerHand.total})</h3>
                 <div className="flex justify-center gap-2 mb-8">
-                  <SwytchErrorBoundary>
-                    <Canvas style={{ height: "100px" }} camera={{ position: [0, 0, 5], fov: 50 }}>
-                      <ambientLight intensity={0.5} />
-                      <pointLight position={[10, 10, 10]} intensity={1} />
-                      {gameState.dealerHand.cards.map((card, index) => (
-                        <Card3D key={`${card.suit}-${card.value}`} card={card} position={[index * 1 - (gameState.dealerHand.cards.length - 1) / 2, 0, 0]} />
-                      ))}
-                    </Canvas>
-                  </SwytchErrorBoundary>
+                  <Canvas style={{ height: "100px", width: "100%" }} camera={{ position: [0, 0, 5], fov: 50 }}>
+                    <ambientLight intensity={0.5} />
+                    <pointLight position={[10, 10, 10]} intensity={1} />
+                    {/* Render dealer's first card, and second card only if game ended or player stood */}
+                    {gameState.dealerHand.cards[0] && (
+                        <Card3D card={gameState.dealerHand.cards[0]} position={[-0.5, 0, 0]} />
+                    )}
+                    {gameState.dealerHand.cards[1] && (gameState.status === "ended" || gameState.players[effectiveUserId!]?.hand.status === "stand") ? (
+                        <Card3D card={gameState.dealerHand.cards[1]} position={[0.5, 0, 0]} />
+                    ) : (
+                        // Placeholder for face-down card
+                        <Box args={[0.8, 1.2, 0.05]} position={[0.5, 0, 0]} castShadow>
+                            <meshStandardMaterial color="#6b7280" roughness={0.3} metalness={0.2} /> {/* Dark gray for back of card */}
+                            <Text position={[0, 0, 0.06]} fontSize={0.3} color="#ffffff" anchorX="center" anchorY="middle">?</Text>
+                        </Box>
+                    )}
+                  </Canvas>
                 </div>
                 <h3 className="text-xl font-bold text-white mb-4 font-poppins">Your Hand (Total: {gameState.players[effectiveUserId!]?.hand.total || 0})</h3>
                 <div className="flex justify-center gap-2 mb-8">
-                  <SwytchErrorBoundary>
-                    <Canvas style={{ height: "100px" }} camera={{ position: [0, 0, 5], fov: 50 }}>
-                      <ambientLight intensity={0.5} />
-                      <pointLight position={[10, 10, 10]} intensity={1} />
-                      {effectiveUserId && gameState.players[effectiveUserId]?.hand.cards.map((card, index) => (
-                        <Card3D key={`${card.suit}-${card.value}`} card={card} position={[index * 1 - (gameState.players[effectiveUserId].hand.cards.length - 1) / 2, 0, 0]} />
-                      ))}
-                    </Canvas>
-                  </SwytchErrorBoundary>
+                  <Canvas style={{ height: "100px", width: "100%" }} camera={{ position: [0, 0, 5], fov: 50 }}>
+                    <ambientLight intensity={0.5} />
+                    <pointLight position={[10, 10, 10]} intensity={1} />
+                    {effectiveUserId && gameState.players[effectiveUserId]?.hand.cards.map((card, index) => (
+                      <Card3D key={`${card.suit}-${card.value}`} card={card} position={[index * 1 - (gameState.players[effectiveUserId].hand.cards.length - 1) / 2, 0, 0]} />
+                    ))}
+                  </Canvas>
                 </div>
                 {gameState.status === "playing" && gameState.players[effectiveUserId!]?.hand.status === "playing" && (
                   <div className="flex justify-center gap-4">
                     <motion.button
-                      onClick={() => hit(gameState.roomId)}
+                      onClick={hit}
                       className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -727,7 +835,7 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
                       Hit
                     </motion.button>
                     <motion.button
-                      onClick={() => stand(gameState.roomId)}
+                      onClick={stand}
                       className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -737,7 +845,7 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
                     </motion.button>
                     {gameState.players[effectiveUserId!]?.hand.cards.length === 2 && (
                       <motion.button
-                        onClick={() => doubleDown(gameState.roomId)}
+                        onClick={doubleDown}
                         className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -779,6 +887,21 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
             </SwytchErrorBoundary>
           </motion.div>
         )}
+
+        {gameState?.status === "ended" && (
+            <motion.div variants={sectionVariants} className="text-center mt-6">
+                <motion.button
+                    onClick={handlePlayAgain}
+                    className="px-6 py-3 bg-cyan-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-rose-500"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    aria-label="Play Again"
+                >
+                    <RefreshCcw className="w-5 h-5 text-white animate-spin-slow" /> Play Again
+                </motion.button>
+            </motion.div>
+        )}
+
 
         <motion.div variants={sectionVariants} className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
           <div className="relative bg-gray-900/70 border border-rose-500/30 p-6 rounded-2xl backdrop-blur-md bg-gradient-to-r from-rose-500/20 to-cyan-500/20">
@@ -827,8 +950,8 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 font-poppins">
               <Star className="w-6 h-6 text-cyan-400 animate-pulse" /> Community Wins
             </h3>
-            {mockXPosts.map((post, _) => (
-              <div key={post.timestamp} className="mb-2">
+            {mockXPosts.map((post, index) => (
+              <div key={index} className="mb-2">
                 <p className="text-sm font-semibold text-white font-poppins">{post.username}</p>
                 <p className="text-sm text-gray-300 font-inter">{post.content}</p>
                 <p className="text-xs text-gray-400 font-inter">
@@ -839,31 +962,35 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
           </div>
         </motion.div>
 
-        {gameState?.status === "waiting" && (
+        {!effectiveUserId && (
           <motion.div variants={sectionVariants} className="text-center mb-12">
+            <p className="text-gray-300 mb-4">Please sign in to join the Blackjack game!</p>
             <motion.button
-              onClick={() => startGame(gameState.roomId)}
+              onClick={() => setActiveModal("auth")}
               className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-cyan-500"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              aria-label="Start Multiplayer Blackjack"
+              aria-label="Sign In to Play"
             >
-              <Wallet className="w-5 h-5 text-cyan-400 animate-pulse" /> Start Game
+              <Users className="w-5 h-5 text-cyan-400" /> Sign In to Play
             </motion.button>
           </motion.div>
         )}
 
-        <motion.div variants={sectionVariants} className="text-center mb-12">
-          <motion.button
-            onClick={() => setShowTutorial(true)}
-            className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-cyan-500"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label="Show Blackjack Tutorial"
-          >
-            <Users className="w-5 h-5 text-cyan-400 animate-pulse" /> Show Tutorial
-          </motion.button>
-        </motion.div>
+        {effectiveUserId && !gameState && !isLoading && (
+          <motion.div variants={sectionVariants} className="text-center mb-12">
+            <p className="text-gray-300 mb-4">You are not in an active Blackjack game. Would you like to start a new one?</p>
+            <motion.button
+              onClick={handleStartGame}
+              className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-cyan-500"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label="Start New Blackjack Game"
+            >
+              <Wallet className="w-5 h-5 text-cyan-400 animate-pulse" /> Start New Game
+            </motion.button>
+          </motion.div>
+        )}
 
         <motion.div variants={sectionVariants} className="text-center py-8">
           <Link
@@ -933,7 +1060,14 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
           <Link
             to="/benefits"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-            onClick={() => setShowMessage('🌟 Navigating to Benefits!')}
+            onClick={() => {
+              if (!auth.currentUser) {
+                setShowMessage('⚠️ Sign in to access Benefits!');
+                setActiveModal('auth');
+              } else {
+                setShowMessage('🌟 Navigating to Benefits!');
+              }
+            }}
             role="button"
             aria-label="Navigate to Benefits Page"
           >
@@ -942,7 +1076,14 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
           <Link
             to="/community"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-            onClick={() => setShowMessage('👥 Navigating to Community!')}
+            onClick={() => {
+              if (!auth.currentUser) {
+                setShowMessage('👥 Sign in to access Community!');
+                setActiveModal('auth');
+              } else {
+                setShowMessage('👥 Navigating to Community!');
+              }
+            }}
             role="button"
             aria-label="Navigate to Community Page"
           >
@@ -983,30 +1124,20 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
               </div>
             </Modal>
           )}
-          {setActiveModal && (
+          {activeModal === "auth" && (
             <AuthModal
-              title="Sign In"
-              onClose={() => {
-                setActiveModal(null);
-                setShowMessage("");
-              }}
               setShowMessage={setShowMessage}
             />
           )}
-          {setActiveModal && (
+          {activeModal === "payment" && (
             <PaymentModal
               userId={effectiveUserId}
-              title="Wallet"
-              onClose={() => {
-                setActiveModal(null);
-                setShowMessage("");
-              }}
               setShowMessage={setShowMessage}
               setIsPETMember={setIsPETMember}
               updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
-          {setActiveModal && (
+          {activeModal === "error" && (
             <Modal title="Error" onClose={() => setActiveModal(null)}>
               <div className="space-y-4">
                 <p className="text-rose-400 font-inter">An error occurred. Please try again.</p>
@@ -1079,3 +1210,7 @@ const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, u
 };
 
 export default BlackjackGame;
+
+function saveStateToFirestore(_arg0: { jewels: number; quests: Quest[]; achievements: Achievement[]; blackjackWins: number; blackjackLosses: number; blackjackHighestScore: number; totalGames: number; }) {
+  throw new Error("Function not implemented.");
+}

@@ -1,26 +1,29 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import React, { useState, useEffect, useRef } from 'react';
-import { Dices, Trophy, Users, Sparkles, Star, MessageCircleHeart, X } from 'lucide-react';
-import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebaseConfig';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Dices, Trophy, Users, Sparkles, Star, MessageCircleHeart, X, RefreshCcw } from 'lucide-react';
+import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, getDocs, QueryDocumentSnapshot, runTransaction } from 'firebase/firestore';
+import { db, auth } from '../lib/firebaseConfig'; // Corrected path
 import { useNavigate, Link } from 'react-router-dom';
-import { useModal } from '@/context/ModalContext';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useModal } from '../context/ModalContext'; // Corrected path
+import { useAuthUser } from '../hooks/useAuthUser'; // Corrected path
 import { useAccount } from 'wagmi';
 import { Canvas } from '@react-three/fiber';
-import { Box, Text } from '@react-three/drei';
-import Modal from '@/components/SwytchModal';
-import AuthModal from '@/components/AuthModal';
-import PaymentModal from '@/components/PaymentModal';
-import SwytchErrorBoundary from '@/components/ErrorBoundaryComponent';
+import { Box, Text, Cylinder } from '@react-three/drei'; // Added Cylinder, Box, Text
+import Modal from '../components/SwytchModal'; // Corrected path
+import AuthModal from '../components/AuthModal'; // Corrected path
+import PaymentModal from '../components/PaymentModal'; // Corrected path
+import SwytchErrorBoundary from '../components/ErrorBoundaryComponent'; // Corrected path
 import ConfettiExplosion from 'react-confetti-explosion';
+import { Transaction, PaymentModalProps } from '../lib/types'; // Import types
 
+// --- Type Definitions ---
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 type Value = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | 'A';
 
 interface Card {
   suit: Suit;
   value: Value;
+  numericValue: number; // Added numericValue to Card interface
 }
 
 interface Bet {
@@ -63,6 +66,7 @@ interface GameRoom {
   result: string;
   players: string[];
   game: string;
+  roomId: string; // Added roomId to GameRoom interface
 }
 
 interface Reward {
@@ -71,6 +75,7 @@ interface Reward {
   message: string;
 }
 
+// --- Animation Variants ---
 const sectionVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } },
@@ -95,50 +100,7 @@ const rewardVariants = {
   exit: { opacity: 0, scale: 0.8, y: -50, transition: { duration: 0.3 } },
 };
 
-
-const deck: Card[] = (
-  ['hearts', 'diamonds', 'clubs', 'spades'] as const
-).flatMap(suit =>
-  (['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'] as const).map(value => ({ suit, value }))
-);
-
-const cardToEmoji = (card: Card): string => {
-  const suitMap: { [key in Suit]: string } = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' };
-  return `${card.value}${suitMap[card.suit]}`;
-};
-
-const shuffleDeck = (seed: string): Card[] => {
-  let hash = Array.from(seed).reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return [...deck].sort(() => Math.sin(hash++) * 10000 % 1 - 0.5);
-};
-
-const getHandValue = (cards: Card[]): { value: number; isPontoon: boolean; isFiveCardTrick: boolean } => {
-  let value = 0, aces = 0;
-  for (const card of cards) {
-    if (card.value === 'A') aces++;
-    else if (['J', 'Q', 'K'].includes(card.value)) value += 10;
-    else value += parseInt(card.value);
-  }
-  while (aces > 0 && value + 11 <= 21) { value += 11; aces--; }
-  value += aces;
-  const isPontoon = cards.length === 2 && value === 21;
-  const isFiveCardTrick = cards.length === 5 && value <= 21;
-  return { value, isPontoon, isFiveCardTrick };
-};
-
-const Card3D: React.FC<{ card: Card; position: [number, number, number]; index: number; faceUp: boolean }> = ({ card, position, faceUp }) => {
-  return (
-    <group position={position}>
-      <Box args={[0.8, 1.2, 0.05]} castShadow>
-        <meshStandardMaterial color="#ffffff" roughness={0.3} metalness={0.2} />
-      </Box>
-      <Text position={[0, 0, 0.06]} fontSize={0.3} color={card.suit === 'hearts' || card.suit === 'diamonds' ? "#f43f5e" : "#000000"} anchorX="center" anchorY="middle">
-        {faceUp ? cardToEmoji(card) : '🂠'}
-      </Text>
-    </group>
-  );
-};
-
+// --- Initial Data ---
 const initialQuests: Quest[] = [
   { id: "pontoon-wins", title: "Win 3 Pontoon Games", progress: 0, goal: 3, rewardJEWELS: 10, rewardXP: 15, completed: false },
   { id: "pontoon-play", title: "Play 5 Pontoon Rounds", progress: 0, goal: 5, rewardJEWELS: 5, rewardXP: 10, completed: false },
@@ -154,6 +116,58 @@ const mockXPosts: { username: string; content: string; likes: number; timestamp:
   { username: "@CryptoGamerX", content: "Pontoon in PETverse is a blast! Join the table! #SwytchPET", likes: 200, timestamp: "2025-07-07T16:45:00Z" },
 ];
 
+// Define a full deck with numeric values
+const fullDeck: Card[] = (
+  ['hearts', 'diamonds', 'clubs', 'spades'] as const
+).flatMap(suit =>
+  (['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'] as const).map(value => {
+    const numericValue = value === 'A' ? 11 : (['J', 'Q', 'K'].includes(value) ? 10 : parseInt(value));
+    return { suit, value, numericValue };
+  })
+);
+
+const cardToEmoji = (card: Card): string => {
+  const suitMap: { [key in Suit]: string } = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' };
+  return `${card.value}${suitMap[card.suit]}`;
+};
+
+const shuffleDeck = (seed: string): Card[] => {
+  let hash = Array.from(seed).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return [...fullDeck].sort(() => Math.sin(hash++) * 10000 % 1 - 0.5);
+};
+
+const getHandValue = (cards: Card[]): { value: number; isPontoon: boolean; isFiveCardTrick: boolean } => {
+  let value = 0, aces = 0;
+  for (const card of cards) {
+    if (card.value === 'A') aces++;
+    else if (['J', 'Q', 'K'].includes(card.value)) value += 10;
+    else value += parseInt(card.value);
+  }
+  // Adjust for Aces
+  while (aces > 0 && value + 11 > 21) { // If adding 11 busts, add 1 instead
+    value += 1;
+    aces--;
+  }
+  value += aces * 11; // Add remaining aces as 11 (if they don't bust)
+
+  const isPontoon = cards.length === 2 && value === 21;
+  const isFiveCardTrick = cards.length === 5 && value <= 21;
+  return { value, isPontoon, isFiveCardTrick };
+};
+
+const Card3D: React.FC<{ card: Card; position: [number, number, number]; index: number; faceUp: boolean }> = ({ card, position, faceUp }) => {
+  return (
+    <group position={position}>
+      <Box args={[0.8, 1.2, 0.05]} castShadow>
+        <meshStandardMaterial color="#ffffff" roughness={0.3} metalness={0.2} />
+      </Box>
+      <Text position={[0, 0, 0.06]} fontSize={0.3} color={card.suit === 'hearts' || card.suit === 'diamonds' ? "#f43f5e" : "#000000"} anchorX="center" anchorY="middle">
+        {faceUp ? cardToEmoji(card) : '�'}
+      </Text>
+    </group>
+  );
+};
+
 interface PontoonGameProps {
   userId: string | null;
   setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>;
@@ -163,7 +177,7 @@ interface PontoonGameProps {
 const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updatePlayerFirestore }) => {
   const { user: firebaseAuthUser, loading: authLoading } = useAuthUser();
   const { address } = useAccount();
-  const { setActiveModal, setShowMessage } = useModal();
+  const { activeModal, setActiveModal, setShowMessage } = useModal();
   const [jewels, setJewels] = useState<number>(0);
   const [gold, setGold] = useState<number>(0);
   const [stats, setStats] = useState<Stats>({ plays: 0, wins: 0, losses: 0, biggestWin: 0 });
@@ -181,31 +195,413 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const playSoundRef = useRef<HTMLAudioElement | null>(null);
   const winSoundRef = useRef<HTMLAudioElement | null>(null);
-  const modalRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+
   const effectiveUserId = userId ?? (address ? address.toLowerCase() : firebaseAuthUser?.uid ?? null);
+
+  // --- Simulated Backend Functions (for production, these would be Firebase Cloud Functions or an API) ---
+
+  const mockBackendLogTransaction = async (type: "deposit" | "withdraw", amount: number, currency: string, game: string, userId: string, adminId: string = "0CfobCbXnPZsJwT662H4OhDrXk33") => {
+    try {
+      const transactionId = `${userId}_${Date.now()}`;
+      await addDoc(collection(db, "transactions"), { // Use lowercase 'transactions'
+        transactionId,
+        userId: effectiveUserId, // Use effectiveUserId here
+        amount,
+        currency,
+        transactionType: type,
+        status: "pending",
+        timestamp: serverTimestamp(),
+        game,
+        adminId,
+      });
+      setShowMessage(`✅ ${type === "deposit" ? "Win" : "Bet"} of ${amount} ${currency} submitted! Admin (0CfobCbXnPZsJwT662H4OhDrXk33) will process.`);
+    } catch (err) {
+      console.error("Error logging transaction:", err);
+      setShowMessage("⚠️ Failed to log transaction.");
+      setActiveModal("error");
+    }
+  };
+
+  const mockBackendPlayGame = async (roomId: string, userId: string, bet: number, useJewelsCurrency: boolean) => {
+    try {
+      const roomRef = doc(db, "GameRooms", roomId);
+      const userRef = doc(db, "Players", userId);
+
+      await runTransaction(db, async (transaction) => {
+        const roomSnap = await transaction.get(roomRef);
+        const userSnap = await transaction.get(userRef);
+
+        if (!roomSnap.exists()) throw new Error("Game room not found.");
+        if (!userSnap.exists()) throw new Error("Player data not found.");
+
+        const roomData = roomSnap.data() as GameRoom;
+        const userData = userSnap.data();
+
+        if (roomData.phase !== 'IDLE') throw new Error("Game in progress.");
+        if ((useJewelsCurrency && (userData?.jewels || 0) < bet) || (!useJewelsCurrency && (userData?.gold || 0) < bet)) {
+          throw new Error(`Insufficient ${useJewelsCurrency ? "JEWELS" : "USDT"} balance.`);
+        }
+
+        // Deduct bet
+        if (useJewelsCurrency) {
+          transaction.update(userRef, { jewels: (userData?.jewels || 0) - bet });
+          setJewels((prev) => prev - bet); // Update local state
+        } else {
+          transaction.update(userRef, { gold: (userData?.gold || 0) - bet });
+          setGold((prev) => prev - bet); // Update local state
+        }
+        await mockBackendLogTransaction("withdraw", bet, useJewelsCurrency ? "JEWELS" : "USDT", "pontoon", userId);
+
+        // Deal initial hands
+        const newDeck = shuffleDeck(Date.now().toString());
+        const pHand = [newDeck.shift()!, newDeck.shift()!]; // Player gets two cards
+        const dHand = [newDeck.shift()!, newDeck.shift()!]; // Dealer gets two cards
+
+        const updatedPlayerHands = { ...roomData.playerHands, [userId]: { hand: pHand, bet: bet, won: false, payout: 0 } };
+
+        transaction.update(roomRef, {
+          deck: newDeck, // Remaining deck
+          dealerHand: dHand,
+          playerHands: updatedPlayerHands,
+          phase: 'PLAYER', // Start in player phase
+          activePlayer: userId,
+          result: "",
+        });
+
+        setShowMessage("🃏 Game started! Dealing hands...");
+        if (playSoundRef.current) playSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+
+        // Check for immediate Pontoon or Five Card Trick
+        const { isPontoon, isFiveCardTrick } = getHandValue(pHand);
+        if (isPontoon || isFiveCardTrick) {
+          // If immediate Pontoon/5-Card Trick, move to dealer's turn/result directly
+          setTimeout(() => finishPontoon(roomId, userId, bet, useJewelsCurrency), 1200);
+        }
+      });
+    } catch (error: any) {
+      console.error("[Backend Mock] Error playing game:", error);
+      setShowMessage(`⚠️ Game failed: ${error.message}`);
+      setActiveModal("error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePontoonAction = async (action: 'twist' | 'stick'): Promise<void> => { // Changed 'hit' to 'twist', 'stand' to 'stick' for Pontoon terminology
+    if (!effectiveUserId || !gameRoomId || !gameRoom || gameRoom.phase !== 'PLAYER' || gameRoom.activePlayer !== effectiveUserId) return;
+    const roomRef = doc(db, "GameRooms", gameRoomId);
+    const userRef = doc(db, "Players", effectiveUserId);
+
+    await runTransaction(db, async (transaction) => {
+      const roomSnap = await transaction.get(roomRef);
+      const userSnap = await transaction.get(userRef);
+      if (!roomSnap.exists()) throw new Error("Game room not found.");
+      if (!userSnap.exists()) throw new Error("Player data not found.");
+
+      const currentRoomData = roomSnap.data() as GameRoom;
+      const currentUserData = userSnap.data();
+      const playerData = currentRoomData.playerHands[effectiveUserId];
+      if (!playerData) throw new Error("Player hand not found in room.");
+
+      let newDeck = [...currentRoomData.deck];
+      let newPlayerHand = [...playerData.hand];
+      let newPhase: 'PLAYER' | 'DEALER' = 'PLAYER';
+      let resultMsg = "";
+
+      if (action === 'twist') {
+        if (newDeck.length === 0) {
+          setShowMessage("⚠️ No cards left in deck!");
+          return; // Cannot twist, exit transaction
+        }
+        newPlayerHand.push(newDeck.shift()!); // Draw a card
+        const { value, isPontoon, isFiveCardTrick } = getHandValue(newPlayerHand);
+
+        if (value > 21) {
+          resultMsg = 'Bust!';
+          newPhase = 'DEALER'; // Move to dealer's turn after bust
+        } else if (isPontoon || isFiveCardTrick) {
+          newPhase = 'DEALER'; // Move to dealer's turn after Pontoon/5-Card Trick
+        }
+      } else if (action === 'stick') { // 'stand' is now 'stick'
+        newPhase = 'DEALER'; // Move to dealer's turn
+      }
+
+      // Update player hand and deck in Firestore
+      transaction.update(roomRef, {
+        deck: newDeck,
+        [`playerHands.${effectiveUserId}.hand`]: newPlayerHand,
+        phase: newPhase,
+        result: resultMsg, // Update result if busted
+      });
+
+      // If phase moved to DEALER, trigger finishPontoon
+      if (newPhase === 'DEALER') {
+        setTimeout(() => finishPontoon(gameRoomId!, effectiveUserId, playerData.bet, useJewels), 1200);
+      }
+    });
+  };
+
+  const finishPontoon = async (roomId: string, userId: string, bet: number, useJewelsCurrency: boolean): Promise<void> => {
+    if (!roomId || !userId) return; // Ensure basic info is present
+    const roomRef = doc(db, "GameRooms", roomId);
+    const userRef = doc(db, "Players", userId);
+
+    await runTransaction(db, async (transaction) => {
+      const roomSnap = await transaction.get(roomRef);
+      const userSnap = await transaction.get(userRef);
+
+      if (!roomSnap.exists()) throw new Error("Game room not found.");
+      if (!userSnap.exists()) throw new Error("Player data not found.");
+
+      const currentRoomData = roomSnap.data() as GameRoom;
+      const currentUserData = userSnap.data();
+
+      let dealerHand = [...currentRoomData.dealerHand];
+      let currentDeck = [...currentRoomData.deck];
+
+      // Dealer's turn: Twist until 17 or more
+      while (getHandValue(dealerHand).value < 17 && currentDeck.length > 0) {
+        dealerHand.push(currentDeck.shift()!);
+      }
+
+      const playerData = currentRoomData.playerHands[userId];
+      if (!playerData) throw new Error("Player hand not found in room for result calculation.");
+
+      const playerHandInfo = getHandValue(playerData.hand);
+      const dealerHandInfo = getHandValue(dealerHand);
+
+      let won = false, payout = 0, result = "";
+
+      // Pontoon specific win conditions
+      if (playerHandInfo.value > 21) {
+        result = `Bust! You: ${playerHandInfo.value} Dealer: ${dealerHandInfo.value}`;
+        won = false;
+        payout = 0;
+      } else if (dealerHandInfo.value > 21) {
+        result = `Dealer Busts! You: ${playerHandInfo.value} Dealer: ${dealerHandInfo.value}`;
+        won = true;
+        payout = playerData.bet * 2; // Dealer busts, player wins 2x
+      } else if (playerHandInfo.isPontoon) {
+        result = `Pontoon! You win! (${playerHandInfo.value} vs ${dealerHandInfo.value})`;
+        won = true;
+        payout = playerData.bet * 2; // Pontoon pays 2x
+      } else if (playerHandInfo.isFiveCardTrick) {
+        result = `Five Card Trick! You win! (${playerHandInfo.value} vs ${dealerHandInfo.value})`;
+        won = true;
+        payout = playerData.bet * 2; // Five Card Trick pays 2x
+      } else if (playerHandInfo.value > dealerHandInfo.value) {
+        result = `You Win! (${playerHandInfo.value} vs ${dealerHandInfo.value})`;
+        won = true;
+        payout = playerData.bet * 2; // Beat dealer, win 2x
+      } else if (playerHandInfo.value === dealerHandInfo.value) {
+        result = `Push! (${playerHandInfo.value} vs ${dealerHandInfo.value})`;
+        won = false; // Push in Pontoon means dealer wins ties
+        payout = 0; // No payout on push, bet is lost
+      } else {
+        result = `Dealer Wins! (${dealerHandInfo.value} vs ${playerHandInfo.value})`;
+        won = false;
+        payout = 0;
+      }
+
+      const updatedPlayerHand = { ...playerData, won, payout, result };
+      const updatedPlayerHands = { ...currentRoomData.playerHands, [userId]: updatedPlayerHand };
+
+      // Update game room with final state
+      transaction.update(roomRef, {
+        dealerHand: dealerHand,
+        deck: currentDeck,
+        playerHands: updatedPlayerHands,
+        phase: 'RESULT',
+        result: result,
+      });
+
+      // Update player stats and give rewards
+      const newStats = {
+        plays: (currentUserData.pontoonPlays || 0) + 1,
+        wins: won ? (currentUserData.pontoonWins || 0) + 1 : (currentUserData.pontoonWins || 0),
+        losses: won ? (currentUserData.pontoonLosses || 0) : (currentUserData.pontoonLosses || 0) + 1,
+        biggestWin: Math.max((currentUserData.pontoonBiggestWin || 0), payout),
+      };
+      transaction.update(userRef, {
+        pontoonPlays: newStats.plays,
+        pontoonWins: newStats.wins,
+        pontoonLosses: newStats.losses,
+        pontoonBiggestWin: newStats.biggestWin,
+        updatedAt: serverTimestamp(),
+      });
+      setStats(newStats); // Update local stats state
+
+      if (payout > 0) {
+        const rewardCurrency = useJewelsCurrency ? "JEWELS" : "USDT";
+        transaction.update(userRef, {
+          jewels: useJewelsCurrency ? (currentUserData.jewels || 0) + payout : currentUserData.jewels,
+          gold: !useJewelsCurrency ? (currentUserData.gold || 0) + payout : currentUserData.gold,
+        });
+        setJewels((prev) => prev + payout); // Update local jewels/gold
+        setShowReward({ jewels: payout, xp: 10, message: `Pontoon! You won +${payout} ${rewardCurrency}! ${result}` });
+        if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+
+        // Quest and Achievement updates
+        let currentQuests = currentUserData.quests || initialQuests;
+        const winQuest = currentQuests.find((q: Quest) => q.id === "pontoon-wins");
+        if (winQuest && !winQuest.completed) {
+          const newProgress = Math.min(winQuest.progress + 1, winQuest.goal);
+          const isQuestCompleted = newProgress >= winQuest.goal;
+          currentQuests = currentQuests.map((q: Quest) => (q.id === "pontoon-wins" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q));
+          transaction.update(userRef, { quests: currentQuests });
+          if (isQuestCompleted) {
+            const rewardAmount = winQuest.rewardJEWELS;
+            transaction.update(userRef, { jewels: (currentUserData.jewels || 0) + rewardAmount });
+            setShowReward({ jewels: rewardAmount, xp: winQuest.rewardXP, message: `Quest Completed: ${winQuest.title}!` });
+            await mockBackendLogTransaction("deposit", rewardAmount, "JEWELS", "pontoon_quest", userId);
+          }
+        }
+
+        let currentAchievements = currentUserData.achievements || initialAchievements;
+        const achievement = currentAchievements.find((a: Achievement) => a.id === "pontoon-master");
+        if (achievement && !achievement.unlocked && newStats.wins >= 10) {
+          currentAchievements = currentAchievements.map((a: Achievement) => (a.id === "pontoon-master" ? { ...a, unlocked: true } : a));
+          transaction.update(userRef, { achievements: currentAchievements });
+          const achievementRewardJewels = 20;
+          const achievementRewardXP = 30;
+          transaction.update(userRef, { jewels: (currentUserData.jewels || 0) + achievementRewardJewels });
+          setShowReward({ jewels: achievementRewardJewels, xp: achievementRewardXP, message: "Achievement Unlocked: Pontoon Master!" });
+          await mockBackendLogTransaction("deposit", achievementRewardJewels, "JEWELS", "pontoon_achievement", userId);
+        }
+      } else {
+        setShowMessage(`😔 ${result}`);
+      }
+
+      // Update play quest regardless of win/loss
+      let currentQuestsForPlay = currentUserData.quests || initialQuests;
+      const playQuest = currentQuestsForPlay.find((q: Quest) => q.id === "pontoon-play");
+      if (playQuest && !playQuest.completed) {
+        const newProgress = Math.min(playQuest.progress + 1, playQuest.goal);
+        const isQuestCompleted = newProgress >= playQuest.goal;
+        currentQuestsForPlay = currentQuestsForPlay.map((q: Quest) => (q.id === "pontoon-play" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q));
+        transaction.update(userRef, { quests: currentQuestsForPlay });
+        if (isQuestCompleted) {
+          const rewardAmount = playQuest.rewardJEWELS;
+          transaction.update(userRef, { jewels: (currentUserData.jewels || 0) + rewardAmount });
+          setShowReward({ jewels: rewardAmount, xp: playQuest.rewardXP, message: `Quest Completed: ${playQuest.title}!` });
+          await mockBackendLogTransaction("deposit", rewardAmount, "JEWELS", "pontoon_quest", userId);
+        }
+      }
+
+      // Reset game room for next round if autoPlay is enabled
+      if (autoPlay) {
+        setTimeout(async () => {
+          await resetGame(roomId); // Call resetGame with roomId
+          setTimeout(() => mockBackendPlayGame(roomId, userId, bet, useJewelsCurrency), 1000); // Start next game
+        }, 2500);
+      }
+    });
+  };
+
+  const resetGame = async (roomId: string): Promise<void> => { // Accept roomId
+    if (!roomId) return;
+    const roomRef = doc(db, "GameRooms", roomId);
+    await setDoc(roomRef, {
+      deck: shuffleDeck(Date.now().toString()),
+      dealerHand: [],
+      playerHands: {},
+      phase: 'IDLE',
+      activePlayer: null,
+      result: "",
+      game: "pontoon",
+    }, { merge: true });
+    setGameState('IDLE'); // Update local state for UI
+    setShowMessage("Game reset. Ready for a new round!");
+  };
+
+  const handleStartGame = async () => {
+    if (!effectiveUserId || !gameRoomId) {
+      setShowMessage("⚠️ Please sign in and ensure a game room is available.");
+      setActiveModal("auth");
+      return;
+    }
+    if (betAmount < 10 || betAmount > 1000) {
+      setShowMessage("⚠️ Bet amount must be between 10 and 1000!");
+      setActiveModal("error");
+      return;
+    }
+    if ((useJewels && jewels < betAmount) || (!useJewels && gold < betAmount)) {
+      setShowMessage(`⚠️ Not enough ${useJewels ? "JEWELS" : "USDT"}! Please deposit.`);
+      setActiveModal("payment");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await mockBackendPlayGame(gameRoomId, effectiveUserId, betAmount, useJewels);
+    } catch (error) {
+      // Error handled in mockBackendPlayGame
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePlayAgain = async () => {
+    if (!effectiveUserId || !gameRoomId) {
+      setShowMessage("⚠️ Please sign in and ensure a game room is available.");
+      setActiveModal("auth");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await resetGame(gameRoomId); // Call resetGame with gameRoomId
+    } catch (error) {
+      console.error("Error resetting game:", error);
+      setShowMessage("⚠️ Failed to reset game. Please try again.");
+      setActiveModal("error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const shareWinOnX = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
+    event.preventDefault();
+    if (!effectiveUserId) {
+      setShowMessage("⚠️ Please sign in to share.");
+      setActiveModal("auth");
+      return;
+    }
+    const shareQuest = quests.find((q: Quest) => q.id === "pontoon-share"); // Explicitly type q
+    if (shareQuest && !shareQuest.completed) {
+      const shareText = encodeURIComponent("Just scored a Pontoon in Swytch PETverse! 🃏 Join at swytch.io! #SwytchPETverse #Pontoon");
+      window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
+      setQuests((prev) => prev.map((q) => (q.id === "pontoon-share" ? { ...q, progress: 1, completed: true } : q)));
+      setJewels((prev) => prev + shareQuest.rewardJEWELS);
+      setShowReward({ jewels: shareQuest.rewardJEWELS, xp: shareQuest.rewardXP, message: `Quest Completed: ${shareQuest.title}!` });
+      await mockBackendLogTransaction("deposit", shareQuest.rewardJEWELS, "JEWELS", "pontoon_share_quest", effectiveUserId);
+      await updatePlayerFirestore({ quests, jewels: jewels + shareQuest.rewardJEWELS });
+      if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
+    }
+  };
+
 
   useEffect(() => {
     if (!effectiveUserId) {
       setShowTutorial(true);
       setShowMessage("⚠️ Please sign in to play!");
       setActiveModal("auth");
-      navigate("/auth");
       setIsLoading(false);
       return;
     }
 
-    const fetchUserData = async () => {
+    const fetchUserDataAndListenToRooms = async () => {
       setIsLoading(true);
       try {
         const userRef = doc(db, "Players", effectiveUserId);
         const userSnap = await getDoc(userRef);
         const data = userSnap.exists() ? userSnap.data() : {};
-        if (data.jewels !== undefined) setJewels(data.jewels || 0);
-        if (data.gold !== undefined) setGold(data.gold || 0);
+
+        setJewels(data.jewels || 0);
+        setGold(data.gold || 0);
         setIsPETMember(data.isPETMember || false);
         const mergedQuests = initialQuests.map((initialQuest) => {
-          const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
+          const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id); // Explicitly type q
           return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
         });
         setQuests(mergedQuests);
@@ -217,60 +613,79 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
           biggestWin: data.pontoonBiggestWin || 0,
         });
 
-        const roomsRef = collection(db, "GameRooms");
-        const roomsSnap = await getDocs(roomsRef);
-        let roomId = roomsSnap.docs.find((doc: QueryDocumentSnapshot) => doc.data().phase === "IDLE" && doc.data().game === "pontoon")?.id;
-        if (!roomId) {
-          const newRoomRef = await addDoc(roomsRef, {
-            game: "pontoon",
-            deck: shuffleDeck(Date.now().toString()),
-            dealerHand: [],
-            playerHands: {},
-            phase: 'IDLE',
-            activePlayer: null,
-            result: "",
-            players: [effectiveUserId],
+        const roomsQuery = collection(db, "GameRooms");
+        const unsubscribeRooms = onSnapshot(roomsQuery, (snapshot) => {
+          let foundRoom: GameRoom | null = null;
+          snapshot.forEach((docSnap) => {
+            const roomData = docSnap.data() as GameRoom;
+            // Check if player is already in a pontoon room or if there's a waiting pontoon room to join
+            if (roomData.game === "pontoon" && roomData.players && effectiveUserId in roomData.players) {
+              foundRoom = { ...roomData, roomId: docSnap.id };
+            } else if (roomData.game === "pontoon" && roomData.phase === "IDLE" && Object.keys(roomData.playerHands).length < 4) { // Max 4 players for Pontoon
+              foundRoom = { ...roomData, roomId: docSnap.id };
+            }
           });
-          roomId = newRoomRef.id;
-        } else {
-          await setDoc(doc(db, "GameRooms", roomId), {
-            players: [...(roomsSnap.docs.find((doc) => doc.id === roomId)?.data().players || []), effectiveUserId],
-          }, { merge: true });
-        }
-        setGameRoomId(roomId);
 
-        const roomRef = doc(db, "GameRooms", roomId);
-        const unsubscribe = onSnapshot(roomRef, (doc) => {
-          if (doc.exists()) {
-            const data = doc.data() as GameRoom;
-            setGameRoom(data);
-            setPlayers(data.players || []);
+          if (foundRoom) {
+            // As per user request: if any Pontoon room is found, redirect to homepage.
+            // WARNING: This will prevent the Pontoon game from being played if any room exists.
+            // If the intent is to play, this logic needs to be reverted or re-designed.
+            navigate('/'); // Redirect to homepage
+            setShowMessage("A Pontoon game room was found, redirecting to homepage.");
+            setGameRoom(null); // Clear game state
+            setGameRoomId(null);
+            setIsLoading(false); // Ensure loading is off
+          } else {
+            setGameRoom(null); // No active or joinable room
+            setGameRoomId(null);
+            setIsLoading(false);
           }
         }, (err) => {
-          console.error("Failed to fetch game room:", err);
-          setShowMessage("⚠️ Failed to load game. Please try again.");
+          console.error("Error listening to game rooms:", err);
+          setShowMessage("⚠️ Failed to load game rooms.");
           setActiveModal("error");
+          setIsLoading(false);
         });
 
-        return () => unsubscribe();
+        return () => {
+          unsubscribeRooms();
+        };
       } catch (err) {
-        console.error("Failed to join room:", err);
-        setShowMessage("⚠️ Failed to join game room.");
+        console.error("Failed to initialize game data:", err);
+        setShowMessage("⚠️ Failed to load game data.");
         setActiveModal("error");
-        setIsLoading(false);
-      } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUserData();
-    playSoundRef.current = new Audio("/audio/reward.mp3");
-    winSoundRef.current = new Audio("/audio/reward.mp3");
-    return () => {
-      playSoundRef.current?.pause();
-      winSoundRef.current?.pause();
-    };
-  }, [effectiveUserId, setShowMessage, setActiveModal, navigate, setIsPETMember]);
+    fetchUserDataAndListenToRooms();
+  }, [effectiveUserId, setShowMessage, setActiveModal, navigate, setIsPETMember, address]);
+
+  useEffect(() => {
+    // This useEffect is for saving player stats, quests, achievements etc.
+    // It should be debounced to prevent too many writes.
+    const debouncedSave = setTimeout(() => {
+      if (effectiveUserId) {
+        updatePlayerFirestore({
+          jewels,
+          gold,
+          quests,
+          achievements,
+          pontoonPlays: stats.plays,
+          pontoonWins: stats.wins,
+          pontoonLosses: stats.losses,
+          pontoonBiggestWin: stats.biggestWin,
+        }).catch((err) => {
+          console.error("Failed to save state:", err);
+          setShowMessage("⚠️ Failed to save data.");
+          setActiveModal("error");
+        });
+      }
+    }, 1000); // Debounce for 1 second
+
+    return () => clearTimeout(debouncedSave);
+  }, [jewels, gold, stats, quests, achievements, effectiveUserId, updatePlayerFirestore, setShowMessage, setActiveModal]);
+
 
   useEffect(() => {
     if (showReward) {
@@ -280,304 +695,16 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
   }, [showReward]);
 
   useEffect(() => {
-    if (effectiveUserId) {
-      updatePlayerFirestore({
-        jewels,
-        gold,
-        quests,
-        achievements,
-        pontoonPlays: stats.plays,
-        pontoonWins: stats.wins,
-        pontoonLosses: stats.losses,
-        pontoonBiggestWin: stats.biggestWin,
-      }).catch((err) => {
-        console.error("Failed to save state:", err);
-        setShowMessage("⚠️ Failed to save data.");
-        setActiveModal("error");
-      });
-    }
-  }, [jewels, gold, stats, quests, achievements, effectiveUserId, updatePlayerFirestore, setShowMessage, setActiveModal]);
+    // Corrected audio paths to match the root of your project
+    // playSoundRef.current is not used in this component.
+    winSoundRef.current = new Audio("/audio/reward.mp3"); // Assuming this is specifically for win sounds
+    return () => {
+      winSoundRef.current?.pause();
+    };
+  }, []);
 
-  const logTransaction = async (type: "deposit" | "withdraw", amount: number): Promise<void> => {
-    if (!effectiveUserId) return;
-    try {
-      const transactionId = `${effectiveUserId}_${Date.now()}`;
-      await addDoc(collection(db, "Transactions"), {
-        transactionId,
-        userId: effectiveUserId,
-        amount,
-        currency: useJewels ? "JEWELS" : "USDT",
-        transactionType: type,
-        status: "pending",
-        timestamp: serverTimestamp(),
-        game: "pontoon",
-        adminId: "0CfobCbXnPZsJwT662H4OhDrXk33",
-      });
-      setShowMessage(`✅ ${type === "deposit" ? "Win" : "Bet"} of ${amount} ${useJewels ? "JEWELS" : "USDT"} submitted! Admin (0CfobCbXnPZsJwT662H4OhDrXk33) will process.`);
-    } catch (err) {
-      console.error("Error logging transaction:", err);
-      setShowMessage("⚠️ Failed to log transaction.");
-      setActiveModal("error");
-    }
-  };
 
-  const shareWinOnX = async (): Promise<void> => {
-    if (!effectiveUserId) {
-      setShowMessage("⚠️ Please sign in to share.");
-      setActiveModal("auth");
-      navigate("/auth");
-      return;
-    }
-    const shareQuest = quests.find((q) => q.id === "pontoon-share");
-    if (shareQuest && !shareQuest.completed) {
-      const shareText = encodeURIComponent("Just scored a Pontoon in Swytch PETverse! 🃏 Join at swytch.io! #SwytchPETverse #Pontoon");
-      window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      setQuests((prev) => prev.map((q) => (q.id === "pontoon-share" ? { ...q, progress: 1, completed: true } : q)));
-      setJewels((prev) => prev + shareQuest.rewardJEWELS);
-      setShowReward({ jewels: shareQuest.rewardJEWELS, xp: shareQuest.rewardXP, message: `Quest Completed: ${shareQuest.title}!` });
-      await logTransaction("deposit", shareQuest.rewardJEWELS);
-      await updatePlayerFirestore({ quests, jewels: jewels + shareQuest.rewardJEWELS });
-      if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-    }
-  };
-
-  const playGame = async (): Promise<void> => {
-    if (!effectiveUserId || !gameRoomId) {
-      setShowMessage("⚠️ Please sign in to play!");
-      setActiveModal("auth");
-      navigate("/auth");
-      return;
-    }
-    if (gameRoom?.phase !== 'IDLE') {
-      setShowMessage("⚠️ Game in progress!");
-      setActiveModal("error");
-      return;
-    }
-    if (betAmount < 10 || betAmount > 1000) {
-      setShowMessage("⚠️ Bet amount must be between 10 and 1000!");
-      setActiveModal("error");
-      return;
-    }
-    if ((useJewels && jewels < betAmount) || (!useJewels && gold < betAmount)) {
-      setShowMessage(`⚠️ Not enough ${useJewels ? "JEWELS" : "USDT"}! Please deposit.`);
-      setActiveModal("payment");
-      navigate("/vault");
-      return;
-    }
-    const roomRef = doc(db, "GameRooms", gameRoomId);
-    const roomSnap = await getDoc(roomRef);
-    if (!roomSnap.exists()) return;
-    const roomData = roomSnap.data() as GameRoom;
-    if (roomData.phase !== 'IDLE') return;
-
-    const newDeck = shuffleDeck(Date.now().toString());
-    const pHand = [newDeck[0], newDeck[2]];
-    const dHand = [newDeck[1], newDeck[3]];
-    const updatedPlayerHands = { ...roomData.playerHands, [effectiveUserId]: { hand: pHand, bet: betAmount, won: false, payout: 0 } };
-    await setDoc(roomRef, {
-      deck: newDeck.slice(4),
-      dealerHand: dHand,
-      playerHands: updatedPlayerHands,
-      phase: 'PLAYER',
-      activePlayer: effectiveUserId,
-      game: "pontoon",
-    }, { merge: true });
-
-    if (useJewels) {
-      setJewels((prev) => prev - betAmount);
-    } else {
-      setGold((prev) => prev - betAmount);
-    }
-    await logTransaction("withdraw", betAmount);
-    setBets((prev) => [...prev, { amount: betAmount, won: false, payout: 0, result: "" }].slice(-5));
-    if (playSoundRef.current) {
-      playSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-    }
-
-    const { isPontoon, isFiveCardTrick } = getHandValue(pHand);
-    if (isPontoon || isFiveCardTrick) {
-      await finishPontoon();
-    }
-  };
-
-  const handlePontoonAction = async (action: 'hit' | 'stand' | 'twist'): Promise<void> => {
-    if (!effectiveUserId || !gameRoomId || !gameRoom || gameRoom.phase !== 'PLAYER' || gameRoom.activePlayer !== effectiveUserId) return;
-    const roomRef = doc(db, "GameRooms", gameRoomId);
-    const playerData = gameRoom.playerHands[effectiveUserId];
-    if (!playerData) return;
-
-    if (action === 'hit' || action === 'twist') {
-      if (gameRoom.deck.length === 0) {
-        setShowMessage("⚠️ No cards left in deck!");
-        setActiveModal("error");
-        return;
-      }
-      const newHand = [...playerData.hand, gameRoom.deck[0]];
-      const updatedPlayerHands = { ...gameRoom.playerHands, [effectiveUserId]: { ...playerData, hand: newHand } };
-      await setDoc(roomRef, { deck: gameRoom.deck.slice(1), playerHands: updatedPlayerHands }, { merge: true });
-      const { value, isPontoon, isFiveCardTrick } = getHandValue(newHand);
-      if (value > 21) {
-        await setDoc(roomRef, {
-          playerHands: { ...updatedPlayerHands, [effectiveUserId]: { ...playerData, hand: newHand, won: false, payout: 0 } },
-          phase: 'DEALER',
-          result: 'Bust!',
-          game: "pontoon",
-        }, { merge: true });
-        setTimeout(() => finishPontoon(), 1200);
-      } else if (isPontoon || isFiveCardTrick) {
-        await finishPontoon();
-      }
-    } else if (action === 'stand') {
-      await setDoc(roomRef, { phase: 'DEALER', game: "pontoon" }, { merge: true });
-      setTimeout(() => finishPontoon(), 1200);
-    }
-  };
-
-  const finishPontoon = async (): Promise<void> => {
-    if (!gameRoomId || !gameRoom || gameRoom.phase !== 'DEALER') return;
-    const roomRef = doc(db, "GameRooms", gameRoomId);
-    let dealer = [...gameRoom.dealerHand];
-    let deckPtr = [...gameRoom.deck];
-    while (getHandValue(dealer).value < 17 && deckPtr.length > 0) {
-      dealer.push(deckPtr[0]);
-      deckPtr = deckPtr.slice(1);
-    }
-    const updatedPlayerHands = { ...gameRoom.playerHands };
-    let result = "";
-    Object.keys(updatedPlayerHands).forEach(async (playerId) => {
-      const playerData = updatedPlayerHands[playerId];
-      const playerHandInfo = getHandValue(playerData.hand);
-      const dealerHandInfo = getHandValue(dealer);
-      let won = false, payout = 0;
-      if (playerHandInfo.isPontoon) {
-        result = `Pontoon! (${playerHandInfo.value} vs ${dealerHandInfo.value})`;
-        payout = playerData.bet * 2;
-        won = true;
-      } else if (playerHandInfo.isFiveCardTrick) {
-        result = `Five Card Trick! (${playerHandInfo.value} vs ${dealerHandInfo.value})`;
-        payout = playerData.bet * 2;
-        won = true;
-      } else if (playerHandInfo.value > 21) {
-        result = `Bust! (${playerHandInfo.value} vs ${dealerHandInfo.value})`;
-      } else if (dealerHandInfo.value > 21 || playerHandInfo.value > dealerHandInfo.value) {
-        result = `You Win! (${playerHandInfo.value} vs ${dealerHandInfo.value})`;
-        payout = playerData.bet * 2;
-        won = true;
-      } else if (playerHandInfo.value === dealerHandInfo.value) {
-        result = `Push! (${playerHandInfo.value} vs ${dealerHandInfo.value})`;
-        payout = playerData.bet;
-        won = true;
-      } else {
-        result = `Dealer Wins! (${dealerHandInfo.value} vs ${playerHandInfo.value})`;
-      }
-      updatedPlayerHands[playerId] = { ...playerData, won, payout };
-      if (playerId === effectiveUserId) {
-        const newStats = {
-          plays: stats.plays + 1,
-          wins: won ? stats.wins + 1 : stats.wins,
-          losses: won ? stats.losses : stats.losses + 1,
-          biggestWin: Math.max(stats.biggestWin, payout),
-        };
-        setStats(newStats);
-        setBets((prev) => [...prev, { amount: playerData.bet, won, payout, result }].slice(-5));
-        if (payout > 0) {
-          if (useJewels) {
-            setJewels((prev) => prev + payout);
-          } else {
-            setGold((prev) => prev + payout);
-          }
-          setShowReward({ jewels: payout, xp: 10, message: `Pontoon! You won +${payout} ${useJewels ? "JEWELS" : "USDT"}! ${result}` });
-          if (winSoundRef.current) {
-            winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-          }
-          if (won) {
-            const winQuest = quests.find((q) => q.id === "pontoon-wins");
-            if (winQuest && !winQuest.completed) {
-              const newProgress = Math.min(winQuest.progress + 1, winQuest.goal);
-              const isQuestCompleted = newProgress >= winQuest.goal;
-              setQuests((prev) =>
-                prev.map((q) => (q.id === "pontoon-wins" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q))
-              );
-              if (isQuestCompleted) {
-                setJewels((prev) => prev + winQuest.rewardJEWELS);
-                setShowReward({ jewels: winQuest.rewardJEWELS, xp: winQuest.rewardXP, message: `Quest Completed: ${winQuest.title}!` });
-                await logTransaction("deposit", winQuest.rewardJEWELS);
-                await updatePlayerFirestore({ quests, jewels: jewels + winQuest.rewardJEWELS });
-                if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-              }
-            }
-
-            const achievement = achievements.find((a) => a.id === "pontoon-master");
-            if (achievement && !achievement.unlocked && newStats.wins >= 10) {
-              setAchievements((prev) => prev.map((a) => (a.id === "pontoon-master" ? { ...a, unlocked: true } : a)));
-              setJewels((prev) => prev + 20);
-              setShowReward({ jewels: 20, xp: 30, message: "Achievement Unlocked: Pontoon Master!" });
-              await logTransaction("deposit", 20);
-              await updatePlayerFirestore({ achievements, jewels: jewels + 20 });
-              if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-            }
-          }
-        } else {
-          setShowReward({ jewels: 0, xp: 0, message: `😔 ${result}` });
-        }
-
-        const playQuest = quests.find((q) => q.id === "pontoon-play");
-        if (playQuest && !playQuest.completed) {
-          const newProgress = Math.min(playQuest.progress + 1, playQuest.goal);
-          const isQuestCompleted = newProgress >= playQuest.goal;
-          setQuests((prev) =>
-            prev.map((q) => (q.id === "pontoon-play" ? { ...q, progress: newProgress, completed: isQuestCompleted } : q))
-          );
-          if (isQuestCompleted) {
-            setJewels((prev) => prev + playQuest.rewardJEWELS);
-            setShowReward({ jewels: playQuest.rewardJEWELS, xp: playQuest.rewardXP, message: `Quest Completed: ${playQuest.title}!` });
-            await logTransaction("deposit", playQuest.rewardJEWELS);
-            await updatePlayerFirestore({ quests, jewels: jewels + playQuest.rewardJEWELS });
-            if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
-          }
-        }
-
-        await logTransaction("deposit", payout);
-        await updatePlayerFirestore({
-          pontoonPlays: newStats.plays,
-          pontoonWins: newStats.wins,
-          pontoonLosses: newStats.losses,
-          pontoonBiggestWin: newStats.biggestWin,
-        });
-      }
-    });
-    await setDoc(roomRef, {
-      dealerHand: dealer,
-      deck: deckPtr,
-      playerHands: updatedPlayerHands,
-      phase: 'RESULT',
-      result,
-      game: "pontoon",
-    }, { merge: true });
-
-    if (autoPlay) {
-      setTimeout(async () => {
-        await resetGame();
-        setTimeout(playGame, 1000);
-      }, 2500);
-    }
-  };
-
-  const resetGame = async (): Promise<void> => {
-    if (!gameRoomId) return;
-    const roomRef = doc(db, "GameRooms", gameRoomId);
-    await setDoc(roomRef, {
-      deck: shuffleDeck(Date.now().toString()),
-      dealerHand: [],
-      playerHands: {},
-      phase: 'IDLE',
-      activePlayer: null,
-      result: "",
-      game: "pontoon",
-    }, { merge: true });
-  };
-
-  if (authLoading || isLoading || !gameRoom) {
+  if (authLoading || isLoading || !effectiveUserId) { // Added !effectiveUserId to loading check for initial state
     return (
       <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
         <p>Loading Pontoon...</p>
@@ -587,7 +714,7 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
 
   return (
     <section className="relative py-16 px-6 sm:px-8 lg:px-16 bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white overflow-hidden font-inter">
-      {gameRoom.phase === 'RESULT' && gameRoom.playerHands[effectiveUserId!]?.won && (
+      {gameRoom?.phase === 'RESULT' && gameRoom.playerHands[effectiveUserId!]?.won && ( // Added null check for gameRoom
         <div className="absolute inset-0 flex justify-center items-center">
           <ConfettiExplosion
             force={0.8}
@@ -653,7 +780,7 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
               value={betAmount}
               onChange={(e) => setBetAmount(Number(e.target.value))}
               className="bg-gray-800 text-white rounded-lg px-3 py-2 border border-cyan-500/20 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 outline-none font-inter"
-              disabled={gameRoom.phase !== 'IDLE'}
+              disabled={gameRoom?.phase !== 'IDLE'}
             >
               {[10, 50, 100, 250, 500, 1000].map((b) => (
                 <option key={b} value={b}>
@@ -670,7 +797,7 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
                 checked={useJewels}
                 onChange={() => setUseJewels((prev) => !prev)}
                 className="mr-2"
-                disabled={gameRoom.phase !== 'IDLE'}
+                disabled={gameRoom?.phase !== 'IDLE'}
               />
               <label className="text-white font-semibold font-poppins">Use JEWELS</label>
             </div>
@@ -681,7 +808,7 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
               checked={autoPlay}
               onChange={() => setAutoPlay((prev) => !prev)}
               className="mr-2"
-              disabled={gameRoom.phase !== 'IDLE'}
+              disabled={gameRoom?.phase !== 'IDLE'}
             />
             <label className="text-white font-semibold font-poppins">Auto-Play</label>
           </div>
@@ -691,11 +818,11 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
           <h3 className="text-xl text-white font-bold mb-3 font-poppins flex items-center gap-2">
             <Users className="w-6 h-6 text-cyan-400 animate-pulse" /> Players
           </h3>
-          {players.map((playerId, _) => (
+          {players.map((playerId, _idx) => (
             <p key={playerId} className="text-cyan-400 font-inter">
               {address && playerId === address.toLowerCase() ? `${address.slice(0, 6)}...${address.slice(-4)}` : `Player ${playerId.slice(0, 6)}...${playerId.slice(-4)}`}
-              {gameRoom.playerHands[playerId] ? `: ${getHandValue(gameRoom.playerHands[playerId].hand).value}` : ""}
-              {gameRoom.phase === 'RESULT' && gameRoom.playerHands[playerId]?.won ? " (Won)" : ""}
+              {gameRoom?.playerHands[playerId] ? `: ${getHandValue(gameRoom.playerHands[playerId].hand).value}` : ""}
+              {gameRoom?.phase === 'RESULT' && gameRoom.playerHands[playerId]?.won ? " (Won)" : ""}
             </p>
           ))}
         </motion.div>
@@ -705,10 +832,10 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
             JEWELS: <span className="text-cyan-400">{jewels}</span> | USDT: <span className="text-cyan-400">{gold}</span>
           </div>
           <motion.button
-            onClick={playGame}
-            disabled={gameRoom.phase !== 'IDLE'}
-            className={gameRoom.phase !== 'IDLE' ? "px-8 py-4 bg-gray-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins cursor-not-allowed" : "px-8 py-4 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins hover:bg-cyan-500"}
-            whileHover={{ scale: gameRoom.phase !== 'IDLE' ? 1 : 1.05 }}
+            onClick={handleStartGame}
+            disabled={gameRoom?.phase !== 'IDLE'}
+            className={gameRoom?.phase !== 'IDLE' ? "px-8 py-4 bg-gray-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins cursor-not-allowed" : "px-8 py-4 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 font-poppins hover:bg-cyan-500"}
+            whileHover={{ scale: gameRoom?.phase !== 'IDLE' ? 1 : 1.05 }} // Added null check
             whileTap={{ scale: 0.95 }}
             aria-label="Play Pontoon"
           >
@@ -717,47 +844,43 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
         </motion.div>
 
         <motion.div variants={sectionVariants} className="relative w-full h-[300px] mb-12 bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center">
-          <SwytchErrorBoundary>
+          <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
             <div className="absolute inset-0 bg-gradient-to-r from-rose-500/20 to-cyan-500/20 rounded-lg" />
             <div className="relative w-full flex flex-col items-center">
-              {(gameRoom.phase === 'PLAYER' || gameRoom.phase === 'DEALER' || gameRoom.phase === 'RESULT') && gameRoom.playerHands[effectiveUserId!]?.hand.length > 0 && (
+              {(gameRoom?.phase === 'PLAYER' || gameRoom?.phase === 'DEALER' || gameRoom?.phase === 'RESULT') && gameRoom?.playerHands[effectiveUserId!]?.hand.length > 0 && (
                 <div className="w-full flex flex-col items-center">
                   <div className="flex gap-8 mb-4">
                     <div>
-                      <div className="text-cyan-400 mb-1 font-poppins">Your Hand ({getHandValue(gameRoom.playerHands[effectiveUserId!].hand).value})</div>
-                      <SwytchErrorBoundary>
-                        <Canvas style={{ height: "100px" }} camera={{ position: [0, 0, 5], fov: 50 }}>
-                          <ambientLight intensity={0.5} />
-                          <pointLight position={[10, 10, 10]} intensity={1} />
-                          {gameRoom.playerHands[effectiveUserId!].hand.map((card, i) => (
-                            <Card3D
-                              key={`player-${i}`}
-                              card={card}
-                              position={[i * 1 - (gameRoom.playerHands[effectiveUserId!].hand.length - 1) / 2, 0, 0]}
-                              index={i}
-                              faceUp={true}
-                            />
-                          ))}
-                        </Canvas>
-                      </SwytchErrorBoundary>
+                      <div className="text-cyan-400 mb-1 font-poppins">Your Hand ({gameRoom.playerHands[effectiveUserId!].hand ? getHandValue(gameRoom.playerHands[effectiveUserId!].hand).value : '?'})</div>
+                      <Canvas style={{ height: "100px", width: "100%" }} camera={{ position: [0, 0, 5], fov: 50 }}>
+                        <ambientLight intensity={0.5} />
+                        <pointLight position={[10, 10, 10]} intensity={1} />
+                        {gameRoom.playerHands[effectiveUserId!]?.hand.map((card, i) => (
+                          <Card3D
+                            key={`player-${i}`}
+                            card={card}
+                            position={[i * 1 - (gameRoom.playerHands[effectiveUserId!].hand.length - 1) / 2, 0, 0]}
+                            index={i}
+                            faceUp={true}
+                          />
+                        ))}
+                      </Canvas>
                     </div>
                     <div>
                       <div className="text-cyan-400 mb-1 font-poppins">Dealer Hand ({gameRoom.phase === 'RESULT' || gameRoom.phase === 'DEALER' ? getHandValue(gameRoom.dealerHand).value : '?'})</div>
-                      <SwytchErrorBoundary>
-                        <Canvas style={{ height: "100px" }} camera={{ position: [0, 0, 5], fov: 50 }}>
-                          <ambientLight intensity={0.5} />
-                          <pointLight position={[10, 10, 10]} intensity={1} />
-                          {gameRoom.dealerHand.map((card, i) => (
-                            <Card3D
-                              key={`dealer-${i}`}
-                              card={card}
-                              position={[i * 1 - (gameRoom.dealerHand.length - 1) / 2, 0, 0]}
-                              index={i}
-                              faceUp={gameRoom.phase === 'RESULT' || gameRoom.phase === 'DEALER' || i === 0}
-                            />
-                          ))}
-                        </Canvas>
-                      </SwytchErrorBoundary>
+                      <Canvas style={{ height: "100px", width: "100%" }} camera={{ position: [0, 0, 5], fov: 50 }}>
+                        <ambientLight intensity={0.5} />
+                        <pointLight position={[10, 10, 10]} intensity={1} />
+                        {gameRoom.dealerHand.map((card, i) => (
+                          <Card3D
+                            key={`dealer-${i}`}
+                            card={card}
+                            position={[i * 1 - (gameRoom.dealerHand.length - 1) / 2, 0, 0]}
+                            index={i}
+                            faceUp={gameRoom.phase === 'RESULT' || gameRoom.phase === 'DEALER' || i === 0}
+                          />
+                        ))}
+                      </Canvas>
                     </div>
                   </div>
                   {gameRoom.phase === 'PLAYER' && gameRoom.activePlayer === effectiveUserId && (
@@ -772,13 +895,13 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
                         Twist
                       </motion.button>
                       <motion.button
-                        onClick={() => handlePontoonAction('stand')}
+                        onClick={() => handlePontoonAction('stick')}
                         className="px-6 py-3 bg-rose-600 rounded-lg text-white font-semibold hover:bg-cyan-500 font-poppins"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        aria-label="Stand"
+                        aria-label="Stick"
                       >
-                        Stand
+                        Stick
                       </motion.button>
                     </div>
                   )}
@@ -786,53 +909,53 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
                   <div className="flex flex-wrap gap-2">
                     {players
                       .filter((pid) => pid !== effectiveUserId)
-                      .map((pid) => (
+                      .map((pid, _idx) => ( // Use _idx for unused index
                         <div key={pid} className="flex flex-col">
                           <p className="text-cyan-400 font-inter">Player {address && pid === address.toLowerCase() ? `${address.slice(0, 6)}...${address.slice(-4)}` : `${pid.slice(0, 6)}...${pid.slice(-4)}`}</p>
-                          <SwytchErrorBoundary>
-                            <Canvas style={{ height: "100px" }} camera={{ position: [0, 0, 5], fov: 50 }}>
-                              <ambientLight intensity={0.5} />
-                              <pointLight position={[10, 10, 10]} intensity={1} />
-                              {gameRoom.playerHands[pid]?.hand.map((card, i) => (
-                                <Card3D
-                                  key={`${pid}-${i}`}
-                                  card={card}
-                                  position={[i * 1 - (gameRoom.playerHands[pid].hand.length - 1) / 2, 0, 0]}
-                                  index={i}
-                                  faceUp={gameRoom.phase === 'RESULT'}
-                                />
-                              ))}
-                            </Canvas>
-                          </SwytchErrorBoundary>
+                          <Canvas style={{ height: "100px", width: "100%" }} camera={{ position: [0, 0, 5], fov: 50 }}>
+                            <ambientLight intensity={0.5} />
+                            <pointLight position={[10, 10, 10]} intensity={1} />
+                            {gameRoom.playerHands[pid]?.hand.map((card, i) => ( // Added null check for gameRoom.playerHands[pid]
+                              <Card3D
+                                key={`${pid}-${i}`}
+                                card={card}
+                                position={[i * 1 - (gameRoom.playerHands[pid].hand.length - 1) / 2, 0, 0]}
+                                index={i}
+                                faceUp={gameRoom.phase === 'RESULT'} // Only show other players' cards when result is known
+                              />
+                            ))}
+                          </Canvas>
                         </div>
                       ))}
                   </div>
-                  {gameRoom.result && (
-                    <motion.div
-                      className="mt-4 text-cyan-400 text-xl font-poppins"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      {gameRoom.result}
-                    </motion.div>
-                  )}
                 </div>
+              )}
+              {gameRoom?.result && (
+                <motion.div
+                  className="mt-4 text-cyan-400 text-xl font-poppins"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  {gameRoom.result}
+                </motion.div>
               )}
             </div>
           </SwytchErrorBoundary>
         </motion.div>
 
-        {bets.length > 0 && (
-          <motion.div variants={sectionVariants} className="mb-12">
-            <h3 className="text-xl text-white font-bold mb-3 font-poppins">Recent Bets</h3>
-            {bets.slice(-5).map((bet, i) => (
-              <p key={`bet-${i}`} className={bet.won ? "text-green-400 font-inter" : "text-white font-inter"}>
-                Bet: {bet.amount} {useJewels ? "JEWELS" : "USDT"} {bet.won ? `(Won ${bet.payout} - ${bet.result})` : `(${bet.result})`}
-              </p>
-            ))}
-          </motion.div>
+        {gameRoom?.phase === 'RESULT' && (
+            <motion.button
+                onClick={handlePlayAgain}
+                className="px-6 py-3 bg-cyan-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-rose-500"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                aria-label="Play Again"
+            >
+                <RefreshCcw className="w-5 h-5 text-white animate-spin-slow" /> Play Again
+            </motion.button>
         )}
+
 
         <motion.div variants={sectionVariants} className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
           <div className="relative bg-gray-900/70 border border-rose-500/30 p-6 rounded-2xl backdrop-blur-md bg-gradient-to-r from-rose-500/20 to-cyan-500/20">
@@ -871,8 +994,8 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 font-poppins">
               <Star className="w-6 h-6 text-cyan-400 animate-pulse" /> Community Wins
             </h3>
-            {mockXPosts.map((post, _) => (
-              <div key={post.timestamp} className="mb-2">
+            {mockXPosts.map((post, index) => ( // Added index for key
+              <div key={index} className="mb-2">
                 <p className="text-sm font-semibold text-white font-poppins">{post.username}</p>
                 <p className="text-sm text-gray-300 font-inter">{post.content}</p>
                 <p className="text-xs text-gray-400 font-inter">
@@ -882,6 +1005,36 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
             ))}
           </div>
         </motion.div>
+
+        {!effectiveUserId && (
+          <motion.div variants={sectionVariants} className="text-center mb-12">
+            <p className="text-gray-300 mb-4">Please sign in to play Pontoon!</p>
+            <motion.button
+              onClick={() => setActiveModal("auth")}
+              className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-cyan-500"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label="Sign In to Play"
+            >
+              <Users className="w-5 h-5 text-cyan-400" /> Sign In to Play
+            </motion.button>
+          </motion.div>
+        )}
+
+        {effectiveUserId && !gameRoom && !isLoading && (
+          <motion.div variants={sectionVariants} className="text-center mb-12">
+            <p className="text-gray-300 mb-4">You are not in an active Pontoon game. Would you like to start a new one?</p>
+            <motion.button
+              onClick={handleStartGame}
+              className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-cyan-500"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label="Start New Pontoon Game"
+            >
+              <Dices className="w-5 h-5 text-cyan-400 animate-pulse" /> Start New Game
+            </motion.button>
+          </motion.div>
+        )}
 
         <motion.div variants={sectionVariants} className="text-center py-8">
           <Link
@@ -951,7 +1104,14 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
           <Link
             to="/benefits"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-            onClick={() => setShowMessage('🌟 Navigating to Benefits!')}
+            onClick={() => {
+              if (!auth.currentUser) { // Check if user is authenticated before navigating
+                setShowMessage('⚠️ Sign in to access Benefits!');
+                setActiveModal('auth');
+              } else {
+                setShowMessage('🌟 Navigating to Benefits!');
+              }
+            }}
             role="button"
             aria-label="Navigate to Benefits Page"
           >
@@ -960,7 +1120,14 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
           <Link
             to="/community"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-            onClick={() => setShowMessage('👥 Navigating to Community!')}
+            onClick={() => {
+              if (!auth.currentUser) { // Check if user is authenticated before navigating
+                setShowMessage('👥 Sign in to access Community!');
+                setActiveModal('auth');
+              } else {
+                setShowMessage('👥 Navigating to Community!');
+              }
+            }}
             role="button"
             aria-label="Navigate to Community Page"
           >
@@ -975,108 +1142,46 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
           >
             Tokenomics
           </Link>
-          {gameRoom.phase === 'RESULT' && (
-            <motion.button
-              onClick={resetGame}
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Play Again"
-            >
-              Play Again
-            </motion.button>
-          )}
-        </motion.div>
-
-        <motion.div variants={sectionVariants} className="text-center mb-12">
-          <motion.button
-            onClick={() => setShowTutorial(true)}
-            className="px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto font-poppins hover:bg-cyan-500"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label="Show Pontoon Tutorial"
-          >
-            <Users className="w-5 h-5 text-cyan-400 animate-pulse" /> Show Tutorial
-          </motion.button>
         </motion.div>
 
         <AnimatePresence>
           {showTutorial && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Pontoon Tutorial Modal"
-            >
-              <motion.div
-                ref={modalRef}
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-                tabIndex={-1}
-              >
+            <Modal title="Multiplayer Pontoon Tutorial" onClose={() => setShowTutorial(false)}>
+              <div className="text-gray-200 text-sm space-y-4 font-inter">
+                <p><b>Objective:</b> Get a hand value closer to 21 than the dealer without busting in a multiplayer game.</p>
+                <ul className="list-disc pl-6">
+                  <li>Bet 10–1000 JEWELS or USDT.</li>
+                  <li>You and other players get two cards each; dealer gets two (one hidden).</li>
+                  <li>Twist to draw cards or Stick to end your turn.</li>
+                  <li>Pontoon (Ace + 10/J/Q/K) or Five Card Trick (5 cards ≤ 21) pays 2x; beat dealer for 2x, push to return bet.</li>
+                  <li>Dealer draws to 17+. Auto-play continues rounds. Complete quests for rewards!</li>
+                </ul>
                 <motion.button
                   onClick={() => setShowTutorial(false)}
-                  className="absolute top-4 right-4 text-cyan-400 hover:text-red-500"
-                  whileHover={{ rotate: 90 }}
+                  className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   aria-label="Close tutorial modal"
                 >
-                  <X className="w-6 h-6" />
+                  Close
                 </motion.button>
-                <h3 className="text-xl font-bold text-cyan-400 mb-6 flex items-center gap-3 font-poppins">
-                  <Users className="w-6 h-6 text-cyan-400 animate-pulse" /> Pontoon Tutorial
-                </h3>
-                <div className="text-gray-200 text-sm space-y-4 font-inter">
-                  <p><b>Objective:</b> Get a hand value closer to 21 than the dealer without busting in a multiplayer game.</p>
-                  <ul className="list-disc pl-6">
-                    <li>Bet 10–1000 JEWELS or USDT.</li>
-                    <li>You and other players get two cards each; dealer gets two (one hidden).</li>
-                    <li>Twist to draw cards or Stand to end your turn.</li>
-                    <li>Pontoon (Ace + 10/J/Q/K) or Five Card Trick (5 cards ≤ 21) pays 2x; beat dealer for 2x, push to return bet.</li>
-                    <li>Dealer draws to 17+. Auto-play continues rounds. Complete quests for rewards!</li>
-                  </ul>
-                  <motion.button
-                    onClick={() => setShowTutorial(false)}
-                    className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Close tutorial modal"
-                  >
-                    Close
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </Modal>
           )}
-          {setActiveModal && (
+          {activeModal === "auth" && (
             <AuthModal
-              title="Sign In"
-              onClose={() => {
-                setActiveModal(null);
-                setShowMessage("");
-              }}
               setShowMessage={setShowMessage}
             />
           )}
-          {setActiveModal && (
+          {activeModal === "payment" && (
             <PaymentModal
               userId={effectiveUserId}
-              title="Wallet"
-              onClose={() => {
-                setActiveModal(null);
-                setShowMessage("");
-              }}
               setShowMessage={setShowMessage}
               setIsPETMember={setIsPETMember}
               updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
-          {setActiveModal && (
+          {activeModal === "error" && (
             <Modal title="Error" onClose={() => setActiveModal(null)}>
               <div className="space-y-4">
                 <p className="text-rose-400 font-inter">{showReward?.message || "An error occurred. Please try again."}</p>
@@ -1111,7 +1216,6 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
           )}
         </AnimatePresence>
 
-        <audio ref={playSoundRef} src="/audio/reward.mp3" preload="auto" />
         <audio ref={winSoundRef} src="/audio/reward.mp3" preload="auto" />
 
         <style>{`
@@ -1150,3 +1254,7 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
 };
 
 export default PontoonGame;
+function setGameState(arg0: string) {
+  throw new Error('Function not implemented.');
+}
+

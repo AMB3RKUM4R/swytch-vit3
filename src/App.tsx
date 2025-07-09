@@ -1,17 +1,17 @@
-
 import { FC, useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { auth, db, initializeFirebaseAuthAndListen } from './lib/firebaseConfig';
+import { auth, db } from './lib/firebaseConfig'; // Removed initializeFirebaseAuthAndListen import
 import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { useAuthUser } from './hooks/useAuthUser';
 import { useTheme } from './context/ThemeContext';
+import { useModal } from './context/ModalContext'; // Import useModal
 import SwytchErrorBoundary from './components/ErrorBoundaryComponent';
 import TopNav from './components/TopNav';
 import BottomNav from './components/BottomNav';
 import RewardPopup from './components/RewardPopup';
 import AuthModal from './components/AuthModal';
 import PaymentModal from './components/PaymentModal';
-import PhoneLogin from './hooks/PhoneLogin';
+// import PhoneLogin from './hooks/PhoneLogin'; // PhoneLogin is a hook, not a component. It should not be directly routed.
 import LandingPage from './pages/LandingPage';
 import Home from './pages/Home';
 import Vault from './pages/Vault';
@@ -49,7 +49,7 @@ interface AppProps {
 // Define PageProps to match types.ts
 interface PageProps {
   userId: string | null;
-  activeModal: string | null;
+  activeModal: string | null; // This is the value, not the setter
   setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
   setShowMessage: React.Dispatch<React.SetStateAction<string>>;
   setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>;
@@ -63,6 +63,7 @@ interface PageProps {
   setShowWalletModal: React.Dispatch<React.SetStateAction<boolean>>;
   autoPlay?: boolean;
   setAutoPlay?: React.Dispatch<React.SetStateAction<boolean>>;
+  mousePosition: { x: number; y: number; }; // Made mousePosition required
 }
 
 // Define GameProps for most game pages
@@ -74,7 +75,7 @@ interface GameProps {
   setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-// Define RedDogGameProps
+// Define RedDogGameProps (if it needs specific props different from GameProps)
 interface RedDogGameProps {
   userId: string | null;
   activeModal: string | null;
@@ -99,13 +100,14 @@ interface BottomNavProps {
   jewelsBalance: number;
   isPETMember: boolean;
   setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
+  setActiveModal: React.Dispatch<React.SetStateAction<string | null>>; // Use SetStateAction from React
 }
 
 
 const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
-  const { loading: authLoading } = useAuthUser();
+  const { loading: authLoading } = useAuthUser(); // Destructure user for firebaseAuthUser
   const { isDarkMode } = useTheme();
+  const { activeModal, showMessage: currentGlobalMessage } = useModal(); // Get showMessage value from useModal
   const [userId, setUserId] = useState<string | null>(null);
   const [jewelsBalance, setJewelsBalance] = useState<number>(0);
   const [goldBalance, setGoldBalance] = useState<number>(0);
@@ -114,11 +116,10 @@ const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
   const [showWalletModal, setShowWalletModal] = useState<boolean>(false);
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
   const [isPETMember, setIsPETMember] = useState<boolean>(false);
-  const [showMessage, setLocalShowMessage] = useState<string>('');
+  // Removed localShowMessage as setShowMessage prop from Root is sufficient for global popups
 
   const updatePlayerFirestore = async (updates: Partial<any>) => {
     if (!userId) {
-      setLocalShowMessage('⚠️ Please connect your wallet or log in.');
       setShowMessage('⚠️ Please connect your wallet or log in.');
       setActiveModal('auth');
       return;
@@ -138,36 +139,35 @@ const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
       await setDoc(doc(db, 'Players', userId), playerData, { merge: true });
     } catch (err) {
       console.error('Firestore update error:', err);
-      setLocalShowMessage('⚠️ Failed to update player data. Please check your connection.');
       setShowMessage('⚠️ Failed to update player data. Please check your connection.');
       setActiveModal('error');
     }
   };
 
   useEffect(() => {
-    const unsubscribe = initializeFirebaseAuthAndListen();
-    const authUnsubscribe = auth.onAuthStateChanged(
-      (user) => {
-        setUserId(user ? user.uid : null);
+    // This effect handles Firebase auth state changes and initial user data fetching
+    const unsubscribeAuth = auth.onAuthStateChanged(
+      (authUser) => { // Renamed user to authUser to avoid conflict with `user` from useAuthUser
+        setUserId(authUser ? authUser.uid : null);
         setIsPending(false);
       },
       (error) => {
         console.error('Auth state change error:', error);
-        setLocalShowMessage('⚠️ Failed to initialize authentication. Please try again.');
         setShowMessage('⚠️ Failed to initialize authentication. Please try again.');
         setActiveModal('error');
         setIsPending(false);
       }
     );
 
+    // If userId is available (user is authenticated, including anonymous)
     if (userId) {
       setIsPending(true);
       const userRef = doc(db, 'Players', userId);
-      const userUnsubscribe = onSnapshot(
+      const unsubscribeUserData = onSnapshot(
         userRef,
-        (doc) => {
-          if (doc.exists()) {
-            const data = doc.data();
+        (docSnap) => { // Renamed doc to docSnap for clarity
+          if (docSnap.exists()) {
+            const data = docSnap.data();
             setJewelsBalance(data.jewels || 0);
             setGoldBalance(data.gold || 0);
             setCurrentLevel(data.level || 0);
@@ -175,9 +175,10 @@ const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
             const now = Date.now();
             const oneDay = 24 * 60 * 60 * 1000;
             if (now - (data.lastBonusTime || 0) > oneDay) {
+              // Note: This bonus logic might cause a loop if not handled carefully with Firestore rules
+              // and server-side timestamps. For client-side simulation, it's fine.
               setJewelsBalance((prev) => prev + 500);
               updatePlayerFirestore({ jewels: (data.jewels || 0) + 500, lastBonusTime: now });
-              setLocalShowMessage('🎉 Claimed 500 JEWELS daily bonus!');
               setShowMessage('🎉 Claimed 500 JEWELS daily bonus!');
             }
           }
@@ -185,26 +186,28 @@ const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
         },
         (err) => {
           console.error('Failed to fetch balance:', err);
-          setLocalShowMessage('⚠️ Failed to load balance. Please check your connection.');
           setShowMessage('⚠️ Failed to load balance. Please check your connection.');
           setActiveModal('error');
           setIsPending(false);
         }
       );
 
-      return () => userUnsubscribe();
+      return () => unsubscribeUserData();
+    } else if (!authLoading && userId === null) {
+      // If authLoading is false and no user (not even anonymous) is logged in,
+      // explicitly show the AuthModal. This covers first-time visits.
+      setActiveModal('auth');
+      setShowMessage('👋 Welcome! Please sign in to continue.');
     }
 
     return () => {
-      unsubscribe();
-      authUnsubscribe();
+      unsubscribeAuth();
     };
-  }, [userId, setShowMessage]);
+  }, [userId, authLoading, setShowMessage, setActiveModal, updatePlayerFirestore]); // Added authLoading to dependencies
 
   useEffect(() => {
     if (showWalletModal) {
-      setActiveModal('auth');
-      setLocalShowMessage('ℹ️ Opening wallet connection...');
+      setActiveModal('auth'); // Assuming wallet modal also triggers AuthModal
       setShowMessage('ℹ️ Opening wallet connection...');
     }
   }, [showWalletModal, setActiveModal, setShowMessage]);
@@ -227,7 +230,7 @@ const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
 
   const pageProps: PageProps = {
     userId,
-    activeModal: null,
+    activeModal: activeModal, // Pass activeModal value from useModal
     setActiveModal,
     setShowMessage,
     setIsPETMember,
@@ -241,11 +244,12 @@ const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
     setShowWalletModal,
     autoPlay,
     setAutoPlay,
+    mousePosition: { x: 0, y: 0 }, // Re-added mousePosition for Home component
   };
 
   const redDogGameProps: RedDogGameProps = {
     userId,
-    activeModal: null,
+    activeModal: activeModal, // Pass activeModal value from useModal
     setActiveModal,
     setIsPETMember,
     setShowMessage,
@@ -272,7 +276,7 @@ const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
     userId,
     jewelsBalance,
     isPETMember,
-    setShowMessage,
+    setShowMessage, // Pass setShowMessage (setter) directly to BottomNav
     setActiveModal,
   };
 
@@ -290,7 +294,8 @@ const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
             path="/home"
             element={
               <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
-                <Home {...pageProps} mousePosition={{ x: 0, y: 0 }} />
+                {/* Home component now expects mousePosition prop */}
+                <Home {...pageProps} />
               </SwytchErrorBoundary>
             }
           />
@@ -317,17 +322,18 @@ const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
           <Route path="/games/rocketcrash" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><RocketCrashGame {...gameProps} /></SwytchErrorBoundary>} />
           <Route path="/games/Scratch" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><ScratchCardsGame {...gameProps} /></SwytchErrorBoundary>} />
           <Route path="/games/solitaire" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><SolitaireGame {...gameProps} /></SwytchErrorBoundary>} />
-          <Route path="/auth" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><AuthModal setShowMessage={setShowMessage} /></SwytchErrorBoundary>} />
-          <Route path="/phone-auth" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><PhoneLogin setShowMessage={setShowMessage} /></SwytchErrorBoundary>} />
-          <Route path="/payment" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><PaymentModal userId={userId} setShowMessage={setShowMessage} /></SwytchErrorBoundary>} />
+          {/* AuthModal and PaymentModal should typically be rendered as modals, not as routes */}
+          <Route path="/auth" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><AuthModal setShowMessage={setShowMessage} setActiveModal={setActiveModal} /></SwytchErrorBoundary>} /> {/* Pass setActiveModal */}
+          {/* Removed PhoneLogin route as it's a hook, not a component to be routed directly */}
+          <Route path="/payment" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><PaymentModal userId={userId} setShowMessage={setShowMessage} setIsPETMember={setIsPETMember} updatePlayerFirestore={updatePlayerFirestore} /></SwytchErrorBoundary>} /> {/* Pass required props */}
         </Routes>
       </main>
       <BottomNav {...bottomNavProps} />
       <AnimatePresence>
-        {showMessage && (
+        {currentGlobalMessage && ( // Use currentGlobalMessage value from useModal
           <RewardPopup
-            message={showMessage}
-            type={showMessage.startsWith('⚠️') ? 'error' : 'success'}
+            message={currentGlobalMessage}
+            type={currentGlobalMessage.startsWith('⚠️') ? 'error' : 'success'}
           />
         )}
       </AnimatePresence>

@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react'; // Ensure Sparkles is imported
 
 // Define RewardPopupProps to match App.tsx
 interface RewardPopupProps {
@@ -23,14 +23,16 @@ const RewardPopup: FC<RewardPopupProps> = ({ message, type }) => {
           initial="initial"
           animate="animate"
           exit="exit"
-          className="fixed bottom-20 right-4 max-w-sm w-full bg-gray-900 border border-rose-500/20 rounded-xl shadow-2xl p-4 backdrop-blur-lg z-50 bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
+          // Using Tailwind classes that map to your CSS variables
+          className={`fixed bottom-20 right-4 max-w-sm w-full bg-card border border-border rounded-xl shadow-2xl p-4 backdrop-blur-lg z-50`}
           role="alert"
           aria-label={type === 'error' ? 'Error Notification' : 'Success Notification'}
         >
           <div className="flex items-center gap-4">
-            <Sparkles className={`w-8 h-8 ${type === 'error' ? 'text-rose-400' : 'text-cyan-400'} animate-pulse`} />
+            {/* Using text-primary and text-secondary which map to rose-400 and cyan-400 */}
+            <Sparkles className={`w-8 h-8 ${type === 'error' ? 'text-primary' : 'text-secondary'} animate-pulse`} />
             <div>
-              <p className="text-white font-bold font-poppins">{message}</p>
+              <p className="text-foreground font-bold font-poppins">{message}</p>
             </div>
           </div>
         </motion.div>

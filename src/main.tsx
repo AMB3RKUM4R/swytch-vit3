@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -31,8 +30,12 @@ const queryClient = new QueryClient({
 });
 
 const Root: React.FC = () => {
-  const [, setShowMessage] = useState<string>('');
-  const [, setActiveModal] = useState<string | null>(null);
+  // These states are managed in App.tsx and passed down.
+  // They are declared here only to satisfy SwytchErrorBoundary's direct prop requirements.
+  // In a real application, you might lift these states higher or use Context API
+  // to avoid prop drilling if many components need them.
+  const [showMessage, setShowMessage] = useState<string>('');
+  const [activeModal, setActiveModal] = useState<string | null>(null);
 
   return (
     <React.StrictMode>
@@ -42,7 +45,9 @@ const Root: React.FC = () => {
             <RainbowKitProvider>
               <ThemeProvider>
                 <ModalProvider>
+                  {/* SwytchErrorBoundary needs setShowMessage and setActiveModal */}
                   <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
+                    {/* App also needs setShowMessage and setActiveModal */}
                     <App setShowMessage={setShowMessage} setActiveModal={setActiveModal} />
                   </SwytchErrorBoundary>
                 </ModalProvider>

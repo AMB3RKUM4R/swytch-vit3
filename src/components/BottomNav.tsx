@@ -1,6 +1,6 @@
-
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useRef } from 'react'; // Added useRef
 import { motion } from 'framer-motion';
+// Adjusted import for Horse, as you mentioned you're using House now
 import { Home, Star, Wallet, LogOut, User, Gamepad2, Dice1, Car, FerrisWheel, House, Rocket } from 'lucide-react';
 import { auth, db } from '@/lib/firebaseConfig';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -32,7 +32,7 @@ const gameItems = [
   { path: '/games/bridge', label: 'Bridge', icon: <Car className="w-6 h-6" /> },
   { path: '/games/caribbean-stud', label: 'Caribbean Stud', icon: <Car className="w-6 h-6" /> },
   { path: '/games/fortune-wheel', label: 'Fortune Wheel', icon: <FerrisWheel className="w-6 h-6" /> },
-  { path: '/games/horse', label: 'Horse', icon: <House className="w-6 h-6" /> },
+  { path: '/games/horse', label: 'Horse', icon: <House className="w-6 h-6" /> }, // Confirmed using House here
   { path: '/games/pontoon', label: 'Pontoon', icon: <Car className="w-6 h-6" /> },
   { path: '/games/reddog', label: 'Red Dog', icon: <Car className="w-6 h-6" /> },
   { path: '/games/rocketcrash', label: 'Rocket Crash', icon: <Rocket className="w-6 h-6" /> },
@@ -40,7 +40,7 @@ const gameItems = [
   { path: '/games/solitaire', label: 'Solitaire', icon: <Car className="w-6 h-6" /> },
 ];
 
-const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, setShowMessage, setActiveModal }) => {
+const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, setShowMessage }) => {
   const [balance, setBalance] = useState<{ jewels: number; gold: number }>({ jewels: 0, gold: 0 });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isGamesOpen, setIsGamesOpen] = useState(false);
@@ -48,7 +48,9 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const { setActiveModal: setModal } = useModal();
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // To manage the scroll timeout
 
+  // Existing useEffect for real-time balance
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
@@ -70,13 +72,36 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
     }
   }, [userId, setShowMessage, setModal]);
 
+  // NEW useEffect for dynamic scroll visibility
   useEffect(() => {
     const handleScroll = () => {
-      const isBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 50;
-      setIsVisible(isBottom);
+      // Show the nav immediately on scroll
+      setIsVisible(true);
+
+      // Clear any existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // Set a new timeout to hide the nav after 2 seconds of no scrolling
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsVisible(false);
+      }, 2000); // Adjust duration as needed (e.g., 2000ms = 2 seconds)
     };
+
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    // Initial check: if already scrolled, show it
+    if (window.scrollY > 50) { // Show if not at the very top initially
+      setIsVisible(true);
+    }
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -104,6 +129,8 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
     }
     setIsMenuOpen(false);
     setIsGamesOpen(false);
+    // When a nav item is clicked, immediately hide the bottom nav if it's not the 'Games' or 'Menu' button itself
+    setIsVisible(false); // This ensures it disappears after a navigation click
   };
 
   const dockItemVariants = {
@@ -114,7 +141,8 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
   return (
     <motion.nav
       initial={{ y: 100, opacity: 0 }}
-      animate={{ y: isVisible ? 0 : 100, opacity: isVisible ? 1 : 0 }}
+      // Updated animate logic: if not visible, slide down and fade out
+      animate={{ y: isVisible ? 0 : 100, opacity: isVisible ? 1 : 0 }} 
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 nav-dock ${isDarkMode ? 'glass-dark' : 'glass-light'} max-w-md w-full md:hidden`}
     >
@@ -167,7 +195,7 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
             >
               <Link
                 to={game.path}
-                className={`flex items-center gap-2 py-2 text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'} rounded-full px-3`}
+                className={`flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'} rounded-full px-3`}
                 onClick={() => handleNavClick(game)}
               >
                 {game.icon}
@@ -178,7 +206,7 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
         </motion.div>
       )}
 
-      {isMenuOpen && (
+      {isMenuOpen && ( // This block seems to be for a general "more" menu, distinct from games
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
