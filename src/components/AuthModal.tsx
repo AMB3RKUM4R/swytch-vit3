@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Phone, User, Wallet } from 'lucide-react';
 import { useAuthUser } from '../hooks/useAuthUser';
 import { useModal } from '../context/ModalContext';
-// import { useTheme } from '../context/ThemeContext'; // Removed as it's not used
+import { useTheme } from '../context/ThemeContext'; // Re-added useTheme for styling
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Link } from 'react-router-dom';
 import { RecaptchaVerifier } from 'firebase/auth';
@@ -11,16 +11,12 @@ import { auth } from '../lib/firebaseConfig';
 
 interface AuthModalProps {
   setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  // setActiveModal prop is not directly used in the component's logic,
-  // the setActiveModal from useModal context is used instead.
-  // Therefore, it can be removed from props.
-  // setActiveModal?: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => { // Removed setActiveModal from destructuring
-  // const { isDarkMode } = useTheme(); // Removed as it's not used
+const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
+  const { isDarkMode } = useTheme(); // Utilize isDarkMode for conditional styling
   const { activeModal, setActiveModal: setModalActive } = useModal();
-  const { signInWithEmail, signUpWithEmail, signInWithPhone } = useAuthUser(); // Removed unused signIn methods
+  const { signInWithEmail, signUpWithEmail, signInWithPhone } = useAuthUser(); // Ensured only used methods are destructured
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -45,7 +41,6 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => { // Removed setAc
       }
     };
   }, [activeModal, isPhoneAuth]);
-
 
   const handleEmailAuth = async () => {
     try {
@@ -99,7 +94,8 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => { // Removed setAc
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className={`relative bg-card rounded-lg p-6 max-w-md w-full mx-4 border border-primary/20 bg-noise`}
+            // Using the custom 'modal' class from your index.css, which includes 'glass' and other base styles
+            className={`relative modal ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
             initial={{ scale: 0.8, y: 50 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.8, y: 50 }}
@@ -122,7 +118,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => { // Removed setAc
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="Enter phone number"
-                    className={`w-full p-2 rounded bg-muted text-foreground border border-border focus:outline-none focus:border-secondary`}
+                    className={`input`} 
                   />
                 </div>
                 {confirmationResult && (
@@ -132,7 +128,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => { // Removed setAc
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value)}
                       placeholder="Enter verification code"
-                      className={`w-full p-2 rounded bg-muted text-foreground border border-border focus:outline-none focus:border-secondary`}
+                      className={`input`} 
                     />
                   </div>
                 )}
@@ -155,7 +151,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => { // Removed setAc
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter email"
-                    className={`w-full p-2 rounded bg-muted text-foreground border border-border focus:outline-none focus:border-secondary`}
+                    className={`input`} 
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -165,7 +161,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => { // Removed setAc
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter password"
-                    className={`w-full p-2 rounded bg-muted text-foreground border border-border focus:outline-none focus:border-secondary`}
+                    className={`input`} 
                   />
                 </div>
                 {isSignUp && (
@@ -176,7 +172,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => { // Removed setAc
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Enter name"
-                      className={`w-full p-2 rounded bg-muted text-foreground border border-border focus:outline-none focus:border-secondary`}
+                      className={`input`} 
                     />
                   </div>
                 )}

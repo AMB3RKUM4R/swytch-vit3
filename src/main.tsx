@@ -1,24 +1,28 @@
-import React, { useState } from 'react';
+import React, {  } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
-import { ModalProvider } from './context/ModalContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { ModalProvider, useModal } from './context/ModalContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { initializeFirebaseAuthAndListen } from './lib/firebaseConfig';
 import SwytchErrorBoundary from './components/ErrorBoundaryComponent';
 import App from './App';
+import TopNav from './components/TopNav';
+import BottomNav from './components/BottomNav';
+import RewardPopup from './components/RewardPopup';
+import { useAuthUser } from './hooks/useAuthUser';
+import { auth, db } from './lib/firebaseConfig';
+import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+// Removed AnimatePresence and motion imports
 import '@rainbow-me/rainbowkit/styles.css';
 import './index.css';
 
-// Import wagmi configuration
 import { wagmiConfig } from './lib/wagmi';
 
-// Initialize Firebase
 initializeFirebaseAuthAndListen();
 
-// Create a QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -29,14 +33,144 @@ const queryClient = new QueryClient({
   },
 });
 
-const Root: React.FC = () => {
-  // These states are managed in App.tsx and passed down.
-  // They are declared here only to satisfy SwytchErrorBoundary's direct prop requirements.
-  // In a real application, you might lift these states higher or use Context API
-  // to avoid prop drilling if many components need them.
-  const [_setshowMessage, setShowMessage] = useState<string>('');
-  const [_activeModal, setActiveModal] = useState<string | null>(null);
+const AppContent: React.FC = () => {
+  const { activeModal, setActiveModal, showMessage, setShowMessage } = useModal();
+  const { isDarkMode } = useTheme();
+  const { loading: authLoading } = useAuthUser();
 
+  const [userId, setUserId] = React.useState<string | null>(null);
+  const [jewelsBalance, setJewelsBalance] = React.useState<number>(0);
+  const [goldBalance, setGoldBalance] = React.useState<number>(0);
+  const [isPETMember, setIsPETMember] = React.useState<boolean>(false);
+  const [isPending, setIsPending] = React.useState<boolean>(false);
+  const [showWalletModal, setShowWalletModal] = React.useState<boolean>(false);
+
+  const updatePlayerFirestore = async (updates: Partial<any>) => {
+    if (!userId) {
+      setShowMessage('⚠️ Please connect your wallet or log in.');
+      setActiveModal('auth');
+      return;
+    }
+    try {
+      const playerData = {
+        ...updates,
+        updatedAt: serverTimestamp(),
+        character: updates.character || { selectedID: '', skin: '' },
+        inventory: updates.inventory || { equipped: { armor: '', weapon: '' }, items: {} },
+        chest: updates.chest || '',
+        energy: updates.energy || 100,
+        mana: updates.mana || 100,
+        xp: updates.xp || 0,
+        key: updates.key || '',
+      };
+      await setDoc(doc(db, 'Players', userId), playerData, { merge: true });
+    } catch (err) {
+      console.error('Firestore update error:', err);
+      setShowMessage('⚠️ Failed to update player data. Please check your connection.');
+      setActiveModal('error');
+    }
+  };
+
+  React.useEffect(() => {
+    const unsubscribeAuth = auth.onAuthStateChanged(
+      (authUser) => {
+        setUserId(authUser ? authUser.uid : null);
+        setIsPending(false);
+      },
+      (error) => {
+        console.error('Auth state change error:', error);
+        setShowMessage('⚠️ Failed to initialize authentication. Please try again.');
+        setActiveModal('error');
+        setIsPending(false);
+      }
+    );
+
+    if (userId) {
+      setIsPending(true);
+      const userRef = doc(db, 'Players', userId);
+      const unsubscribeUserData = onSnapshot(
+        userRef,
+        (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setJewelsBalance(data.jewels || 0);
+            setGoldBalance(data.gold || 0);
+            setIsPETMember(data.isPETMember || false);
+            const now = Date.now();
+            const oneDay = 24 * 60 * 60 * 1000;
+            if (now - (data.lastBonusTime || 0) > oneDay) {
+              setJewelsBalance((prev) => prev + 500);
+              updatePlayerFirestore({ jewels: (data.jewels || 0) + 500, lastBonusTime: now });
+              setShowMessage('🎉 Claimed 500 JEWELS daily bonus!');
+            }
+          }
+          setIsPending(false);
+        },
+        (err) => {
+          console.error('Failed to fetch balance:', err);
+          setShowMessage('⚠️ Failed to load balance. Please check your connection.');
+          setActiveModal('error');
+          setIsPending(false);
+        }
+      );
+      return () => unsubscribeUserData();
+    } else if (!authLoading && userId === null) {
+      setActiveModal('auth');
+      setShowMessage('👋 Welcome! Please sign in to continue.');
+    }
+
+    return () => {
+      unsubscribeAuth();
+    };
+  }, [userId, authLoading, setShowMessage, setActiveModal, updatePlayerFirestore]);
+
+
+  const navProps = {
+    userId,
+    jewelsBalance,
+    isPETMember,
+    setShowMessage,
+    setShowWalletModal,
+  };
+
+  const appProps = {
+    userId,
+    activeModal,
+    setActiveModal,
+    setShowMessage,
+    setIsPETMember,
+    updatePlayerFirestore,
+    jewelsBalance,
+    goldBalance,
+    currentLevel: 0,
+    isPending,
+    authLoading,
+    showWalletModal,
+    setShowWalletModal,
+    mousePosition: { x: 0, y: 0 },
+  };
+
+  return (
+    <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
+      <div className={`min-h-screen flex flex-col ${isDarkMode ? 'bg-gray-950' : 'bg-gray-100'} text-${isDarkMode ? 'white' : 'gray-900'} font-inter bg-noise`}>
+        <TopNav {...navProps} />
+        <main className="flex-grow">
+          <App {...appProps} />
+        </main>
+        <BottomNav {...navProps} />
+        {/* Removed AnimatePresence wrapper around RewardPopup */}
+        {showMessage && (
+          <RewardPopup
+            message={showMessage}
+            type={showMessage.startsWith('⚠️') ? 'error' : 'success'}
+          />
+        )}
+      </div>
+    </SwytchErrorBoundary>
+  );
+};
+
+const Root: React.FC = () => {
   return (
     <React.StrictMode>
       <BrowserRouter>
@@ -45,11 +179,7 @@ const Root: React.FC = () => {
             <RainbowKitProvider>
               <ThemeProvider>
                 <ModalProvider>
-                  {/* SwytchErrorBoundary needs setShowMessage and setActiveModal */}
-                  <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
-                    {/* App also needs setShowMessage and setActiveModal */}
-                    <App setShowMessage={setShowMessage} setActiveModal={setActiveModal} />
-                  </SwytchErrorBoundary>
+                  <AppContent />
                 </ModalProvider>
               </ThemeProvider>
             </RainbowKitProvider>

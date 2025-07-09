@@ -1,21 +1,18 @@
-import { FC, useState, useEffect, useRef } from 'react'; // Added useRef
-import { motion } from 'framer-motion';
-// Adjusted import for Horse, as you mentioned you're using House now
+import { FC, useState, useEffect, useRef } from 'react';
+// Removed motion and AnimatePresence imports as they are no longer used in this component
 import { Home, Star, Wallet, LogOut, User, Gamepad2, Dice1, Car, FerrisWheel, House, Rocket } from 'lucide-react';
 import { auth, db } from '@/lib/firebaseConfig';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '@/context/ThemeContext';
 import { useModal } from '@/context/ModalContext';
 
-// Define BottomNavProps to match App.tsx
 interface BottomNavProps {
   userId: string | null;
   jewelsBalance: number;
   isPETMember: boolean;
   setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 const navItems = [
@@ -32,7 +29,7 @@ const gameItems = [
   { path: '/games/bridge', label: 'Bridge', icon: <Car className="w-6 h-6" /> },
   { path: '/games/caribbean-stud', label: 'Caribbean Stud', icon: <Car className="w-6 h-6" /> },
   { path: '/games/fortune-wheel', label: 'Fortune Wheel', icon: <FerrisWheel className="w-6 h-6" /> },
-  { path: '/games/horse', label: 'Horse', icon: <House className="w-6 h-6" /> }, // Confirmed using House here
+  { path: '/games/horse', label: 'Horse', icon: <House className="w-6 h-6" /> },
   { path: '/games/pontoon', label: 'Pontoon', icon: <Car className="w-6 h-6" /> },
   { path: '/games/reddog', label: 'Red Dog', icon: <Car className="w-6 h-6" /> },
   { path: '/games/rocketcrash', label: 'Rocket Crash', icon: <Rocket className="w-6 h-6" /> },
@@ -44,13 +41,14 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
   const [balance, setBalance] = useState<{ jewels: number; gold: number }>({ jewels: 0, gold: 0 });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isGamesOpen, setIsGamesOpen] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(false); // Controls the visibility of the entire nav
   const navigate = useNavigate();
+  const location = useLocation();
   const { isDarkMode } = useTheme();
   const { setActiveModal: setModal } = useModal();
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // To manage the scroll timeout
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Existing useEffect for real-time balance
+  // Effect for real-time balance updates
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
@@ -60,6 +58,12 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
           if (doc.exists()) {
             const data = doc.data();
             setBalance({ jewels: data.jewels || 0, gold: data.gold || 0 });
+            const now = Date.now();
+            const oneDay = 24 * 60 * 60 * 1000;
+            if (now - (data.lastBonusTime || 0) > oneDay) {
+              setBalance(prev => ({ ...prev, jewels: (prev.jewels || 0) + 500 }));
+              setShowMessage('🎉 Claimed 500 JEWELS daily bonus!');
+            }
           }
         },
         (err) => {
@@ -72,28 +76,26 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
     }
   }, [userId, setShowMessage, setModal]);
 
-  // NEW useEffect for dynamic scroll visibility
+  // Effect for dynamic scroll visibility (hide/show nav on scroll)
   useEffect(() => {
     const handleScroll = () => {
-      // Show the nav immediately on scroll
-      setIsVisible(true);
-
-      // Clear any existing timeout
+      setIsVisible(true); // Show nav immediately on scroll
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-
-      // Set a new timeout to hide the nav after 2 seconds of no scrolling
+      // Set a timeout to hide the nav after 2 seconds of no scrolling
       scrollTimeoutRef.current = setTimeout(() => {
         setIsVisible(false);
-      }, 2000); // Adjust duration as needed (e.g., 2000ms = 2 seconds)
+      }, 2000);
     };
 
     window.addEventListener('scroll', handleScroll);
 
-    // Initial check: if already scrolled, show it
-    if (window.scrollY > 50) { // Show if not at the very top initially
+    // Initial check: if already scrolled from the very top, show it
+    if (window.scrollY > 0) {
       setIsVisible(true);
+    } else {
+      setIsVisible(false); // Hide if at top initially
     }
 
     return () => {
@@ -104,6 +106,13 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
     };
   }, []);
 
+  // Effect to hide menus and nav when the route changes
+  useEffect(() => {
+    setIsVisible(false); // Hide the main nav on route change
+    setIsMenuOpen(false); // Close any open sub-menus
+    setIsGamesOpen(false);
+  }, [location.pathname]); // Dependency on route changes
+
   const handleSignOut = async () => {
     if (!auth.currentUser) {
       setShowMessage('⚠️ Sign in first!');
@@ -113,7 +122,7 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
     try {
       await signOut(auth);
       setShowMessage('✅ Signed out successfully!');
-      navigate('/auth');
+      navigate('/auth'); // Redirect after sign-out
     } catch (err) {
       console.error('Sign-out error:', err);
       setShowMessage('⚠️ Failed to sign out. Please try again.');
@@ -121,51 +130,43 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
     }
   };
 
-  const handleNavClick = (item: { path: string; label: string }) => {
-    if (!auth.currentUser && (item.path === '/membership' || item.path === '/vault')) {
-      setShowMessage(`⚠️ Sign in to access ${item.label}!`);
+  const handleNavClick = (itemPath: string, itemLabel: string) => {
+    // Check authentication for restricted pages
+    if (!auth.currentUser && (itemPath === '/membership' || itemPath === '/vault')) {
+      setShowMessage(`⚠️ Sign in to access ${itemLabel}!`);
       setModal('auth');
       return;
     }
+    // Close menus when a navigation item is clicked
     setIsMenuOpen(false);
     setIsGamesOpen(false);
-    // When a nav item is clicked, immediately hide the bottom nav if it's not the 'Games' or 'Menu' button itself
-    setIsVisible(false); // This ensures it disappears after a navigation click
-  };
-
-  const dockItemVariants = {
-    hover: { scale: 1.25, y: -10, transition: { type: 'spring', stiffness: 300, damping: 10 } },
-    tap: { scale: 0.95 },
   };
 
   return (
-    <motion.nav
-      initial={{ y: 100, opacity: 0 }}
-      // Updated animate logic: if not visible, slide down and fade out
-      animate={{ y: isVisible ? 0 : 100, opacity: isVisible ? 1 : 0 }} 
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 nav-dock ${isDarkMode ? 'glass-dark' : 'glass-light'} max-w-md w-full md:hidden`}
+    <nav
+      className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 nav-dock ${isDarkMode ? 'glass-dark' : 'glass-light'} max-w-md w-full md:hidden
+                  transition-all duration-300 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full'}`}
     >
-      <div className="flex justify-around py-3">
+      {/* Main navigation items */}
+      <div className="flex justify-around py-3 w-full">
         {navItems.map((item) => (
-          <motion.div
+          <div
             key={item.path}
-            className="dock-item"
-            variants={dockItemVariants}
-            whileHover="hover"
-            whileTap="tap"
+            // Apply standard Tailwind transitions for hover/active effects
+            className="dock-item transition-transform duration-200 ease-out hover:scale-125 hover:-translate-y-2 active:scale-95"
           >
             <Link
               to={item.path}
               className={`flex flex-col items-center text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary transition-colors p-2 rounded-full ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}`}
-              onClick={() => handleNavClick(item)}
+              onClick={() => handleNavClick(item.path, item.label)}
             >
               {item.icon}
               <span className="text-xs font-['Inter']">{item.label}</span>
             </Link>
-          </motion.div>
+          </div>
         ))}
-        <motion.div className="dock-item" variants={dockItemVariants} whileHover="hover" whileTap="tap">
+        {/* Games menu toggle button */}
+        <div className="dock-item transition-transform duration-200 ease-out hover:scale-125 hover:-translate-y-2 active:scale-95">
           <button
             className={`flex flex-col items-center text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary transition-colors p-2 rounded-full ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}`}
             onClick={() => setIsGamesOpen(!isGamesOpen)}
@@ -174,103 +175,88 @@ const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, set
             <Gamepad2 className="w-8 h-8 text-primary" />
             <span className="text-xs font-['Inter']">Games</span>
           </button>
-        </motion.div>
+        </div>
       </div>
 
+      {/* Conditional rendering for the Games sub-menu (no AnimatePresence needed) */}
       {isGamesOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.3 }}
-          className={`fixed bottom-16 left-1/2 transform -translate-x-1/2 popover ${isDarkMode ? 'glass-dark' : 'glass-light'} p-4 rounded-lg w-full max-w-md`}
+        <div
+          className={`fixed bottom-16 left-1/2 transform -translate-x-1/2 popover ${isDarkMode ? 'glass-dark' : 'glass-light'} p-4 rounded-lg w-full max-w-md
+                      transition-all duration-300 ease-out opacity-100 translate-y-0`} // Add explicit display/hide for smooth transition
         >
           {gameItems.map((game) => (
-            <motion.div
+            <div
               key={game.path}
-              className="dock-item"
-              variants={dockItemVariants}
-              whileHover="hover"
-              whileTap="tap"
+              className="dock-item transition-transform duration-200 ease-out hover:scale-125 hover:-translate-y-2 active:scale-95"
             >
               <Link
                 to={game.path}
                 className={`flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'} rounded-full px-3`}
-                onClick={() => handleNavClick(game)}
+                onClick={() => handleNavClick(game.path, game.label)}
               >
                 {game.icon}
                 {game.label}
               </Link>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       )}
 
-      {isMenuOpen && ( // This block seems to be for a general "more" menu, distinct from games
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className={`fixed bottom-16 left-1/2 transform -translate-x-1/2 popover ${isDarkMode ? 'glass-dark' : 'glass-light'} p-4 rounded-lg w-full max-w-md`}
+      {/* Conditional rendering for the main menu (if different from games, or 'more' menu) */}
+      {isMenuOpen && (
+        <div
+          className={`fixed bottom-16 left-1/2 transform -translate-x-1/2 popover ${isDarkMode ? 'glass-dark' : 'glass-light'} p-4 rounded-lg w-full max-w-md
+                      transition-all duration-300 ease-out opacity-100 translate-y-0`} // Add explicit display/hide for smooth transition
         >
           <div className="space-y-2">
             {navItems.map((item) => (
-              <motion.div
+              <div
                 key={item.path}
-                className="dock-item"
-                variants={dockItemVariants}
-                whileHover="hover"
-                whileTap="tap"
+                className="dock-item transition-transform duration-200 ease-out hover:scale-125 hover:-translate-y-2 active:scale-95"
               >
                 <Link
                   to={item.path}
                   className={`flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}`}
-                  onClick={() => handleNavClick(item)}
+                  onClick={() => handleNavClick(item.path, item.label)}
                 >
                   {item.icon}
                   {item.label}
                 </Link>
-              </motion.div>
+              </div>
             ))}
             {userId ? (
               <>
-                <motion.div
+                <div
                   className={`dock-item flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} ${isDarkMode ? 'bg-primary/20' : 'bg-primary/10'}`}
-                  variants={dockItemVariants}
-                  whileHover="hover"
-                  whileTap="tap"
                 >
                   <Wallet className="w-6 h-6 text-primary animate-pulse-slow" />
                   <span className="font-['Inter']">{isPETMember ? 'PET Member' : 'Non-Member'} | {jewelsBalance.toFixed(2)} JEWELS / {balance.gold.toFixed(2)} GOLD</span>
-                </motion.div>
-                <motion.button
+                </div>
+                <button
                   onClick={handleSignOut}
-                  className={`dock-item flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}`}
-                  variants={dockItemVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                  animate={{ scale: [1, 1.05, 1], transition: { repeat: Infinity, duration: 1.5 } }}
+                  className={`dock-item flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}
+                  transition-all duration-300 ease-out`} // Added transition for sign out button
                 >
                   <LogOut className="w-6 h-6 text-primary animate-pulse-slow" />
                   Sign Out
-                </motion.button>
+                </button>
               </>
             ) : (
-              <motion.div className="dock-item" variants={dockItemVariants} whileHover="hover" whileTap="tap">
+              <div className="dock-item transition-transform duration-200 ease-out hover:scale-125 hover:-translate-y-2 active:scale-95">
                 <Link
                   to="/auth"
                   className={`flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}`}
-                  onClick={() => setIsMenuOpen(false)}
+                  onClick={() => handleNavClick('/auth', 'Sign In')}
                 >
                   <User className="w-6 h-6 text-primary" />
                   Sign In
                 </Link>
-              </motion.div>
+              </div>
             )}
           </div>
-        </motion.div>
+        </div>
       )}
-    </motion.nav>
+    </nav>
   );
 };
 
