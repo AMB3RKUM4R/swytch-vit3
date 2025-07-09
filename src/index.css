@@ -7,6 +7,7 @@
 
 @layer base {
   :root {
+    /* HSL values for Light Mode (Default) */
     --background: 270 100% 10%; /* Dark purple for gradient start */
     --foreground: 0 0% 100%; /* White font */
     --card: 270 50% 15%; /* Slightly lighter purple for cards */
@@ -26,19 +27,23 @@
     --border: 270 20% 25%; /* Darker purple for borders */
     --input: 270 20% 25%; /* Same as border for inputs */
     --ring: 340 75% 55%; /* Rose-400 for focus rings */
+
+    /* Chart colors - make sure these HSL values are distinct */
     --chart-1: 340 75% 55%; /* Rose-400 */
     --chart-2: 180 100% 50%; /* Cyan-500 */
-    --chart-3: 30 80% 55%; /* Retain chart colors */
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%; /* Rose-400 */
+    --chart-3: 30 80% 55%;  /* Orange-ish */
+    --chart-4: 280 65% 60%; /* Purple-ish */
+    --chart-5: 60 100% 50%; /* Yellow-ish, assuming this was intended instead of another rose */
+
     --radius: 1rem; /* Larger for dock effect */
-    --glass-blur: blur(20px); /* Strong glass blur */
-    --glass-bg: rgba(75, 0, 130, 0.3); /* Purple glass effect (light mode default) */
-    --glass-bg-light: rgba(200, 200, 200, 0.2); /* Light mode specific glass */
-    --glass-bg-dark: rgba(30, 30, 30, 0.4); /* Dark mode specific glass */
+    --glass-blur: 20px; /* Strong glass blur */
+    /* Base glass background colors for light/dark mode */
+    --glass-bg-light-value: 200, 200, 200, 0.2; /* rgba(200,200,200,0.2) */
+    --glass-bg-dark-value: 30, 30, 30, 0.4; /* rgba(30,30,30,0.4) */
   }
 
   .dark {
+    /* HSL values for Dark Mode */
     --background: 270 100% 5%; /* Darker purple to black gradient */
     --foreground: 0 0% 100%; /* White font */
     --card: 270 50% 10%; /* Darker purple for cards */
@@ -58,88 +63,160 @@
     --border: 270 20% 20%; /* Darker purple for borders */
     --input: 270 20% 20%; /* Same as border */
     --ring: 340 75% 55%; /* Rose-400 */
+
+    /* Chart colors for dark mode, usually same as light or slightly adjusted */
     --chart-1: 340 75% 55%; /* Rose-400 */
     --chart-2: 180 100% 50%; /* Cyan-500 */
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%; /* Rose-400 */
-    --glass-blur: blur(20px);
-    --glass-bg: rgba(30, 30, 30, 0.4); /* Darker purple glass for dark mode default */
-    --glass-bg-light: rgba(200, 200, 200, 0.2);
-    --glass-bg-dark: rgba(30, 30, 30, 0.4);
+    --chart-5: 60 100% 50%;
   }
 
   /* Apply global styles */
   * {
-    @apply border-border;
+    border-color: hsl(var(--border)); /* Apply border color globally */
   }
   html, body {
-    @apply min-h-screen bg-gradient-to-br from-[hsl(var(--background))] to-black text-foreground font-['Inter'];
+    @apply min-h-screen bg-gradient-to-br from-[hsl(var(--background))] to-black text-foreground font-inter;
     overflow-x: hidden; /* Prevent horizontal scrolling */
   }
+  
+  /* Base glass effect applied via classes based on isDarkMode in components */
   .glass {
-    background: hsla(var(--glass-bg)); /* Use HSL variable for base glass background */
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border-radius: var(--radius);
-    border: 1px solid hsla(var(--border), 0.3);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
     transition: all 0.3s ease;
   }
-  /* Specific glass styles for light/dark mode, using the defined variables */
   .glass-light {
-    background: hsla(var(--glass-bg-light));
+    background: rgba(var(--glass-bg-light-value)); /* Use rgba with direct values */
   }
   .glass-dark {
-    background: hsla(var(--glass-bg-dark));
+    background: rgba(var(--glass-bg-dark-value)); /* Use rgba with direct values */
   }
 }
 
 @layer components {
+  /* Buttons */
   .btn-primary {
-    @apply bg-primary text-primary-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-secondary hover:text-secondary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300; /* Removed animate-pulse-slow here as it's a utility */
+    @apply bg-primary text-primary-foreground px-4 py-2 rounded-full font-poppins font-semibold 
+           hover:bg-secondary hover:text-secondary-foreground 
+           focus:outline-none focus:ring-2 focus:ring-ring 
+           transition-all duration-300 ease-in-out flex items-center justify-center gap-2; /* Added flex properties */
   }
   .btn-secondary {
-    @apply bg-secondary text-secondary-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300; /* Removed animate-pulse-slow here as it's a utility */
+    @apply bg-transparent text-foreground px-4 py-2 rounded-full font-poppins font-semibold 
+           border border-border hover:bg-secondary hover:text-secondary-foreground 
+           focus:outline-none focus:ring-2 focus:ring-ring 
+           transition-all duration-300 ease-in-out flex items-center justify-center gap-2; /* Added flex properties */
   }
   .btn-accent {
-    @apply bg-accent text-accent-foreground px-4 py-2 rounded-full font-['Poppins'] font-semibold hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-300; /* Removed animate-pulse-slow here as it's a utility */
+    @apply bg-accent text-accent-foreground px-4 py-2 rounded-full font-poppins font-semibold 
+           hover:bg-primary hover:text-primary-foreground 
+           focus:outline-none focus:ring-2 focus:ring-ring 
+           transition-all duration-300 ease-in-out flex items-center justify-center gap-2; /* Added flex properties */
   }
+
+  /* Cards */
   .card {
-    @apply glass bg-card text-card-foreground p-6 rounded-lg shadow-lg transition-transform duration-300 hover:scale-105; /* Removed animate-glow here as it's a utility */
+    @apply bg-card text-card-foreground p-6 rounded-lg shadow-lg 
+           transition-transform duration-300 hover:scale-[1.02] ease-in-out; /* Slightly reduced hover scale */
   }
+
+  /* Popovers (Dropdowns) */
   .popover {
-    @apply glass bg-popover text-popover-foreground p-4 rounded-lg shadow-lg transition-opacity duration-300;
+    @apply bg-popover text-popover-foreground p-4 rounded-lg shadow-lg transition-opacity duration-300;
   }
+
+  /* Modals */
   .modal {
-    @apply glass bg-card text-card-foreground p-6 rounded-lg shadow-lg max-w-md w-full mx-auto transition-transform duration-300;
+    @apply bg-card text-card-foreground p-6 rounded-lg shadow-lg max-w-md w-full mx-auto transition-transform duration-300;
   }
+
+  /* Inputs */
   .input {
-    @apply bg-[hsl(var(--input))] text-foreground p-3 rounded-md border border-[hsl(var(--border))] focus:outline-none focus:ring-2 focus:ring-ring font-['Inter'] placeholder-muted-foreground transition-all duration-300;
+    @apply bg-input text-foreground p-3 rounded-md border border-border 
+           focus:outline-none focus:ring-2 focus:ring-ring font-inter placeholder-muted-foreground 
+           transition-all duration-300;
   }
-  .nav-dock {
-    @apply fixed left-1/2 transform -translate-x-1/2 z-50 glass flex justify-center gap-4 px-6 py-3 rounded-full max-w-4xl w-full;
+
+  /* Top Navigation Bar (Full-width) */
+  .nav-main {
+    @apply bg-background/80 shadow-md flex items-center justify-between px-4 py-3 md:px-8 
+           backdrop-filter backdrop-blur-lg; /* Ensure glass effect for the main nav */
+    /* Specific glass background is applied directly by components based on theme, e.g., glass-dark */
   }
-  .dock-item {
-    @apply flex flex-col items-center justify-center p-3 rounded-full transition-transform duration-200 ease-out;
+
+  .nav-item {
+    @apply flex items-center gap-2 px-3 py-2 rounded-full text-foreground 
+           font-inter transition-all duration-200 ease-in-out;
   }
-  .dock-item:hover {
-    @apply scale-125 -translate-y-2;
+  .nav-item:hover {
+    @apply bg-muted text-secondary;
   }
-  .dock-item:active {
-    @apply scale-95;
+  .nav-item-active {
+    @apply bg-primary/20 text-secondary font-semibold; /* Use primary/20 for light background */
   }
-  /* The bg-noise is a utility, not a component, so it stays in utilities or defined directly */
+
+  /* Dropdown Nav Items (for Games menu) */
+  .nav-item-dropdown {
+    @apply flex items-center gap-2 py-2 px-3 rounded-md text-foreground 
+           font-inter transition-all duration-200 ease-in-out;
+  }
+  .nav-item-dropdown:hover {
+    @apply bg-muted text-secondary;
+  }
+  .nav-item-dropdown-active {
+    @apply bg-muted text-secondary font-semibold;
+  }
+
+  /* Theme Toggle Button */
+  .theme-toggle-btn {
+    @apply p-2 rounded-full text-foreground text-xl leading-none 
+           bg-transparent hover:bg-muted transition-all duration-200 ease-in-out;
+  }
+
+  /* Mobile Full-Screen Menu */
+  .mobile-menu {
+    @apply fixed top-0 left-0 w-full h-full bg-background/90 z-40 
+           flex flex-col items-center justify-start p-4 pt-16 
+           backdrop-filter backdrop-blur-lg overflow-y-auto; /* Apply glass effect here */
+  }
+  .nav-item-mobile {
+    @apply flex items-center justify-center gap-2 w-full max-w-[300px] 
+           px-4 py-3 rounded-full text-foreground font-inter 
+           transition-all duration-200 ease-in-out;
+  }
+  .nav-item-mobile:hover {
+    @apply bg-muted text-secondary;
+  }
 }
 
 @layer utilities {
-  /* Define custom animations if they are not standard Tailwind animations */
+  /* Fonts directly applied */
+  .font-inter {
+    font-family: 'Inter', sans-serif;
+  }
+  .font-poppins {
+    font-family: 'Poppins', sans-serif;
+  }
+
+  /* Custom Animations */
   @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; } /* Slightly reduced opacity change for subtler pulse */
+  }
+  .animate-pulse {
+    animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; /* Faster pulse */
+  }
+
+  @keyframes pulse-slow { /* Re-added for explicit slow pulse if needed */
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
   }
   .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   @keyframes bounce {
@@ -158,9 +235,9 @@
     animation: glow 2s ease-in-out infinite;
   }
 
-  /* The bg-noise utility class */
+  /* Noise Background Utility */
   .bg-noise {
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30v4h4v2h-4v4h-2v-4h-4v-2h4v-4h2zM6 34v4h4v2H6v4H4v-4H0v-2h4v-4h2zm0-30v4h2v4H4v2H0v-2h4v-4H0V4h4V0h2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30v4h4v2h-4v4h-2v-4h4v-2h4v-4h2zM6 34v4h4v2H6v4H4v-4H0v-2h4v-4h2zm0-30v4h2v4H4v2H0v-2h4v-4H0V4h4V0h2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
     background-size: 60px 60px;
     background-repeat: repeat;
   }

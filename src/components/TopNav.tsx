@@ -1,6 +1,7 @@
+// TopNav.tsx
 import { FC, SetStateAction, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Sparkles, Menu, X, Gamepad2, Home, Star, Eye, Car, User, FerrisWheel, Rocket, Dice1, House } from 'lucide-react';
+import { Wallet, Sparkles, Menu, X, Gamepad2, Home, Eye, User, FerrisWheel, Rocket, Dice1, House, LayoutGrid, Award, BarChart, ShoppingCart } from 'lucide-react'; // Added more icons
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { NavLink } from 'react-router-dom';
@@ -15,29 +16,28 @@ interface TopNavProps {
 }
 
 const navItems = [
-  { name: 'Landing', path: '/', icon: <Home className="w-6 h-6" /> },
-  { name: 'Home', path: '/home', icon: <Home className="w-6 h-6" /> },
-  { name: 'Vault', path: '/vault', icon: <Wallet className="w-6 h-6" /> },
-  { name: 'Tokenomics', path: '/tokenomics', icon: <Wallet className="w-6 h-6" /> },
-  { name: 'Benefits', path: '/benefits', icon: <Star className="w-6 h-6" /> },
-  { name: 'Vision', path: '/vision', icon: <Eye className="w-6 h-6" /> },
-  { name: 'Market', path: '/market', icon: <Car className="w-6 h-6" /> },
-  { name: 'Shop', path: '/shop', icon: <Car className="w-6 h-6" /> },
-  { name: 'Community', path: '/community', icon: <User className="w-6 h-6" /> },
+  { path: '/', icon: <Home className="w-5 h-5" /> },
+  { path: '/vault', icon: <Wallet className="w-5 h-5" /> },
+  { path: '/tokenomics', icon: <BarChart className="w-5 h-5" /> }, // Changed icon
+  { path: '/benefits', icon: <Award className="w-5 h-5" /> }, // Changed icon
+  { path: '/vision', icon: <Eye className="w-5 h-5" /> },
+  { path: '/market', icon: <LayoutGrid className="w-5 h-5" /> }, // Changed icon
+  { name: 'Shop', path: '/shop', icon: <ShoppingCart className="w-5 h-5" /> }, // Changed icon
+  { path: '/community', icon: <User className="w-5 h-5" /> },
 ];
 
 const gameItems = [
-  { name: 'Bingo', path: '/games/bingo', icon: <Dice1 className="w-6 h-6" /> },
-  { name: 'Blackjack', path: '/games/blackjack', icon: <Car className="w-6 h-6" /> },
-  { name: 'Bridge', path: '/games/bridge', icon: <Car className="w-6 h-6" /> },
-  { name: 'Caribbean Stud', path: '/games/caribbean-stud', icon: <Car className="w-6 h-6" /> },
-  { name: 'Fortune Wheel', path: '/games/fortune-wheel', icon: <FerrisWheel className="w-6 h-6" /> },
-  { name: 'Horse', path: '/games/horse', icon: <House className="w-6 h-6" /> },
-  { name: 'Pontoon', path: '/games/pontoon', icon: <Car className="w-6 h-6" /> },
-  { name: 'Red Dog', path: '/games/reddog', icon: <Car className="w-6 h-6" /> },
-  { name: 'Rocket Crash', path: '/games/rocketcrash', icon: <Rocket className="w-6 h-6" /> },
-  { name: 'Scratch Cards', path: '/games/Scratch', icon: <Car className="w-6 h-6" /> },
-  { name: 'Solitaire', path: '/games/solitaire', icon: <Car className="w-6 h-6" /> },
+  { name: 'Bingo', path: '/games/bingo', icon: <Dice1 className="w-5 h-5" /> },
+  { name: 'Blackjack', path: '/games/blackjack', icon: <Gamepad2 className="w-5 h-5" /> },
+  { name: 'Bridge', path: '/games/bridge', icon: <Gamepad2 className="w-5 h-5" /> },
+  { name: 'Caribbean Stud', path: '/games/caribbean-stud', icon: <Gamepad2 className="w-5 h-5" /> },
+  { name: 'Fortune Wheel', path: '/games/fortune-wheel', icon: <FerrisWheel className="w-5 h-5" /> },
+  { name: 'Horse', path: '/games/horse', icon: <House className="w-5 h-5" /> },
+  { name: 'Pontoon', path: '/games/pontoon', icon: <Gamepad2 className="w-5 h-5" /> },
+  { name: 'Red Dog', path: '/games/reddog', icon: <Gamepad2 className="w-5 h-5" /> },
+  { name: 'Rocket Crash', path: '/games/rocketcrash', icon: <Rocket className="w-5 h-5" /> },
+  { name: 'Scratch Cards', path: '/games/Scratch', icon: <Gamepad2 className="w-5 h-5" /> },
+  { name: 'Solitaire', path: '/games/solitaire', icon: <Gamepad2 className="w-5 h-5" /> },
 ];
 
 const TopNav: FC<TopNavProps> = ({ userId, jewelsBalance, isPETMember, setShowMessage, setShowWalletModal }) => {
@@ -46,200 +46,210 @@ const TopNav: FC<TopNavProps> = ({ userId, jewelsBalance, isPETMember, setShowMe
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isGamesOpen, setIsGamesOpen] = useState(false);
 
+  const closeMenus = () => {
+    setIsMenuOpen(false);
+    setIsGamesOpen(false);
+  };
+
   const handleWalletClick = () => {
     if (!userId) {
       setShowMessage('⚠️ Please sign in to connect wallet!');
-      setShowWalletModal(true);
+      setShowWalletModal(true); // This should ideally trigger AuthModal
       return;
     }
     if (!isConnected) {
-      setShowWalletModal(true);
+      // openConnectModal() will be called by the ConnectButton.Custom render prop
     } else {
       setShowMessage('🎉 Wallet connected!');
     }
   };
 
-  const dockItemVariants = {
-    hover: { scale: 1.2, y: -10, transition: { type: 'spring', stiffness: 300, damping: 10 } },
-    tap: { scale: 0.95 },
+  const dropdownVariants = {
+    initial: { opacity: 0, y: -10 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -10 },
   };
 
   return (
     <motion.nav
-      className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 nav-dock ${isDarkMode ? 'glass-dark' : 'glass-light'} max-w-4xl w-full px-6 py-2`}
+      className={`fixed top-0 left-0 w-full z-50 py-2 px-2 md:px-4 flex items-center justify-between nav-main ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex items-center justify-between gap-4 w-full">
-        <motion.div className="flex items-center gap-2" variants={dockItemVariants} whileHover="hover" whileTap="tap">
-          <Sparkles className="text-primary w-6 h-6 animate-pulse-slow" aria-hidden="true" />
-          <h1 className="text-xl font-bold font-['Poppins'] text-primary">Swytch PETverse</h1>
-        </motion.div>
+      {/* Logo / Brand Name */}
+      <div className="flex items-center gap-4">
+        <Sparkles className="text-primary w-6 h-6 animate-pulse" aria-hidden="true" /> 
+      </div>
 
-        <div className="hidden md:flex items-center gap-4">
-          {navItems.map((item) => (
-            <motion.div key={item.name} className="dock-item" variants={dockItemVariants} whileHover="hover" whileTap="tap">
-              <NavLink
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center gap-2 p-2 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] transition-colors ${isActive ? 'bg-primary/20 text-secondary' : ''}`
-                }
+      {/* Desktop Navigation */}
+      <div className="hidden md:flex items-center gap-4">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.name}
+            to={item.path}
+            className={({ isActive }) =>
+              `nav-item ${isActive ? 'nav-item-active' : ''}`
+            }
+          >
+            {item.icon}
+            <span>{item.name}</span>
+          </NavLink>
+        ))}
+        {/* Games Dropdown for Desktop */}
+        <div className="relative">
+          <button
+            className={`nav-item flex items-center gap-2`}
+            onClick={() => setIsGamesOpen(!isGamesOpen)}
+            aria-label="Toggle Games Menu"
+          >
+            <Gamepad2 className="w-5 h-5 text-primary" />
+            <span>Games</span>
+          </button>
+          <AnimatePresence>
+            {isGamesOpen && (
+              <motion.div
+                className={`popover absolute top-full left-0 mt-2 p-4 w-48 rounded-lg shadow-lg z-20`}
+                variants={dropdownVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
               >
-                {item.icon}
-                <span>{item.name}</span>
-              </NavLink>
-            </motion.div>
-          ))}
-          <motion.div className="relative dock-item" variants={dockItemVariants} whileHover="hover" whileTap="tap">
-            <button
-              className={`flex items-center gap-2 p-2 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter']`}
-              onClick={() => setIsGamesOpen(!isGamesOpen)}
-              aria-label="Toggle Games Menu"
-            >
-              <Gamepad2 className="w-6 h-6 text-primary" />
-              <span>Games</span>
-            </button>
-            <AnimatePresence>
-              {isGamesOpen && (
-                <motion.div
-                  className={`popover ${isDarkMode ? 'glass-dark' : 'glass-light'} mt-2 p-4 absolute z-10 w-48 left-0`}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  {gameItems.map((game) => (
-                    <NavLink
-                      key={game.name}
-                      to={game.path}
-                      className={({ isActive }) =>
-                        `flex items-center gap-2 py-1 text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isActive ? 'text-secondary' : ''}`
-                      }
-                      onClick={() => setIsGamesOpen(false)}
-                    >
-                      {game.icon}
-                      {game.name}
-                    </NavLink>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {userId && (
-            <motion.div
-              className={`dock-item flex items-center gap-2 text-${isDarkMode ? 'gray-200' : 'gray-700'} font-['Inter'] p-2 rounded-full`}
-              variants={dockItemVariants}
-              whileHover="hover"
-              whileTap="tap"
-            >
-              <Sparkles className="text-primary w-6 h-6 animate-pulse-slow" aria-hidden="true" />
-              <span>{isPETMember ? 'PET Member' : 'Non-Member'} | JEWELS: {jewelsBalance.toFixed(2)}</span>
-            </motion.div>
-          )}
-          <ConnectButton.Custom>
-            {({ openConnectModal }) => (
-              <motion.button
-                className="btn-primary flex items-center gap-2"
-                onClick={() => {
-                  handleWalletClick();
-                  if (!isConnected) openConnectModal();
-                }}
-                variants={dockItemVariants}
-                whileHover="hover"
-                whileTap="tap"
-                aria-label={isConnected ? 'Wallet Connected' : 'Connect Wallet'}
-              >
-                <Wallet className="w-6 h-6" />
-                {isConnected && address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connect Wallet'}
-              </motion.button>
+                {gameItems.map((game) => (
+                  <NavLink
+                    key={game.name}
+                    to={game.path}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 py-2 px-3 rounded-md nav-item-dropdown ${isActive ? 'nav-item-dropdown-active' : ''}`
+                    }
+                    onClick={() => closeMenus()}
+                  >
+                    {game.icon}
+                    {game.name}
+                  </NavLink>
+                ))}
+              </motion.div>
             )}
-          </ConnectButton.Custom>
-          <motion.button
-            className={`dock-item text-${isDarkMode ? 'gray-200' : 'gray-700'} p-2 rounded-full`}
-            onClick={toggleTheme}
-            variants={dockItemVariants}
-            whileHover="hover"
-            whileTap="tap"
-            aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {isDarkMode ? '☀️' : '🌙'}
-          </motion.button>
-          <motion.button
-            className={`md:hidden dock-item text-${isDarkMode ? 'gray-200' : 'gray-700'} p-2 rounded-full`}
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            variants={dockItemVariants}
-            whileHover="hover"
-            whileTap="tap"
-            aria-label={isMenuOpen ? 'Close Menu' : 'Open Menu'}
-          >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </motion.button>
+          </AnimatePresence>
         </div>
       </div>
 
+      {/* Right side: Wallet, Balances, Theme Toggle, Mobile Menu */}
+      <div className="flex items-center gap-2">
+        {userId && (
+          <div className="flex items-center gap-2 text-foreground font-inter">
+            <Sparkles className="text-primary w-5 h-5 animate-pulse" aria-hidden="true" />
+            <span>{isPETMember ? 'PET Member' : 'Non-Member'} | {jewelsBalance.toFixed(0)} JEWELS</span>
+          </div>
+        )}
+        <ConnectButton.Custom>
+          {({ openConnectModal }) => (
+            <motion.button
+              className="btn-secondary flex items-center gap-2"
+              onClick={() => {
+                handleWalletClick();
+                if (!isConnected && userId) { // Only open RainbowKit if user is logged in
+                  openConnectModal();
+                }
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label={isConnected ? 'Wallet Connected' : 'Connect Wallet'}
+            >
+              <Wallet className="w-5 h-5" />
+              {isConnected && address ? `${address.slice(0, 4)}...${address.slice(-4)}` : 'Connect Wallet'}
+            </motion.button>
+          )}
+        </ConnectButton.Custom>
+        <motion.button
+          className="theme-toggle-btn"
+          onClick={toggleTheme}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {isDarkMode ? '☀️' : '🌙'}
+        </motion.button>
+        {/* Mobile Menu Toggle */}
+        <motion.button
+          className={`md:hidden p-2 rounded-full text-foreground hover:bg-background-secondary`}
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          aria-label={isMenuOpen ? 'Close Menu' : 'Open Menu'}
+        >
+          {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </motion.button>
+      </div>
+
+      {/* Mobile Full-Screen Menu */}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
-            className={`md:hidden popover ${isDarkMode ? 'glass-dark' : 'glass-light'} p-4 mt-2 rounded-lg w-full max-w-4xl mx-auto`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
+            className={`md:hidden fixed top-0 left-0 w-full h-full p-4 z-40 mobile-menu`}
+            initial={{ x: '100%' }} // Animate from right
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: 0.3 }}
           >
-            {navItems.map((item) => (
-              <motion.div key={item.name} className="dock-item" variants={dockItemVariants} whileHover="hover" whileTap="tap">
+            <button
+              className="absolute top-4 right-4 text-foreground p-2 rounded-full hover:bg-background-secondary"
+              onClick={() => setIsMenuOpen(false)}
+              aria-label="Close Menu"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="mt-16 flex flex-col gap-4 text-center">
+              {navItems.map((item) => (
                 <NavLink
+                  key={item.name}
                   to={item.path}
                   className={({ isActive }) =>
-                    `flex items-center gap-2 py-2 text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isActive ? 'bg-primary/20 text-secondary rounded-full' : ''}`
+                    `nav-item-mobile ${isActive ? 'nav-item-active' : ''}`
                   }
-                  onClick={() => setIsMenuOpen(false)}
+                  onClick={() => closeMenus()}
                 >
                   {item.icon}
                   {item.name}
                 </NavLink>
-              </motion.div>
-            ))}
-            <motion.div className="dock-item" variants={dockItemVariants} whileHover="hover" whileTap="tap">
-              <button
-                className={`flex items-center gap-2 py-2 text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter']`}
-                onClick={() => setIsGamesOpen(!isGamesOpen)}
-                aria-label="Toggle Games Menu"
-              >
-                <Gamepad2 className="w-6 h-6 text-primary" />
-                Games
-              </button>
-            </motion.div>
-            <AnimatePresence>
-              {isGamesOpen && (
-                <motion.div className="pl-4"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
+              ))}
+              {/* Games Dropdown for Mobile */}
+              <div className="relative w-full">
+                <button
+                  className={`nav-item-mobile`}
+                  onClick={() => setIsGamesOpen(!isGamesOpen)}
+                  aria-label="Toggle Games Menu"
                 >
-                  {gameItems.map((game) => (
-                    <motion.div key={game.name} className="dock-item" variants={dockItemVariants} whileHover="hover" whileTap="tap">
-                      <NavLink
-                        to={game.path}
-                        className={({ isActive }) =>
-                          `flex items-center gap-2 py-1 text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isActive ? 'text-secondary' : ''}`
-                        }
-                        onClick={() => {
-                          setIsGamesOpen(false);
-                          setIsMenuOpen(false);
-                        }}
-                      >
-                        {game.icon}
-                        {game.name}
-                      </NavLink>
+                  <Gamepad2 className="w-5 h-5 text-primary" />
+                  <span>Games</span>
+                </button>
+                <AnimatePresence>
+                  {isGamesOpen && (
+                    <motion.div
+                      className="flex flex-col gap-2 p-2 pt-4"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {gameItems.map((game) => (
+                        <NavLink
+                          key={game.name}
+                          to={game.path}
+                          className={({ isActive }) =>
+                            `flex items-center justify-center gap-2 py-2 px-3 rounded-md nav-item-dropdown ${isActive ? 'nav-item-dropdown-active' : ''}`
+                          }
+                          onClick={() => closeMenus()}
+                        >
+                          {game.icon}
+                          {game.name}
+                        </NavLink>
+                      ))}
                     </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

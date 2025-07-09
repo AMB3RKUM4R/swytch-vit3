@@ -1,3 +1,4 @@
+// App.tsx
 import { FC, SetStateAction } from 'react';
 import { Routes, Route } from 'react-router-dom';
 
@@ -94,15 +95,16 @@ interface RedDogGameProps {
 const App: FC<AppProps> = (props) => {
   const { authLoading, isPending, activeModal, setActiveModal, setShowMessage } = props;
 
-
+  // Theming for loading state
+  // This div will inherit the global background gradient and text color from index.css
   if (authLoading || isPending) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
-        {/* Removed motion.div wrapper */}
+      <div className="min-h-screen flex items-center justify-center text-foreground font-inter">
         <div
           className="text-center"
         >
-          <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
+          {/* Using text-primary as defined in your HSL variables */}
+          <Sparkles className="w-10 h-10 text-primary animate-pulse mx-auto mb-4" />
           <p>Loading Swytch PETverse...</p>
         </div>
       </div>
@@ -165,10 +167,16 @@ const App: FC<AppProps> = (props) => {
         <Route path="/games/rocketcrash" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><RocketCrashGame {...gameProps} /></SwytchErrorBoundary>} />
         <Route path="/games/Scratch" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><ScratchCardsGame {...gameProps} /></SwytchErrorBoundary>} />
         <Route path="/games/solitaire" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><SolitaireGame {...gameProps} /></SwytchErrorBoundary>} />
-        <Route path="/auth" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><AuthModal setShowMessage={setShowMessage} /></SwytchErrorBoundary>} />
-        <Route path="/payment" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><PaymentModal userId={props.userId} setShowMessage={setShowMessage} setIsPETMember={props.setIsPETMember} updatePlayerFirestore={props.updatePlayerFirestore} /></SwytchErrorBoundary>} />
+        {/*
+          AuthModal and PaymentModal are rendered globally by AppContent.tsx
+          based on activeModal state. Routes here are redundant if they are
+          always shown as overlays. Keeping them commented out as per typical
+          modal pattern. If you need them as standalone pages, uncomment.
+        */}
+        {/* <Route path="/auth" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><AuthModal setShowMessage={setShowMessage} /></SwytchErrorBoundary>} /> */}
+        {/* <Route path="/payment" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><PaymentModal userId={props.userId} setShowMessage={setShowMessage} setIsPETMember={props.setIsPETMember} updatePlayerFirestore={props.updatePlayerFirestore} /></SwytchErrorBoundary>} /> */}
       </Routes>
-      {/* Removed AnimatePresence wrapper around modals */}
+      {/* Modals rendered as overlays based on activeModal state */}
       {activeModal === 'auth' && (
         <AuthModal setShowMessage={setShowMessage} />
       )}
