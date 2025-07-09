@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Trophy, Star } from 'lucide-react';
+import { Trophy} from 'lucide-react';
 import { useState } from 'react';
 import { useModal } from '@/context/ModalContext';
 import { auth } from '@/lib/firebaseConfig';

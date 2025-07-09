@@ -17,17 +17,6 @@ interface DepositCalculatorProps {
   calculateReward: (amount: string) => { tier: Tier; monthlyReward: string } | null;
 }
 
-const tiers: Tier[] = [
-  { level: 1, title: 'Initiate', reward: '1.0%', deposit: '$100-$499', image: '/bg.jpg' },
-  { level: 2, title: 'Apprentice', reward: '1.3%', deposit: '$500-$999', image: '/bg.jpg' },
-  { level: 3, title: 'Seeker', reward: '1.6%', deposit: '$1000-$2499', image: '/bg.jpg' },
-  { level: 4, title: 'Guardian', reward: '1.9%', deposit: '$2500-$4999', image: '/bg.jpg' },
-  { level: 5, title: 'Sage', reward: '2.2%', deposit: '$5000-$9999', image: '/bg.jpg' },
-  { level: 6, title: 'Archon', reward: '2.5%', deposit: '$10000-$24999', image: '/bg.jpg' },
-  { level: 7, title: 'Alchemist', reward: '2.8%', deposit: '$25000-$49999', image: '/bg.jpg' },
-  { level: 8, title: 'Elder', reward: '3.1%', deposit: '$50000-$99999', image: '/bg.jpg' },
-  { level: 9, title: 'Mythic PET', reward: '3.3%', deposit: '$100000+', image: '/bg.jpg' },
-];
 
 const DepositCalculator: React.FC<DepositCalculatorProps> = ({ userId, calculateReward }) => {
   const [depositAmount, setDepositAmount] = useState('');

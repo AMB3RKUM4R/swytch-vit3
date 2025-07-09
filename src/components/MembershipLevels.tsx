@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
-import { Trophy, Sparkles } from 'lucide-react';
+import { motion, Variants } from 'framer-motion';
+import { Trophy, Sparkles, BarChart2, Brain, CircleDollarSign, Flashlight, ScrollText, ShieldCheck, Star, TrendingUp } from 'lucide-react';
 
 interface Level {
   level: number;

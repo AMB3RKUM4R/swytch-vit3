@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Zap } from 'lucide-react';
+import { Flame, HeartHandshake, Rocket, Shield, Zap } from 'lucide-react';
 
 interface Feature {
   icon: React.ElementType;

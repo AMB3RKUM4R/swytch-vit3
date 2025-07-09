@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useModal } from '@/context/ModalContext';
+import { Rocket, KeyRound, Terminal, ShieldCheck, Coins, Flame, Workflow, BadgeCheck, Eye, BarChart3, HelpCircle, UserCheck, Zap } from 'lucide-react';
 
 interface EcosystemSection {
   title: string;

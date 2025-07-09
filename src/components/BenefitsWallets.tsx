@@ -1,6 +1,6 @@
 import { FC, memo } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Coins } from 'lucide-react';
+import { Wallet} from 'lucide-react';
 import { SwytchCard } from './SwytchCard';
 import { useModal } from '@/context/ModalContext';
 import { auth } from '@/lib/firebaseConfig';

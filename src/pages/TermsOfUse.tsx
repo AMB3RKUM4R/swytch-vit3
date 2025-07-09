@@ -422,8 +422,11 @@ const TermsOfUse: FC<PageProps> = ({
           {activeModal === 'payment' && (
             <PaymentModal
               userId={userId}
-              setShowMessage={setShowMessage}
-              
+              setShowMessage={setShowMessage} setIsPETMember={function (_value: SetStateAction<boolean>): void {
+                throw new Error('Function not implemented.');
+              } } updatePlayerFirestore={function (_updates: Partial<any>): Promise<void> {
+                throw new Error('Function not implemented.');
+              } }              
             />
           )}
           {showMessage && (

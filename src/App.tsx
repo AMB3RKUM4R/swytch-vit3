@@ -323,7 +323,7 @@ const App: FC<AppProps> = ({ setShowMessage, setActiveModal }) => {
           <Route path="/games/Scratch" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><ScratchCardsGame {...gameProps} /></SwytchErrorBoundary>} />
           <Route path="/games/solitaire" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><SolitaireGame {...gameProps} /></SwytchErrorBoundary>} />
           {/* AuthModal and PaymentModal should typically be rendered as modals, not as routes */}
-          <Route path="/auth" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><AuthModal setShowMessage={setShowMessage} setActiveModal={setActiveModal} /></SwytchErrorBoundary>} /> {/* Pass setActiveModal */}
+          <Route path="/auth" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><AuthModal setShowMessage={setShowMessage}  /></SwytchErrorBoundary>} /> {/* Pass setActiveModal */}
           {/* Removed PhoneLogin route as it's a hook, not a component to be routed directly */}
           <Route path="/payment" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><PaymentModal userId={userId} setShowMessage={setShowMessage} setIsPETMember={setIsPETMember} updatePlayerFirestore={updatePlayerFirestore} /></SwytchErrorBoundary>} /> {/* Pass required props */}
         </Routes>

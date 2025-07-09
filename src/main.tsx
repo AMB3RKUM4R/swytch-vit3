@@ -34,8 +34,8 @@ const Root: React.FC = () => {
   // They are declared here only to satisfy SwytchErrorBoundary's direct prop requirements.
   // In a real application, you might lift these states higher or use Context API
   // to avoid prop drilling if many components need them.
-  const [showMessage, setShowMessage] = useState<string>('');
-  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [_setshowMessage, setShowMessage] = useState<string>('');
+  const [_activeModal, setActiveModal] = useState<string | null>(null);
 
   return (
     <React.StrictMode>

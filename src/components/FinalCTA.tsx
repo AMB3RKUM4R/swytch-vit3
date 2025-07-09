@@ -6,7 +6,7 @@ interface FinalCTAProps {
   setShowWalletModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const FinalCTA: React.FC<FinalCTAProps> = ({ setShowWalletModal }) => {
+const FinalCTA: React.FC<FinalCTAProps> = ({ }) => {
   const { setActiveModal } = useModal();
 
   return (

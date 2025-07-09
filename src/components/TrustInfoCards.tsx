@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
-import { ShieldCheck, LockKeyhole, BookOpen, Coins, Key, Globe } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ShieldCheck, LockKeyhole, BookOpen, Coins, Key, Globe, Sparkles, Star, X } from 'lucide-react';
 import { useState } from 'react';
 import { useModal } from '@/context/ModalContext';
 
@@ -51,7 +51,7 @@ const infoCards: InfoCard[] = [
 
 const TrustInfoCards: React.FC = () => {
   const [selectedCard, setSelectedCard] = useState<InfoCard | null>(null);
-  const { setActiveModal } = useModal();
+  useModal();
 
   return (
     <>

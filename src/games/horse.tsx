@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, useGLTF, Sphere } from "@react-three/drei"; // Sphere for WinParticles
-import { Dices, Trophy, Users, Sparkles, Star, MessageCircleHeart, X, RefreshCcw, Wallet } from "lucide-react"; // Added Wallet for bet amount
+import { OrbitControls, useGLTF } from "@react-three/drei"; // Sphere for WinParticles
+import { Dices, Trophy, Users, Sparkles, Star, MessageCircleHeart } from "lucide-react"; // Added Wallet for bet amount
 import { useAccount, useBalance, useWriteContract, useConnect } from "wagmi";
-import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, getDocs, QueryDocumentSnapshot, onSnapshot, runTransaction } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, getDocs, QueryDocumentSnapshot, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../lib/firebaseConfig"; // Corrected path
 import { useAuthUser } from "../hooks/useAuthUser"; // Corrected path
 import { useNavigate, Link } from "react-router-dom";
@@ -218,7 +218,7 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
   const { activeModal, setActiveModal, setShowMessage } = useModal();
   useConnect();
   useBalance({ address });
-  const { writeContractAsync: placeBetOnChain } = useWriteContract();
+  useWriteContract();
   const [jewels, setJewels] = useState<number>(0);
   const [gold, setGold] = useState<number>(0);
   const [stats, setStats] = useState<Stats>({ wins: 0, losses: 0, totalRaces: 0, biggestWin: 0 });

@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Dices, Sparkles, Trophy, Users, X, Star, MessageCircleHeart, RefreshCcw } from 'lucide-react';
-import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, getDocs, QueryDocumentSnapshot, runTransaction } from 'firebase/firestore';
+import React, { useState, useEffect, useRef } from 'react';
+import { Dices, Sparkles, Trophy, Users, Star, MessageCircleHeart, RefreshCcw } from 'lucide-react';
+import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { db, auth } from '../lib/firebaseConfig';
 import { useNavigate, Link } from 'react-router-dom';
 import { useModal } from '../context/ModalContext';
@@ -14,7 +14,6 @@ import AuthModal from '../components/AuthModal';
 import PaymentModal from '../components/PaymentModal';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import ConfettiExplosion from 'react-confetti-explosion';
-import { Transaction, PaymentModalProps } from '../lib/types';
 
 // --- Type Definitions ---
 interface Bet {
@@ -151,11 +150,11 @@ const FortuneWheel: React.FC<FortuneWheelProps> = ({ userId, setIsPETMember, upd
   const [showTutorial, setShowTutorial] = useState<boolean>(false);
   const [gameRoom, setGameRoom] = useState<GameRoom | null>(null);
   const [gameRoomId, setGameRoomId] = useState<string | null>(null);
-  const [players, setPlayers] = useState<string[]>([]);
+  const [players] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState<number>(10);
   const [useJewels, setUseJewels] = useState<boolean>(true);
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
-  const [bets, setBets] = useState<Bet[]>([]);
+  const [] = useState<Bet[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const winSoundRef = useRef<HTMLAudioElement | null>(null);
   const navigate = useNavigate();
@@ -1008,7 +1007,7 @@ const FortuneWheel: React.FC<FortuneWheelProps> = ({ userId, setIsPETMember, upd
 };
 
 export default FortuneWheel;
-function setGameState(arg0: string) {
+function setGameState(_arg0: string) {
   throw new Error('Function not implemented.');
 }
 

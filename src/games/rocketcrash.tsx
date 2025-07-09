@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState, useEffect, useRef } from 'react'; // Removed useCallback as it's not directly used
-import { Rocket, Trophy, Users, Sparkles, Star, MessageCircleHeart, X, Wallet } from 'lucide-react';
-import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, getDocs, QueryDocumentSnapshot, runTransaction } from 'firebase/firestore'; // runTransaction is used
+import { Rocket, Trophy, Users, Sparkles, Star, MessageCircleHeart, Wallet } from 'lucide-react';
+import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, getDocs, QueryDocumentSnapshot } from 'firebase/firestore'; // runTransaction is used
 import { db, auth } from '../lib/firebaseConfig'; // Corrected path
 import { useNavigate, Link } from 'react-router-dom';
 import { useModal } from '../context/ModalContext'; // Corrected path

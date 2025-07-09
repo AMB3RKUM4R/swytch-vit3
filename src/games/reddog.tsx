@@ -1,20 +1,17 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Dices, Trophy, Users, Sparkles, Star, MessageCircleHeart, X, RefreshCcw } from 'lucide-react'; // Added RefreshCcw
-import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, getDocs, QueryDocumentSnapshot, runTransaction } from 'firebase/firestore'; // Added runTransaction
-import { db, auth } from '../lib/firebaseConfig'; // Corrected path
-import { useNavigate, Link } from 'react-router-dom';
-import { useModal } from '../context/ModalContext'; // Corrected path
+import React, { useState, useRef } from 'react';
+import { Dices, Users, RefreshCcw } from 'lucide-react'; // Added RefreshCcw
+import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'; // Added runTransaction
+import { db } from '../lib/firebaseConfig'; // Corrected path
+import { useNavigate } from 'react-router-dom';
 import { useAuthUser } from '../hooks/useAuthUser'; // Corrected path
 import { useAccount } from 'wagmi';
-import { Canvas } from '@react-three/fiber';
 import { Box, Text } from '@react-three/drei'; // Only Box and Text are needed for Card3D
 import Modal from '../components/SwytchModal'; // Corrected path
 import AuthModal from '../components/AuthModal'; // Corrected path
 import PaymentModal from '../components/PaymentModal'; // Corrected path
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent'; // Corrected path
 import ConfettiExplosion from 'react-confetti-explosion';
-import { Transaction, PaymentModalProps } from '../lib/types'; // Import types
 
 // --- Type Definitions ---
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
@@ -40,22 +37,7 @@ interface Stats {
   biggestWin: number;
 }
 
-interface Quest {
-  id: string;
-  title: string;
-  progress: number;
-  goal: number;
-  rewardJEWELS: number;
-  rewardXP: number;
-  completed: boolean;
-}
 
-interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  unlocked: boolean;
-}
 
 interface GameRoom {
   deck: Card[];
@@ -151,7 +133,7 @@ const RedDogGame: React.FC<RedDogGameProps> = ({ userId, activeModal, setActiveM
   const [showTutorial, setShowTutorial] = useState<boolean>(false);
   const [gameRoom, setGameRoom] = useState<GameRoom | null>(null);
   const [gameRoomId, setGameRoomId] = useState<string | null>(null);
-  const [players, setPlayers] = useState<string[]>([]);
+  const [players] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState<number>(10);
   const [useJewels, setUseJewels] = useState<boolean>(true);
   const [bets, setBets] = useState<Bet[]>([]);

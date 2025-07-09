@@ -6,7 +6,7 @@ interface EnergyCTAProps {
   setShowWalletModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const EnergyCTA: React.FC<EnergyCTAProps> = ({ setShowWalletModal }) => {
+const EnergyCTA: React.FC<EnergyCTAProps> = ({ }) => {
   const { setActiveModal } = useModal();
 
   return (

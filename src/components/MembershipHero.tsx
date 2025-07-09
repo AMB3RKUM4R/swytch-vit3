@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Rocket } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { useModal } from '@/context/ModalContext';

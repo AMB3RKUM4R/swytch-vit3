@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Canvas } from "@react-three/fiber";
 import { Box, Text } from "@react-three/drei";
-import { Wallet, Zap, Trophy, Users, Star, MessageCircleHeart, RefreshCcw, X, Dices, Sparkles } from "lucide-react";
+import { Wallet, Trophy, Users, Star, MessageCircleHeart, RefreshCcw, Dices, Sparkles } from "lucide-react";
 import { useAccount } from "wagmi";
-import { doc, getDoc, collection, addDoc, onSnapshot, serverTimestamp, getDocs, QueryDocumentSnapshot, setDoc, runTransaction } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, onSnapshot, serverTimestamp, setDoc, runTransaction } from "firebase/firestore";
 import { db, auth } from "../lib/firebaseConfig"; // Corrected path
 import { useAuthUser } from "../hooks/useAuthUser"; // Corrected path
 import { useNavigate, Link } from "react-router-dom";
@@ -14,7 +13,6 @@ import AuthModal from "../components/AuthModal"; // Corrected path
 import PaymentModal from "../components/PaymentModal"; // Corrected path
 import SwytchErrorBoundary from "../components/ErrorBoundaryComponent"; // Corrected path
 import ConfettiExplosion from "react-confetti-explosion";
-import { Transaction, PaymentModalProps } from "../lib/types"; // Import types for Transaction and PaymentModalProps
 
 // --- Type Definitions ---
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
@@ -26,12 +24,7 @@ interface Card {
   numericValue: number; // Added numericValue to the Card interface
 }
 
-interface Bet {
-  amount: number;
-  won: boolean;
-  payout: number;
-  result: string;
-}
+
 
 interface Stats {
   plays: number;
@@ -157,63 +150,8 @@ const Card3D: React.FC<{ card: Card; position: [number, number, number]; onClick
 };
 
 // --- Phagocytosis Effect (for losing) ---
-const PhagocytosisEffect: React.FC<{ trigger: boolean }> = ({ trigger }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (!trigger || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const particles: { x: number; y: number; size: number; speedX: number; speedY: number }[] = [];
-    for (let i = 0; i < 30; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * 4 + 2,
-        speedX: (Math.random() - 0.5) * 3,
-        speedY: (Math.random() - 0.5) * 3,
-      });
-    }
-
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgba(34, 211, 238, 0.5)";
-      particles.forEach((p) => {
-        p.x += p.speedX;
-        p.y += p.speedY;
-        if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      const animationId = requestAnimationFrame(animate);
-      return () => cancelAnimationFrame(animationId);
-    };
-
-    const timeout = setTimeout(() => animate(), 0);
-    return () => clearTimeout(timeout);
-  }, [trigger]);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />;
-};
 
 // --- Debounce Hook ---
-const useDebounce = <T extends (...args: any[]) => void>(callback: T, delay: number) => {
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  return useCallback(
-    (..._args: Parameters<T>) => { // Use _args to suppress unused parameter warning
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => callback(..._args), delay);
-    },
-    [callback, delay]
-  );
-};
 
 interface CaribbeanStudGameProps {
   userId: string | null;
@@ -232,14 +170,13 @@ const CaribbeanStudGame: React.FC<CaribbeanStudGameProps> = ({ userId, setIsPETM
   const [achievements, setAchievements] = useState<Achievement[]>(initialAchievements);
   const [showReward, setShowReward] = useState<Reward | null>(null);
   const [showTutorial, setShowTutorial] = useState<boolean>(false);
-  const [gameState, setGameState] = useState<'IDLE' | 'PLAYING' | 'RESULT'>('IDLE');
+  const [, setGameState] = useState<'IDLE' | 'PLAYING' | 'RESULT'>('IDLE');
   const [betAmount, setBetAmount] = useState<number>(10);
   const [useJewels, setUseJewels] = useState<boolean>(true);
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
-  const [, setBets] = useState<Bet[]>([]); // This state is not directly used for rendering, consider if needed
   const [gameRoom, setGameRoom] = useState<GameRoom | null>(null);
   const [gameRoomId, setGameRoomId] = useState<string | null>(null);
-  const [players, setPlayers] = useState<string[]>([]);
+  const [players] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const playSoundRef = useRef<HTMLAudioElement | null>(null);
   const winSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -329,7 +266,6 @@ const CaribbeanStudGame: React.FC<CaribbeanStudGameProps> = ({ userId, setIsPETM
             if (!currentRoomSnap.exists()) return;
             const currentRoomData = currentRoomSnap.data() as GameRoom;
 
-            const playerHandForRank = currentRoomData.playerHands[userId]?.hand || []; // Get player's hand
             const dealerHandForRank = currentRoomData.dealerHand || []; // Get dealer's hand
 
             // Simplified win/loss logic: random outcome

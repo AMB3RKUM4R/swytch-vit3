@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Star, Flame, Users, LockKeyhole, Landmark, BarChart3, Globe, BookOpen, ShieldCheck, Scale } from 'lucide-react';
+import { Star, Flame, Users, LockKeyhole, Landmark, BarChart3, Globe, BookOpen, ShieldCheck, Scale, Zap } from 'lucide-react';
 
 interface Feature {
   icon: React.ElementType;

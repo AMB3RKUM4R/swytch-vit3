@@ -1,9 +1,9 @@
-import { FC, useState, useEffect, useRef } from 'react'; // Added useEffect and useRef for recaptcha
+import { FC, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Phone, User, Wallet } from 'lucide-react';
 import { useAuthUser } from '../hooks/useAuthUser';
 import { useModal } from '../context/ModalContext';
-import { useTheme } from '../context/ThemeContext';
+// import { useTheme } from '../context/ThemeContext'; // Removed as it's not used
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Link } from 'react-router-dom';
 import { RecaptchaVerifier } from 'firebase/auth';
@@ -11,14 +11,16 @@ import { auth } from '../lib/firebaseConfig';
 
 interface AuthModalProps {
   setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  // Added setActiveModal to props as it's used in the component
-  setActiveModal?: React.Dispatch<React.SetStateAction<string | null>>;
+  // setActiveModal prop is not directly used in the component's logic,
+  // the setActiveModal from useModal context is used instead.
+  // Therefore, it can be removed from props.
+  // setActiveModal?: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-const AuthModal: FC<AuthModalProps> = ({ setShowMessage, setActiveModal }) => {
-  const { isDarkMode } = useTheme();
-  const { activeModal, setActiveModal: setModalActive } = useModal(); // Renamed setActiveModal from useModal to avoid prop conflict
-  const { signInWithGoogle, signInWithFacebook, signInWithTwitter, signInWithGithub, signInWithMicrosoft, signInWithEmail, signUpWithEmail, signInWithPhone } = useAuthUser();
+const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => { // Removed setActiveModal from destructuring
+  // const { isDarkMode } = useTheme(); // Removed as it's not used
+  const { activeModal, setActiveModal: setModalActive } = useModal();
+  const { signInWithEmail, signUpWithEmail, signInWithPhone } = useAuthUser(); // Removed unused signIn methods
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -27,7 +29,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage, setActiveModal }) => {
   const [isPhoneAuth, setIsPhoneAuth] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [verificationCode, setVerificationCode] = useState('');
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null); // Ref for RecaptchaVerifier
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   // Initialize RecaptchaVerifier on mount
   useEffect(() => {
@@ -54,7 +56,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage, setActiveModal }) => {
         await signInWithEmail(email, password);
         setShowMessage('🎉 Signed in successfully!');
       }
-      setModalActive(null); // Use the renamed setter
+      setModalActive(null);
     } catch (err) {
       console.error('Email auth error:', err);
       setShowMessage('⚠️ Failed to authenticate. Please check your credentials.');
@@ -80,7 +82,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage, setActiveModal }) => {
     try {
       await confirmationResult.confirm(verificationCode);
       setShowMessage('🎉 Phone authentication successful!');
-      setModalActive(null); // Use the renamed setter
+      setModalActive(null);
     } catch (err) {
       console.error('Code verification error:', err);
       setShowMessage('⚠️ Invalid verification code. Please try again.');
@@ -104,7 +106,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage, setActiveModal }) => {
           >
             <motion.button
               className={`absolute top-4 right-4 text-foreground`}
-              onClick={() => setModalActive(null)} // Use the renamed setter
+              onClick={() => setModalActive(null)}
               whileHover={{ scale: 1.1 }}
               aria-label="Close Modal"
             >
@@ -223,7 +225,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage, setActiveModal }) => {
                   <Link
                     to="/dspet-privacy"
                     className={`text-foreground hover:text-secondary font-inter text-sm`}
-                    onClick={() => setModalActive(null)} // Use the renamed setter
+                    onClick={() => setModalActive(null)}
                   >
                     Privacy Policy
                   </Link>

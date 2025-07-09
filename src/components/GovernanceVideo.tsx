@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Rocket } from 'lucide-react';
+import { Rocket, X } from 'lucide-react';
 
 interface GovernanceVideoProps {
   showVideo: boolean;

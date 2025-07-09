@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState, useEffect, useRef } from 'react'; // Removed useCallback
-import { Dices, Trophy, Users, Sparkles, Star, MessageCircleHeart, X, RefreshCcw } from 'lucide-react'; // Added RefreshCcw
-import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, getDocs, QueryDocumentSnapshot, runTransaction } from 'firebase/firestore'; // Added runTransaction
+import { Dices, Trophy, Users, Sparkles, Star, MessageCircleHeart, RefreshCcw } from 'lucide-react'; // Added RefreshCcw
+import { doc, getDoc, onSnapshot, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'; // Added runTransaction
 import { db, auth } from '../lib/firebaseConfig'; // Corrected path
 import { useNavigate, Link } from 'react-router-dom';
 import { useModal } from '../context/ModalContext'; // Corrected path
@@ -14,7 +14,6 @@ import AuthModal from '../components/AuthModal'; // Corrected path
 import PaymentModal from '../components/PaymentModal'; // Corrected path
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent'; // Corrected path
 import ConfettiExplosion from 'react-confetti-explosion';
-import { Transaction, PaymentModalProps } from '../lib/types'; // Import types
 
 // --- Type Definitions ---
 interface Bet {
@@ -182,7 +181,7 @@ const ScratchCardsGame: React.FC<ScratchCardsGameProps> = ({ userId, setIsPETMem
   const [showTutorial, setShowTutorial] = useState<boolean>(false);
   const [gameRoom, setGameRoom] = useState<GameRoom | null>(null);
   const [gameRoomId, setGameRoomId] = useState<string | null>(null);
-  const [players, setPlayers] = useState<string[]>([]);
+  const [players] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState<number>(10);
   const [useJewels, setUseJewels] = useState<boolean>(true);
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
@@ -367,31 +366,6 @@ const ScratchCardsGame: React.FC<ScratchCardsGameProps> = ({ userId, setIsPETMem
     }
   };
 
-  const handlePlayAgain = async () => {
-    if (!effectiveUserId || !gameRoomId) {
-      setShowMessage("⚠️ Please sign in and ensure a game room is available.");
-      setActiveModal("auth");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const roomRef = doc(db, "GameRooms", gameRoomId);
-      await setDoc(roomRef, {
-        playerCards: {},
-        phase: 'IDLE',
-        result: "",
-        game: "scratch-cards",
-      }, { merge: true });
-      setScratchedCards(Array(9).fill(false));
-      setShowMessage("Game reset. Ready for a new round!");
-    } catch (error) {
-      console.error("Error resetting game:", error);
-      setShowMessage("⚠️ Failed to reset game. Please try again.");
-      setActiveModal("error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const shareWinOnX = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => { // Added event type
     event.preventDefault(); // Prevent default form submission
@@ -546,7 +520,7 @@ const ScratchCardsGame: React.FC<ScratchCardsGameProps> = ({ userId, setIsPETMem
     );
   }
 
-  function resetGame(gameRoomId: string) {
+  function resetGame(_gameRoomId: string) {
     throw new Error('Function not implemented.');
   }
 

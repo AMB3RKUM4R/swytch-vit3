@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
-import { Trophy } from 'lucide-react';
+import { Star, Trophy } from 'lucide-react';
 import { useModal } from '@/context/ModalContext';
+import { serverTimestamp } from 'firebase/firestore';
 
 interface Tier {
   level: number;
