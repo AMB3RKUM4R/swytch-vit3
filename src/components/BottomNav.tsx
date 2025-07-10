@@ -1,12 +1,13 @@
-import { FC, useState, useEffect, useRef } from 'react';
-// Removed motion and AnimatePresence imports as they are no longer used in this component
-import { Home, Star, Wallet, LogOut, User, Gamepad2, Dice1, Car, FerrisWheel, House, Rocket } from 'lucide-react';
-import { auth, db } from '@/lib/firebaseConfig';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { FC, useState, useEffect } from 'react';
+import {
+  Home, Star, Wallet, LogOut, User, Gamepad2, Dice1, Car, FerrisWheel,
+  House, Rocket
+} from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '@/context/ThemeContext';
 import { useModal } from '@/context/ModalContext';
+import { auth } from '@/lib/firebaseConfig';
 
 interface BottomNavProps {
   userId: string | null;
@@ -16,245 +17,131 @@ interface BottomNavProps {
 }
 
 const navItems = [
-  { path: '/', label: 'Home', icon: <Home className="w-8 h-8" /> },
-  { path: '/membership', label: 'Membership', icon: <Star className="w-8 h-8" /> },
-  { path: '/vault', label: 'Vault', icon: <Wallet className="w-8 h-8" /> },
-  { path: '/games', label: 'Games', icon: <Gamepad2 className="w-8 h-8" /> },
-  { path: '/market', label: 'Market', icon: <Car className="w-8 h-8" /> },
+  { path: '/', label: 'Home', icon: <Home className="w-7 h-7" /> },
+  { path: '/membership', label: 'Membership', icon: <Star className="w-7 h-7" /> },
+  { path: '/vault', label: 'Vault', icon: <Wallet className="w-7 h-7" /> },
+  { path: '/market', label: 'Market', icon: <Car className="w-7 h-7" /> },
 ];
 
 const gameItems = [
-  { path: '/games/bingo', label: 'Bingo', icon: <Dice1 className="w-6 h-6" /> },
-  { path: '/games/blackjack', label: 'Blackjack', icon: <Car className="w-6 h-6" /> },
-  { path: '/games/bridge', label: 'Bridge', icon: <Car className="w-6 h-6" /> },
-  { path: '/games/caribbean-stud', label: 'Caribbean Stud', icon: <Car className="w-6 h-6" /> },
-  { path: '/games/fortune-wheel', label: 'Fortune Wheel', icon: <FerrisWheel className="w-6 h-6" /> },
-  { path: '/games/horse', label: 'Horse', icon: <House className="w-6 h-6" /> },
-  { path: '/games/pontoon', label: 'Pontoon', icon: <Car className="w-6 h-6" /> },
-  { path: '/games/reddog', label: 'Red Dog', icon: <Car className="w-6 h-6" /> },
-  { path: '/games/rocketcrash', label: 'Rocket Crash', icon: <Rocket className="w-6 h-6" /> },
-  { path: '/games/Scratch', label: 'Scratch Cards', icon: <Car className="w-6 h-6" /> },
-  { path: '/games/solitaire', label: 'Solitaire', icon: <Car className="w-6 h-6" /> },
+  { path: '/games/bingo', label: 'Bingo', icon: <Dice1 className="w-5 h-5" /> },
+  { path: '/games/blackjack', label: 'Blackjack', icon: <Car className="w-5 h-5" /> },
+  { path: '/games/bridge', label: 'Bridge', icon: <Car className="w-5 h-5" /> },
+  { path: '/games/fortune-wheel', label: 'Fortune Wheel', icon: <FerrisWheel className="w-5 h-5" /> },
+  { path: '/games/horse', label: 'Horse', icon: <House className="w-5 h-5" /> },
+  { path: '/games/rocketcrash', label: 'Rocket Crash', icon: <Rocket className="w-5 h-5" /> },
 ];
 
-const BottomNav: FC<BottomNavProps> = ({ userId, jewelsBalance, isPETMember, setShowMessage }) => {
-  const [balance, setBalance] = useState<{ jewels: number; gold: number }>({ jewels: 0, gold: 0 });
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage }) => {
   const [isGamesOpen, setIsGamesOpen] = useState(false);
-  const [isVisible, setIsVisible] = useState(false); // Controls the visibility of the entire nav
-  const navigate = useNavigate();
-  const location = useLocation();
   const { isDarkMode } = useTheme();
-  const { setActiveModal: setModal } = useModal();
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { setActiveModal } = useModal();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  // Effect for real-time balance updates
   useEffect(() => {
-    if (userId) {
-      const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(
-        userRef,
-        (doc) => {
-          if (doc.exists()) {
-            const data = doc.data();
-            setBalance({ jewels: data.jewels || 0, gold: data.gold || 0 });
-            const now = Date.now();
-            const oneDay = 24 * 60 * 60 * 1000;
-            if (now - (data.lastBonusTime || 0) > oneDay) {
-              setBalance(prev => ({ ...prev, jewels: (prev.jewels || 0) + 500 }));
-              setShowMessage('🎉 Claimed 500 JEWELS daily bonus!');
-            }
-          }
-        },
-        (err) => {
-          console.error('Failed to fetch balance:', err.message);
-          setShowMessage('⚠️ Failed to load balance. Please check your connection.');
-          setModal('error');
-        }
-      );
-      return () => unsubscribe();
-    }
-  }, [userId, setShowMessage, setModal]);
-
-  // Effect for dynamic scroll visibility (hide/show nav on scroll)
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsVisible(true); // Show nav immediately on scroll
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-      // Set a timeout to hide the nav after 2 seconds of no scrolling
-      scrollTimeoutRef.current = setTimeout(() => {
-        setIsVisible(false);
-      }, 2000);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-
-    // Initial check: if already scrolled from the very top, show it
-    if (window.scrollY > 0) {
-      setIsVisible(true);
-    } else {
-      setIsVisible(false); // Hide if at top initially
-    }
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Effect to hide menus and nav when the route changes
-  useEffect(() => {
-    setIsVisible(false); // Hide the main nav on route change
-    setIsMenuOpen(false); // Close any open sub-menus
-    setIsGamesOpen(false);
-  }, [location.pathname]); // Dependency on route changes
+    setIsGamesOpen(false); // close game menu on route change
+  }, [location.pathname]);
 
   const handleSignOut = async () => {
     if (!auth.currentUser) {
       setShowMessage('⚠️ Sign in first!');
-      setModal('auth');
+      setActiveModal('auth');
       return;
     }
     try {
       await signOut(auth);
       setShowMessage('✅ Signed out successfully!');
-      navigate('/auth'); // Redirect after sign-out
+      navigate('/auth');
     } catch (err) {
       console.error('Sign-out error:', err);
-      setShowMessage('⚠️ Failed to sign out. Please try again.');
-      setModal('error');
+      setShowMessage('⚠️ Failed to sign out.');
+      setActiveModal('error');
     }
   };
 
-  const handleNavClick = (itemPath: string, itemLabel: string) => {
-    // Check authentication for restricted pages
-    if (!auth.currentUser && (itemPath === '/membership' || itemPath === '/vault')) {
-      setShowMessage(`⚠️ Sign in to access ${itemLabel}!`);
-      setModal('auth');
-      return;
+  const handleRestrictedNav = (path: string, label: string) => {
+    if (!auth.currentUser && (path === '/vault' || path === '/membership')) {
+      setShowMessage(`⚠️ Sign in to access ${label}`);
+      setActiveModal('auth');
+      return false;
     }
-    // Close menus when a navigation item is clicked
-    setIsMenuOpen(false);
-    setIsGamesOpen(false);
+    return true;
   };
 
   return (
     <nav
-      className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 nav-dock ${isDarkMode ? 'glass-dark' : 'glass-light'} max-w-md w-full md:hidden
-                  transition-all duration-300 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full'}`}
+      className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-xl backdrop-blur-md border border-border
+        shadow-xl transition-all duration-300 ease-out max-w-lg w-[90vw]
+        flex justify-between items-center gap-4 ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
     >
-      {/* Main navigation items */}
-      <div className="flex justify-around py-3 w-full">
-        {navItems.map((item) => (
-          <div
-            key={item.path}
-            // Apply standard Tailwind transitions for hover/active effects
-            className="dock-item transition-transform duration-200 ease-out hover:scale-125 hover:-translate-y-2 active:scale-95"
-          >
-            <Link
-              to={item.path}
-              className={`flex flex-col items-center text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary transition-colors p-2 rounded-full ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}`}
-              onClick={() => handleNavClick(item.path, item.label)}
-            >
-              {item.icon}
-              <span className="text-xs font-['Inter']">{item.label}</span>
-            </Link>
+      {navItems.map(({ path, label, icon }) => (
+        <Link
+          to={path}
+          key={path}
+          onClick={() => handleRestrictedNav(path, label)}
+          className="flex flex-col items-center text-sm group"
+        >
+          <div className="transition-transform duration-150 group-hover:scale-125 group-hover:-translate-y-1">
+            {icon}
           </div>
-        ))}
-        {/* Games menu toggle button */}
-        <div className="dock-item transition-transform duration-200 ease-out hover:scale-125 hover:-translate-y-2 active:scale-95">
-          <button
-            className={`flex flex-col items-center text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary transition-colors p-2 rounded-full ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}`}
-            onClick={() => setIsGamesOpen(!isGamesOpen)}
-            aria-label="Toggle Games Menu"
-          >
-            <Gamepad2 className="w-8 h-8 text-primary" />
-            <span className="text-xs font-['Inter']">Games</span>
-          </button>
-        </div>
-      </div>
+          <span className="text-xs mt-1 font-inter text-muted">{label}</span>
+        </Link>
+      ))}
 
-      {/* Conditional rendering for the Games sub-menu (no AnimatePresence needed) */}
+      {/* Games Dropdown */}
+      <button
+        onClick={() => setIsGamesOpen(!isGamesOpen)}
+        className="flex flex-col items-center group"
+        aria-label="Games"
+      >
+        <div className="transition-transform duration-150 group-hover:scale-125 group-hover:-translate-y-1">
+          <Gamepad2 className="w-7 h-7 text-primary" />
+        </div>
+        <span className="text-xs mt-1 font-inter text-muted">Games</span>
+      </button>
+
       {isGamesOpen && (
         <div
-          className={`fixed bottom-16 left-1/2 transform -translate-x-1/2 popover ${isDarkMode ? 'glass-dark' : 'glass-light'} p-4 rounded-lg w-full max-w-md
-                      transition-all duration-300 ease-out opacity-100 translate-y-0`} // Add explicit display/hide for smooth transition
+          className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-background border border-border p-3 rounded-lg shadow-xl
+            w-[90vw] max-w-md grid grid-cols-2 gap-2 ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
         >
-          {gameItems.map((game) => (
-            <div
-              key={game.path}
-              className="dock-item transition-transform duration-200 ease-out hover:scale-125 hover:-translate-y-2 active:scale-95"
+          {gameItems.map(({ path, label, icon }) => (
+            <Link
+              to={path}
+              key={path}
+              className="flex items-center gap-2 text-sm hover:text-secondary transition-all rounded px-2 py-1"
+              onClick={() => setIsGamesOpen(false)}
             >
-              <Link
-                to={game.path}
-                className={`flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'} rounded-full px-3`}
-                onClick={() => handleNavClick(game.path, game.label)}
-              >
-                {game.icon}
-                {game.label}
-              </Link>
-            </div>
+              {icon}
+              {label}
+            </Link>
           ))}
         </div>
       )}
 
-      {/* Conditional rendering for the main menu (if different from games, or 'more' menu) */}
-      {isMenuOpen && (
-        <div
-          className={`fixed bottom-16 left-1/2 transform -translate-x-1/2 popover ${isDarkMode ? 'glass-dark' : 'glass-light'} p-4 rounded-lg w-full max-w-md
-                      transition-all duration-300 ease-out opacity-100 translate-y-0`} // Add explicit display/hide for smooth transition
+      {/* Auth/SignIn or SignOut */}
+      {userId ? (
+        <button
+          onClick={handleSignOut}
+          className="flex flex-col items-center group"
         >
-          <div className="space-y-2">
-            {navItems.map((item) => (
-              <div
-                key={item.path}
-                className="dock-item transition-transform duration-200 ease-out hover:scale-125 hover:-translate-y-2 active:scale-95"
-              >
-                <Link
-                  to={item.path}
-                  className={`flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}`}
-                  onClick={() => handleNavClick(item.path, item.label)}
-                >
-                  {item.icon}
-                  {item.label}
-                </Link>
-              </div>
-            ))}
-            {userId ? (
-              <>
-                <div
-                  className={`dock-item flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} ${isDarkMode ? 'bg-primary/20' : 'bg-primary/10'}`}
-                >
-                  <Wallet className="w-6 h-6 text-primary animate-pulse-slow" />
-                  <span className="font-['Inter']">{isPETMember ? 'PET Member' : 'Non-Member'} | {jewelsBalance.toFixed(2)} JEWELS / {balance.gold.toFixed(2)} GOLD</span>
-                </div>
-                <button
-                  onClick={handleSignOut}
-                  className={`dock-item flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}
-                  transition-all duration-300 ease-out`} // Added transition for sign out button
-                >
-                  <LogOut className="w-6 h-6 text-primary animate-pulse-slow" />
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <div className="dock-item transition-transform duration-200 ease-out hover:scale-125 hover:-translate-y-2 active:scale-95">
-                <Link
-                  to="/auth"
-                  className={`flex items-center gap-2 py-2 px-3 rounded-full text-${isDarkMode ? 'gray-200' : 'gray-700'} hover:text-secondary font-['Inter'] ${isDarkMode ? 'hover:bg-primary/20' : 'hover:bg-primary/10'}`}
-                  onClick={() => handleNavClick('/auth', 'Sign In')}
-                >
-                  <User className="w-6 h-6 text-primary" />
-                  Sign In
-                </Link>
-              </div>
-            )}
+          <div className="transition-transform duration-150 group-hover:scale-125 group-hover:-translate-y-1">
+            <LogOut className="w-7 h-7 text-destructive" />
           </div>
-        </div>
+          <span className="text-xs mt-1 font-inter text-muted">Sign Out</span>
+        </button>
+      ) : (
+        <Link
+          to="/auth"
+          onClick={() => setActiveModal('auth')}
+          className="flex flex-col items-center group"
+        >
+          <div className="transition-transform duration-150 group-hover:scale-125 group-hover:-translate-y-1">
+            <User className="w-7 h-7 text-foreground" />
+          </div>
+          <span className="text-xs mt-1 font-inter text-muted">Sign In</span>
+        </Link>
       )}
     </nav>
   );

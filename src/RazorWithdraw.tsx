@@ -1,9 +1,12 @@
+// Assuming this is RazorTransaction.tsx (or RazorWithdraw.tsx as per your error report)
+// RazorTransaction.tsx
 import { useState, useRef } from "react";
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { motion, AnimatePresence } from "framer-motion";
 import { db, storage } from "@/lib/firebaseConfig";
-import { RazorTransactionProps, MEMBERSHIP_TIERS } from "@/lib/types";
+import { RazorTransactionProps, MEMBERSHIP_TIERS, Transaction } from "@/lib/types";
+
 
 const RazorTransaction: React.FC<RazorTransactionProps> = ({
   amount,
@@ -12,6 +15,8 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
   transactionType,
   userId,
   onSuccess,
+  // FIX: Destructure setShowMessage from props
+  setShowMessage,
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,10 +43,14 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
       const validTypes = ["image/png", "image/jpeg", "image/jpg"];
       if (!validTypes.includes(file.type)) {
         setError("Please upload a PNG or JPEG image.");
+        // FIX: Use setShowMessage for external notification
+        setShowMessage("⚠️ Please upload a PNG or JPEG image.");
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
         setError("File size must be less than 5MB.");
+        // FIX: Use setShowMessage for external notification
+        setShowMessage("⚠️ File size must be less than 5MB.");
         return;
       }
       setScreenshot(file);
@@ -51,7 +60,6 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
 
   const checkActiveMembership = async () => {
     if (!userId) return false;
-    // --- CHANGE HERE: from "users" to "Players" ---
     const userRef = doc(db, "Players", userId);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
@@ -61,38 +69,51 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
   const handleSubmission = async () => {
     if (!userId) {
       setError("User authentication required. Please connect your wallet or log in.");
+      // FIX: Use setShowMessage for external notification
+      setShowMessage("⚠️ User authentication required. Please connect your wallet or log in.");
       return;
     }
 
     if (transactionType === "membership") {
       if (!screenshot) {
         setError("Please upload a UPI payment screenshot.");
+        // FIX: Use setShowMessage for external notification
+        setShowMessage("⚠️ Please upload a UPI payment screenshot.");
         return;
       }
       if (!itemId || !MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS]) {
         setError("Invalid membership tier.");
+        // FIX: Use setShowMessage for external notification
+        setShowMessage("⚠️ Invalid membership tier.");
         return;
       }
       if (amount !== MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS].amount) {
         setError(`Amount must be ₹${MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS].amount} for ${MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS].name}.`);
+        // FIX: Use setShowMessage for external notification
+        setShowMessage(`⚠️ Amount must be ₹${MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS].amount} for ${MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS].name}.`);
         return;
       }
 
       const hasActiveMembership = await checkActiveMembership();
       if (hasActiveMembership) {
         setError("You already have an active membership.");
+        // FIX: Use setShowMessage for external notification
+        setShowMessage("⚠️ You already have an active membership.");
         return;
       }
-    } else if (transactionType === "deposit" && amount < 50) {
+    } else if (transactionType === "deposit" && amount < 50 && currency === "INR") {
       setError("Minimum deposit amount is ₹50.");
+      // FIX: Use setShowMessage for external notification
+      setShowMessage("⚠️ Minimum deposit amount is ₹50.");
       return;
     } else if (transactionType === "withdraw") {
-      // --- CHANGE HERE: from "users" to "Players" ---
       const userRef = doc(db, "Players", userId);
       const userSnap = await getDoc(userRef);
       const userData = userSnap.data();
-      if (!userData || userData.WalletBalance < amount) {
+      if (!userData || userData.jewels < amount) { 
         setError("Insufficient wallet balance for withdrawal.");
+        // FIX: Use setShowMessage for external notification
+        setShowMessage("⚠️ Insufficient wallet balance for withdrawal.");
         return;
       }
     }
@@ -114,10 +135,10 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
       }
 
       const transactionId = `${userId}_${Date.now()}`;
-      const data = {
-        userId,
-        amount: amount.toString(),
+      const data: Transaction = {
         transactionId,
+        userId,
+        amount: Number(amount),
         transactionType,
         currency,
         status: "pending",
@@ -126,35 +147,32 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
         ...(screenshotUrl && { screenshot: screenshotUrl }),
       };
 
-      // Transactions collection is already correct
-      await setDoc(doc(db, "transactions", transactionId), data);
+      await setDoc(doc(db, "Transactions", transactionId), data);
 
       if (transactionType === "membership" && itemId) {
-        // --- CHANGE HERE: from "users" to "Players" ---
-        await setDoc(doc(db, "Players", userId), { membership: itemId }, { merge: true });
+        await setDoc(doc(db, "Players", userId), { membership: itemId, updatedAt: serverTimestamp() }, { merge: true });
       } else if (transactionType === "deposit") {
-        // --- CHANGE HERE: from "users" to "Players" ---
         const userRef = doc(db, "Players", userId);
         const userSnap = await getDoc(userRef);
-        const currentBalance = userSnap.exists() ? userSnap.data().WalletBalance || 0 : 0;
-        await setDoc(userRef, { WalletBalance: currentBalance + amount, updatedAt: serverTimestamp() }, { merge: true });
+        const currentBalance = userSnap.exists() ? userSnap.data().jewels || 0 : 0;
+        await setDoc(userRef, { jewels: currentBalance + amount, updatedAt: serverTimestamp() }, { merge: true });
       } else if (transactionType === "withdraw") {
-        // --- CHANGE HERE: from "users" to "Players" ---
         const userRef = doc(db, "Players", userId);
         const userSnap = await getDoc(userRef);
-        const currentBalance = userSnap.exists() ? userSnap.data().WalletBalance || 0 : 0;
-        await setDoc(userRef, { WalletBalance: currentBalance - amount, updatedAt: serverTimestamp() }, { merge: true });
+        const currentBalance = userSnap.exists() ? userSnap.data().jewels || 0 : 0;
+        await setDoc(userRef, { jewels: currentBalance - amount, updatedAt: serverTimestamp() }, { merge: true });
       }
 
       onSuccess(itemId);
 
       setError(null);
-      setTimeout(() => {
-        setError(`✅ ${transactionType === "membership" ? "Membership payment" : transactionType === "deposit" ? "Deposit" : "Withdrawal request"} submitted! Awaiting admin verification. Transaction ID: ${transactionId}`);
-      }, 0);
+      // FIX: Ensure setShowMessage is passed via prop for external notification
+      setShowMessage(`✅ ${transactionType === "membership" ? "Membership payment" : transactionType === "deposit" ? "Deposit" : "Withdrawal request"} submitted! Awaiting admin verification. Transaction ID: ${transactionId}`);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to submit request.";
       setError(errorMessage);
+      // FIX: Ensure setShowMessage is passed via prop for external notification
+      setShowMessage(`⚠️ ${errorMessage}`);
       console.error("Submission error:", err);
     } finally {
       setLoading(false);

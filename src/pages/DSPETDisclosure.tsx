@@ -292,11 +292,7 @@ const DSPETDisclosure: FC<DSPETDisclosureProps> = ({
           {activeModal === 'payment' && (
             <PaymentModal
               userId={userId}
-              setShowMessage={setShowMessage} setIsPETMember={function (__value: SetStateAction<boolean>): void {
-                throw new Error('Function not implemented.');
-              } } updatePlayerFirestore={function (_updates: Partial<any>): Promise<void> {
-                throw new Error('Function not implemented.');
-              } }            />
+              setShowMessage={setShowMessage}/>
           )}
           {showMessage && (
             <motion.div

@@ -5,14 +5,17 @@ import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import VaultInfo from './VaultInfo';
 
+// IMPORTANT: Updated VaultWalletInfoProps to match passed data and common Wagmi V2 types
 interface VaultWalletInfoProps {
   isConnected: boolean;
-  address: string | undefined;
-  chainId: number;
-  ensName: string | null;
-  blockNumber: bigint | undefined;
-  feeData: { gasPrice: bigint | undefined } | undefined;
-  usdtBalance: { value: bigint; decimals: number } | undefined;
+  address: `0x${string}` | undefined; // Use template literal type for addresses
+  chainId: number | undefined; // chainId can be undefined if not connected or loading
+  ensName: string | null | undefined; // ensName can be null or undefined
+  blockNumber: bigint | null | undefined; // blockNumber is bigint or null/undefined
+  // feeData can be undefined. If it exists, it should have gasPrice (bigint or undefined)
+  feeData: { gasPrice?: bigint | undefined; maxFeePerGas?: bigint | undefined; maxPriorityFeePerGas?: bigint | undefined; } | undefined;
+  // usdtBalance should match the structure returned by useBalance or a custom hook
+  usdtBalance: { value: bigint; decimals: number; formatted: string; } | undefined; // usdtBalance is an object or undefined
 }
 
 const fadeUp = {
@@ -34,7 +37,8 @@ const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
       <VaultInfo
         icon={<LineChart className="text-neon-green" />}
         label="Network"
-        value={chainId === mainnet.id ? '🟢 Ethereum' : '⚪️ Switch to Mainnet'}
+        // chainId can be undefined, so provide a default
+        value={chainId === mainnet.id ? '🟢 Ethereum' : (chainId ? `⚪️ Chain ID: ${chainId}` : 'Not connected')}
       />
       <VaultInfo
         icon={<ArrowRight className="text-neon-green" />}
@@ -42,16 +46,22 @@ const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
         value={isConnected && address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}
       />
       <VaultInfo icon={<UserCheck className="text-neon-green" />} label="ENS" value={ensName || 'No ENS'} />
-      <VaultInfo icon={<Banknote className="text-neon-green" />} label="Block #" value={blockNumber?.toString() ?? '...'} />
+      <VaultInfo
+        icon={<Banknote className="text-neon-green" />}
+        label="Block #"
+        value={blockNumber?.toString() ?? '...'} // blockNumber is bigint, toString() for display
+      />
       <VaultInfo
         icon={<Coins className="text-neon-green" />}
         label="Gas Price"
+        // FIX: Ensure feeData and gasPrice are checked before formatUnits
         value={feeData?.gasPrice ? `${formatUnits(feeData.gasPrice, 9)} gwei` : '...'}
       />
       <VaultInfo
         icon={<Banknote className="text-neon-green" />}
         label="USDT Balance"
-        value={`${formatUnits(usdtBalance?.value || 0n, 6)} USDT`}
+        // FIX: Ensure usdtBalance.value exists before formatUnits. Use usdtBalance.formatted if available.
+        value={usdtBalance?.value ? `${formatUnits(usdtBalance.value, usdtBalance.decimals)} USDT` : '0.00 USDT'}
       />
     </motion.div>
   );

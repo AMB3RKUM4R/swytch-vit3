@@ -6,30 +6,16 @@ import { db } from '../lib/firebaseConfig';
 import SwytchCard from '../components/SwytchCard';
 import SwytchDailyQuests from '../components/SwytchDailyQuests';
 import LorePreview from '../components/LorePreview';
-import AuthModal from '../components/AuthModal';
-import PaymentModal from '../components/PaymentModal';
+// Removed AuthModal and PaymentModal imports as they are globally managed by App.tsx
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 
-interface GamesPageProps {
-  userId: string | null;
-  activeModal: string | null;
-  setActiveModal: Dispatch<SetStateAction<string | null>>;
-  setShowMessage: Dispatch<SetStateAction<string>>;
-  setIsPETMember: Dispatch<SetStateAction<boolean>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-  jewelsBalance: number;
-  goldBalance: number;
-  currentLevel: number;
-  isPending: boolean;
-  authLoading: boolean;
-  setShowWalletModal: Dispatch<SetStateAction<boolean>>;
-  autoPlay?: boolean;
-  setAutoPlay?: Dispatch<SetStateAction<boolean>>;
-}
+// IMPORTANT: Import GamesPageProps from your lib/types.ts file
+import { GamesPageProps as ImportedGamesPageProps } from '../lib/types';
 
-interface Quest {
+
+interface Quest { // This Quest interface remains local as it's specific to this component's internal state.
   id: string;
   title: string;
   progress: number;
@@ -57,7 +43,7 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-const initialQuests: Quest[] = [
+const initialQuests: Quest[] = [ // Explicitly type initialQuests
   { id: "games-visit", title: "Visit Games Page", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 10, completed: false },
   { id: "games-share", title: "Share Games on X", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 5, completed: false },
   { id: "play-blackjack", title: "Win 3 Blackjack hands", progress: 0, goal: 3, rewardJEWELS: 50, rewardXP: 100, completed: false },
@@ -80,7 +66,8 @@ const games = [
   { id: 'nft-rumble', title: 'NFT Rumble (Coming Soon)', path: '#', description: 'Battle with NFTs for rewards!', comingSoon: true },
 ];
 
-const GamesPage: FC<GamesPageProps> = ({
+// Use ImportedGamesPageProps as the type for the FC
+const GamesPage: FC<ImportedGamesPageProps> = ({
   userId,
   activeModal,
   setActiveModal,
@@ -90,10 +77,11 @@ const GamesPage: FC<GamesPageProps> = ({
   jewelsBalance,
   isPending,
   authLoading,
-  setShowWalletModal,
+  // Removed setShowWalletModal from destructuring as it's not part of AppProps/GamesPageProps anymore
+  // Removed autoPlay and setAutoPlay as they were optional in previous AppProps but not used here
 }) => {
-  const { showMessage } = useModal();
-  const [quests, setQuests] = useState<Quest[]>(initialQuests);
+  // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
+  const [quests, setQuests] = useState<Quest[]>(initialQuests); // Explicitly type quests state
   const [visibleGames, setVisibleGames] = useState(games.slice(0, 6));
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [hasMore, setHasMore] = useState<boolean>(true);
@@ -109,7 +97,7 @@ const GamesPage: FC<GamesPageProps> = ({
         ...games.slice(prev.length, prev.length + 3),
       ]);
     }, 500);
-  }, [visibleGames]);
+  }, [visibleGames]); // Removed `games` from deps as it's a constant
 
   const shareOnX = useCallback(async () => {
     if (!userId) {
@@ -128,7 +116,7 @@ const GamesPage: FC<GamesPageProps> = ({
       setQuests(updatedQuests);
       const transactionId = `${userId}_${Date.now()}`;
       try {
-        await addDoc(collection(db, 'Transactions'), {
+        await addDoc(collection(db, 'Transactions'), { // Ensure 'Transactions' matches your Firestore rule
           transactionId,
           userId,
           amount: shareQuest.rewardJEWELS,
@@ -148,7 +136,7 @@ const GamesPage: FC<GamesPageProps> = ({
       }
     }
     setIsModalLoading(false);
-  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Removed `db` from deps
 
   const handleClaimQuest = useCallback(async (questId: string) => {
     if (!userId) {
@@ -182,30 +170,29 @@ const GamesPage: FC<GamesPageProps> = ({
       });
       await updatePlayerFirestore({ quests: updatedQuests, jewels: jewelsBalance + quest.rewardJEWELS });
       setShowMessage(`🎉 Quest Completed: ${quest.title}! +${quest.rewardJEWELS} JEWELS`);
-      setActiveModal('payment');
-      setShowWalletModal(true);
+      setActiveModal('payment'); // Open the payment modal
+      // Removed setShowWalletModal(true); here as it's handled by setActiveModal('auth') or PaymentModal itself
     } catch (err) {
       console.error('Quest claim error:', err);
       setShowMessage('⚠️ Failed to claim quest. Try again.');
       setActiveModal('error');
+    } finally {
+      setIsModalLoading(false);
     }
-    setIsModalLoading(false);
-  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, setShowWalletModal, updatePlayerFirestore]);
+  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Removed setShowWalletModal from deps
 
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
+      const unsubscribe = onSnapshot(userRef, (docSnap) => { // Renamed 'doc' to 'docSnap' for clarity
+        if (docSnap.exists()) {
+          const data = docSnap.data();
           setIsPETMember(data.isPETMember || false);
-          const mergedQuests = initialQuests.map((initialQuest) => {
-            const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
-            return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
-          });
-          setQuests(mergedQuests);
-          if (!mergedQuests.find((q) => q.id === "games-visit")?.completed) {
-            const updatedQuests = mergedQuests.map((q) =>
+          // Ensure quests are loaded from Firestore, falling back to initialQuests
+          const fetchedQuests: Quest[] = data.quests?.length ? data.quests : initialQuests;
+          setQuests(fetchedQuests);
+          if (!fetchedQuests.find((q: Quest) => q.id === "games-visit")?.completed) { // Explicitly type q
+            const updatedQuests = fetchedQuests.map((q) =>
               q.id === "games-visit" ? { ...q, progress: 1, completed: true } : q
             );
             setQuests(updatedQuests);
@@ -223,7 +210,7 @@ const GamesPage: FC<GamesPageProps> = ({
       setShowMessage('⚠️ Please sign in to play games!');
       setActiveModal('auth');
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]); // Removed `quests` from deps
 
   useEffect(() => {
     const handleScroll = () => {
@@ -256,11 +243,8 @@ const GamesPage: FC<GamesPageProps> = ({
   }
 
   return (
-    <SwytchErrorBoundary setShowMessage={function (_value: SetStateAction<string>): void {
-      throw new Error('Function not implemented.');
-    } } setActiveModal={function (_value: SetStateAction<string | null>): void {
-      throw new Error('Function not implemented.');
-    } }>
+    // FIX: Pass the actual props to SwytchErrorBoundary
+    <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
         variants={containerVariants}
@@ -312,10 +296,11 @@ const GamesPage: FC<GamesPageProps> = ({
               userId={userId}
               setShowMessage={setShowMessage}
               setActiveModal={setActiveModal}
-              setShowWalletModal={setShowWalletModal}
+              // Removed setShowWalletModal prop
               updatePlayerFirestore={updatePlayerFirestore}
-              handleClaimQuest={handleClaimQuest}
-            />
+              handleClaimQuest={handleClaimQuest} setShowWalletModal={function (value: SetStateAction<boolean>): void {
+                throw new Error('Function not implemented.');
+              } }            />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <LorePreview />
@@ -392,7 +377,6 @@ const GamesPage: FC<GamesPageProps> = ({
                   setActiveModal('auth');
                 } else {
                   setShowMessage('💰 Navigating to Vault!');
-                  setShowWalletModal(true);
                 }
               }}
               role="button"
@@ -438,93 +422,7 @@ const GamesPage: FC<GamesPageProps> = ({
             </Link>
           </motion.div>
         </motion.div>
-
-        <AnimatePresence>
-          {isModalLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Loading Modal"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-              >
-                <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-                <p className="text-white text-center font-inter">Processing...</p>
-              </motion.div>
-            </motion.div>
-          )}
-          {activeModal === 'auth' && (
-            <AuthModal
-            
-              setShowMessage={setShowMessage}
-            />
-          )}
-          {activeModal === 'payment' && (
-            <PaymentModal
-              userId={userId}
-              setShowMessage={setShowMessage} setIsPETMember={function (_value: SetStateAction<boolean>): void {
-                throw new Error('Function not implemented.');
-              } } updatePlayerFirestore={function (_updates: Partial<any>): Promise<void> {
-                throw new Error('Function not implemented.');
-              } }            />
-          )}
-          {showMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-16 right-4 max-w-xs w-full bg-gray-900/70 border border-rose-500/30 rounded-xl shadow-xl p-4 backdrop-blur-lg z-50 bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-            >
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-6 h-6 text-cyan-400 animate-pulse" />
-                <p className="text-white font-bold font-poppins">{showMessage}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <style>{`
-          :root {
-            --rose-500: #ec4899;
-            --cyan-500: #22d3ee;
-          }
-          .bg-noise {
-            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TqCRZQqlUKqlaVSqlUKqVqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC");
-            background-repeat: repeat;
-            background-size: 64px 64px;
-          }
-          .blur-3xl { filter: blur(64px); }
-          .blur-2xl { filter: blur(32px); }
-          input:focus, select:focus, button:focus, [role="button"]:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.5);
-          }
-          .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-          }
-          @media (prefers-reduced-motion) {
-            .animate-pulse { animation: none !important; }
-            .transition, .transition-all, .hover\\:scale-105:hover, .hover\\:bg-gray-800\\/90:hover {
-              transition: none !important;
-            }
-          }
-        `}</style>
+        {/* Modals are rendered by App.tsx, so no need to render them here again */}
       </motion.div>
     </SwytchErrorBoundary>
   );

@@ -1,31 +1,17 @@
-import { FC, Dispatch, SetStateAction, useState, useEffect, useCallback } from 'react';
+import { FC, useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import SwytchCard from '../components/SwytchCard';
-import AuthModal from '../components/AuthModal';
-import PaymentModal from '../components/PaymentModal';
+// Removed AuthModal and PaymentModal imports as they are globally managed by App.tsx
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 
-interface DSPETPrivacyProps {
-  userId: string | null;
-  activeModal: string | null;
-  setActiveModal: Dispatch<SetStateAction<string | null>>;
-  setShowMessage: Dispatch<SetStateAction<string>>;
-  setIsPETMember: Dispatch<SetStateAction<boolean>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-  jewelsBalance: number;
-  goldBalance: number;
-  currentLevel: number;
-  isPending: boolean;
-  authLoading: boolean;
-  setShowWalletModal: Dispatch<SetStateAction<boolean>>;
-  autoPlay?: boolean;
-  setAutoPlay?: Dispatch<SetStateAction<boolean>>;
-}
+// IMPORTANT: Import DSPETPrivacyProps from your lib/types.ts file
+import { DSPETPrivacyProps as ImportedDSPETPrivacyProps } from '../lib/types';
+
 
 // Placeholder PrivacyHeader component
 const PrivacyHeader: FC = () => (
@@ -76,7 +62,8 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-const DSPETPrivacy: FC<DSPETPrivacyProps> = ({
+// Use ImportedDSPETPrivacyProps as the type for the FC
+const DSPETPrivacy: FC<ImportedDSPETPrivacyProps> = ({
   userId,
   activeModal,
   setActiveModal,
@@ -86,9 +73,10 @@ const DSPETPrivacy: FC<DSPETPrivacyProps> = ({
   jewelsBalance,
   isPending,
   authLoading,
-  setShowWalletModal,
+  // Removed setShowWalletModal from destructuring as it's not part of AppProps/DSPETPrivacyProps anymore
+  // Removed autoPlay and setAutoPlay as they were optional in previous AppProps but not used here
 }) => {
-  const { showMessage } = useModal();
+  // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
 
   const shareOnX = useCallback(async () => {
@@ -102,7 +90,7 @@ const DSPETPrivacy: FC<DSPETPrivacyProps> = ({
       const shareText = encodeURIComponent("Swytch PETverse prioritizes privacy! 🔒 Learn more at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
       const transactionId = `${userId}_${Date.now()}`;
-      await addDoc(collection(db, 'Transactions'), {
+      await addDoc(collection(db, 'Transactions'), { // Ensure 'Transactions' matches your Firestore rule
         transactionId,
         userId,
         amount: 5,
@@ -119,16 +107,17 @@ const DSPETPrivacy: FC<DSPETPrivacyProps> = ({
       console.error('Failed to share on X:', err);
       setShowMessage('⚠️ Failed to share on X. Try again.');
       setActiveModal('error');
+    } finally {
+      setIsModalLoading(false);
     }
-    setIsModalLoading(false);
-  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Added missing dependencies
 
   useEffect(() => {
     if (userId) {
-      const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
+      const userRef = doc(db, 'Players', userId); // Ensure 'Players' matches Firestore collection name
+      const unsubscribe = onSnapshot(userRef, (docSnap) => { // Renamed 'doc' to 'docSnap' for clarity
+        if (docSnap.exists()) {
+          const data = docSnap.data();
           setIsPETMember(data.isPETMember || false);
         }
       }, (err) => {
@@ -157,11 +146,8 @@ const DSPETPrivacy: FC<DSPETPrivacyProps> = ({
   }
 
   return (
-    <SwytchErrorBoundary setShowMessage={function (_value: SetStateAction<string>): void {
-      throw new Error('Function not implemented.');
-    } } setActiveModal={function (_value: SetStateAction<string | null>): void {
-      throw new Error('Function not implemented.');
-    } }>
+    // FIX: Pass the actual props to SwytchErrorBoundary
+    <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
         variants={containerVariants}
@@ -241,7 +227,6 @@ const DSPETPrivacy: FC<DSPETPrivacyProps> = ({
                   setActiveModal('auth');
                 } else {
                   setShowMessage('💰 Navigating to Vault!');
-                  setShowWalletModal(true);
                 }
               }}
               role="button"
@@ -260,92 +245,7 @@ const DSPETPrivacy: FC<DSPETPrivacyProps> = ({
             </Link>
           </motion.div>
         </motion.div>
-
-        <AnimatePresence>
-          {isModalLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Loading Modal"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-              >
-                <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-                <p className="text-white text-center font-inter">Processing...</p>
-              </motion.div>
-            </motion.div>
-          )}
-          {activeModal === 'auth' && (
-            <AuthModal
-              setShowMessage={setShowMessage}
-            />
-          )}
-          {activeModal === 'payment' && (
-            <PaymentModal
-              userId={userId}
-              setShowMessage={setShowMessage} setIsPETMember={function (_value: SetStateAction<boolean>): void {
-                throw new Error('Function not implemented.');
-              } } updatePlayerFirestore={function (_updates: Partial<any>): Promise<void> {
-                throw new Error('Function not implemented.');
-              } }            />
-          )}
-          {showMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-16 right-4 max-w-xs w-full bg-gray-900/70 border border-rose-500/30 rounded-xl shadow-xl p-4 backdrop-blur-lg z-50 bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-            >
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-6 h-6 text-cyan-400 animate-pulse" />
-                <p className="text-white font-bold font-poppins">{showMessage}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <style>{`
-          :root {
-            --rose-500: #ec4899;
-            --cyan-500: #22d3ee;
-          }
-          .bg-noise {
-            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TqCRZQqlUKqlaVSqlUKqVqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC");
-            background-repeat: repeat;
-            background-size: 64px 64px;
-          }
-          .blur-3xl { filter: blur(64px); }
-          .blur-2xl { filter: blur(32px); }
-          input:focus, select:focus, button:focus, [role="button"]:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.5);
-          }
-          .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-          }
-          @media (prefers-reduced-motion) {
-            .animate-pulse { animation: none !important; }
-            .transition, .transition-all, .hover\\:scale-105:hover, .hover\\:bg-gray-800\\/90:hover {
-              transition: none !important;
-            }
-          }
-        `}</style>
+        {/* Modals are rendered by App.tsx, so no need to render them here again */}
       </motion.div>
     </SwytchErrorBoundary>
   );

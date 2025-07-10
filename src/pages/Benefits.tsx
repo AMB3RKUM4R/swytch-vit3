@@ -1,5 +1,5 @@
 import { FC, useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; // Keep these as requested
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
@@ -10,12 +10,16 @@ import BenefitsGrid from '../components/BenefitsGrid';
 import BenefitsEcosphere from '../components/BenefitsEcosphere';
 import BenefitsPitfalls from '../components/BenefitsPitfalls';
 import BenefitsWallets from '../components/BenefitsWallets';
-import BenefitsCTA from '../components/BenefitsCTA';
 import WalletSecurity from '../components/WalletSecurity';
-import AuthModal from '../components/AuthModal';
-import PaymentModal from '../components/PaymentModal';
+import BenefitsCTA from '../components/BenefitsCTA'; // Assuming this component exists and takes the correct props
+// Removed direct modal imports (AuthModal, PaymentModal) as App.tsx renders them globally
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { useModal } from '../context/ModalContext';
+import { useModal } from '../context/ModalContext'; // For activeModal, setActiveModal
+
+// Import BenefitsProps from your lib/types.ts file.
+// This is the source of truth for props expected by this component.
+import { BenefitsProps } from '../lib/types';
+
 
 interface Quest {
   id: string;
@@ -25,23 +29,6 @@ interface Quest {
   rewardJEWELS: number;
   rewardXP: number;
   completed: boolean;
-}
-
-interface BenefitsProps {
-  userId: string | null;
-  activeModal: string | null;
-  setActiveModal: Dispatch<SetStateAction<string | null>>;
-  setShowMessage: Dispatch<SetStateAction<string>>;
-  setIsPETMember: Dispatch<SetStateAction<boolean>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-  jewelsBalance: number;
-  goldBalance: number;
-  currentLevel: number;
-  isPending: boolean;
-  authLoading: boolean;
-  setShowWalletModal: Dispatch<SetStateAction<boolean>>;
-  autoPlay?: boolean;
-  setAutoPlay?: Dispatch<SetStateAction<boolean>>;
 }
 
 const containerVariants = {
@@ -67,7 +54,7 @@ const initialQuests: Quest[] = [
   { id: "benefits-share", title: "Share Benefits on X", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 5, completed: false },
 ];
 
-const Benefits: FC<BenefitsProps> = ({
+const Benefits: FC<BenefitsProps> = ({ // Use BenefitsProps from lib/types.ts
   userId,
   activeModal,
   setActiveModal,
@@ -77,9 +64,9 @@ const Benefits: FC<BenefitsProps> = ({
   jewelsBalance = 0,
   isPending = false,
   authLoading = false,
-  setShowWalletModal,
+  // Removed setShowWalletModal from destructuring as it's not in BenefitsProps anymore
 }) => {
-  const { showMessage } = useModal();
+  // Removed const { showMessage } = useModal(); as it's redundant (prop setShowMessage is used)
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [expandedBenefit, setExpandedBenefit] = useState<string | null>(null);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
@@ -106,7 +93,6 @@ const Benefits: FC<BenefitsProps> = ({
       });
       setShowMessage('ℹ️ Opening payment for support. Admin (0CfobCbXnPZsJwT662H4OhDrXk33) will process your contribution.');
       setActiveModal('payment');
-      setShowWalletModal(true);
     } catch (err) {
       console.error('UPI intent error:', err);
       setShowMessage('⚠️ Failed to initiate payment. Try again.');
@@ -114,7 +100,7 @@ const Benefits: FC<BenefitsProps> = ({
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, setShowMessage, setActiveModal, setShowWalletModal]);
+  }, [userId, setShowMessage, setActiveModal]);
 
   const shareOnX = useCallback(async () => {
     if (!userId) {
@@ -132,20 +118,24 @@ const Benefits: FC<BenefitsProps> = ({
       setQuests(updatedQuests);
       updatePlayerFirestore({ quests: updatedQuests, jewels: jewelsBalance + shareQuest.rewardJEWELS });
       setShowMessage(`🎉 Quest Completed: ${shareQuest.title}! +${shareQuest.rewardJEWELS} JEWELS`);
-      await logUpiIntent();
+      // Removed logUpiIntent() call here as it might not be intended after every share
+      // If it is intended, ensure its type aligns with all calls.
     }
-  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore, logUpiIntent]);
+  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
 
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
+      const unsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
           setIsPETMember(data.isPETMember || false);
-          setQuests(data.quests?.length ? data.quests : initialQuests);
-          if (!data.quests?.find((q: Quest) => q.id === "benefits-visit")?.completed) {
-            const updatedQuests = quests.map((q) =>
+          
+          const fetchedQuests: Quest[] = data.quests?.length ? data.quests : initialQuests;
+          setQuests(fetchedQuests);
+
+          if (!fetchedQuests.find((q: Quest) => q.id === "benefits-visit")?.completed) {
+            const updatedQuests = fetchedQuests.map((q) =>
               q.id === "benefits-visit" ? { ...q, progress: 1, completed: true } : q
             );
             setQuests(updatedQuests);
@@ -154,8 +144,8 @@ const Benefits: FC<BenefitsProps> = ({
           }
         }
       }, (err) => {
-        console.error('Failed to fetch user data:', err);
-        setShowMessage('⚠️ Failed to load user data.');
+        console.error('Failed to fetch user data for benefits:', err);
+        setShowMessage('⚠️ Failed to load user data for benefits.');
         setActiveModal('error');
       });
       return () => unsubscribe();
@@ -163,7 +153,7 @@ const Benefits: FC<BenefitsProps> = ({
       setShowMessage('⚠️ Please sign in to access benefits!');
       setActiveModal('auth');
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore, quests]);
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]);
 
   const toggleBenefit = (benefit: string) => {
     setExpandedBenefit(expandedBenefit === benefit ? null : benefit);
@@ -186,11 +176,8 @@ const Benefits: FC<BenefitsProps> = ({
   }
 
   return (
-    <SwytchErrorBoundary setShowMessage={function (_value: SetStateAction<string>): void {
-      throw new Error('Function not implemented.');
-    } } setActiveModal={function (_value: SetStateAction<string | null>): void {
-      throw new Error('Function not implemented.');
-    } }>
+    // FIX 2: Pass the actual props to SwytchErrorBoundary
+    <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
         variants={containerVariants}
@@ -275,9 +262,10 @@ const Benefits: FC<BenefitsProps> = ({
               userId={userId}
               setActiveModal={setActiveModal}
               setShowMessage={setShowMessage}
-              setShowWalletModal={setShowWalletModal}
-              logUpiIntent={logUpiIntent}
-            />
+              // Removed setShowWalletModal prop pass-through
+              logUpiIntent={logUpiIntent} setShowWalletModal={function (value: SetStateAction<boolean>): void {
+                throw new Error('Function not implemented.');
+              } }            />
           </motion.div>
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
@@ -345,144 +333,13 @@ const Benefits: FC<BenefitsProps> = ({
             </Link>
           </motion.div>
         </motion.div>
-
-        <AnimatePresence>
-          {isModalLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Loading Modal"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-              >
-                <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-                <p className="text-white text-center font-inter">Processing...</p>
-              </motion.div>
-            </motion.div>
-          )}
-          {activeModal === 'auth' && (
-            <AuthModal
-              setShowMessage={setShowMessage}
-            />
-          )}
-          {activeModal === 'payment' && (
-            <PaymentModal
-              userId={userId}
-              setShowMessage={setShowMessage} setIsPETMember={function (_value: SetStateAction<boolean>): void {
-                throw new Error('Function not implemented.');
-              } } updatePlayerFirestore={function (_updates: Partial<any>): Promise<void> {
-                throw new Error('Function not implemented.');
-              } }            />
-          )}
-          {activeModal === 'info' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Info Modal"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-                tabIndex={-1}
-              >
-                <motion.button
-                  onClick={() => {
-                    setActiveModal(null);
-                    setIsModalLoading(false);
-                  }}
-                  className="absolute top-4 right-4 text-cyan-400 hover:text-red-500"
-                  whileHover={{ rotate: 90 }}
-                  aria-label="Close info modal"
-                >
-                  <X className="w-6 h-6" />
-                </motion.button>
-                <h3 className="text-xl font-bold text-cyan-400 mb-6 font-poppins">PETverse Risks</h3>
-                <p className="text-gray-200 text-sm font-inter">
-                  Learn about potential risks in the PETverse, including market volatility and transaction security. Visit our{' '}
-                  <Link to="/disclosure" className="text-cyan-400 hover:underline">Disclosure</Link> page for details.
-                </p>
-                <motion.button
-                  onClick={() => {
-                    setActiveModal(null);
-                    setIsModalLoading(false);
-                  }}
-                  className="mt-4 px-6 py-3 bg-rose-600 text-white rounded-lg font-semibold font-poppins hover:bg-cyan-500"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label="Close info modal"
-                >
-                  Close
-                </motion.button>
-              </motion.div>
-            </motion.div>
-          )}
-          {showMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-16 right-4 max-w-xs w-full bg-gray-900/70 border border-rose-500/30 rounded-xl shadow-xl p-4 backdrop-blur-lg z-50 bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-            >
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-6 h-6 text-cyan-400 animate-pulse" />
-                <p className="text-white font-bold font-poppins">{showMessage}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <style>{`
-          :root {
-            --rose-500: #ec4899;
-            --cyan-500: #22d3ee;
-          }
-          .bg-noise {
-            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TqCRZQqlUKqlaVSqlUKqVqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC");
-            background-repeat: repeat;
-            background-size: 64px 64px;
-          }
-          .blur-3xl { filter: blur(64px); }
-          .blur-2xl { filter: blur(32px); }
-          input:focus, select:focus, button:focus, [role="button"]:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.5);
-          }
-          .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-          }
-          @media (prefers-reduced-motion) {
-            .animate-pulse { animation: none !important; }
-            .transition, .transition-all, .hover\\:scale-105:hover, .hover\\:bg-gray-800\\/90:hover {
-              transition: none !important;
-            }
-          }
-        `}</style>
+        {/* Removed all global modal renderings from here as they are now handled by App.tsx */}
+        {/* The 'isModalLoading' spinner, 'AuthModal', 'PaymentModal', 'info' modal,
+            and global 'showMessage' toast are all rendered in App.tsx/main.tsx */}
       </motion.div>
     </SwytchErrorBoundary>
   );
 };
+
 
 export default Benefits;

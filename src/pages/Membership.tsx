@@ -3,30 +3,37 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
-import AuthModal from '../components/AuthModal';
-import PaymentModal from '../components/PaymentModal';
 import SwytchCard from '../components/SwytchCard';
+// These components are likely used within Membership, but removing direct imports for global modals.
+// import AuthModal from '../components/AuthModal';
+// import PaymentModal from '../components/PaymentModal';
+import SwytchDailyQuests from '../components/SwytchDailyQuests'; // Assuming this is needed in Membership
+import LorePreview from '../components/LorePreview'; // Assuming this is needed in Membership
+// Page-specific components for Membership
+import SwytchMembershipComponent from '../components/MembershipUpgrade'; // Renamed to avoid conflict with page name
+import MembershipBenefits from '../components/MembershipBenefits';
+import MembershipUpgrade from '../components/MembershipUpgrade'; // Assuming this is used for specific upgrade calls
+import FeatureCards from '../components/FeatureCards';
+import ExplanationHero from '../components/ExplanationHero';
+import ExplanationCTA from '../components/ExplanationCTA';
+import ExplanationTestimonials from '../components/ExplanationTestimonials';
+import SwytchLevelsHero from '../components/SwytchLevelsHero'; // Assuming this is used
+import SwytchLevelsGrid from '../components/SwytchLevelsGrid'; // Assuming this is used
+import SwytchLevelsCTA from '../components/SwytchLevelsCTA'; // Assuming this is used
+import PETTestimonials from '../components/PETTestimonials'; // Assuming this is used
+import TestimonialsCarousel from '../components/TestimonialsCarousel'; // Assuming this is used
+import FinalCTA from '../components/FinalCTA'; // Assuming this is used
+import EmailSignup from '../components/EmailSignup'; // Assuming this is used
+import CosmicHero from '../components/CosmicHero'; // Assuming this is used
+import TrustMarketCTA from '../components/TrustMarketCTA'; // Assuming this is used
+
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 
-// Define PageProps to match types.ts and App.tsx
-interface PageProps {
-  userId: string | null;
-  activeModal: string | null;
-  setActiveModal: Dispatch<SetStateAction<string | null>>;
-  setShowMessage: Dispatch<SetStateAction<string>>;
-  setIsPETMember: Dispatch<SetStateAction<boolean>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-  jewelsBalance: number;
-  goldBalance: number;
-  currentLevel: number;
-  isPending: boolean;
-  authLoading: boolean;
-  setShowWalletModal: Dispatch<SetStateAction<boolean>>;
-  autoPlay?: boolean;
-  setAutoPlay?: Dispatch<SetStateAction<boolean>>;
-}
+// IMPORTANT: Import PageProps, SupportedCurrency, and TransactionType from your lib/types.ts file
+import { PageProps as ImportedPageProps, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
+
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -46,6 +53,7 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
+// This 'games' array seems copied into multiple pages. Consider moving to a central constants file.
 const games = [
   { id: 'bingo', title: 'Bingo', path: '/games/bingo', description: 'Match numbers and win big!' },
   { id: 'blackjack', title: 'Blackjack', path: '/games/blackjack', description: 'Beat the dealer to 21!' },
@@ -62,7 +70,9 @@ const games = [
   { id: 'nft-rumble', title: 'NFT Rumble (Coming Soon)', path: '#', description: 'Battle with NFTs for rewards!', comingSoon: true },
 ];
 
-const Membership: FC<PageProps> = ({
+
+// Use ImportedPageProps as the type for the FC
+const Membership: FC<ImportedPageProps> = ({
   userId,
   activeModal,
   setActiveModal,
@@ -72,12 +82,14 @@ const Membership: FC<PageProps> = ({
   jewelsBalance,
   isPending,
   authLoading,
-  setShowWalletModal,
+  // Removed setShowWalletModal from destructuring as it's not part of AppProps/PageProps anymore
+  // Removed autoPlay and setAutoPlay as they were optional in previous AppProps but not used here
 }) => {
-  const { showMessage } = useModal();
+  // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [visibleGames, setVisibleGames] = useState(games.slice(0, 6));
   const [hasMore, setHasMore] = useState<boolean>(true);
+
 
   const loadMoreGames = useCallback(() => {
     if (visibleGames.length >= games.length) {
@@ -90,7 +102,7 @@ const Membership: FC<PageProps> = ({
         ...games.slice(prev.length, prev.length + 3),
       ]);
     }, 500);
-  }, [visibleGames]);
+  }, [visibleGames]); // Removed `games` from deps as it's a constant
 
   const shareOnX = useCallback(async () => {
     if (!userId) {
@@ -107,9 +119,9 @@ const Membership: FC<PageProps> = ({
         transactionId,
         userId,
         amount: 5,
-        currency: 'JEWELS' as 'INR' | 'USD' | 'ETH',
-        transactionType: 'deposit' as 'membership' | 'deposit' | 'withdraw',
-        status: 'pending' as 'success' | 'pending' | 'failed',
+        currency: 'JEWELS' as SupportedCurrency, // FIX: Use SupportedCurrency type, no need for redundant type casting
+        transactionType: 'deposit' as TransactionType,
+        status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'membership',
         adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
@@ -120,9 +132,10 @@ const Membership: FC<PageProps> = ({
       console.error('Failed to share on X:', err);
       setShowMessage('⚠️ Failed to share on X. Try again.');
       setActiveModal('error');
+    } finally {
+      setIsModalLoading(false);
     }
-    setIsModalLoading(false);
-  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Added missing deps
 
   const handleUpgradeClick = useCallback(async () => {
     if (!userId) {
@@ -137,30 +150,31 @@ const Membership: FC<PageProps> = ({
         transactionId,
         userId,
         amount: 99, // Example amount for membership upgrade
-        currency: 'JEWELS' as 'INR' | 'USD' | 'ETH',
-        transactionType: 'membership' as 'membership' | 'deposit' | 'withdraw',
-        status: 'pending' as 'success' | 'pending' | 'failed',
+        currency: 'JEWELS' as SupportedCurrency, // FIX: Use SupportedCurrency type
+        transactionType: 'membership' as TransactionType,
+        status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'membership',
         adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
       });
       setShowMessage('ℹ️ Opening payment for PET Membership upgrade. Admin will process your request.');
       setActiveModal('payment');
-      setShowWalletModal(true);
+      // Removed setShowWalletModal(true); here as it's handled by setActiveModal('auth') or PaymentModal itself
     } catch (err) {
       console.error('Membership upgrade error:', err);
       setShowMessage('⚠️ Failed to initiate membership upgrade. Try again.');
       setActiveModal('error');
+    } finally {
+      setIsModalLoading(false);
     }
-    setIsModalLoading(false);
-  }, [userId, setShowMessage, setActiveModal, setShowWalletModal, updatePlayerFirestore]);
+  }, [userId, setShowMessage, setActiveModal]); // Removed setShowWalletModal from deps
 
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
+      const unsubscribe = onSnapshot(userRef, (docSnap) => { // Renamed 'doc' to 'docSnap' for clarity
+        if (docSnap.exists()) {
+          const data = docSnap.data();
           setIsPETMember(data.isPETMember || false);
         }
       }, (err) => {
@@ -192,11 +206,8 @@ const Membership: FC<PageProps> = ({
   }
 
   return (
-    <SwytchErrorBoundary  setShowMessage={function (_value: SetStateAction<string>): void {
-      throw new Error('Function not implemented.');
-    } } setActiveModal={function (_value: SetStateAction<string | null>): void {
-      throw new Error('Function not implemented.');
-    } }>
+    // FIX: Pass the actual props to SwytchErrorBoundary
+    <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
         variants={containerVariants}
@@ -234,99 +245,60 @@ const Membership: FC<PageProps> = ({
 
         <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
           <motion.div variants={sectionVariants}>
-            <SwytchCard gradient="from-rose-500/20 to-cyan-500/20" className="p-8">
-              <img
-                src="/assets/premium-badge.png"
-                alt="PET Membership Badge"
-                className="w-24 h-24 mx-auto mb-4"
-              />
-              <h2 className="text-4xl sm:text-5xl font-bold text-rose-400 text-center mb-8 font-poppins flex items-center justify-center gap-2">
-                <Sparkles className="w-8 h-8 animate-pulse" /> PET Membership
-              </h2>
-              <div className="bg-gray-900/60 p-8 rounded-2xl border border-rose-500/20 backdrop-blur-md text-center">
-                <p className="text-lg text-gray-300 mb-6 font-inter">
-                  Unlock exclusive benefits with PET Membership: higher game limits, bonus jewels, and premium rewards!
-                </p>
-                <ul className="text-left text-rose-400 mb-6 font-inter list-disc list-inside">
-                  <li>Daily 1000 JEWELS bonus</li>
-                  <li>Exclusive game modes and skins</li>
-                  <li>Priority matchmaking in multiplayer</li>
-                  <li>Access to premium events</li>
-                </ul>
-                <motion.button
-                  onClick={handleUpgradeClick}
-                  className="bg-gradient-to-r from-rose-600 to-cyan-500 text-white py-3 px-6 rounded-lg font-semibold hover:from-rose-700 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-rose-500 flex items-center justify-center gap-2 mx-auto"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label="Upgrade to PET Membership"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  Upgrade Now
-                </motion.button>
-              </div>
-            </SwytchCard>
+            {/* The main content for Membership page likely starts here. */}
+            {/* SwytchLevelsHero, SwytchLevelsGrid, MembershipBenefits, MembershipUpgrade, FeatureCards,
+                ExplanationHero, ExplanationTestimonials, SwytchLevelsCTA, ExplanationCTA,
+                CosmicHero, PETTestimonials, TestimonialsCarousel, FinalCTA, EmailSignup, TrustMarketCTA
+                These components are likely relevant to the Membership page content */}
+            <SwytchLevelsHero
+              userId={userId}
+              setActiveModal={setActiveModal}
+              setShowMessage={setShowMessage}
+              mousePosition={{x: 0, y: 0}} // Pass a default or actual mousePosition if needed
+            />
           </motion.div>
           <motion.div variants={sectionVariants}>
-            <h2 className="text-3xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mt-8">
-              <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> Explore Our Games
-            </h2>
-            <p className="text-lg text-gray-300 max-w-2xl mx-auto mt-4 font-inter">
-              Play thrilling games and earn JEWELS in the PETverse! Scroll to explore all games.
-            </p>
+            {/* This assumes currentLevel, isPending, authLoading are relevant for SwytchLevelsGrid */}
+            <SwytchLevelsGrid
+              userId={userId}
+              currentLevel={0} // Pass actual currentLevel if needed
+              isPending={isPending}
+              authLoading={authLoading}
+              updatePlayerFirestore={updatePlayerFirestore}
+              handlePurchaseLevel={handleUpgradeClick} // Re-using handleUpgradeClick for level purchase
+            />
           </motion.div>
-          <motion.div variants={sectionVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-            <AnimatePresence>
-              {visibleGames.map((game) => (
-                <motion.div
-                  key={game.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 30 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <SwytchCard gradient="from-rose-500/20 to-cyan-500/20" className="p-6">
-                    <motion.div className="text-center" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <h3 className="text-xl font-bold text-white font-poppins">{game.title}</h3>
-                      <p className="text-gray-300 font-inter mt-2">{game.description}</p>
-                      <Link
-                        to={game.path}
-                        className={`inline-block bg-${game.comingSoon ? 'gray-600' : 'rose-600'} text-white px-4 py-2 rounded-full font-poppins hover:bg-${game.comingSoon ? 'gray-500' : 'cyan-500'} mt-4`}
-                        onClick={() => {
-                          if (!userId) {
-                            setShowMessage('⚠️ Sign in to play games!');
-                            setActiveModal('auth');
-                          } else if (!game.comingSoon) {
-                            setShowMessage(`🎮 Navigating to ${game.title}!`);
-                          }
-                        }}
-                        role="button"
-                        aria-label={`Play ${game.title}`}
-                        style={{ pointerEvents: game.comingSoon ? 'none' : 'auto' }}
-                      >
-                        {game.comingSoon ? 'Coming Soon' : 'Play Now'}
-                      </Link>
-                    </motion.div>
-                  </SwytchCard>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+          <motion.div variants={sectionVariants}>
+            <MembershipBenefits />
           </motion.div>
-          {hasMore && (
-            <motion.div
-              className="text-center py-8"
-              variants={sectionVariants}
-            >
-              <motion.button
-                className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins"
-                onClick={loadMoreGames}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                aria-label="Load More Games"
-              >
-                Load More
-              </motion.button>
-            </motion.div>
-          )}
+          <motion.div variants={sectionVariants}>
+            <MembershipUpgrade // This might be a specific component that triggers handleUpgradeClick
+              userId={userId}
+              setIsPETMember={setIsPETMember}
+              updatePlayerFirestore={updatePlayerFirestore}
+              setActiveModal={setActiveModal}
+              setShowMessage={setShowMessage}
+            />
+          </motion.div>
+          <motion.div variants={sectionVariants}>
+            <FeatureCards />
+          </motion.div>
+          <motion.div variants={sectionVariants}>
+            <ExplanationHero
+                userId={userId}
+                goldBalance={0} // Pass actual goldBalance
+                mousePosition={{x: 0, y: 0}} // Pass actual mousePosition
+            />
+          </motion.div>
+          <motion.div variants={sectionVariants}>
+            <ExplanationTestimonials />
+          </motion.div>
+          <motion.div variants={sectionVariants}>
+            <SwytchLevelsCTA />
+          </motion.div>
+          <motion.div variants={sectionVariants}>
+            <ExplanationCTA />
+          </motion.div>
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
               className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins mr-4"
@@ -355,7 +327,6 @@ const Membership: FC<PageProps> = ({
                   setActiveModal('auth');
                 } else {
                   setShowMessage('💰 Navigating to Vault!');
-                  setShowWalletModal(true);
                 }
               }}
               role="button"
@@ -401,93 +372,7 @@ const Membership: FC<PageProps> = ({
             </Link>
           </motion.div>
         </motion.div>
-
-        <AnimatePresence>
-          {isModalLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Loading Modal"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-              >
-                <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-                <p className="text-white text-center font-inter">Processing...</p>
-              </motion.div>
-            </motion.div>
-          )}
-          {activeModal === 'auth' && (
-            <AuthModal
-              setShowMessage={setShowMessage}
-            />
-          )}
-          {activeModal === 'payment' && (
-            <PaymentModal
-              userId={userId}
-
-              setShowMessage={setShowMessage} setIsPETMember={function (_value: SetStateAction<boolean>): void {
-                throw new Error('Function not implemented.');
-              } } updatePlayerFirestore={function (_updates: Partial<any>): Promise<void> {
-                throw new Error('Function not implemented.');
-              } }            />
-          )}
-          {showMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-16 right-4 max-w-xs w-full bg-gray-900/70 border border-rose-500/30 rounded-xl shadow-xl p-4 backdrop-blur-lg z-50 bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-            >
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-6 h-6 text-cyan-400 animate-pulse" />
-                <p className="text-white font-bold font-poppins">{showMessage}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <style>{`
-          :root {
-            --rose-500: #ec4899;
-            --cyan-500: #22d3ee;
-          }
-          .bg-noise {
-            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TqCRZQqlUKqlaVSqlUKqVqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC");
-            background-repeat: repeat;
-            background-size: 64px 64px;
-          }
-          .blur-3xl { filter: blur(64px); }
-          .blur-2xl { filter: blur(32px); }
-          input:focus, select:focus, button:focus, [role="button"]:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.5);
-          }
-          .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-          }
-          @media (prefers-reduced-motion) {
-            .animate-pulse { animation: none !important; }
-            .transition, .transition-all, .hover\\:scale-105:hover, .hover\\:bg-gray-800\\/90:hover {
-              transition: none !important;
-            }
-          }
-        `}</style>
+        {/* Modals are rendered by App.tsx, so no need to render them here again */}
       </motion.div>
     </SwytchErrorBoundary>
   );

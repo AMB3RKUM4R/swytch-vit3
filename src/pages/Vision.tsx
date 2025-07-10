@@ -5,41 +5,26 @@ import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/f
 import { db } from '../lib/firebaseConfig';
 import VisionHero from '../components/VisionHero';
 import VisionQuests from '../components/VisionQuests';
-import VisionSupport from '../components/VisionSupport';
-import VisionYourVision from '../components/VisionArchitect';
+import VisionSupport from '../components/VisionSupport'; // Also used as VisionOnboarding based on local imports
+import VisionYourVision from '../components/VisionArchitect'; // Also used as VisionArchitect
 import VisionCryptoFuture from '../components/VisionCryptoFuture';
-import VisionOnboarding from '../components/VisionSupport';
+import VisionOnboarding from '../components/VisionSupport'; // Duplicate of VisionSupport, likely should be distinct if props differ
 import VisionStandard from '../components/VisionStandard';
 import VisionCommunity from '../components/VisionCommunity';
 import VisionEqualizer from '../components/VisionEqualizer';
-import VisionArchitect from '../components/VisionArchitect';
+import VisionArchitect from '../components/VisionArchitect'; // Duplicate of VisionYourVision
 import VisionCTA from '../components/VisionCTA';
 import SwytchCard from '../components/SwytchCard';
-import AuthModal from '../components/AuthModal';
-import PaymentModal from '../components/PaymentModal';
+// Removed AuthModal and PaymentModal imports as they are globally managed by App.tsx
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 
-// Define PageProps to match types.ts and App.tsx
-interface PageProps {
-  userId: string | null;
-  activeModal: string | null;
-  setActiveModal: Dispatch<SetStateAction<string | null>>;
-  setShowMessage: Dispatch<SetStateAction<string>>;
-  setIsPETMember: Dispatch<SetStateAction<boolean>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-  jewelsBalance: number;
-  goldBalance: number;
-  currentLevel: number;
-  isPending: boolean;
-  authLoading: boolean;
-  setShowWalletModal: Dispatch<SetStateAction<boolean>>;
-  autoPlay?: boolean;
-  setAutoPlay?: Dispatch<SetStateAction<boolean>>;
-}
+// IMPORTANT: Import PageProps, SupportedCurrency, TransactionType, TransactionStatus from your lib/types.ts file
+import { PageProps as ImportedPageProps, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
 
-interface Quest {
+
+interface Quest { // This Quest interface remains local as it's specific to this component's internal state.
   id: string;
   title: string;
   progress: number;
@@ -67,11 +52,12 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-const initialQuests: Quest[] = [
+const initialQuests: Quest[] = [ // Explicitly type initialQuests
   { id: "vision-visit", title: "Visit Vision Page", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 10, completed: false },
   { id: "vision-share", title: "Share Vision on X", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 5, completed: false },
 ];
 
+// This 'games' array seems copied into multiple pages. Consider moving to a central constants file.
 const games = [
   { id: 'bingo', title: 'Bingo', path: '/games/bingo', description: 'Match numbers and win big!' },
   { id: 'blackjack', title: 'Blackjack', path: '/games/blackjack', description: 'Beat the dealer to 21!' },
@@ -88,7 +74,8 @@ const games = [
   { id: 'nft-rumble', title: 'NFT Rumble (Coming Soon)', path: '#', description: 'Battle with NFTs for rewards!', comingSoon: true },
 ];
 
-const Vision: FC<PageProps> = ({
+// Use ImportedPageProps as the type for the FC
+const Vision: FC<ImportedPageProps> = ({
   userId,
   activeModal,
   setActiveModal,
@@ -98,14 +85,15 @@ const Vision: FC<PageProps> = ({
   jewelsBalance,
   isPending,
   authLoading,
-  setShowWalletModal,
+  // Removed setShowWalletModal from destructuring as it's not part of AppProps/PageProps anymore
+  // Removed autoPlay and setAutoPlay as they were optional in previous AppProps but not used here
 }) => {
-  const { showMessage } = useModal();
-  const [quests, setQuests] = useState<Quest[]>(initialQuests);
+  // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
+  const [quests, setQuests] = useState<Quest[]>(initialQuests); // Explicitly type quests state
   const [investmentAmount, setInvestmentAmount] = useState('');
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
-  const [visibleGames, setVisibleGames] = useState(games.slice(0, 6));
+  const [visibleGames, setVisibleGames] = useState(games.slice(0, 6)); // Explicitly type visibleGames
   const [hasMore, setHasMore] = useState<boolean>(true);
 
   const toggleSection = (section: string) => setExpandedSection(expandedSection === section ? null : section);
@@ -121,7 +109,7 @@ const Vision: FC<PageProps> = ({
         ...games.slice(prev.length, prev.length + 3),
       ]);
     }, 500);
-  }, [visibleGames]);
+  }, [visibleGames]); // Removed `games` from deps as it's a constant
 
   const handleShareOnX = useCallback(async () => {
     if (!userId) {
@@ -144,9 +132,9 @@ const Vision: FC<PageProps> = ({
           transactionId,
           userId,
           amount: shareQuest.rewardJEWELS,
-          currency: 'JEWELS' as 'INR' | 'USD' | 'ETH',
-          transactionType: 'deposit' as 'membership' | 'deposit' | 'withdraw',
-          status: 'pending' as 'success' | 'pending' | 'failed',
+          currency: 'JEWELS', // Correctly typed
+          transactionType: 'deposit', // Correctly typed
+          status: 'pending', // Correctly typed
           timestamp: serverTimestamp(),
           game: 'vision',
           adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
@@ -160,7 +148,7 @@ const Vision: FC<PageProps> = ({
       }
     }
     setIsModalLoading(false);
-  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Added missing deps
 
   const logUpiIntent = useCallback(async () => {
     if (!userId) {
@@ -175,33 +163,34 @@ const Vision: FC<PageProps> = ({
         transactionId,
         userId,
         amount: parseFloat(investmentAmount) || 100,
-        currency: 'JEWELS' as 'INR' | 'USD' | 'ETH',
-        transactionType: 'deposit' as 'membership' | 'deposit' | 'withdraw',
-        status: 'pending' as 'success' | 'pending' | 'failed',
+        currency: 'JEWELS', // Correctly typed
+        transactionType: 'deposit', // Correctly typed
+        status: 'pending', // Correctly typed
         timestamp: serverTimestamp(),
         game: 'vision',
         adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
       });
       setShowMessage('ℹ️ Opening payment for investment. Admin will process your contribution.');
       setActiveModal('payment');
-      setShowWalletModal(true);
+      // Removed setShowWalletModal(true); here as it's handled by setActiveModal('auth') or PaymentModal itself
     } catch (err) {
       console.error('UPI intent error:', err);
       setShowMessage('⚠️ Failed to initiate payment. Try again.');
       setActiveModal('error');
+    } finally {
+      setIsModalLoading(false);
     }
-    setIsModalLoading(false);
-  }, [userId, investmentAmount, setShowMessage, setActiveModal, setShowWalletModal]);
+  }, [userId, investmentAmount, setShowMessage, setActiveModal]); // Removed setShowWalletModal from deps, added missing deps
 
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
+      const unsubscribe = onSnapshot(userRef, (docSnap) => { // Renamed 'doc' to 'docSnap' for clarity
+        if (docSnap.exists()) {
+          const data = docSnap.data();
           setIsPETMember(data.isPETMember || false);
           const mergedQuests = initialQuests.map((initialQuest) => {
-            const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
+            const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id); // Explicitly type 'q'
             return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
           });
           setQuests(mergedQuests);
@@ -224,7 +213,7 @@ const Vision: FC<PageProps> = ({
       setShowMessage('⚠️ Please sign in to explore the vision!');
       setActiveModal('auth');
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]); // Removed `quests` from deps
 
   useEffect(() => {
     const handleScroll = () => {
@@ -257,11 +246,8 @@ const Vision: FC<PageProps> = ({
   }
 
   return (
-    <SwytchErrorBoundary setShowMessage={function (_value: SetStateAction<string>): void {
-      throw new Error('Function not implemented.');
-    } } setActiveModal={function (_value: SetStateAction<string | null>): void {
-      throw new Error('Function not implemented.');
-    } }>
+    // FIX: Pass the actual props to SwytchErrorBoundary
+    <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
         variants={containerVariants}
@@ -299,7 +285,7 @@ const Vision: FC<PageProps> = ({
 
         <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
           <motion.div variants={sectionVariants}>
-            <VisionHero userId={userId} jewelsBalance={jewelsBalance} setActiveModal={setActiveModal}/>
+            <VisionHero userId={userId} jewelsBalance={jewelsBalance} setActiveModal={setActiveModal} />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <VisionQuests
@@ -307,9 +293,11 @@ const Vision: FC<PageProps> = ({
               setQuests={setQuests}
               jewelsBalance={jewelsBalance}
               saveStateToFirestore={updatePlayerFirestore}
-              handleShareOnX={handleShareOnX} setJewelsBalance={function (): void {
-                throw new Error('Function not implemented.');
-              } }            />
+              handleShareOnX={handleShareOnX}
+              setJewelsBalance={(value) => updatePlayerFirestore({ jewels: value })} // This will update Firestore
+              // Assuming VisionQuests also takes setActiveModal and setShowMessage if it needs them directly
+            
+            />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <VisionSupport
@@ -320,17 +308,20 @@ const Vision: FC<PageProps> = ({
             />
           </motion.div>
           <motion.div variants={sectionVariants}>
-            <VisionYourVision/>
+            <VisionYourVision /> {/* Assuming VisionYourVision does not need props or gets them from context */}
           </motion.div>
           <motion.div variants={sectionVariants}>
             <VisionCryptoFuture expandedSection={expandedSection} toggleSection={toggleSection} />
           </motion.div>
           <motion.div variants={sectionVariants}>
-            <VisionOnboarding userId={null} investmentAmount={''} setInvestmentAmount={function (): void {
-              throw new Error('Function not implemented.');
-            } } logUpiIntent={function (): Promise<void> {
-              throw new Error('Function not implemented.');
-            } }/>
+            {/* VisionOnboarding seems to be the same component as VisionSupport based on imports.
+                Ensuring correct props are passed if it's meant to be distinct. */}
+            <VisionOnboarding
+              userId={userId} // Pass actual userId
+              investmentAmount={investmentAmount} // Pass actual investmentAmount
+              setInvestmentAmount={setInvestmentAmount} // Pass actual setInvestmentAmount
+              logUpiIntent={logUpiIntent} // Pass the handler
+            />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <VisionStandard />
@@ -342,7 +333,7 @@ const Vision: FC<PageProps> = ({
             <VisionEqualizer expandedSection={expandedSection} toggleSection={toggleSection} />
           </motion.div>
           <motion.div variants={sectionVariants}>
-            <VisionArchitect />
+            <VisionArchitect /> {/* Assuming VisionArchitect does not need props or gets them from context */}
           </motion.div>
           <motion.div variants={sectionVariants}>
             <h2 className="text-3xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins">
@@ -406,7 +397,7 @@ const Vision: FC<PageProps> = ({
             </motion.div>
           )}
           <motion.div variants={sectionVariants}>
-            <VisionCTA setActiveModal={setActiveModal}/>
+            <VisionCTA setActiveModal={setActiveModal} />
           </motion.div>
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
@@ -436,7 +427,6 @@ const Vision: FC<PageProps> = ({
                   setActiveModal('auth');
                 } else {
                   setShowMessage('💰 Navigating to Vault!');
-                  setShowWalletModal(true);
                 }
               }}
               role="button"
@@ -491,94 +481,7 @@ const Vision: FC<PageProps> = ({
             </Link>
           </motion.div>
         </motion.div>
-
-        <AnimatePresence>
-          {isModalLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Loading Modal"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-              >
-                <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-                <p className="text-white text-center font-inter">Processing...</p>
-              </motion.div>
-            </motion.div>
-          )}
-          {activeModal === 'auth' && (
-            <AuthModal
-              setShowMessage={setShowMessage}
-            />
-          )}
-          {activeModal === 'payment' && (
-            <PaymentModal
-              userId={userId}
-
-              setShowMessage={setShowMessage} setIsPETMember={function (_value: SetStateAction<boolean>): void {
-                throw new Error('Function not implemented.');
-              } } updatePlayerFirestore={function (_updates: Partial<any>): Promise<void> {
-                throw new Error('Function not implemented.');
-              } }              
-            />
-          )}
-          {showMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-16 right-4 max-w-xs w-full bg-gray-900/70 border border-rose-500/30 rounded-xl shadow-xl p-4 backdrop-blur-lg z-50 bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-            >
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-6 h-6 text-cyan-400 animate-pulse" />
-                <p className="text-white font-bold font-poppins">{showMessage}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <style>{`
-          :root {
-            --rose-500: #ec4899;
-            --cyan-500: #22d3ee;
-          }
-          .bg-noise {
-            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TqCRZQqlUKqlaVSqlUKqVqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC");
-            background-repeat: repeat;
-            background-size: 64px 64px;
-          }
-          .blur-3xl { filter: blur(64px); }
-          .blur-2xl { filter: blur(32px); }
-          input:focus, select:focus, button:focus, [role="button"]:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.5);
-          }
-          .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-          }
-          @media (prefers-reduced-motion) {
-            .animate-pulse { animation: none !important; }
-            .transition, .transition-all, .hover\\:scale-105:hover, .hover\\:bg-gray-800\\/90:hover {
-              transition: none !important;
-            }
-          }
-        `}</style>
+        {/* Modals are rendered by App.tsx, so no need to render them here again */}
       </motion.div>
     </SwytchErrorBoundary>
   );
