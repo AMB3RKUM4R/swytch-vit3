@@ -960,8 +960,7 @@ const RocketCrashGame: React.FC<RocketCrashGameProps> = ({ userId, setIsPETMembe
             <PaymentModal
               userId={effectiveUserId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
+             
             />
           )}
           {activeModal === "error" && (

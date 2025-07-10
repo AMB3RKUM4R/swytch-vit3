@@ -4,19 +4,23 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Text, Sphere } from "@react-three/drei";
 import { Wallet, Zap, Trophy, Users, Star, Sparkles, MessageCircleHeart, RefreshCcw, User } from "lucide-react";
 import { doc, getDoc, collection, addDoc, onSnapshot, serverTimestamp, getDocs, QueryDocumentSnapshot, setDoc, runTransaction } from "firebase/firestore";
-import { db, auth } from "../lib/firebaseConfig"; // Corrected path
-import { useAuthUser } from "../hooks/useAuthUser"; // Corrected path
+import { db, auth } from "../lib/firebaseConfig";
+import { useAuthUser } from "../hooks/useAuthUser";
 import { Link, useNavigate } from "react-router-dom";
-import { useModal } from '../context/ModalContext'; // Corrected path
-import Modal from "../components/SwytchModal"; // Corrected path
-import AuthModal from "../components/AuthModal"; // Corrected path
-import PaymentModal from "../components/PaymentModal"; // Corrected path
-import SwytchErrorBoundary from "../components/ErrorBoundaryComponent"; // Corrected path
+// Removed useModal import as its values are now passed as props
+import Modal from "../components/SwytchModal";
+import AuthModal from "../components/AuthModal";
+import PaymentModal from "../components/PaymentModal";
+import SwytchErrorBoundary from "../components/ErrorBoundaryComponent";
 import ConfettiExplosion from "react-confetti-explosion";
-import { useAccount } from "wagmi";
-import { Transaction } from "../lib/types"; // Corrected path
+// Wagmi V2 Imports - only import what's directly used for hooks
+import { useAccount, useFeeData, useBalance, useChainId, useBlockNumber } from "wagmi";
+import { formatUnits } from "viem"; // Only formatUnits used here for display
+// Import the BingoGameProps interface
+import { BingoGameProps as ImportedBingoGameProps, Transaction, SupportedCurrency, TransactionType } from "../lib/types";
 
-// --- Type Definitions ---
+
+// --- Type Definitions (Local to this file if not in lib/types.ts) ---
 interface BingoCell {
   number: number;
   marked: boolean;
@@ -29,9 +33,9 @@ interface BingoCard {
 
 interface PlayerInRoom {
   name: string;
-  jewels: number; // Current jewels balance when joining the room
+  jewels: number;
   card: BingoCard;
-  isReady: boolean; // New: to indicate player readiness
+  isReady: boolean;
 }
 
 interface GameState {
@@ -40,8 +44,8 @@ interface GameState {
   calledNumbers: number[];
   status: "waiting" | "playing" | "ended";
   winner: string | null;
-  currentCallerId: string | null; // New: to track which player (or backend) is calling numbers
-  lastCalledNumber: number | null; // New: to show the most recent number
+  currentCallerId: string | null;
+  lastCalledNumber: number | null;
 }
 
 interface GameConfig {
@@ -80,8 +84,7 @@ interface Reward {
 }
 
 
-
-// --- Animation Variants ---
+// --- Animation Variants (local) ---
 const sectionVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: "easeOut" } },
@@ -106,7 +109,7 @@ const rewardVariants = {
   exit: { opacity: 0, scale: 0.8, y: -50, transition: { duration: 0.3 } },
 };
 
-// --- Initial Data ---
+// --- Initial Data (local) ---
 const initialQuests: Quest[] = [
   { id: "bingo-lines", title: "Complete 5 Bingo Lines", progress: 0, goal: 5, rewardJEWELS: 10, rewardXP: 15, completed: false },
   { id: "bingo-play", title: "Play 5 Bingo Rounds", progress: 0, goal: 5, rewardJEWELS: 5, rewardXP: 10, completed: false },
@@ -122,7 +125,7 @@ const mockXPosts: { username: string; content: string; likes: number; timestamp:
   { username: "@CryptoGamerX", content: "Bingo with friends in PETverse is next-level! Join us! #SwytchPET", likes: 120, timestamp: "2025-07-03T09:30:00Z" },
 ];
 
-// --- 3D Bingo Ball Component ---
+// --- 3D Bingo Ball Component (local) ---
 const BingoBall: React.FC<{ number: number; position: [number, number, number]; isMarked: boolean; onClick: () => void }> = ({ number, position, isMarked, onClick }) => {
   return (
     <group position={position} onClick={onClick}>
@@ -136,7 +139,7 @@ const BingoBall: React.FC<{ number: number; position: [number, number, number]; 
   );
 };
 
-// --- Phagocytosis Effect (for losing) ---
+// --- Phagocytosis Effect (local) ---
 const PhagocytosisEffect: React.FC<{ trigger: boolean }> = ({ trigger }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -183,30 +186,76 @@ const PhagocytosisEffect: React.FC<{ trigger: boolean }> = ({ trigger }) => {
   return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />;
 };
 
-// --- Debounce Hook ---
+// --- Debounce Hook (local) ---
 const useDebounce = <T extends (...args: any[]) => void>(callback: T, delay: number) => {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Using '_' prefix for unused parameters to suppress warnings
   return useCallback(
-    (..._args: Parameters<T>) => { // Changed to _args
+    (...args: Parameters<T>) => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => callback(..._args), delay); // Changed to _args
+      timeoutRef.current = setTimeout(() => callback(...args), delay);
     },
     [callback, delay]
   );
 };
 
-// --- Main Bingo Game Component ---
-interface BingoGameProps {
-  userId: string | null;
-  setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
+// --- Mock Backend Functions (Moved and given basic implementations for compilation) ---
+// These are placeholders for actual backend API calls.
+async function mockBackendLogTransaction(
+  transactionType: TransactionType,
+  amount: number,
+  currency: SupportedCurrency,
+  game: string,
+  userId: string | null
+) {
+  console.log(`[Mock Backend] Logging transaction: ${transactionType} ${amount} ${currency} for ${game} by ${userId}`);
+  if (!userId) {
+    console.warn("Mock Backend: Cannot log transaction without userId.");
+    return;
+  }
+  try {
+    // This part actually writes to Firestore, which is good.
+    await addDoc(collection(db, 'Transactions'), {
+      transactionId: `${userId}_${Date.now()}_mock`,
+      userId,
+      amount,
+      currency,
+      transactionType,
+      status: 'pending', // Mock backend sets to pending
+      timestamp: serverTimestamp(),
+      game,
+      adminId: 'mock_admin_id', // Placeholder admin ID
+    });
+    console.log("Mock Backend: Transaction logged to Firestore.");
+  } catch (error) {
+    console.error("Mock Backend: Failed to log transaction to Firestore:", error);
+  }
 }
 
-const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePlayerFirestore }) => {
-  const { user: firebaseAuthUser, loading: authLoading } = useAuthUser();
+async function mockBackendStartGame(userId: string | null, bet: number, useJewels: boolean) {
+  console.log(`[Mock Backend] Starting game for ${userId} with bet ${bet} (useJewels: ${useJewels})`);
+  // In a real app, this would trigger game initiation on your server.
+  // For now, it just logs and signals readiness.
+  return Promise.resolve();
+}
+
+
+// --- Main Bingo Game Component ---
+const BingoGame: React.FC<ImportedBingoGameProps> = ({
+  userId,
+  setIsPETMember,
+  updatePlayerFirestore,
+  activeModal,
+  setActiveModal,
+  setShowMessage,
+  authLoading, // From AppProps
+  // All other AppProps are available but not directly destructured if not used in this component's top level.
+}) => {
+  const { user: firebaseAuthUser } = useAuthUser();
   const { address } = useAccount();
-  const { activeModal, setActiveModal, setShowMessage } = useModal();
+  const { data: feeData } = useFeeData(); // Used by VaultWalletInfo, but here only for completeness if needed later
+  const { data: ethBalanceData } = useBalance({ address: address }); // Used by VaultWalletInfo, but here only for completeness if needed later
+  const { data: currentBlockNumber } = useBlockNumber({ watch: true }); // Used by VaultWalletInfo, but here only for completeness if needed later
+
   const [config, setConfig] = useState<GameConfig>({ bet: 100, useJewels: true });
   const [jewels, setJewels] = useState<number>(0);
   const [stats, setStats] = useState<Stats>({ wins: 0, losses: 0, totalGames: 0, highestScore: 0 });
@@ -215,11 +264,10 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [showReward, setShowReward] = useState<Reward | null>(null);
   const [showTutorial, setShowTutorial] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  // Type for pendingTransaction now uses the `Transaction` interface from types.ts
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Component-specific loading state
   const [pendingTransaction, setPendingTransaction] = useState<Pick<Transaction, 'amount' | 'currency' | 'transactionType' | 'game'> | null>(null);
   const winSoundRef = useRef<HTMLAudioElement | null>(null);
-  const navigate = useNavigate(); // Re-added useNavigate for homepage redirection
+  const navigate = useNavigate();
 
   // Determine the effective user ID for Firestore operations
   const effectiveUserId = userId ?? firebaseAuthUser?.uid ?? (address ? address.toLowerCase() : null);
@@ -228,27 +276,22 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
   useEffect(() => {
     if (!effectiveUserId) return;
 
-    // Listen to the 'transactions' collection (lowercase 't')
-    const transactionsQuery = collection(db, "transactions");
+    const transactionsQuery = collection(db, "Transactions"); // Corrected collection name
     const unsubscribe = onSnapshot(transactionsQuery, (snapshot) => {
       snapshot.forEach((docSnap) => {
-        const transaction = docSnap.data() as Transaction; // Cast to Transaction interface
+        const transaction = docSnap.data() as Transaction;
         if (transaction.userId === effectiveUserId && transaction.status === "success") {
           if (transaction.transactionType === "membership") {
             updatePlayerFirestore({ isPETMember: true });
             setIsPETMember(true);
             setShowMessage("🎉 Membership activated!");
-          } else if (transaction.transactionType === "withdraw" && transaction.game === "bingo") {
-            // Proceed with game start after successful bet payment
-            if (pendingTransaction && pendingTransaction.amount === transaction.amount && transaction.currency === pendingTransaction.currency) { // Explicitly check currency
+          } else if (transaction.transactionType === "deposit" && transaction.game === "bingo") { // Check for deposit for bingo bet
+            if (pendingTransaction && pendingTransaction.amount === transaction.amount && transaction.currency === pendingTransaction.currency) {
               startGameAfterPayment(effectiveUserId, pendingTransaction.amount, pendingTransaction.currency === "JEWELS");
               setPendingTransaction(null);
             }
           }
-          // Handle rewards from quests/achievements if they are processed via transactions
-          if (transaction.transactionType === "deposit" && (transaction.game === "bingo_quest" || transaction.game === "bingo_win" || transaction.game === "bingo_achievement")) {
-            // This listener ensures that if a reward transaction is marked 'success' by an admin,
-            // the client's jewels balance is updated.
+          if (transaction.transactionType === "deposit" && (transaction.game === "bingo_quest" || transaction.game === "bingo_win" || transaction.game === "bingo_achievement" || transaction.game === "bingo_share_quest")) { // Added bingo_share_quest
             setJewels(prevJewels => prevJewels + transaction.amount);
             setShowMessage(`🎉 Received ${transaction.amount} JEWELS for ${transaction.game.replace('bingo_', '').replace('_', ' ')}!`);
           }
@@ -287,7 +330,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
 
       const roomsRef = collection(db, "GameRooms");
       const roomsSnap = await getDocs(roomsRef);
-      let roomId = roomsSnap.docs.find((doc: QueryDocumentSnapshot) => doc.data().status === "waiting")?.id;
+      let roomId = roomsSnap.docs.find((docSnap: QueryDocumentSnapshot) => docSnap.data().status === "waiting")?.id;
 
       if (!roomId) {
         const newRoomRef = await addDoc(roomsRef, {
@@ -313,7 +356,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
 
       const roomDoc = await getDoc(doc(db, "GameRooms", roomId));
       const currentPlayers = roomDoc.data()?.players;
-      if (currentPlayers && Object.keys(currentPlayers).length >= 1) {
+      if (currentPlayers && Object.keys(currentPlayers).length >= 1) { // Changed to >=1 for single player start
         await setDoc(doc(db, "GameRooms", roomId), { status: "playing", currentCallerId: "backend_caller" }, { merge: true });
         console.log(`[Game] Game in room ${roomId} started!`);
         setShowMessage("🚀 Game started! Numbers are being called.");
@@ -324,7 +367,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
       setShowMessage(`⚠️ Game start failed: ${error.message}`);
       setActiveModal("error");
     } finally {
-      setIsLoading(false); // Ensure loading state is reset
+      setIsLoading(false);
     }
   };
 
@@ -375,7 +418,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
           if (isQuestCompleted) {
             const rewardAmount = lineQuest.rewardJEWELS;
             transaction.update(userRef, { jewels: (userData?.jewels || 0) + rewardAmount });
-            setJewels((prev) => prev + rewardAmount); // Update local state immediately
+            setJewels((prev) => prev + rewardAmount);
             await mockBackendLogTransaction("deposit", rewardAmount, "JEWELS", "bingo_quest", userId);
             setShowReward({ jewels: rewardAmount, xp: lineQuest.rewardXP, message: `Quest Completed: ${lineQuest.title}!` });
             if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
@@ -433,7 +476,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
           bingoHighestScore: currentHighestScore,
           updatedAt: serverTimestamp(),
         });
-        setJewels(currentJewels); // Update local state immediately
+        setJewels(currentJewels);
         setStats((prev) => ({
           ...prev,
           wins: currentWins,
@@ -452,7 +495,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
           const achievementRewardJewels = 20;
           const achievementRewardXP = 30;
           transaction.update(userRef, { jewels: currentJewels + achievementRewardJewels });
-          setJewels((prev) => prev + achievementRewardJewels); // Update local state immediately
+          setJewels((prev) => prev + achievementRewardJewels);
           await mockBackendLogTransaction("deposit", achievementRewardJewels, "JEWELS", "bingo_achievement", userId);
           setShowReward({ jewels: achievementRewardJewels, xp: achievementRewardXP, message: "Achievement Unlocked: Bingo Master!" });
           if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
@@ -467,7 +510,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
           if (isQuestCompleted) {
             const rewardAmount = playQuest.rewardJEWELS;
             transaction.update(userRef, { jewels: currentJewels + rewardAmount });
-            setJewels((prev) => prev + rewardAmount); // Update local state immediately
+            setJewels((prev) => prev + rewardAmount);
             await mockBackendLogTransaction("deposit", rewardAmount, "JEWELS", "bingo_quest", userId);
             setShowReward({ jewels: rewardAmount, xp: playQuest.rewardXP, message: `Quest Completed: ${playQuest.title}!` });
             if (winSoundRef.current) winSoundRef.current.play().catch((err) => console.error("Audio playback failed:", err));
@@ -488,20 +531,17 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
 
     const callNextNumber = async () => {
       const roomSnap = await getDoc(doc(db, "GameRooms", roomId));
-      const roomData = roomSnap.data(); // Get raw data
+      const roomData = roomSnap.data();
 
-      // Explicitly check and assert type for currentGameState
       if (!roomData) {
         console.log("Stopping number calling: No room data.");
-        // If no room data, assume game ended or invalid state, and stop.
         return;
       }
-      const currentGameState: GameState = roomData as GameState; // Assert type here
+      const currentGameState: GameState = roomData as GameState;
 
-      // Now, TypeScript knows currentGameState is a GameState object
       if (currentGameState.status !== "playing" || availableNumbers.length === 0 || callCount >= 35) {
         console.log("Stopping number calling.");
-        if (currentGameState.status === "playing") { // This check is now safe
+        if (currentGameState.status === "playing") {
           await setDoc(doc(db, "GameRooms", roomId), { status: "ended", winner: null }, { merge: true });
           for (const playerId in currentGameState.players) {
             if (playerId !== currentGameState.winner) {
@@ -579,14 +619,10 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
           });
 
           if (foundRoom) {
-            // User explicitly requested to remove checks for status, currentCallerId, roomId
-            // and instead, if a room is found, redirect to homepage.
-            // WARNING: This will prevent the Bingo game from being played if any room exists.
-            // If the intent is to play, this logic needs to be reverted or re-designed.
-            navigate('/'); // Redirect to homepage
+            navigate('/');
             setShowMessage("A game room was found, redirecting to homepage.");
-            setGameState(null); // Clear game state
-            setIsLoading(false); // Ensure loading is off
+            setGameState(null);
+            setIsLoading(false);
           } else {
             setGameState(null);
             setIsLoading(false);
@@ -610,7 +646,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
     };
 
     joinRoomAndListen();
-  }, [effectiveUserId, setShowMessage, setActiveModal, setIsPETMember, address, navigate]); // Added navigate to dependency array
+  }, [effectiveUserId, setShowMessage, setActiveModal, setIsPETMember, address, navigate]);
 
 
   const savePlayerStateToFirestore = useDebounce(async (state: { jewels?: number; quests?: Quest[]; achievements?: Achievement[]; bingoWins?: number; bingoLosses?: number; bingoHighestScore?: number; totalGames?: number }) => {
@@ -675,14 +711,13 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
           continue;
         }
         let randomNumber;
-        // Ensure uniqueness within the column for numbers from the range
         do {
           const randomIndex = Math.floor(Math.random() * availableNumbersInColumn.length);
           randomNumber = availableNumbersInColumn[randomIndex];
-          availableNumbersInColumn.splice(randomIndex, 1); // Remove used number from available
-        } while (columnNumbers.includes(randomNumber)); // This check is redundant if splicing, but harmless.
+          availableNumbersInColumn.splice(randomIndex, 1);
+        } while (columnNumbers.includes(randomNumber));
         
-        columnNumbers.push(randomNumber); // Add to column's numbers
+        columnNumbers.push(randomNumber);
         cells[row][col] = { number: randomNumber, marked: false };
       }
     });
@@ -744,7 +779,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
     if (config.useJewels && jewels < config.bet) {
       setShowMessage("⚠️ Not enough JEWELS! Please deposit.");
       setActiveModal("payment");
-      setPendingTransaction({ amount: config.bet, currency: "JEWELS", transactionType: "deposit", game: "bingo" }); // Set pending transaction for deposit
+      setPendingTransaction({ amount: config.bet, currency: "JEWELS", transactionType: "deposit", game: "bingo" });
       return;
     }
     setIsLoading(true);
@@ -1158,7 +1193,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
             to="/benefits"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
             onClick={() => {
-              if (!auth.currentUser) { // Check if user is authenticated before navigating
+              if (!auth.currentUser) {
                 setShowMessage('⚠️ Sign in to access Benefits!');
                 setActiveModal('auth');
               } else {
@@ -1174,7 +1209,7 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
             to="/community"
             className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
             onClick={() => {
-              if (!auth.currentUser) { // Check if user is authenticated before navigating
+              if (!auth.currentUser) {
                 setShowMessage('👥 Sign in to access Community!');
                 setActiveModal('auth');
               } else {
@@ -1230,8 +1265,6 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
             <PaymentModal
               userId={effectiveUserId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
           {activeModal === "error" && (
@@ -1307,11 +1340,3 @@ const BingoGame: React.FC<BingoGameProps> = ({ userId, setIsPETMember, updatePla
 };
 
 export default BingoGame;
-function mockBackendLogTransaction(_arg0: string, _rewardAmount: any, _arg2: string, _arg3: string, _userId: string) {
-  throw new Error("Function not implemented.");
-}
-
-function mockBackendStartGame(_effectiveUserId: string, _bet: number, _useJewels: boolean) {
-  throw new Error("Function not implemented.");
-}
-

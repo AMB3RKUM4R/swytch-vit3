@@ -933,8 +933,7 @@ const ScratchCardsGame: React.FC<ScratchCardsGameProps> = ({ userId, setIsPETMem
             <PaymentModal
               userId={effectiveUserId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
+              
             />
           )}
           {activeModal === "error" && (

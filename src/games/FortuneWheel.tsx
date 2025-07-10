@@ -930,8 +930,6 @@ const FortuneWheel: React.FC<FortuneWheelProps> = ({ userId, setIsPETMember, upd
             <PaymentModal
               userId={effectiveUserId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
           {activeModal === "error" && (

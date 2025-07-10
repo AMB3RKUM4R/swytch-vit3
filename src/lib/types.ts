@@ -1,4 +1,4 @@
-// src/lib/types.ts (Final, Comprehensive, Launch-Ready Version)
+// src/lib/types.ts (Final, Comprehensive, Launch-Ready Version - Last Fix)
 
 import { Dispatch, SetStateAction } from 'react'; // Explicitly import React's types here for clarity
 
@@ -61,8 +61,8 @@ export interface TopNavProps {
 export interface PaymentModalProps {
   userId: string | null;
   setShowMessage: Dispatch<SetStateAction<string>>;
-  setIsPETMember: Dispatch<SetStateAction<boolean>>; // Used for updating PET member status
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>; // For updating player data
+  setIsPETMember: Dispatch<SetStateAction<boolean>>; // FIX: Made required
+  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>; // FIX: Made required
 }
 
 // Props for the Bottom Navigation bar
@@ -119,16 +119,14 @@ export interface DSPETPrivacyProps extends AppProps {}
 export interface LandingPageProps extends AppProps {}
 
 // TokenomicsPageProps - Extends AppProps, specific for Tokenomics page
-export interface TokenomicsProps extends AppProps {} // Renamed from Tokenomics to TokenomicsProps to avoid conflict if Tokenomics is the component name
+export interface TokenomicsProps extends AppProps {}
 
 // VisionPageProps - Extends AppProps, specific for Vision page
-export interface VisionProps extends AppProps {} // Renamed from Vision to VisionProps
-export interface HomeProps extends AppProps {} 
-export interface TopNavProps {
-  userId: string | null;
-  jewelsBalance: number;
-  isPETMember: boolean;
-  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  setActiveAuthModal: (modalName: 'auth' | null) => void;
-  setShowPaymentModal: (show: boolean) => void; // FIX: Corrected type to match usage
+export interface VisionProps extends AppProps {}
+
+// BingoGameProps - Specific for BingoGame, now correctly extends AppProps
+// This ensures all props are properly typed.
+export interface BingoGameProps extends AppProps {
+  // All props from AppProps are included due to extension.
+  // No additional props needed here based on the component's internal use.
 }

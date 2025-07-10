@@ -1024,8 +1024,6 @@ const CaribbeanStudGame: React.FC<CaribbeanStudGameProps> = ({ userId, setIsPETM
             <PaymentModal
               userId={effectiveUserId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
           {activeModal === "error" && (

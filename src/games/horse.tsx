@@ -1167,8 +1167,6 @@ const HorseRacing: React.FC<HorseRacingProps> = ({ userId, setIsPETMember, updat
             <PaymentModal
               userId={effectiveUserId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
           {activeModal === "error" && (

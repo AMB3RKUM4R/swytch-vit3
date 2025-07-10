@@ -1176,8 +1176,6 @@ const SolitaireGame: React.FC<SolitaireGameProps> = ({ userId, setIsPETMember, u
             <PaymentModal
               userId={effectiveUserId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
           {activeModal === "error" && (

@@ -599,8 +599,6 @@ const RedDogGame: React.FC<RedDogGameProps> = ({ userId, activeModal, setActiveM
             <PaymentModal
               userId={userId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
           {activeModal === "error" && (

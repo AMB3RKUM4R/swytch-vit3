@@ -1133,8 +1133,6 @@ function shareWinOnX(_event: React.MouseEvent<HTMLButtonElement>): void {
             <PaymentModal
               userId={effectiveUserId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
           {activeModal === "error" && (

@@ -1009,8 +1009,6 @@ const BridgeGame: React.FC<BridgeGameProps> = ({ userId, setIsPETMember, updateP
             <PaymentModal
               userId={effectiveUserId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
           {activeModal === "error" && (

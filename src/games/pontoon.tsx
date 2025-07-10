@@ -1175,8 +1175,6 @@ const PontoonGame: React.FC<PontoonGameProps> = ({ userId, setIsPETMember, updat
             <PaymentModal
               userId={effectiveUserId}
               setShowMessage={setShowMessage}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
             />
           )}
           {activeModal === "error" && (
