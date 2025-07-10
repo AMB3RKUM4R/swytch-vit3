@@ -14,8 +14,7 @@ import PaymentModal from "../components/PaymentModal";
 import SwytchErrorBoundary from "../components/ErrorBoundaryComponent";
 import ConfettiExplosion from "react-confetti-explosion";
 // Wagmi V2 Imports - only import what's directly used for hooks
-import { useAccount, useFeeData, useBalance, useChainId, useBlockNumber } from "wagmi";
-import { formatUnits } from "viem"; // Only formatUnits used here for display
+import { useAccount, useFeeData, useBalance, useBlockNumber } from "wagmi";
 // Import the BingoGameProps interface
 import { BingoGameProps as ImportedBingoGameProps, Transaction, SupportedCurrency, TransactionType } from "../lib/types";
 
@@ -252,9 +251,9 @@ const BingoGame: React.FC<ImportedBingoGameProps> = ({
 }) => {
   const { user: firebaseAuthUser } = useAuthUser();
   const { address } = useAccount();
-  const { data: feeData } = useFeeData(); // Used by VaultWalletInfo, but here only for completeness if needed later
-  const { data: ethBalanceData } = useBalance({ address: address }); // Used by VaultWalletInfo, but here only for completeness if needed later
-  const { data: currentBlockNumber } = useBlockNumber({ watch: true }); // Used by VaultWalletInfo, but here only for completeness if needed later
+  useFeeData(); // Used by VaultWalletInfo, but here only for completeness if needed later
+  useBalance({ address: address }); // Used by VaultWalletInfo, but here only for completeness if needed later
+  useBlockNumber({ watch: true }); // Used by VaultWalletInfo, but here only for completeness if needed later
 
   const [config, setConfig] = useState<GameConfig>({ bet: 100, useJewels: true });
   const [jewels, setJewels] = useState<number>(0);

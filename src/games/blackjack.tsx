@@ -186,7 +186,7 @@ interface BlackjackGameProps {
   updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
 }
 
-const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember, updatePlayerFirestore }) => {
+const BlackjackGame: React.FC<BlackjackGameProps> = ({ userId, setIsPETMember }) => {
   const { user: firebaseAuthUser, loading: authLoading } = useAuthUser();
   const { address } = useAccount();
   const { activeModal, setActiveModal, setShowMessage } = useModal();

@@ -1,4 +1,4 @@
-import { FC, useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
+import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
@@ -16,10 +16,9 @@ import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
 // Wagmi V2 Imports
 import { useAccount, useFeeData, useBalance, useChainId, useBlockNumber } from 'wagmi'; // Added useBlockNumber
-import { formatEther, formatUnits } from 'viem'; // For formatting balances
 
 // IMPORTANT: Import PageProps, SupportedCurrency, TransactionType, TransactionStatus from your lib/types.ts file
-import { PageProps as ImportedPageProps, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
+import { PageProps as ImportedPageProps } from '../lib/types';
 
 
 const containerVariants = {
@@ -60,7 +59,6 @@ const games = [
 // Use ImportedPageProps as the type for the FC
 export const Vault: FC<ImportedPageProps> = ({
   userId,
-  activeModal,
   setActiveModal,
   setShowMessage,
   setIsPETMember,
@@ -68,11 +66,8 @@ export const Vault: FC<ImportedPageProps> = ({
   jewelsBalance,
   isPending,
   authLoading,
-  goldBalance,
-  currentLevel,
-  mousePosition,
 }) => {
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [, setIsModalLoading] = useState<boolean>(false);
   const [visibleGames, setVisibleGames] = useState(games.slice(0, 6));
   const [hasMore, setHasMore] = useState<boolean>(true);
 
@@ -80,7 +75,7 @@ export const Vault: FC<ImportedPageProps> = ({
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { data: feeData } = useFeeData();
-  const { data: ethBalanceData } = useBalance({ address: address });
+  useBalance({ address: address });
   const { data: currentBlockNumber } = useBlockNumber({ watch: true }); // FIX: Get current block number
 
   const usdtBalance = { value: BigInt(0), decimals: 18, formatted: '0.00' }; // Placeholder for USDT balance; integrate actual data if needed

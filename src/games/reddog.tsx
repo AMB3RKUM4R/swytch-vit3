@@ -123,7 +123,7 @@ interface RedDogGameProps {
   updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
 }
 
-const RedDogGame: React.FC<RedDogGameProps> = ({ userId, activeModal, setActiveModal, setShowMessage, setIsPETMember, updatePlayerFirestore }) => {
+const RedDogGame: React.FC<RedDogGameProps> = ({ userId, activeModal, setActiveModal, setShowMessage, updatePlayerFirestore }) => {
   const { user: firebaseAuthUser, loading: authLoading } = useAuthUser();
   const { address } = useAccount();
   // activeModal, setActiveModal, setShowMessage are already destructured from props
