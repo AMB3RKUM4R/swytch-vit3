@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
-import BenefitsHero from '../components/BenefitsHero';
 import BenefitsQuests from '../components/BenefitsQuests';
 import BenefitsGrid from '../components/BenefitsGrid';
 import BenefitsEcosphere from '../components/BenefitsEcosphere';
@@ -167,14 +166,7 @@ const Benefits: FC<ImportedBenefitsProps> = ({
         </motion.div>
 
         <motion.div className="relative z-10 max-w-6xl mx-auto">
-          <motion.div variants={sectionVariants}>
-            <BenefitsHero
-              userId={userId}
-              jewelsBalance={jewelsBalance}
-              setActiveModal={setActiveModal}
-              setShowMessage={setShowMessage}
-            />
-          </motion.div>
+        
           <motion.div variants={sectionVariants}>
             <BenefitsQuests
               userId={userId}
