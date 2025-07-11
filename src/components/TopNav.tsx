@@ -40,7 +40,7 @@ const TopNav: FC<ImportedTopNavProps> = ({
       {/* Logo / Brand Name with Sparkles icon */}
       <div className="flex items-center gap-4">
         <Sparkles className="text-primary w-6 h-6 animate-pulse" aria-hidden="true" />
-        <span className="text-xl font-bold text-foreground">Your Project Name</span>
+        <span className="text-xl font-bold text-foreground">SWYTCH</span>
       </div>
 
       {/* Right side: User Status, Auth/Wallet Button, Payment Button, Theme Toggle */}
