@@ -1,73 +1,90 @@
 import { motion } from 'framer-motion';
 import { User, Users, Award, DollarSign } from 'lucide-react';
-import { useModal } from '@/context/ModalContext';
-import { useAccount } from 'wagmi';
+// Removed: import { useModal } from '@/context/ModalContext'; // Not needed as setActiveModal/setShowMessage are passed as props
+import { useAccount } from 'wagmi'; // Added useNetwork for 'chain'
 import { useState, useEffect } from 'react';
-import { auth } from '@/lib/firebaseConfig'; // Firebase auth import
 
-interface AccountActionsProps {
-  userId: string | null;
-  referralViews: number;
-  setReferralViews: React.Dispatch<React.SetStateAction<number>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-}
+// IMPORTANT: Import AccountActionsProps from types.ts
+import { AccountActionsProps as ImportedAccountActionsProps } from '@/lib/types';
 
-const AccountActions: React.FC<AccountActionsProps> = ({ userId, referralViews, setReferralViews, updatePlayerFirestore }) => {
-  const { setActiveModal, setShowMessage } = useModal();
-  const { chain, address } = useAccount();
+
+const AccountActions: React.FC<ImportedAccountActionsProps> = ({
+  userId,
+  referralViews,
+  setReferralViews,
+  updatePlayerFirestore,
+  // Props received from parent (AppContent/App/Page component)
+  setActiveModal,
+  setShowMessage,
+}) => {
+  // Removed: const { setActiveModal, setShowMessage } = useModal(); // Redundant as props are passed
+  const { chain, address } = useAccount(); // Use chain from useNetwork
   const [activePETs, setActivePETs] = useState(0); // Dynamic PET count
 
   // Update activePETs based on user actions or Firestore data
   useEffect(() => {
     const fetchPETs = async () => {
-      if (userId && auth.currentUser) {
+      // Use userId directly as it's the effective user ID for Firestore operations
+      if (userId) {
         // Mock fetch: Assume Firestore stores activePETs or calculate based on referrals/deposits
+        // This is a client-side mock for now; in a real app, you might fetch initial activePETs from Firestore
+        // and then update it based on referralViews milestone here.
         const petCount = referralViews >= 5 ? 2 : 1; // Example: 2 PETs for 5+ referrals
         setActivePETs(petCount);
+        // Only update Firestore if it's different to avoid unnecessary writes
         await updatePlayerFirestore({ activePETs: petCount });
       }
     };
     fetchPETs();
-  }, [userId, referralViews, updatePlayerFirestore]);
+  }, [userId, referralViews, updatePlayerFirestore]); // Added updatePlayerFirestore to deps
 
   const handleAccountDetailsClick = () => {
-    if (!userId || !auth.currentUser) {
+    if (!userId) {
       setActiveModal('auth');
       setShowMessage('⚠️ Sign in to view account details!');
       return;
     }
     const network = chain?.name || 'Unknown';
     setShowMessage(`ℹ️ Connected to ${network} network`);
-    setActiveModal('accountDetails');
+    // Assuming 'accountDetails' is a valid modal key in your ModalContext.
+    // If not, fall back to 'auth' or define a new modal.
+    setActiveModal('accountDetails'); // Open the specific account details modal
   };
 
   const handleReferralClick = () => {
-    if (!userId || !auth.currentUser) {
+    if (!userId) {
       setActiveModal('auth');
       setShowMessage('⚠️ Please sign in to share referrals!');
       return;
     }
     setReferralViews((prev) => {
       const newViews = prev + 1;
-      updatePlayerFirestore({ referralViews: newViews, jewels: newViews >= 5 ? 50 : 0 }); // Reward 50 JEWELS for 5+ referrals
-      if (newViews >= 5) {
-        setActivePETs((prev) => prev + 1); // Increment PETs for milestone
+      // This immediately rewards locally, the Firestore update will happen via updatePlayerFirestore.
+      updatePlayerFirestore({ referralViews: newViews, jewels: (newViews >= 5 ? 50 : 0) }); // Reward 50 JEWELS for 5+ referrals
+      
+      // Update activePETs locally based on referral milestones
+      if (newViews === 5) { // Example: Increment PETs at 5 referrals
+          setActivePETs((prevCount) => prevCount + 1);
+      } else if (newViews === 10) { // Example: Another milestone at 10 referrals
+          setActivePETs((prevCount) => prevCount + 1);
       }
       return newViews;
     });
-    setActiveModal('referralShared');
+    // Assuming 'info' or 'success' is a generic modal type, otherwise define 'referralShared' in ModalContext.
+    setActiveModal('info'); // Open a modal to confirm referral copied
     setShowMessage('✅ Referral link copied: https://swytch.io/ref/0xAB...CDEF');
   };
 
   const handleDepositClick = () => {
-    if (!userId || !auth.currentUser) {
+    if (!userId) {
       setActiveModal('auth');
       setShowMessage('⚠️ Sign in to deposit!');
       return;
     }
-    setActiveModal('payment');
+    setActiveModal('payment'); // Open the payment modal
     setShowMessage('ℹ️ Opening deposit modal...');
     // Simulate PET activation after deposit (mock)
+    // This logic might need to be tied to actual successful deposits from PaymentModal's callback.
     setActivePETs((prev) => prev + 1);
   };
 

@@ -1,32 +1,21 @@
-import { FC, useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { FC, useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
+import { Sparkles, MessageCircleHeart } from 'lucide-react';
 import CommunityHero from '../components/CommunityHero';
 import CommunityFeatures from '../components/CommunityFeatures';
 import CommunityChat from '../components/CommunityChat';
 import CommunityRankings from '../components/CommunityRankings';
-import CommunityHub from '../components/CommunityHub';
 // Removed direct modal imports (AuthModal, PaymentModal) as App.tsx renders them globally
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { Sparkles, MessageCircleHeart } from 'lucide-react';
-import { useModal } from '../context/ModalContext'; // For activeModal, setActiveModal
 
-// IMPORTANT: Import CommunityProps from your lib/types.ts file.
-// Ensure lib/types.ts has `export interface CommunityProps extends AppProps {}`
-import { CommunityProps as ImportedCommunityProps } from '../lib/types';
+// IMPORTANT: Import Quest and CommunityProps from your lib/types.ts file.
+import { Quest, CommunityProps as ImportedCommunityProps, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
 
 
-interface Quest { // This Quest interface remains local as it's specific to this component's internal state.
-  id: string;
-  title: string;
-  progress: number;
-  goal: number;
-  rewardJEWELS: number;
-  rewardXP: number;
-  completed: boolean;
-}
+// Quest interface is now imported from lib/types.ts
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -54,19 +43,16 @@ const initialQuests: Quest[] = [ // Explicitly type initialQuests
 // Use ImportedCommunityProps as the type for the FC
 const Community: FC<ImportedCommunityProps> = ({
   userId,
-  activeModal,
   setActiveModal,
   setShowMessage,
   setIsPETMember,
   updatePlayerFirestore,
-  jewelsBalance,
+  jewelsBalance, // Access jewelsBalance from props
   isPending,
   authLoading,
-  // Removed setShowWalletModal from destructuring as it's not part of AppProps/CommunityProps anymore
 }) => {
-  // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
-  const [quests, setQuests] = useState<Quest[]>(initialQuests); // Explicitly type quests state
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [quests, setQuests] = useState<Quest[]>(initialQuests);
+  const [, setIsModalLoading] = useState<boolean>(false);
 
   const shareOnX = useCallback(async () => {
     if (!userId) {
@@ -89,9 +75,9 @@ const Community: FC<ImportedCommunityProps> = ({
           transactionId,
           userId,
           amount: shareQuest.rewardJEWELS,
-          currency: 'JEWELS',
-          transactionType: 'deposit',
-          status: 'pending',
+          currency: 'JEWELS' as SupportedCurrency,
+          transactionType: 'deposit' as TransactionType,
+          status: 'pending' as TransactionStatus,
           timestamp: serverTimestamp(),
           game: 'community',
           adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
@@ -105,17 +91,17 @@ const Community: FC<ImportedCommunityProps> = ({
       }
     }
     setIsModalLoading(false);
-  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Removed unnecessary dependency: `db`
+  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
 
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (docSnap) => { // Renamed 'doc' to 'docSnap' for clarity
+      const unsubscribe = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setIsPETMember(data.isPETMember || false);
           const mergedQuests = initialQuests.map((initialQuest) => {
-            const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id); // Explicitly type 'q'
+            const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
             return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
           });
           setQuests(mergedQuests);
@@ -138,7 +124,7 @@ const Community: FC<ImportedCommunityProps> = ({
       setShowMessage('⚠️ Please sign in to join the community!');
       setActiveModal('auth');
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]); // Removed `quests` from deps to prevent infinite loop
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]);
 
   if (authLoading || isPending) {
     return (
@@ -157,7 +143,6 @@ const Community: FC<ImportedCommunityProps> = ({
   }
 
   return (
-    // FIX: Pass the actual props to SwytchErrorBoundary
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
@@ -196,22 +181,18 @@ const Community: FC<ImportedCommunityProps> = ({
 
         <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
           <motion.div variants={sectionVariants}>
-            <CommunityHero userId={userId} />
+            <CommunityHero userId={userId} jewelsBalance={jewelsBalance} setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
           </motion.div>
           <motion.div variants={sectionVariants}>
-            <CommunityFeatures />
+            <CommunityFeatures userId={userId} setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
           </motion.div>
           <motion.div variants={sectionVariants}>
-            <CommunityChat
-              userId={userId}
-            />
+            <CommunityChat userId={userId} setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
           </motion.div>
           <motion.div variants={sectionVariants}>
-            <CommunityRankings />
+            <CommunityRankings userId={userId} setActiveModal={setActiveModal} setShowMessage={setShowMessage} leaderboard={[]} />
           </motion.div>
-          <motion.div variants={sectionVariants}>
-            <CommunityHub />
-          </motion.div>
+        
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
               className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins mr-4"
@@ -236,19 +217,43 @@ const Community: FC<ImportedCommunityProps> = ({
               className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
               onClick={() => {
                 if (!userId) {
-                  setShowMessage('⚠️ Sign in to access Vault!');
+                  setShowMessage('💰 Navigating to Vault!');
                   setActiveModal('auth');
                 } else {
                   setShowMessage('💰 Navigating to Vault!');
-                  // Removed setShowWalletModal(true); as it's now handled by setActiveModal('auth')
-                  // Or, if you want a specific wallet connect experience after auth,
-                  // you'd set a specific activeModal key that renders the RainbowKit connect button within PaymentModal or a dedicated WalletConnectModal.
                 }
               }}
               role="button"
               aria-label="Navigate to Vault Page"
             >
               Visit Vault
+            </Link>
+            <Link
+              to="/market"
+              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
+              onClick={() => setShowMessage('🛒 Navigating to Market!')}
+              role="button"
+              aria-label="Navigate to Market Page"
+            >
+              Visit Market
+            </Link>
+            <Link
+              to="/shop"
+              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
+              onClick={() => setShowMessage('🛒 Navigating to Shop!')}
+              role="button"
+              aria-label="Navigate to Shop Page"
+            >
+              Visit Shop
+            </Link>
+            <Link
+              to="/benefits"
+              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
+              onClick={() => setShowMessage('🌟 Navigating to Benefits!')}
+              role="button"
+              aria-label="Navigate to Benefits Page"
+            >
+              Benefits
             </Link>
             <Link
               to="/membership"
@@ -259,12 +264,21 @@ const Community: FC<ImportedCommunityProps> = ({
             >
               Membership
             </Link>
+            <Link
+              to="/tokenomics"
+              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
+              onClick={() => setShowMessage('💸 Navigating to Tokenomics!')}
+              role="button"
+              aria-label="Navigate to Tokenomics Page"
+            >
+              Tokenomics
+            </Link>
           </motion.div>
-        </motion.div>
-        {/* Modals rendered by App.tsx, so no need to render them here again */}
-      </motion.div>
-    </SwytchErrorBoundary>
-  );
+        </motion.div>
+      </motion.div>
+    </SwytchErrorBoundary>
+  );
 };
+
 
 export default Community;

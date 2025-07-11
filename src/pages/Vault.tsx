@@ -1,25 +1,19 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
-import VaultHero from '../components/VaultHero';
 import VaultWalletInfo from '../components/VaultWalletInfo';
 import VaultMembershipBenefits from '../components/VaultMembershipBenefits';
 import VaultMembershipPackages from '../components/VaultMembershipPackages';
 import VaultWithdrawal from '../components/VaultWithdrawal';
 import VaultRules from '../components/VaultRules';
 import YieldCalculator from '../components/YieldCalculator';
-import AdminPayout from '../components/AdminPayout';
 import SwytchCard from '../components/SwytchCard';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
-// Wagmi V2 Imports
-import { useAccount, useFeeData, useBalance, useChainId, useBlockNumber } from 'wagmi'; // Added useBlockNumber
-
-// IMPORTANT: Import PageProps, SupportedCurrency, TransactionType, TransactionStatus from your lib/types.ts file
+import { useAccount, useFeeData, useBalance, useChainId, useBlockNumber } from 'wagmi';
 import { PageProps as ImportedPageProps } from '../lib/types';
-
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -39,7 +33,6 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-// This 'games' array seems copied into multiple pages. Consider moving to a central constants file.
 const games = [
   { id: 'bingo', title: 'Bingo', path: '/games/bingo', description: 'Match numbers and win big!' },
   { id: 'blackjack', title: 'Blackjack', path: '/games/blackjack', description: 'Beat the dealer to 21!' },
@@ -56,7 +49,6 @@ const games = [
   { id: 'nft-rumble', title: 'NFT Rumble (Coming Soon)', path: '#', description: 'Battle with NFTs for rewards!', comingSoon: true },
 ];
 
-// Use ImportedPageProps as the type for the FC
 export const Vault: FC<ImportedPageProps> = ({
   userId,
   setActiveModal,
@@ -74,88 +66,117 @@ export const Vault: FC<ImportedPageProps> = ({
   // Wagmi V2 hooks for wallet info
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { data: feeData } = useFeeData();
-  useBalance({ address: address });
-  const { data: currentBlockNumber } = useBlockNumber({ watch: true }); // FIX: Get current block number
+  useFeeData();
+  useBalance({ address, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' });
+  const { data: currentBlockNumber } = useBlockNumber({ watch: true });
 
-  const usdtBalance = { value: BigInt(0), decimals: 18, formatted: '0.00' }; // Placeholder for USDT balance; integrate actual data if needed
-
-
-  // States and handlers for VaultWithdrawal/AdminPayout
+  // States for VaultWithdrawal/AdminPayout
   const [withdrawalAmount, setWithdrawalAmount] = useState<string>('');
-  const [payoutAddress, setPayoutAddress] = useState<`0x${string}` | ''>('');
-  const [payoutAmount, setPayoutAmount] = useState<string>('');
+  const [] = useState<`0x${string}` | ''>('');
+  const [] = useState<string>('');
 
   const handleWithdrawal = useCallback(async () => {
     if (!userId) { setShowMessage('⚠️ Sign in to withdraw!'); setActiveModal('auth'); return; }
     if (!isConnected || !address) { setShowMessage('⚠️ Connect wallet to withdraw!'); setActiveModal('auth'); return; }
-    // Implement actual withdrawal logic here
-    setShowMessage(`Withdrawal of ${withdrawalAmount} initiated! (Requires backend processing)`);
+    if (!withdrawalAmount || Number(withdrawalAmount) < 10) {
+      setShowMessage('⚠️ Withdrawal amount must be at least $10.');
+      return;
+    }
+    setShowMessage(`Withdrawal of ${withdrawalAmount} JEWELS initiated! (Requires backend processing)`);
     setIsModalLoading(true);
     try {
-      // Example: Record withdrawal request in Firestore
+      const userRef = doc(db, 'Players', userId);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.data();
+      if (!userData || userData.jewels < Number(withdrawalAmount)) {
+        setShowMessage('⚠️ Insufficient JEWELS balance for withdrawal.');
+        return;
+      }
+
+      const transactionId = `${userId}_${Date.now()}_withdraw`;
       await addDoc(collection(db, 'Transactions'), {
-        transactionId: `${userId}_${Date.now()}_withdraw`,
+        transactionId,
         userId,
         amount: Number(withdrawalAmount),
-        currency: 'JEWELS', // Or whatever currency is being withdrawn
+        currency: 'JEWELS',
         transactionType: 'withdraw',
         status: 'pending',
         timestamp: serverTimestamp(),
         walletAddress: address,
+        paymentMethod: 'crypto',
       });
-      setShowMessage('✅ Withdrawal request submitted successfully!');
+
+      await setDoc(userRef, { jewels: userData.jewels - Number(withdrawalAmount), updatedAt: serverTimestamp() }, { merge: true });
+      setShowMessage('✅ Withdrawal request submitted successfully! Transaction ID: ' + transactionId);
     } catch (err) {
       console.error('Withdrawal error:', err);
-      setShowMessage('⚠️ Failed to submit withdrawal request.');
+      setShowMessage(`⚠️ Withdrawal failed: ${(err as Error).message || 'Unknown error'}`);
     } finally {
       setIsModalLoading(false);
     }
   }, [userId, isConnected, address, withdrawalAmount, setShowMessage, setActiveModal]);
 
-  const handleAdminPayout = useCallback(async () => {
-    if (!userId || userId !== '0CfobCbXnPZsJwT662H4OhDrXk33') { setShowMessage('⚠️ Admin access required!'); return; }
-    // Implement actual admin payout logic here
-    setShowMessage(`Admin payout of ${payoutAmount} to ${payoutAddress} initiated! (Requires backend processing)`);
+  const handlePayPalPayment = useCallback(async (paypalEmail: string) => {
+    if (!userId) { setShowMessage('⚠️ Sign in to withdraw!'); setActiveModal('auth'); return; }
+    if (!withdrawalAmount || Number(withdrawalAmount) < 10) {
+      setShowMessage('⚠️ Withdrawal amount must be at least $10.');
+      return;
+    }
+    if (!paypalEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paypalEmail)) {
+      setShowMessage('⚠️ Please enter a valid PayPal email.');
+      return;
+    }
+    setShowMessage(`PayPal withdrawal of ${withdrawalAmount} USDT to ${paypalEmail} initiated!`);
     setIsModalLoading(true);
     try {
-      // Example: Record admin payout transaction in Firestore
-      await addDoc(collection(db, 'Transactions'), {
-        transactionId: `${userId}_${Date.now()}_admin_payout`,
-        userId: payoutAddress, // User being paid out
-        amount: Number(payoutAmount),
-        currency: 'ETH', // Or whatever currency admin is paying out
-        transactionType: 'payout',
-        status: 'success', // Admin payouts are often immediately successful from their perspective
+      const userRef = doc(db, 'Players', userId);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.data();
+      if (!userData || userData.jewels < Number(withdrawalAmount)) {
+        setShowMessage('⚠️ Insufficient JEWELS balance for withdrawal.');
+        return;
+      }
+
+      const transactionId = `${userId}_${Date.now()}_paypal_withdraw`;
+      // Note: Actual PayPal order creation requires PayPalScriptProvider, typically in App.tsx
+      // This assumes PayPalButtons will be rendered in VaultWithdrawal.tsx
+      const transactionData = {
+        transactionId,
+        userId,
+        amount: Number(withdrawalAmount),
+        currency: 'USDT',
+        transactionType: 'withdraw',
+        status: 'pending',
         timestamp: serverTimestamp(),
-        adminId: userId, // Admin's ID
-      });
-      setShowMessage('✅ Admin payout recorded successfully!');
+        paymentMethod: 'paypal',
+        paypalEmail,
+      };
+
+      await addDoc(collection(db, 'Transactions'), transactionData);
+      await setDoc(userRef, { jewels: userData.jewels - Number(withdrawalAmount), updatedAt: serverTimestamp() }, { merge: true });
+      setShowMessage('✅ PayPal withdrawal request submitted successfully! Transaction ID: ' + transactionId);
     } catch (err) {
-      console.error('Admin payout error:', err);
-      setShowMessage('⚠️ Failed to record admin payout.');
+      console.error('PayPal withdrawal error:', err);
+      setShowMessage(`⚠️ PayPal withdrawal failed: ${(err as Error).message || 'Unknown error'}`);
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, payoutAmount, payoutAddress, setShowMessage]);
+  }, [userId, withdrawalAmount, setShowMessage, setActiveModal]);
+
 
   const handleMembershipPayment = useCallback(async (packageName: string, amount: number) => {
     if (!userId) { setShowMessage('⚠️ Sign in to buy membership!'); setActiveModal('auth'); return; }
     setShowMessage(`Attempting to buy ${packageName} for ${amount}! (Redirecting to Payment Modal)`);
     setActiveModal('payment');
-    // The PaymentModal (RazorTransaction) will handle the actual payment initiation
   }, [userId, setShowMessage, setActiveModal]);
 
   const handleCalculateYield = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setShowMessage('Calculating yield...');
-    // Implement actual yield calculation logic here
-    // This would likely involve fetching game data, investment data, etc.
     setTimeout(() => {
       setShowMessage('Yield calculated! (Placeholder value: 10% APY)');
-    }, 1500); // Simulate network delay
+    }, 1500);
   }, [setShowMessage]);
-
 
   const loadMoreGames = useCallback(() => {
     if (visibleGames.length >= games.length) {
@@ -168,7 +189,7 @@ export const Vault: FC<ImportedPageProps> = ({
         ...games.slice(prev.length, prev.length + 3),
       ]);
     }, 500);
-  }, [visibleGames]); // `games` is a constant, so no need to add it to deps
+  }, [visibleGames]);
 
   const shareOnX = useCallback(async () => {
     if (!userId) {
@@ -185,12 +206,12 @@ export const Vault: FC<ImportedPageProps> = ({
         transactionId,
         userId,
         amount: 5,
-        currency: 'JEWELS', // Correctly typed as SupportedCurrency
-        transactionType: 'deposit', // Correctly typed as TransactionType
-        status: 'pending', // Correctly typed as TransactionStatus
+        currency: 'JEWELS',
+        transactionType: 'deposit',
+        status: 'pending',
         timestamp: serverTimestamp(),
         game: 'vault',
-        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33', // Ensure this is the correct admin ID
+        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
       });
       await updatePlayerFirestore({ jewels: jewelsBalance + 5 });
       setShowMessage('🎉 Shared Vault on X! +5 JEWELS');
@@ -292,67 +313,47 @@ export const Vault: FC<ImportedPageProps> = ({
 
         <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
           <motion.div variants={sectionVariants}>
-            <VaultHero />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
             <VaultWalletInfo
               isConnected={isConnected}
-              address={address}
               chainId={chainId}
               ensName={null}
-              blockNumber={currentBlockNumber || null} // FIX: Pass currentBlockNumber
-              // FIX: Construct feeData to match expected VaultWalletInfoProps.feeData
-              feeData={feeData ? {
-                gasPrice: feeData.gasPrice,
-                maxFeePerGas: feeData.maxFeePerGas,
-                maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
-              } : undefined}
-              usdtBalance={usdtBalance}
-            />
+              blockNumber={currentBlockNumber || null} address={undefined} feeData={undefined} usdtBalance={undefined}/>
           </motion.div>
           <motion.div variants={sectionVariants}>
             <VaultMembershipBenefits />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <VaultMembershipPackages
-              isMember={false} // Placeholder, replace with actual user.isPETMember from props or Firestore
+              isMember={false}
               isPending={isPending}
               handleMembershipPayment={handleMembershipPayment}
+              setShowMessage={setShowMessage}
             />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <VaultWithdrawal
               isConnected={isConnected}
-              isMember={false} // Placeholder, replace with actual user.isPETMember
+              isMember={false}
               isPending={isPending}
               withdrawalAmount={withdrawalAmount}
               setWithdrawalAmount={setWithdrawalAmount}
               handleWithdrawal={handleWithdrawal}
-              handlePayPalPayment={async () => { setShowMessage('PayPal withdrawal not implemented!'); }} // Placeholder with message
+              handlePayPalPayment={handlePayPalPayment}
+              setShowMessage={setShowMessage}
             />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <VaultRules />
           </motion.div>
-          
           <motion.div variants={sectionVariants}>
             <YieldCalculator
               userId={userId}
               handleCalculateYield={handleCalculateYield}
+              setShowMessage={setShowMessage}
+              setActiveModal={setActiveModal}
             />
           </motion.div>
-          <motion.div variants={sectionVariants}>
-            <AdminPayout
-              isConnected={isConnected}
-              address={address}
-              isPending={isPending}
-              handlePayout={handleAdminPayout}
-              payoutAddress={payoutAddress}
-              setPayoutAddress={setPayoutAddress}
-              payoutAmount={payoutAmount}
-              setPayoutAmount={setPayoutAmount}
-            />
-          </motion.div>
+         
           <motion.div variants={sectionVariants}>
             <h2 className="text-3xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins">
               <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> Explore Our Games
@@ -480,7 +481,6 @@ export const Vault: FC<ImportedPageProps> = ({
             </Link>
           </motion.div>
         </motion.div>
-        {/* Modals are rendered by App.tsx, so no need to render them here again */}
       </motion.div>
     </SwytchErrorBoundary>
   );

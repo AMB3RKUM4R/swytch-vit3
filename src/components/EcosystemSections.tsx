@@ -1,14 +1,7 @@
 import { motion } from 'framer-motion';
-import { useModal } from '@/context/ModalContext';
 import { Rocket, KeyRound, Terminal, ShieldCheck, Coins, Flame, Workflow, BadgeCheck, Eye, BarChart3, HelpCircle, UserCheck, Zap } from 'lucide-react';
-
-interface EcosystemSection {
-  title: string;
-  description: string;
-  icon: JSX.Element;
-  image: string;
-  modal: string;
-}
+import { useModal } from '@/context/ModalContext';
+import { EcosystemSection, EcosystemSectionsProps } from '@/lib/types';
 
 const ecosystemSections: EcosystemSection[] = [
   {
@@ -97,18 +90,18 @@ const ecosystemSections: EcosystemSection[] = [
   }
 ];
 
-const EcosystemSections: React.FC = () => {
-  const { setActiveModal } = useModal();
+const AnimatedText = ({ text }: { text: string }) => (
+  <motion.div
+    className="text-gray-100 text-base font-medium text-center p-4 leading-relaxed font-inter"
+    variants={{ animate: { y: [0, -10, 0], scale: [1, 1.05, 1], transition: { duration: 3, repeat: Infinity, ease: 'easeInOut' } } }}
+    animate="animate"
+  >
+    {text}
+  </motion.div>
+);
 
-  const AnimatedText = ({ text }: { text: string }) => (
-    <motion.div
-      className="text-gray-100 text-base font-medium text-center p-4 leading-relaxed font-inter"
-      variants={{ animate: { y: [0, -10, 0], scale: [1, 1.05, 1], transition: { duration: 3, repeat: Infinity, ease: 'easeInOut' } } }}
-      animate="animate"
-    >
-      {text}
-    </motion.div>
-  );
+const EcosystemSections: React.FC<EcosystemSectionsProps> = ({ setShowMessage }) => {
+  const { setActiveModal: setModal } = useModal();
 
   return (
     <motion.div
@@ -121,9 +114,9 @@ const EcosystemSections: React.FC = () => {
       <p className="text-lg text-gray-300 text-center max-w-3xl mx-auto font-inter">
         Explore the interconnected layers of Swytch, orchestrated by AI and driven by PETs.
       </p>
-      {ecosystemSections.map((item, index) => (
+      {ecosystemSections.map((item) => (
         <motion.div
-          key={index}
+          key={item.title}
           variants={{ hidden: { opacity: 0, y: 50, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } } }}
           className="grid lg:grid-cols-2 gap-10 items-center"
         >
@@ -134,7 +127,10 @@ const EcosystemSections: React.FC = () => {
             </div>
             <p className="text-gray-300 text-lg font-inter">{item.description}</p>
             <motion.button
-              onClick={() => setActiveModal(item.title)}
+              onClick={() => {
+                setModal(item.title);
+                setShowMessage(`ℹ️ Viewing details for ${item.title}`);
+              }}
               className="text-rose-400 hover:text-rose-500 mt-4 underline text-sm font-inter"
               whileHover={{ scale: 1.05 }}
               aria-label={`Learn more about ${item.title}`}

@@ -3,7 +3,6 @@ import { Sparkles, X } from 'lucide-react';
 import { SetStateAction, useEffect, useRef } from 'react';
 import ConnectWalletButton from './ConnectWalletButton';
 
-
 interface MembershipModalProps {
   title: string;
   content: string;
@@ -55,11 +54,13 @@ const MembershipModal: React.FC<MembershipModalProps> = ({ title, content, onClo
           <Sparkles className="w-6 h-6 text-neon-green animate-pulse" /> {title}
         </h3>
         <p className="text-gray-300 font-inter mb-6">{content}</p>
-        {showConnect && <ConnectWalletButton setActiveModal={function (_value: SetStateAction<string | null>): void {
+        {showConnect && <ConnectWalletButton userId={null} setActiveModal={function (_value: SetStateAction<string | null>): void {
           throw new Error('Function not implemented.');
         } } setShowMessage={function (_value: SetStateAction<string>): void {
           throw new Error('Function not implemented.');
-        } } />}
+        } }  />
+// ...
+        }
         <button
           onClick={onClose}
           className="px-6 py-3 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-all font-poppins"

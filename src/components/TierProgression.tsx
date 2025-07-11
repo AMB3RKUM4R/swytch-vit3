@@ -1,3 +1,4 @@
+import { FC, memo } from 'react'; // Added memo for performance optimization
 import { motion } from 'framer-motion';
 import { BarChart3 } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
@@ -14,6 +15,7 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
+// Chart configuration remains local as it's specific to this chart component.
 const chartConfig: ChartConfiguration<'bar'> = {
   type: 'bar',
   data: {
@@ -56,12 +58,12 @@ const chartConfig: ChartConfiguration<'bar'> = {
         beginAtZero: true,
         title: { display: true, text: 'Reward (%)', color: '#FFFFFF', font: { family: 'Inter', size: 14 } },
         ticks: { color: '#FFFFFF', font: { family: 'Inter' } },
-        grid: { color: 'rgba(168, 85, 247, 0.2)' },
+        grid: { color: 'rgba(168, 85, 247, 0.2)' }, // Purple-ish grid color
       },
       x: {
         title: { display: true, text: 'Tier', color: '#FFFFFF', font: { family: 'Inter', size: 14 } },
         ticks: { color: '#FFFFFF', font: { family: 'Inter' } },
-        grid: { color: 'rgba(168, 85, 247, 0.2)' },
+        grid: { color: 'rgba(168, 85, 247, 0.2)' }, // Purple-ish grid color
       },
     },
     plugins: {
@@ -76,7 +78,7 @@ const chartConfig: ChartConfiguration<'bar'> = {
   },
 };
 
-const TierProgression: React.FC = () => {
+const TierProgression: FC = memo(() => { // No props destructured from FC
   return (
     <motion.div
       variants={{ hidden: { opacity: 0, y: 50, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 80 } } }}
@@ -98,6 +100,6 @@ const TierProgression: React.FC = () => {
       </motion.div>
     </motion.div>
   );
-};
+});
 
 export default TierProgression;

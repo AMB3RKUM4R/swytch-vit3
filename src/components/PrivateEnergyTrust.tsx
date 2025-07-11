@@ -1,20 +1,27 @@
+import { FC, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Landmark, ShieldCheck, BookOpen, Scale, FileText } from 'lucide-react';
 import { useModal } from '@/context/ModalContext';
 
-const PrivateEnergyTrust: React.FC = () => {
+
+const sectionVariants = {
+  hidden: { opacity: 0, y: 50, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut' } },
+};
+
+const PrivateEnergyTrust: FC = memo(() => {
   const { setActiveModal } = useModal();
 
   return (
     <motion.div
-      variants={{ hidden: { opacity: 0, y: 50, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 80 } } }}
+      variants={sectionVariants}
       className="md:col-span-2"
     >
       <motion.div
         className="relative bg-gray-900/50 border border-rose-500/20 p-6 rounded-2xl shadow-xl backdrop-blur-md hover:shadow-rose-400/30 transition-all bg-gradient-to-r from-pink-500/10 to-rose-500/10"
         whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(244, 63, 94, 0.5)' }}
       >
-        <div className="space-y-6">
+        <div className="space-y-6 relative">
           <div className="flex items-center mb-4 text-rose-400">
             <Landmark className="mr-3 w-8 h-8 animate-pulse" aria-hidden="true" />
             <h3 className="text-3xl font-bold font-poppins">What is a Private Energy Trust?</h3>
@@ -54,6 +61,6 @@ const PrivateEnergyTrust: React.FC = () => {
       </motion.div>
     </motion.div>
   );
-};
+});
 
 export default PrivateEnergyTrust;

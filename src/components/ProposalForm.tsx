@@ -4,29 +4,30 @@ import { useState } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 import Confetti from 'react-confetti';
-import { Dispatch, SetStateAction } from 'react';
+// Removed: import { Dispatch, SetStateAction } from 'react'; // Not needed as already handled by React import
 
-interface ProposalFormProps {
-  userId: string | null;
-  setShowMessage: Dispatch<SetStateAction<string>>;
-  setActiveModal: Dispatch<SetStateAction<string | null>>;
-  setShowWalletModal: Dispatch<SetStateAction<boolean>>;
-}
+// IMPORTANT: Import ProposalFormProps from lib/types.ts
+import { ProposalFormProps as ImportedProposalFormProps } from '../lib/types';
 
-const ProposalForm: React.FC<ProposalFormProps> = ({ userId, setShowMessage, setActiveModal, setShowWalletModal }) => {
+
+// Use ImportedProposalFormProps as the type for the FC
+const ProposalForm: React.FC<ImportedProposalFormProps> = ({ userId, setShowMessage, setActiveModal }) => { // Removed setShowWalletModal from destructuring
   const [proposalForm, setProposalForm] = useState({ title: '', description: '', category: 'Quests' });
   const [showConfetti, setShowConfetti] = useState(false);
 
   const handleSubmitProposal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId) {
+    // Rely on userId prop for authentication check, consistent with other components
+    if (!userId) { // Using userId prop directly for auth check
       setShowMessage('⚠️ Please sign in to submit a proposal!');
       setActiveModal('auth');
       return;
     }
+    // No need for auth.currentUser check here if userId is the main source of truth for login.
+
     if (proposalForm.title.trim() && proposalForm.description.trim()) {
       try {
-        await addDoc(collection(db, 'Proposals'), {
+        await addDoc(collection(db, 'Proposals'), { // Ensure 'Proposals' collection exists in Firestore
           userId,
           title: proposalForm.title,
           description: proposalForm.description,
@@ -37,9 +38,9 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ userId, setShowMessage, set
           createdAt: serverTimestamp(),
         });
         setShowMessage(`ℹ️ Opening payment for proposal "${proposalForm.title}". Admin will process your request.`);
-        setActiveModal('payment');
-        setShowWalletModal(true);
-        setProposalForm({ title: '', description: '', category: 'Quests' });
+        setActiveModal('payment'); // Trigger payment modal (as intended for submission fee/engagement)
+        // No setShowWalletModal(true) call here, as it's handled by setActiveModal('payment') or PaymentModal.
+        setProposalForm({ title: '', description: '', category: 'Quests' }); // Reset form
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
       } catch (err) {
@@ -80,10 +81,10 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ userId, setShowMessage, set
               value={proposalForm.title}
               onChange={(e) => setProposalForm({ ...proposalForm, title: e.target.value })}
               placeholder="Enter proposal title"
-              className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500"
+              className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500" // Border color consistency check
               required
               aria-label="Proposal title"
-              disabled={!userId}
+              disabled={!userId} // Disable if no userId
             />
           </div>
           <div>
@@ -95,10 +96,10 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ userId, setShowMessage, set
               value={proposalForm.description}
               onChange={(e) => setProposalForm({ ...proposalForm, description: e.target.value })}
               placeholder="Describe your proposal"
-              className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500 h-32 resize-y"
+              className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500 h-32 resize-y" // Border color consistency check
               required
               aria-label="Proposal description"
-              disabled={!userId}
+              disabled={!userId} // Disable if no userId
             />
           </div>
           <div>
@@ -109,9 +110,9 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ userId, setShowMessage, set
               id="proposal-category"
               value={proposalForm.category}
               onChange={(e) => setProposalForm({ ...proposalForm, category: e.target.value })}
-              className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500"
+              className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-cyan-500" // Border color consistency check
               aria-label="Proposal category"
-              disabled={!userId}
+              disabled={!userId} // Disable if no userId
             >
               <option value="Quests">Quests</option>
               <option value="Planets">Planets</option>
@@ -123,7 +124,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ userId, setShowMessage, set
             type="submit"
             className="w-full px-6 py-3 bg-cyan-600 text-white hover:bg-cyan-700 rounded-md font-semibold flex items-center justify-center gap-2 font-poppins"
             whileHover={{ scale: 1.05 }}
-            disabled={!userId || !proposalForm.title.trim() || !proposalForm.description.trim()}
+            disabled={!userId || !proposalForm.title.trim() || !proposalForm.description.trim()} // Disable if no userId or empty fields
             aria-label="Submit Proposal"
           >
             <Vote className="w-5 h-5" /> Submit Proposal

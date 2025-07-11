@@ -2,19 +2,15 @@ import { FC, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, LockKeyhole, Banknote, PiggyBank, Users, Gamepad2, LibraryBig, Globe2 } from 'lucide-react';
 import { SwytchCard } from './SwytchCard';
-import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
+import { auth } from '@/lib/firebaseConfig'; // Keep auth for auth.currentUser check
 
-interface Benefit {
-  title: string;
-  description: string;
-  details: string;
-  icon: React.ComponentType<{ className?: string }>;
-  
-}
+// IMPORTANT: Import Benefit and BenefitsGridProps from lib/types.ts
+import { Benefit, BenefitsGridProps as ImportedBenefitsGridProps } from '../lib/types';
 
 
-const benefits: Benefit[] = [
+// Benefit interface is now imported from lib/types.ts
+
+const benefits: Benefit[] = [ // This array remains local, or could be moved to a constants file.
   {
     title: 'Unbreakable Security',
     description: 'Assets on a decentralized network, immune to hacks.',
@@ -75,13 +71,12 @@ const sectionVariants = {
   visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut' } },
 };
 
-const BenefitsGrid: FC<{
-  expandedBenefit: string | null;
-  toggleBenefit: (title: string) => void;
-}> = memo(({ expandedBenefit, toggleBenefit }) => {
-  const { setActiveModal, setShowMessage } = useModal();
-
+// Use ImportedBenefitsGridProps as the type for the FC
+const BenefitsGrid: FC<ImportedBenefitsGridProps> = memo(({ expandedBenefit, toggleBenefit, setActiveModal, setShowMessage }) => {
   const handleBenefitClick = (title: string) => {
+    // Rely on auth.currentUser for authentication check, as userId is not always present directly from Wagmi or Firebase auth state until full load.
+    // However, if userId is guaranteed to be non-null from its parent (Benefits.tsx -> App.tsx), then `if (!userId)` is also valid.
+    // For now, keeping auth.currentUser check as it's what was provided and functional.
     if (!auth.currentUser) {
       setActiveModal('auth');
       setShowMessage('⚠️ Sign in to explore benefits!');
@@ -89,7 +84,7 @@ const BenefitsGrid: FC<{
     }
     toggleBenefit(title);
     setShowMessage(`ℹ️ Exploring ${title}!`);
-    setActiveModal('payment'); // Prompt deposit for benefit access
+    setActiveModal('payment'); // Trigger payment modal as intended
   };
 
   return (
@@ -101,7 +96,7 @@ const BenefitsGrid: FC<{
     >
       <div
         className="absolute inset-0 bg-cover bg-center opacity-20"
-        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=2070&auto=format&fit=crop)' }}
+        style={{ backgroundImage: 'ur[](https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=2070&auto=format&fit=crop)' }}
       />
       <div className="max-w-6xl mx-auto space-y-8 relative">
         <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3 font-poppins">
@@ -116,6 +111,7 @@ const BenefitsGrid: FC<{
               onClick={() => handleBenefitClick(benefit.title)}
             >
               <div className="flex items-center mb-3 text-rose-400">
+                {/* Dynamically render icon component */}
                 <benefit.icon className="w-6 h-6 mr-2 animate-pulse text-cyan-400" />
                 <h4 className="text-lg font-bold font-poppins">{benefit.title}</h4>
               </div>

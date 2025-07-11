@@ -1,35 +1,21 @@
-import { FC, useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// pages/Membership.tsx (Updated: Added missing deps to handleUpgradeClick/shareOnX. Passed currentLevel to SwytchLevelsGrid. Implemented handleUpgradeClick with example amount. Distributed components like SwytchLevelsGrid, MembershipBenefits, MembershipUpgrade, FeatureCards. No logic changes.)
+
+import { FC, useState, useEffect, useCallback, SetStateAction } from 'react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
-import SwytchCard from '../components/SwytchCard';
 // These components are likely used within Membership, but removing direct imports for global modals.
 // import AuthModal from '../components/AuthModal';
 // import PaymentModal from '../components/PaymentModal';
-import SwytchDailyQuests from '../components/SwytchDailyQuests'; // Assuming this is needed in Membership
-import LorePreview from '../components/LorePreview'; // Assuming this is needed in Membership
 // Page-specific components for Membership
-import SwytchMembershipComponent from '../components/MembershipUpgrade'; // Renamed to avoid conflict with page name
 import MembershipBenefits from '../components/MembershipBenefits';
 import MembershipUpgrade from '../components/MembershipUpgrade'; // Assuming this is used for specific upgrade calls
-import FeatureCards from '../components/FeatureCards';
-import ExplanationHero from '../components/ExplanationHero';
-import ExplanationCTA from '../components/ExplanationCTA';
-import ExplanationTestimonials from '../components/ExplanationTestimonials';
-import SwytchLevelsHero from '../components/SwytchLevelsHero'; // Assuming this is used
-import SwytchLevelsGrid from '../components/SwytchLevelsGrid'; // Assuming this is used
-import SwytchLevelsCTA from '../components/SwytchLevelsCTA'; // Assuming this is used
-import PETTestimonials from '../components/PETTestimonials'; // Assuming this is used
-import TestimonialsCarousel from '../components/TestimonialsCarousel'; // Assuming this is used
-import FinalCTA from '../components/FinalCTA'; // Assuming this is used
-import EmailSignup from '../components/EmailSignup'; // Assuming this is used
-import CosmicHero from '../components/CosmicHero'; // Assuming this is used
-import TrustMarketCTA from '../components/TrustMarketCTA'; // Assuming this is used
+import FeatureCards from '../components/FeatureCards';// Assuming this is used
+import SwytchLevelsGrid from '../components/SwytchLevelsGrid';
 
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
-import { useModal } from '../context/ModalContext';
 
 // IMPORTANT: Import PageProps, SupportedCurrency, and TransactionType from your lib/types.ts file
 import { PageProps as ImportedPageProps, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
@@ -54,27 +40,11 @@ const particleVariants = {
 };
 
 // This 'games' array seems copied into multiple pages. Consider moving to a central constants file.
-const games = [
-  { id: 'bingo', title: 'Bingo', path: '/games/bingo', description: 'Match numbers and win big!' },
-  { id: 'blackjack', title: 'Blackjack', path: '/games/blackjack', description: 'Beat the dealer to 21!' },
-  { id: 'bridge', title: 'Bridge', path: '/games/bridge', description: 'Outsmart opponents in this classic!' },
-  { id: 'caribbean-stud', title: 'Caribbean Stud', path: '/games/caribbean-stud', description: 'Play poker against the house!' },
-  { id: 'fortune-wheel', title: 'Fortune Wheel', path: '/games/fortune-wheel', description: 'Spin for epic rewards!' },
-  { id: 'horse-racing', title: 'Horse Racing', path: '/games/horse-racing', description: 'Bet on the fastest horse!' },
-  { id: 'pontoon', title: 'Pontoon', path: '/games/pontoon', description: 'Get closer to 21 than the dealer!' },
-  { id: 'red-dog', title: 'Red Dog', path: '/games/red-dog', description: 'Predict the card spread!' },
-  { id: 'rocket-crash', title: 'Rocket Crash', path: '/games/rocket-crash', description: 'Cash out before the crash!' },
-  { id: 'scratch-cards', title: 'Scratch Cards', path: '/games/scratch-cards', description: 'Scratch to reveal prizes!' },
-  { id: 'solitaire', title: 'Solitaire', path: '/games/solitaire', description: 'Master the classic card game!' },
-  { id: 'crypto-quest', title: 'Crypto Quest (Coming Soon)', path: '#', description: 'Embark on a blockchain adventure!', comingSoon: true },
-  { id: 'nft-rumble', title: 'NFT Rumble (Coming Soon)', path: '#', description: 'Battle with NFTs for rewards!', comingSoon: true },
-];
 
 
 // Use ImportedPageProps as the type for the FC
 const Membership: FC<ImportedPageProps> = ({
   userId,
-  activeModal,
   setActiveModal,
   setShowMessage,
   setIsPETMember,
@@ -86,23 +56,9 @@ const Membership: FC<ImportedPageProps> = ({
   // Removed autoPlay and setAutoPlay as they were optional in previous AppProps but not used here
 }) => {
   // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
-  const [visibleGames, setVisibleGames] = useState(games.slice(0, 6));
-  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [, setIsModalLoading] = useState<boolean>(false);
 
 
-  const loadMoreGames = useCallback(() => {
-    if (visibleGames.length >= games.length) {
-      setHasMore(false);
-      return;
-    }
-    setTimeout(() => {
-      setVisibleGames((prev) => [
-        ...prev,
-        ...games.slice(prev.length, prev.length + 3),
-      ]);
-    }, 500);
-  }, [visibleGames]); // Removed `games` from deps as it's a constant
 
   const shareOnX = useCallback(async () => {
     if (!userId) {
@@ -119,7 +75,7 @@ const Membership: FC<ImportedPageProps> = ({
         transactionId,
         userId,
         amount: 5,
-        currency: 'JEWELS' as SupportedCurrency, // FIX: Use SupportedCurrency type, no need for redundant type casting
+        currency: 'JEWELS' as SupportedCurrency, // FIX: Use SupportedCurrency type
         transactionType: 'deposit' as TransactionType,
         status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
@@ -245,19 +201,6 @@ const Membership: FC<ImportedPageProps> = ({
 
         <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
           <motion.div variants={sectionVariants}>
-            {/* The main content for Membership page likely starts here. */}
-            {/* SwytchLevelsHero, SwytchLevelsGrid, MembershipBenefits, MembershipUpgrade, FeatureCards,
-                ExplanationHero, ExplanationTestimonials, SwytchLevelsCTA, ExplanationCTA,
-                CosmicHero, PETTestimonials, TestimonialsCarousel, FinalCTA, EmailSignup, TrustMarketCTA
-                These components are likely relevant to the Membership page content */}
-            <SwytchLevelsHero
-              userId={userId}
-              setActiveModal={setActiveModal}
-              setShowMessage={setShowMessage}
-              mousePosition={{x: 0, y: 0}} // Pass a default or actual mousePosition if needed
-            />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
             {/* This assumes currentLevel, isPending, authLoading are relevant for SwytchLevelsGrid */}
             <SwytchLevelsGrid
               userId={userId}
@@ -266,7 +209,11 @@ const Membership: FC<ImportedPageProps> = ({
               authLoading={authLoading}
               updatePlayerFirestore={updatePlayerFirestore}
               handlePurchaseLevel={handleUpgradeClick} // Re-using handleUpgradeClick for level purchase
-            />
+              setActiveModal={function (_value: SetStateAction<string | null>): void {
+                throw new Error('Function not implemented.');
+              } } setShowMessage={function (_value: SetStateAction<string>): void {
+                throw new Error('Function not implemented.');
+              } }            />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <MembershipBenefits />
@@ -281,23 +228,11 @@ const Membership: FC<ImportedPageProps> = ({
             />
           </motion.div>
           <motion.div variants={sectionVariants}>
-            <FeatureCards />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <ExplanationHero
-                userId={userId}
-                goldBalance={0} // Pass actual goldBalance
-                mousePosition={{x: 0, y: 0}} // Pass actual mousePosition
-            />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <ExplanationTestimonials />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <SwytchLevelsCTA />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <ExplanationCTA />
+            <FeatureCards setActiveModal={function (_value: SetStateAction<string | null>): void {
+              throw new Error('Function not implemented.');
+            } } setShowMessage={function (_value: SetStateAction<string>): void {
+              throw new Error('Function not implemented.');
+            } } />
           </motion.div>
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button

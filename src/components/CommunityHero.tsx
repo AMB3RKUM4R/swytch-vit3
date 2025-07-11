@@ -1,11 +1,7 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight } from 'lucide-react';
-import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
-
-interface CommunityHeroProps {
-  userId: string | null;
-}
+import { CommunityHeroProps } from '@/lib/types';
 
 const sectionVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
@@ -16,11 +12,9 @@ const orbitVariants = {
   animate: { rotate: 360, transition: { duration: 20, repeat: Infinity, ease: 'linear' } },
 };
 
-const CommunityHero: React.FC<CommunityHeroProps> = ({ userId }) => {
-  const { setActiveModal, setShowMessage } = useModal();
-
+const CommunityHero: React.FC<CommunityHeroProps> = memo(({ userId, jewelsBalance, setActiveModal, setShowMessage }) => {
   const handleJoinCommunity = () => {
-    if (!userId || !auth.currentUser) {
+    if (!userId) {
       setActiveModal('auth');
       setShowMessage('⚠️ Sign in to join the PET community!');
       return;
@@ -35,7 +29,7 @@ const CommunityHero: React.FC<CommunityHeroProps> = ({ userId }) => {
         className="relative bg-gray-900/70 border border-rose-500/30 p-12 rounded-3xl shadow-xl backdrop-blur-md hover:shadow-cyan-500/50 transition-all bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
         whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(34, 211, 238, 0.7)' }}
         style={{
-          backgroundImage: `url(https://images.unsplash.com/photo-1612835362596-4b0b2b1b0b0c?q=80&w=2070&auto=format&fit=crop)`,
+          backgroundImage: `url(https://images.unsplash.com/photo-1612835362596-4b0b2b1b0b0c?q=80&w=2070&auto=format&fit=crop), url(/fallback-bg.jpg)`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
@@ -60,7 +54,7 @@ const CommunityHero: React.FC<CommunityHeroProps> = ({ userId }) => {
             onClick={handleJoinCommunity}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            aria-label="Become a PET"
+            aria-label="Join the Petaverse"
           >
             Become a PET
             <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
@@ -69,11 +63,11 @@ const CommunityHero: React.FC<CommunityHeroProps> = ({ userId }) => {
       </motion.div>
       {userId && (
         <p className="text-gray-300 mt-4 text-center font-inter">
-          Your JEWELS: <span className="font-bold text-cyan-400">0 JEWELS</span>
+          Your JEWELS: <span className="font-bold text-cyan-400">{jewelsBalance}</span>
         </p>
       )}
     </motion.div>
   );
-};
+});
 
 export default CommunityHero;

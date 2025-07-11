@@ -1,60 +1,82 @@
 import { motion } from 'framer-motion';
 import { FileText, Coins } from 'lucide-react';
 import { useState } from 'react';
-import { useModal } from '@/context/ModalContext';
+import { YieldForm, YieldResult, YieldCalculatorProps } from '../lib/types';
 
-interface YieldForm {
-  deposit: string;
-  quests: string;
-  network: string;
-  withdraw: string;
-  token: string;
-}
+const TIER_RATES = [
+  { minDeposit: 100000, rate: 0.033, tier: 'Mythic PET' },
+  { minDeposit: 50000, rate: 0.031, tier: 'Elder' },
+  { minDeposit: 25000, rate: 0.028, tier: 'Alchemist' },
+  { minDeposit: 10000, rate: 0.025, tier: 'Archon' },
+  { minDeposit: 5000, rate: 0.022, tier: 'Sage' },
+  { minDeposit: 2500, rate: 0.019, tier: 'Guardian' },
+  { minDeposit: 1000, rate: 0.016, tier: 'Seeker' },
+  { minDeposit: 500, rate: 0.013, tier: 'Apprentice' },
+  { minDeposit: 0, rate: 0.01, tier: 'Initiate' },
+].sort((a, b) => b.minDeposit - a.minDeposit);
 
-interface YieldResult {
-  baseYield: number;
-  bonusYield: number;
-  totalYield: number;
-  tier: string;
-}
+const QUEST_BONUS_RATE_PER_QUEST = 0.0003;
+const COMPOUNDING_PERIODS = 60;
 
-interface YieldCalculatorProps {
-  userId: string | null;
-  handleCalculateYield: (e: React.FormEvent) => Promise<void>;
-}
-
-const YieldCalculator: React.FC<YieldCalculatorProps> = ({ userId, handleCalculateYield }) => {
+const YieldCalculator: React.FC<YieldCalculatorProps> = ({ userId, handleCalculateYield, setShowMessage, setActiveModal }) => {
   const [yieldForm, setYieldForm] = useState<YieldForm>({ deposit: '', quests: '0', network: 'Avalanche', withdraw: '', token: 'USDT' });
   const [yieldResult, setYieldResult] = useState<YieldResult | null>(null);
-  const { setShowMessage } = useModal();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) {
       setShowMessage('⚠️ Please sign in to calculate yield!');
+      setActiveModal('auth');
       return;
     }
+    
     const deposit = parseFloat(yieldForm.deposit);
     const quests = parseInt(yieldForm.quests);
-    if (isNaN(deposit) || deposit < 100 || isNaN(quests) || quests < 0 || quests > 10) {
-      setShowMessage(
-        deposit < 100 ? '⚠️ Please enter a valid deposit amount (minimum $100).' :
-        '⚠️ Quests must be between 0 and 10.'
-      );
+
+    if (isNaN(deposit) || deposit < 100) {
+      setShowMessage('⚠️ Please enter a valid deposit amount (minimum $100).');
       return;
     }
+    if (isNaN(quests) || quests < 0 || quests > 10) {
+      setShowMessage('⚠️ Quests must be between 0 and 10.');
+      return;
+    }
+
     try {
-      await handleCalculateYield(e);
-      setYieldResult({
-        baseYield: deposit * (deposit >= 100000 ? 0.033 : deposit >= 50000 ? 0.031 : deposit >= 25000 ? 0.028 : deposit >= 10000 ? 0.025 : deposit >= 5000 ? 0.022 : deposit >= 2500 ? 0.019 : deposit >= 1000 ? 0.016 : deposit >= 500 ? 0.013 : 0.01),
-        bonusYield: deposit * (quests * 0.0003),
-        totalYield: deposit * (quests * 0.0003) + deposit * (deposit >= 100000 ? 0.033 : deposit >= 50000 ? 0.031 : deposit >= 25000 ? 0.028 : deposit >= 10000 ? 0.025 : deposit >= 5000 ? 0.022 : deposit >= 2500 ? 0.019 : deposit >= 1000 ? 0.016 : deposit >= 500 ? 0.013 : 0.01),
-        tier: deposit >= 100000 ? 'Mythic PET' : deposit >= 50000 ? 'Elder' : deposit >= 25000 ? 'Alchemist' : deposit >= 10000 ? 'Archon' : deposit >= 5000 ? 'Sage' : deposit >= 2500 ? 'Guardian' : deposit >= 1000 ? 'Seeker' : deposit >= 500 ? 'Apprentice' : 'Initiate',
-      });
-      setShowMessage(`✅ Yield calculated for ${yieldForm.deposit} USDT and ${yieldForm.quests} quests!`);
+      const tierData = TIER_RATES.find(t => deposit >= t.minDeposit);
+      const baseMonthlyRate = tierData ? tierData.rate : TIER_RATES[TIER_RATES.length - 1].rate;
+      const tierName = tierData ? tierData.tier : 'Initiate';
+
+      const bonusMonthlyRate = quests * QUEST_BONUS_RATE_PER_QUEST;
+      const effectiveMonthlyRate = baseMonthlyRate + bonusMonthlyRate;
+
+      const totalValueAfter5Years = deposit * Math.pow(1 + effectiveMonthlyRate, COMPOUNDING_PERIODS);
+      const totalROIAfter5Years = totalValueAfter5Years - deposit;
+      const averageMonthlyROIAfter5Years = totalROIAfter5Years / COMPOUNDING_PERIODS;
+
+      const baseMonthlyYield = deposit * baseMonthlyRate;
+      const bonusMonthlyYield = deposit * bonusMonthlyRate;
+      const totalMonthlyYieldStart = baseMonthlyYield + bonusMonthlyYield;
+      
+      const result: YieldResult = {
+        baseMonthlyYield,
+        bonusMonthlyYield,
+        totalMonthlyYieldStart,
+        totalValueAfter5Years,
+        totalROIAfter5Years,
+        averageMonthlyROIAfter5Years,
+        tier: tierName,
+      };
+
+      setYieldResult(result);
+
+      await handleCalculateYield(e); // Use the prop passed from Vault.tsx
+
+      setShowMessage(`✅ Calculation for ${yieldForm.deposit} USDT and ${yieldForm.quests} quests!`);
     } catch (err) {
       console.error('Yield calculation error:', err);
       setShowMessage('⚠️ Failed to calculate yield. Please try again.');
+      setActiveModal('error');
     }
   };
 
@@ -83,7 +105,7 @@ const YieldCalculator: React.FC<YieldCalculatorProps> = ({ userId, handleCalcula
               type="number"
               value={yieldForm.deposit}
               onChange={(e) => setYieldForm({ ...yieldForm, deposit: e.target.value })}
-              placeholder="Enter deposit amount"
+              placeholder="Enter deposit amount (min $100)"
               className="w-full p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-rose-500 focus:ring-2 focus:ring-rose-500"
               min="0"
               required
@@ -127,9 +149,10 @@ const YieldCalculator: React.FC<YieldCalculatorProps> = ({ userId, handleCalcula
             className="mt-4 p-4 bg-gray-800 rounded-lg border border-rose-500/20"
           >
             <p className="text-white font-semibold font-inter">Tier: {yieldResult.tier}</p>
-            <p className="text-gray-300 font-inter">Base Yield: ${yieldResult.baseYield.toFixed(2)}/month</p>
-            <p className="text-gray-300 font-inter">Bonus Yield: ${yieldResult.bonusYield.toFixed(2)}/month</p>
-            <p className="text-rose-400 font-bold font-inter">Total Yield: ${yieldResult.totalYield.toFixed(2)}/month</p>
+            <p className="text-gray-300 font-inter">Base Monthly Yield: ${yieldResult.baseMonthlyYield.toFixed(2)}</p>
+            <p className="text-gray-300 font-inter">Bonus Monthly Yield: ${yieldResult.bonusMonthlyYield.toFixed(2)}</p>
+            <p className="text-rose-400 font-bold font-inter">Total ROI (5 Years): ${yieldResult.totalROIAfter5Years.toFixed(2)}</p>
+            <p className="text-rose-400 font-bold font-inter">Average Monthly ROI: ${yieldResult.averageMonthlyROIAfter5Years.toFixed(2)}</p>
           </motion.div>
         )}
       </motion.div>

@@ -1,25 +1,26 @@
 import { FC, memo } from 'react';
 import { motion } from 'framer-motion';
-import { useModal } from '@/context/ModalContext';
+// Removed: import { Quest } from './QuestCard'; // No longer needed as Quest is imported from types.ts
+import { useModal } from '@/context/ModalContext'; // Keep useModal for context functions
+// Removed: import { auth } from '@/lib/firebaseConfig'; // Not needed if userId is used for auth check
 
-interface Quest {
-  id: string;
-  title: string;
-  progress: number;
-  goal: number;
-  rewardJEWELS: number;
-  rewardXP: number;
-  completed: boolean;
-}
+// IMPORTANT: Import Quest and QuestCardProps from lib/types.ts
+import { QuestCardProps as ImportedQuestCardProps } from '../lib/types';
 
-const QuestCard: FC<{ quest: Quest; handleClaimQuest: (id: string) => void; isConnected: boolean }> = memo(({ quest, handleClaimQuest, isConnected }) => {
-  const { setShowMessage } = useModal();
+
+// Quest interface is now imported from lib/types.ts
+
+// Use ImportedQuestCardProps as the type for the FC
+const QuestCard: FC<ImportedQuestCardProps> = memo(({ quest, handleClaimQuest, isConnected }) => {
+  const { setShowMessage } = useModal(); // Correctly consuming context
 
   const onClaim = () => {
+    // Rely on isConnected prop for wallet connection check
     if (!isConnected) {
       setShowMessage('⚠️ Please connect your wallet!');
       return;
     }
+    // handleClaimQuest already checks userId internally
     handleClaimQuest(quest.id);
   };
 
@@ -35,11 +36,14 @@ const QuestCard: FC<{ quest: Quest; handleClaimQuest: (id: string) => void; isCo
         </div>
       </div>
       <motion.button
-        className={`px-4 py-2 rounded-lg font-semibold font-poppins ${quest.progress >= quest.goal && !quest.completed ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
+        className={`px-4 py-2 rounded-lg font-semibold font-poppins ${
+          quest.progress >= quest.goal && !quest.completed ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+        }`}
         onClick={onClaim}
-        disabled={quest.completed || quest.progress < quest.goal || !isConnected}
-        whileHover={{ scale: quest.progress >= quest.goal && !quest.completed ? 1.05 : 1 }}
-        whileTap={{ scale: 0.95 }}
+        disabled={quest.completed || quest.progress < quest.goal || !isConnected} // Disable if not connected
+        // FIX: whileHover/whileTap scale should be 1 if disabled, 1.05/0.95 otherwise
+        whileHover={{ scale: (quest.progress >= quest.goal && !quest.completed && isConnected) ? 1.05 : 1 }}
+        whileTap={{ scale: (quest.progress >= quest.goal && !quest.completed && isConnected) ? 0.95 : 1 }}
         aria-label={`Claim ${quest.title} reward`}
       >
         {quest.completed ? 'Claimed' : 'Claim'}

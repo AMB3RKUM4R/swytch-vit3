@@ -1,25 +1,17 @@
-
 import { FC, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Wallet, Coins } from 'lucide-react';
-import { useModal } from '@/context/ModalContext';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { useModal } from '@/context/ModalContext'; // Keep useModal for context functions
+import { addDoc, collection, serverTimestamp, getDoc, doc } from 'firebase/firestore'; // Added getDoc, doc
 import { db } from '@/lib/firebaseConfig';
 import ConnectWalletButton from './ConnectWalletButton';
 
-// Define WalletSwapFormsProps to match PageProps from App.tsx
-interface WalletSwapFormsProps {
-  userId: string | null;
-  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-}
+// IMPORTANT: Import WalletSwapFormsProps, YieldForm, SupportedCurrency, TransactionType, TransactionStatus from lib/types.ts
+import { WalletSwapFormsProps as ImportedWalletSwapFormsProps, YieldForm, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
 
-interface YieldForm {
-  deposit: string;
-  network: string;
-  withdraw: string;
-  token: string;
-}
+
+// WalletSwapFormsProps interface is now imported from lib/types.ts
+// YieldForm interface is now imported from lib/types.ts
 
 const containerVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
@@ -30,8 +22,9 @@ const cardVariants = {
   hover: { scale: 1.05, boxShadow: '0 0 15px rgba(236, 72, 153, 0.5)' },
 };
 
-const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage, updatePlayerFirestore }) => {
-  const [yieldForm, setYieldForm] = useState<YieldForm>({ deposit: '', network: 'Avalanche', withdraw: '', token: 'USDT' });
+// Use ImportedWalletSwapFormsProps as the type for the FC
+const WalletSwapForms: FC<ImportedWalletSwapFormsProps> = ({ userId, setShowMessage, updatePlayerFirestore }) => {
+  const [yieldForm, setYieldForm] = useState<YieldForm>({ deposit: '', network: 'Avalanche', withdraw: '', token: 'USDT', quests: '0' });
   const { setActiveModal } = useModal();
 
   const handleDeposit = async (amount: string, network: string) => {
@@ -40,26 +33,33 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage, upd
       setActiveModal('auth');
       return;
     }
-    if (parseFloat(amount) <= 0) {
+    const depositAmount = parseFloat(amount);
+    if (isNaN(depositAmount) || depositAmount <= 0) {
       setShowMessage('⚠️ Please enter a valid deposit amount.');
       return;
     }
     try {
+      // Fetch current jewels balance before updating
+      const userRef = doc(db, 'Players', userId);
+      const userSnap = await getDoc(userRef);
+      const currentJewels = userSnap.exists() ? userSnap.data().jewels || 0 : 0;
+
       const transactionId = `${userId}_${Date.now()}`;
       await addDoc(collection(db, 'Transactions'), {
         transactionId,
         userId,
-        amount: parseFloat(amount),
-        currency: 'JEWELS' as 'INR' | 'USD' | 'ETH',
-        transactionType: 'deposit' as 'membership' | 'deposit' | 'withdraw',
-        status: 'pending' as 'success' | 'pending' | 'failed',
+        amount: depositAmount,
+        currency: 'JEWELS' as SupportedCurrency, // Correctly typed
+        transactionType: 'deposit' as TransactionType,
+        status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'wallet-swap',
         adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
       });
-      await updatePlayerFirestore({ jewels: parseFloat(amount) });
-      setShowMessage(`🎉 Deposited ${amount} JEWELS via ${network}!`);
-      setActiveModal('payment');
+      // FIX: Update jewels by adding the deposit amount
+      await updatePlayerFirestore({ jewels: currentJewels + depositAmount });
+      setShowMessage(`🎉 Deposited ${depositAmount} JEWELS via ${network}!`);
+      setActiveModal('payment'); // Trigger payment modal
     } catch (err) {
       console.error('Deposit error:', err);
       setShowMessage('⚠️ Failed to process deposit. Try again.');
@@ -73,25 +73,37 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage, upd
       setActiveModal('auth');
       return;
     }
-    if (parseFloat(amount) <= 0) {
+    const withdrawAmount = parseFloat(amount);
+    if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
       setShowMessage('⚠️ Please enter a valid withdrawal amount.');
       return;
     }
     try {
+      // Fetch current jewels balance before updating
+      const userRef = doc(db, 'Players', userId);
+      const userSnap = await getDoc(userRef);
+      const currentJewels = userSnap.exists() ? userSnap.data().jewels || 0 : 0;
+
+      if (currentJewels < withdrawAmount) {
+        setShowMessage('⚠️ Insufficient JEWELS balance for withdrawal.');
+        return;
+      }
+
       const transactionId = `${userId}_${Date.now()}`;
       await addDoc(collection(db, 'Transactions'), {
         transactionId,
         userId,
-        amount: parseFloat(amount),
-        currency: 'JEWELS' as 'INR' | 'USD' | 'ETH',
-        transactionType: 'withdraw' as 'membership' | 'deposit' | 'withdraw',
-        status: 'pending' as 'success' | 'pending' | 'failed',
+        amount: withdrawAmount,
+        currency: token as SupportedCurrency, // Use the selected token as currency
+        transactionType: 'withdraw' as TransactionType,
+        status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'wallet-swap',
         adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
       });
-      await updatePlayerFirestore({ jewels: -parseFloat(amount) });
-      setShowMessage(`🎉 Withdrawn ${amount} JEWELS to ${token}!`);
+      // FIX: Update jewels by deducting the withdrawal amount
+      await updatePlayerFirestore({ jewels: currentJewels - withdrawAmount });
+      setShowMessage(`🎉 Withdrawn ${withdrawAmount} JEWELS to ${token}!`);
       setActiveModal('payment');
     } catch (err) {
       console.error('Withdraw error:', err);
@@ -121,7 +133,7 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage, upd
           {userId ? (
             <p className="text-gray-300 font-inter">Connected: {userId.slice(0, 6)}...{userId.slice(-4)}</p>
           ) : (
-            <ConnectWalletButton setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
+            <ConnectWalletButton userId={userId} setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
           )}
           <p className="text-gray-400 text-sm font-inter">Use your Avalanche-compatible address.</p>
         </div>

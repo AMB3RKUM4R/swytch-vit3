@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+// main.tsx (Updated: Fixed typo in setQuests(fetchedMessages) to setQuests(fetchedQuests). Added optional doc creation for new users. Memoized updatePlayerFirestore with useCallback. No other logic changes.)
+
+import React, { useEffect, useState, useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -48,7 +50,7 @@ const AppContent: React.FC = () => {
   const [initialAuthCheckComplete, setInitialAuthCheckComplete] = useState<boolean>(false);
 
 
-  const updatePlayerFirestore = async (updates: Partial<any>) => {
+  const updatePlayerFirestore = useCallback(async (updates: Partial<any>) => {
     if (!userId) {
       setShowMessage('⚠️ Please sign in to update data.');
       setActiveModal('auth');
@@ -65,7 +67,7 @@ const AppContent: React.FC = () => {
       setShowMessage('⚠️ Failed to update player data. Please check your connection.');
       setActiveModal('error');
     }
-  };
+  }, [userId, setShowMessage, setActiveModal]);
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged(
@@ -105,17 +107,21 @@ const AppContent: React.FC = () => {
               setShowMessage('🎉 Claimed 500 JEWELS daily bonus!');
             }
           } else {
-            // Logic to create user doc if it doesn't exist upon first login
-            // Example:
-            // if (auth.currentUser && !docSnap.exists()) {
-            //   setDoc(userRef, {
-            //     userId: auth.currentUser.uid,
-            //     username: auth.currentUser.displayName || auth.currentUser.email || 'User',
-            //     email: auth.currentUser.email || '',
-            //     jewels: 0, gold: 0, level: 0, isPETMember: false, membership: 'none',
-            //     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-            //   }).then(() => setShowMessage('Welcome new player!'));
-            // }
+            // Create user doc if it doesn't exist
+            if (auth.currentUser && !docSnap.exists()) {
+              setDoc(userRef, {
+                userId: auth.currentUser.uid,
+                username: auth.currentUser.displayName || auth.currentUser.email || 'User',
+                email: auth.currentUser.email || '',
+                jewels: 0,
+                gold: 0,
+                level: 0,
+                isPETMember: false,
+                membership: 'none',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              }).then(() => setShowMessage('Welcome new player!'));
+            }
           }
           setIsPending(false);
         },

@@ -1,3 +1,5 @@
+// pages/DSPETDisclosure.tsx (Updated: Replaced throwing stubs in SwytchErrorBoundary with actual setters from props/context. Removed deprecated setShowWalletModal from Link. No logic changes.)
+
 import { FC, Dispatch, SetStateAction, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -157,11 +159,7 @@ const DSPETDisclosure: FC<DSPETDisclosureProps> = ({
   }
 
   return (
-    <SwytchErrorBoundary setShowMessage={function (_value: SetStateAction<string>): void {
-      throw new Error('Function not implemented.');
-    } } setActiveModal={function (_value: SetStateAction<string | null>): void {
-      throw new Error('Function not implemented.');
-    } }>
+    <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
         variants={containerVariants}

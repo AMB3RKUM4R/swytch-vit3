@@ -1,76 +1,147 @@
-import { FC, memo, SetStateAction } from 'react';
-import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight } from 'lucide-react';
-import { SwytchCard } from './SwytchCard';
-import SwytchErrorBoundary from './ErrorBoundaryComponent';
+// src/lib/types.ts (Final, Comprehensive, Launch-Ready Version - BenefitsCTAProps Fix)
 
-interface BenefitsCTAProps {
+import { Dispatch, SetStateAction } from 'react';
+import type { Address, FeeValues} from 'viem';
+import type { GetBalanceReturnType } from '@wagmi/core';
+
+
+export type MembershipTier = "ecosystem" | "gamers" | "gold";
+
+export const MEMBERSHIP_TIERS: Record<MembershipTier, { name: string; amount: number; usdAmount: number; contentRoute: string }> = {
+  ecosystem: { name: "Ecosystem Membership", amount: 99, usdAmount: 10, contentRoute: "/ecosystem-content" },
+  gamers: { name: "Gamers Membership", amount: 199, usdAmount: 49, contentRoute: "/gamers-content" },
+  gold: { name: "Gold Membership", amount: 499, usdAmount: 199, contentRoute: "/gold-content" },
+};
+
+export type SupportedCurrency = "INR" | "USD" | "ETH" | "JEWELS" | "USDT";
+export type TransactionType = "membership" | "deposit" | "withdraw" | "level-purchase" | "quest-reward" | "payout";
+export type TransactionStatus = "success" | "pending" | "failed";
+
+export interface Transaction {
+  [x: string]: any;
+  transactionId: string;
+  userId: string;
+  amount: number;
+  currency: SupportedCurrency;
+  transactionType: TransactionType;
+  status: TransactionStatus;
+  timestamp: any;
+  screenshot?: string;
+  itemId?: string | null;
+  game?: string;
+  adminId?: string;
+  paypalOrderId?: string;
+  paymentMethod?: string;
+  paymentUrl?: string;
+  walletAddress?: string;
+  updatedAt?: any;
+}
+
+export interface RazorTransactionProps {
+  amount: number;
+  currency: SupportedCurrency;
+  itemId: string | null;
+  transactionType: TransactionType;
+  userId: string | null;
+  onSuccess: (submittedItemId: string | null) => void;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+}
+
+export interface TopNavProps {
+  userId: string | null;
+  jewelsBalance: number;
+  isPETMember: boolean;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+  setActiveAuthModal: (modalName: 'auth' | null) => void;
+  setShowPaymentModal: (show: boolean) => void;
+}
+
+export interface PaymentModalProps {
+  userId: string | null;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+  setIsPETMember: Dispatch<SetStateAction<boolean>>;
+  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
+}
+
+export interface BottomNavProps {
+  userId: string | null;
+  jewelsBalance: number;
+  isPETMember: boolean;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+}
+
+export interface AppProps {
+  userId: string | null;
+  activeModal: string | null;
+  setActiveModal: Dispatch<SetStateAction<string | null>>;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+  setIsPETMember: Dispatch<SetStateAction<boolean>>;
+  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
+  jewelsBalance: number;
+  goldBalance: number;
+  currentLevel: number;
+  isPending: boolean;
+  authLoading: boolean;
+  mousePosition: { x: number; y: number; };
+}
+
+export interface PageProps extends AppProps {}
+export interface GamesPageProps extends AppProps {}
+export interface GameProps extends Pick<AppProps, 'userId' | 'setIsPETMember' | 'updatePlayerFirestore' | 'setShowMessage' | 'setActiveModal'> {}
+export interface RedDogGameProps extends Pick<AppProps, 'userId' | 'activeModal' | 'setActiveModal' | 'setIsPETMember' | 'setShowMessage' | 'updatePlayerFirestore'> {}
+export interface BenefitsProps extends AppProps {}
+export interface CommunityProps extends AppProps {}
+export interface DSPETDisclosureProps extends AppProps {}
+export interface DSPETPrivacyProps extends AppProps {}
+export interface LandingPageProps extends AppProps {}
+export interface TokenomicsProps extends AppProps {}
+export interface VisionProps extends AppProps {}
+export interface BlackjackGameProps extends AppProps {}
+export interface AccountActionsProps extends Pick<AppProps, 'userId' | 'updatePlayerFirestore' | 'setActiveModal' | 'setShowMessage'> {
+  referralViews: number;
+  setReferralViews: React.Dispatch<React.SetStateAction<number>>;
+}
+
+export interface VaultWalletInfoProps {
+  isConnected: boolean;
+  address: Address | undefined;
+  chainId: number | undefined;
+  ensName: string | null | undefined;
+  blockNumber: bigint | null | undefined;
+  feeData: FeeValues | undefined;
+  usdtBalance: GetBalanceReturnType | undefined;
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  unlocked: boolean;
+}
+
+export interface AchievementsProps {
+  achievements: Achievement[];
+  userId: string | null;
+  setActiveModal: Dispatch<SetStateAction<string | null>>;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+}
+
+export interface AdminPayoutProps {
+  isConnected: boolean;
+  address: Address | undefined;
+  isPending: boolean;
+  handlePayout: () => Promise<void>;
+  payoutAddress: `0x${string}` | '';
+  setPayoutAddress: React.Dispatch<React.SetStateAction<`0x${string}` | ''>>;
+  payoutAmount: string;
+  setPayoutAmount: React.Dispatch<React.SetStateAction<string>>;
+}
+
+// FIX: BenefitsCTAProps - Removed setShowWalletModal
+export interface BenefitsCTAProps {
   userId: string | null;
   setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
   setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  setShowWalletModal: React.Dispatch<React.SetStateAction<boolean>>;
+  // Removed setShowWalletModal as it's no longer used in the component
   logUpiIntent: () => Promise<void>;
 }
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.15 } },
-};
-
-const sectionVariants = {
-  hidden: { opacity: 0, y: 50, scale: 0.95 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut' } },
-};
-
-const BenefitsCTA: FC<BenefitsCTAProps> = memo(({ userId, setActiveModal, setShowMessage, logUpiIntent }) => {
-  const handleBecomePET = async () => {
-    if (!userId) {
-      setActiveModal('auth');
-      setShowMessage('⚠️ Sign in to become a PET!');
-      return;
-    }
-    await logUpiIntent();
-  };
-
-  return (
-    <SwytchErrorBoundary setShowMessage={function (_value: SetStateAction<string>): void {
-      throw new Error('Function not implemented.');
-    } } setActiveModal={function (_value: SetStateAction<string | null>): void {
-      throw new Error('Function not implemented.');
-    } }>
-      <motion.section
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="py-16 px-6 sm:px-8 lg:px-16 bg-gray-950 text-center font-inter relative bg-noise"
-      >
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-20"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop)' }}
-        />
-        <SwytchCard gradient="from-rose-500/20 to-cyan-500/20" className="max-w-4xl mx-auto p-8 relative">
-          <motion.div variants={sectionVariants}>
-            <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3 font-poppins">
-              <Sparkles className="w-6 h-6 text-cyan-400 animate-pulse" /> Ignite Your Sovereignty
-            </h3>
-            <p className="text-gray-300 max-w-xl mx-auto font-inter mt-4">
-              Join the PETverse rebellion against centralized control. Earn JEWELS, govern, and build wealth on your terms.
-            </p>
-            <motion.button
-              className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins mt-6"
-              onClick={handleBecomePET}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Become a PET"
-            >
-              Become a PET
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1" />
-            </motion.button>
-          </motion.div>
-        </SwytchCard>
-      </motion.section>
-    </SwytchErrorBoundary>
-  );
-});
-
-export default BenefitsCTA;

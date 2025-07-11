@@ -1,19 +1,19 @@
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight } from 'lucide-react';
-import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
+import { EcosystemHeroProps } from '@/lib/types';
 
-interface EcosystemHeroProps {
-  userId: string | null;
-  goldBalance: number;
-  mousePosition: { x: number; y: number };
-}
+const sectionVariants = {
+  hidden: { opacity: 0, y: 50, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } },
+};
 
-const EcosystemHero: React.FC<EcosystemHeroProps> = ({ userId, goldBalance, mousePosition }) => {
-  const { setActiveModal, setShowMessage } = useModal();
+const orbitVariants = {
+  animate: { rotate: 360, transition: { duration: 20, repeat: Infinity, ease: 'linear' } },
+};
 
+const EcosystemHero: React.FC<EcosystemHeroProps> = ({ userId, goldBalance, mousePosition, setActiveModal, setShowMessage }) => {
   const handleEnterPetaverse = () => {
-    if (!userId || !auth.currentUser) {
+    if (!userId) {
       setActiveModal('auth');
       setShowMessage('⚠️ Sign in to enter the Petaverse!');
       return;
@@ -24,7 +24,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({ userId, goldBalance, mous
 
   return (
     <motion.div
-      variants={{ hidden: { opacity: 0, y: 50, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } } }}
+      variants={sectionVariants}
       className="relative text-center bg-gray-900/70 backdrop-blur-lg rounded-3xl p-12 border border-rose-500/30 shadow-2xl hover:shadow-cyan-500/50 transition-all"
       style={{
         backgroundImage: `url(https://images.unsplash.com/photo-1612835362596-4b0b2b1b0b0c?q=80&w=2070&auto=format&fit=crop)`,
@@ -33,7 +33,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({ userId, goldBalance, mous
       }}
     >
       <div className="absolute inset-0 bg-gradient-to-r from-rose-500/60 to-cyan-500/60 rounded-3xl" />
-      <motion.div className="absolute inset-0 pointer-events-none" variants={{ animate: { rotate: 360, transition: { duration: 20, repeat: Infinity, ease: 'linear' } } }} animate="animate">
+      <motion.div className="absolute inset-0 pointer-events-none" variants={orbitVariants} animate="animate">
         <motion.div className="absolute top-10 left-10 w-4 h-4 bg-rose-400 rounded-full opacity-50" animate={{ scale: [1, 1.5, 1], transition: { duration: 2, repeat: Infinity } }} />
         <motion.div className="absolute bottom-10 right-10 w-6 h-6 bg-cyan-400 rounded-full opacity-50" animate={{ scale: [1, 1.3, 1], transition: { duration: 3, repeat: Infinity } }} />
       </motion.div>

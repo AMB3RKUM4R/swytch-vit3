@@ -1,13 +1,16 @@
 import { motion } from 'framer-motion';
-import { AlertTriangle, Code, Link, Server } from 'lucide-react';
+import { AlertTriangle, Code, Link as LinkIcon, Server } from 'lucide-react'; // Renamed Link to LinkIcon to avoid conflict with react-router-dom Link
 import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
+import { auth } from '@/lib/firebaseConfig'; // Firebase auth import
 
-const AssumptionOfRisk: React.FC = () => {
+// IMPORTANT: No local interface for AssumptionsOfRiskProps. It's a self-contained component for now.
+// If it needs props, define/import them.
+
+const AssumptionOfRisk: React.FC = () => { // No props needed for this FC as it gets context directly
   const { setActiveModal, setShowMessage } = useModal();
 
   const handleRiskAcknowledgment = () => {
-    if (!auth.currentUser) {
+    if (!auth.currentUser) { // Directly checking auth.currentUser is fine here as no userId prop is passed.
       setActiveModal('auth');
       setShowMessage('⚠️ Sign in to acknowledge risks!');
       return;
@@ -43,10 +46,10 @@ const AssumptionOfRisk: React.FC = () => {
               <Code className="text-cyan-400 w-6 h-6" /> Bugs or cyberattacks may disrupt operations.
             </li>
             <li className="flex items-start gap-3 bg-gray-800/50 p-4 rounded-lg hover:bg-gray-800/70 transition">
-              <Link className="text-rose-400 w-6 h-6" /> Forks may lead to total loss.
+              <LinkIcon className="text-rose-400 w-6 h-6" /> Forks may lead to total loss. {/* Changed to LinkIcon */}
             </li>
             <li className="flex items-start gap-3 bg-gray-800/50 p-4 rounded-lg hover:bg-gray-800/70 transition">
-              <Link className="text-rose-400 w-6 h-6" /> Swytch assumes no liability.
+              <LinkIcon className="text-rose-400 w-6 h-6" /> Swytch assumes no liability. {/* Changed to LinkIcon */}
             </li>
             <li className="flex items-start gap-3 bg-gray-800/50 p-4 rounded-lg hover:bg-gray-800/70 transition">
               <Server className="text-cyan-400 w-6 h-6" /> Third-party services are not Swytch’s responsibility.

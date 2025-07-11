@@ -1,22 +1,20 @@
-// Assuming this is RazorTransaction.tsx (or RazorWithdraw.tsx as per your error report)
-// RazorTransaction.tsx
-import { useState, useRef } from "react";
-import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { motion, AnimatePresence } from "framer-motion";
-import { db, storage } from "@/lib/firebaseConfig";
-import { RazorTransactionProps, MEMBERSHIP_TIERS, Transaction } from "@/lib/types";
+import { useState, useRef } from 'react';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { motion, AnimatePresence } from 'framer-motion';
+import { db, storage } from '@/lib/firebaseConfig';
+import { RazorTransactionProps, MEMBERSHIP_TIERS, Transaction } from '@/lib/types';
+import { PayPalButtons } from '@paypal/react-paypal-js';
 
-
-const RazorTransaction: React.FC<RazorTransactionProps> = ({
+const RazorTransaction: React.FC<RazorTransactionProps & { paymentMethod?: 'upi' | 'paypal' }> = ({
   amount,
   currency,
   itemId,
   transactionType,
   userId,
   onSuccess,
-  // FIX: Destructure setShowMessage from props
   setShowMessage,
+  paymentMethod = 'upi',
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,8 +22,8 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const upiId = import.meta.env.VITE_UPI_ID || "swytch.pet@upi";
-  const upiIntentUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=Swytch&am=${amount}&cu=${currency}${itemId ? `&tn=${transactionType}_${itemId}` : ""}`;
+  const upiId = import.meta.env.VITE_UPI_ID || 'swytch.pet@upi';
+  const upiIntentUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=Swytch&am=${amount}&cu=${currency}${itemId ? `&tn=${transactionType}_${itemId}` : ''}`;
 
   const buttonVariants = {
     hover: { scale: 1.05, transition: { duration: 0.3 } },
@@ -40,17 +38,15 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
   const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const validTypes = ["image/png", "image/jpeg", "image/jpg"];
+      const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
       if (!validTypes.includes(file.type)) {
-        setError("Please upload a PNG or JPEG image.");
-        // FIX: Use setShowMessage for external notification
-        setShowMessage("⚠️ Please upload a PNG or JPEG image.");
+        setError('Please upload a PNG or JPEG image.');
+        setShowMessage('⚠️ Please upload a PNG or JPEG image.');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setError("File size must be less than 5MB.");
-        // FIX: Use setShowMessage for external notification
-        setShowMessage("⚠️ File size must be less than 5MB.");
+        setError('File size must be less than 5MB.');
+        setShowMessage('⚠️ File size must be less than 5MB.');
         return;
       }
       setScreenshot(file);
@@ -60,60 +56,53 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
 
   const checkActiveMembership = async () => {
     if (!userId) return false;
-    const userRef = doc(db, "Players", userId);
+    const userRef = doc(db, 'Players', userId);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
-    return userData?.membership && userData.membership !== "none";
+    return userData?.membership && userData.membership !== 'none';
   };
 
-  const handleSubmission = async () => {
+  const handleSubmission = async (paypalOrderId?: string) => {
     if (!userId) {
-      setError("User authentication required. Please connect your wallet or log in.");
-      // FIX: Use setShowMessage for external notification
-      setShowMessage("⚠️ User authentication required. Please connect your wallet or log in.");
+      setError('User authentication required. Please connect your wallet or log in.');
+      setShowMessage('⚠️ User authentication required. Please connect your wallet or log in.');
       return;
     }
 
-    if (transactionType === "membership") {
-      if (!screenshot) {
-        setError("Please upload a UPI payment screenshot.");
-        // FIX: Use setShowMessage for external notification
-        setShowMessage("⚠️ Please upload a UPI payment screenshot.");
+    if (transactionType === 'membership') {
+      if (paymentMethod === 'upi' && !screenshot) {
+        setError('Please upload a UPI payment screenshot.');
+        setShowMessage('⚠️ Please upload a UPI payment screenshot.');
         return;
       }
       if (!itemId || !MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS]) {
-        setError("Invalid membership tier.");
-        // FIX: Use setShowMessage for external notification
-        setShowMessage("⚠️ Invalid membership tier.");
+        setError('Invalid membership tier.');
+        setShowMessage('⚠️ Invalid membership tier.');
         return;
       }
       if (amount !== MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS].amount) {
         setError(`Amount must be ₹${MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS].amount} for ${MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS].name}.`);
-        // FIX: Use setShowMessage for external notification
         setShowMessage(`⚠️ Amount must be ₹${MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS].amount} for ${MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS].name}.`);
         return;
       }
 
       const hasActiveMembership = await checkActiveMembership();
       if (hasActiveMembership) {
-        setError("You already have an active membership.");
-        // FIX: Use setShowMessage for external notification
-        setShowMessage("⚠️ You already have an active membership.");
+        setError('You already have an active membership.');
+        setShowMessage('⚠️ You already have an active membership.');
         return;
       }
-    } else if (transactionType === "deposit" && amount < 50 && currency === "INR") {
-      setError("Minimum deposit amount is ₹50.");
-      // FIX: Use setShowMessage for external notification
-      setShowMessage("⚠️ Minimum deposit amount is ₹50.");
+    } else if (transactionType === 'deposit' && amount < 50 && currency === 'INR') {
+      setError('Minimum deposit amount is ₹50.');
+      setShowMessage('⚠️ Minimum deposit amount is ₹50.');
       return;
-    } else if (transactionType === "withdraw") {
-      const userRef = doc(db, "Players", userId);
+    } else if (transactionType === 'withdraw') {
+      const userRef = doc(db, 'Players', userId);
       const userSnap = await getDoc(userRef);
       const userData = userSnap.data();
-      if (!userData || userData.jewels < amount) { 
-        setError("Insufficient wallet balance for withdrawal.");
-        // FIX: Use setShowMessage for external notification
-        setShowMessage("⚠️ Insufficient wallet balance for withdrawal.");
+      if (!userData || userData.jewels < amount) {
+        setError('Insufficient wallet balance for withdrawal.');
+        setShowMessage('⚠️ Insufficient wallet balance for withdrawal.');
         return;
       }
     }
@@ -122,12 +111,12 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
     setLoading(true);
 
     try {
-      if (!upiId) {
-        throw new Error("UPI ID is not configured. Please contact support.");
+      if (paymentMethod === 'upi' && !upiId) {
+        throw new Error('UPI ID is not configured. Please contact support.');
       }
 
-      let screenshotUrl = "";
-      if (screenshot) {
+      let screenshotUrl = '';
+      if (paymentMethod === 'upi' && screenshot) {
         const path = `tx_screenshots/${userId}_${Date.now()}`;
         const fileRef = ref(storage, path);
         await uploadBytes(fileRef, screenshot);
@@ -141,23 +130,25 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
         amount: Number(amount),
         transactionType,
         currency,
-        status: "pending",
+        status: 'pending',
         timestamp: serverTimestamp(),
         ...(itemId && { itemId }),
         ...(screenshotUrl && { screenshot: screenshotUrl }),
+        ...(paypalOrderId && { paypalOrderId }),
+        paymentMethod,
       };
 
-      await setDoc(doc(db, "Transactions", transactionId), data);
+      await setDoc(doc(db, 'Transactions', transactionId), data);
 
-      if (transactionType === "membership" && itemId) {
-        await setDoc(doc(db, "Players", userId), { membership: itemId, updatedAt: serverTimestamp() }, { merge: true });
-      } else if (transactionType === "deposit") {
-        const userRef = doc(db, "Players", userId);
+      if (transactionType === 'membership' && itemId) {
+        await setDoc(doc(db, 'Players', userId), { membership: itemId, updatedAt: serverTimestamp() }, { merge: true });
+      } else if (transactionType === 'deposit') {
+        const userRef = doc(db, 'Players', userId);
         const userSnap = await getDoc(userRef);
         const currentBalance = userSnap.exists() ? userSnap.data().jewels || 0 : 0;
         await setDoc(userRef, { jewels: currentBalance + amount, updatedAt: serverTimestamp() }, { merge: true });
-      } else if (transactionType === "withdraw") {
-        const userRef = doc(db, "Players", userId);
+      } else if (transactionType === 'withdraw') {
+        const userRef = doc(db, 'Players', userId);
         const userSnap = await getDoc(userRef);
         const currentBalance = userSnap.exists() ? userSnap.data().jewels || 0 : 0;
         await setDoc(userRef, { jewels: currentBalance - amount, updatedAt: serverTimestamp() }, { merge: true });
@@ -166,22 +157,20 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
       onSuccess(itemId);
 
       setError(null);
-      // FIX: Ensure setShowMessage is passed via prop for external notification
-      setShowMessage(`✅ ${transactionType === "membership" ? "Membership payment" : transactionType === "deposit" ? "Deposit" : "Withdrawal request"} submitted! Awaiting admin verification. Transaction ID: ${transactionId}`);
+      setShowMessage(`✅ ${transactionType === 'membership' ? 'Membership payment' : transactionType === 'deposit' ? 'Deposit' : 'Withdrawal request'} submitted! Awaiting admin verification. Transaction ID: ${transactionId}`);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to submit request.";
+      const errorMessage = err instanceof Error ? err.message : 'Failed to submit request.';
       setError(errorMessage);
-      // FIX: Ensure setShowMessage is passed via prop for external notification
       setShowMessage(`⚠️ ${errorMessage}`);
-      console.error("Submission error:", err);
+      console.error('Submission error:', err);
     } finally {
       setLoading(false);
       setScreenshot(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const membershipDetails = transactionType === "membership" && itemId ? MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS] : null;
+  const membershipDetails = transactionType === 'membership' && itemId ? MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS] : null;
 
   return (
     <motion.div
@@ -194,16 +183,57 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
         <p className="text-gray-200 text-sm font-inter">Processing...</p>
       ) : !userId ? (
         <p className="text-rose-400 text-sm font-inter">Please connect your wallet or log in to proceed.</p>
-      ) : transactionType === "membership" && membershipDetails ? (
+      ) : paymentMethod === 'paypal' ? (
         <>
           <div className="text-sm text-gray-200">
             <p>
-              Hello, <span className="font-bold text-rose-400">{userId.slice(0, 6) + "..." + userId.slice(-4)}</span>!
+              {transactionType === 'membership' && membershipDetails
+                ? `Purchase ${membershipDetails.name} for ${currency} ${amount}.`
+                : `Process ${transactionType} of ${currency} ${amount}.`}
+            </p>
+            <p>Complete the payment using PayPal below.</p>
+          </div>
+          <PayPalButtons
+            style={{ layout: 'vertical' }}
+            createOrder={(_data, actions) => {
+              return actions.order.create({
+                purchase_units: [
+                  {
+                    amount: {
+                      value: amount.toString(),
+                      currency_code: currency === 'INR' ? 'INR' : 'USD',
+                    },
+                    payee: {
+                      email_address: 'swytch.pet@paypal.com', // Replace with your PayPal business email
+                    },
+                  },
+                ],
+                intent: 'CAPTURE'
+              });
+            }}
+            onApprove={async (_data, actions) => {
+              if (actions.order) {
+                const order = await actions.order.capture();
+                await handleSubmission(order.id);
+              }
+            }}
+            onError={(err) => {
+              setError('PayPal payment failed.');
+              setShowMessage('⚠️ PayPal payment failed. Please try again.');
+              console.error('PayPal error:', err);
+            }}
+          />
+        </>
+      ) : transactionType === 'membership' && membershipDetails ? (
+        <>
+          <div className="text-sm text-gray-200">
+            <p>
+              Hello, <span className="font-bold text-rose-400">{userId.slice(0, 6) + '...' + userId.slice(-4)}</span>!
             </p>
             <p>
               Purchase <span className="font-bold text-rose-400">{membershipDetails.name}</span> for {currency} {membershipDetails.amount}.
             </p>
-            <p>{isMobile ? "Tap the QR code or 'Pay Now' to pay via UPI app (e.g., Google Pay, PhonePe):" : "Scan the QR code below to pay via UPI (e.g., Google Pay, PhonePe):"}</p>
+            <p>{isMobile ? 'Tap the QR code or "Pay Now" to pay via UPI app (e.g., Google Pay, PhonePe):' : 'Scan the QR code below to pay via UPI (e.g., Google Pay, PhonePe):'}</p>
             {isMobile ? (
               <a href={upiIntentUri} target="_blank" rel="noopener noreferrer" aria-label="Open UPI app to pay">
                 <img
@@ -233,18 +263,18 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
             disabled={loading}
           />
           <motion.button
-            onClick={handleSubmission}
+            onClick={() => handleSubmission()}
             disabled={loading || !screenshot}
             className={`bg-gradient-to-r from-rose-600 to-pink-700 text-white py-2 px-4 rounded-lg font-semibold font-poppins ${
-              loading || !screenshot ? "opacity-50 cursor-not-allowed" : "hover:from-rose-700 hover:to-pink-800"
+              loading || !screenshot ? 'opacity-50 cursor-not-allowed' : 'hover:from-rose-700 hover:to-pink-800'
             } focus:outline-none focus:ring-2 focus:ring-rose-500`}
             variants={buttonVariants}
-            whileHover={loading || !screenshot ? {} : "hover"}
-            whileTap={loading || !screenshot ? {} : "tap"}
+            whileHover={loading || !screenshot ? {} : 'hover'}
+            whileTap={loading || !screenshot ? {} : 'tap'}
             aria-label="Submit membership payment"
             role="button"
           >
-            {loading ? "Processing..." : "Submit Payment"}
+            {loading ? 'Processing...' : 'Submit Payment'}
           </motion.button>
           {isMobile && (
             <motion.a
@@ -252,11 +282,11 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className={`bg-gradient-to-r from-rose-600 to-pink-700 text-white py-2 px-4 rounded-lg font-semibold font-poppins text-center ${
-                loading ? "opacity-50 cursor-not-allowed" : "hover:from-rose-700 hover:to-pink-800"
+                loading ? 'opacity-50 cursor-not-allowed' : 'hover:from-rose-700 hover:to-pink-800'
               } focus:outline-none focus:ring-2 focus:ring-rose-500`}
               variants={buttonVariants}
-              whileHover={loading ? {} : "hover"}
-              whileTap={loading ? {} : "tap"}
+              whileHover={loading ? {} : 'hover'}
+              whileTap={loading ? {} : 'tap'}
               aria-label="Pay now with UPI app"
               role="button"
             >
@@ -264,11 +294,11 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
             </motion.a>
           )}
         </>
-      ) : transactionType === "deposit" ? (
+      ) : transactionType === 'deposit' ? (
         <>
           <div className="text-sm text-gray-200">
             <p>Deposit {currency} {amount} to Energy Vault.</p>
-            <p>{isMobile ? "Tap the QR code or 'Pay Now' to pay via UPI app (e.g., Google Pay, PhonePe):" : "Scan the QR code below to pay via UPI (e.g., Google Pay, PhonePe):"}</p>
+            <p>{isMobile ? 'Tap the QR code or "Pay Now" to pay via UPI app (e.g., Google Pay, PhonePe):' : 'Scan the QR code below to pay via UPI (e.g., Google Pay, PhonePe):'}</p>
             {isMobile ? (
               <a href={upiIntentUri} target="_blank" rel="noopener noreferrer" aria-label="Open UPI app to pay">
                 <img
@@ -298,18 +328,18 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
             disabled={loading}
           />
           <motion.button
-            onClick={handleSubmission}
+            onClick={() => handleSubmission()}
             disabled={loading || !screenshot}
             className={`bg-gradient-to-r from-rose-600 to-pink-700 text-white py-2 px-4 rounded-lg font-semibold font-poppins ${
-              loading || !screenshot ? "opacity-50 cursor-not-allowed" : "hover:from-rose-700 hover:to-pink-800"
+              loading || !screenshot ? 'opacity-50 cursor-not-allowed' : 'hover:from-rose-700 hover:to-pink-800'
             } focus:outline-none focus:ring-2 focus:ring-rose-500`}
             variants={buttonVariants}
-            whileHover={loading || !screenshot ? {} : "hover"}
-            whileTap={loading || !screenshot ? {} : "tap"}
+            whileHover={loading || !screenshot ? {} : 'hover'}
+            whileTap={loading || !screenshot ? {} : 'tap'}
             aria-label="Submit deposit payment"
             role="button"
           >
-            {loading ? "Processing..." : "Submit Payment"}
+            {loading ? 'Processing...' : 'Submit Payment'}
           </motion.button>
           {isMobile && (
             <motion.a
@@ -317,11 +347,11 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className={`bg-gradient-to-r from-rose-600 to-pink-700 text-white py-2 px-4 rounded-lg font-semibold font-poppins text-center ${
-                loading ? "opacity-50 cursor-not-allowed" : "hover:from-rose-700 hover:to-pink-800"
+                loading ? 'opacity-50 cursor-not-allowed' : 'hover:from-rose-700 hover:to-pink-800'
               } focus:outline-none focus:ring-2 focus:ring-rose-500`}
               variants={buttonVariants}
-              whileHover={loading ? {} : "hover"}
-              whileTap={loading ? {} : "tap"}
+              whileHover={loading ? {} : 'hover'}
+              whileTap={loading ? {} : 'tap'}
               aria-label="Pay now with UPI app"
               role="button"
             >
@@ -329,25 +359,25 @@ const RazorTransaction: React.FC<RazorTransactionProps> = ({
             </motion.a>
           )}
         </>
-      ) : transactionType === "withdraw" ? (
+      ) : transactionType === 'withdraw' ? (
         <>
           <div className="text-sm text-gray-200">
             <p>Request withdrawal of {currency} {amount}.</p>
             <p>Admin will process your request after verification.</p>
           </div>
           <motion.button
-            onClick={handleSubmission}
+            onClick={() => handleSubmission()}
             disabled={loading}
             className={`bg-gradient-to-r from-rose-600 to-pink-700 text-white py-2 px-4 rounded-lg font-semibold font-poppins ${
-              loading ? "opacity-50 cursor-not-allowed" : "hover:from-rose-700 hover:to-pink-800"
+              loading ? 'opacity-50 cursor-not-allowed' : 'hover:from-rose-700 hover:to-pink-800'
             } focus:outline-none focus:ring-2 focus:ring-rose-500`}
             variants={buttonVariants}
-            whileHover={loading ? {} : "hover"}
-            whileTap={loading ? {} : "tap"}
+            whileHover={loading ? {} : 'hover'}
+            whileTap={loading ? {} : 'tap'}
             aria-label="Submit withdrawal request"
             role="button"
           >
-            {loading ? "Processing..." : "Request Withdrawal"}
+            {loading ? 'Processing...' : 'Request Withdrawal'}
           </motion.button>
         </>
       ) : (

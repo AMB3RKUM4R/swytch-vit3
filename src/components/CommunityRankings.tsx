@@ -1,17 +1,13 @@
 import { motion } from 'framer-motion';
-import { Trophy} from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { useState } from 'react';
-import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
 
-interface LeaderboardEntry {
-  rank: number;
-  name: string;
-  jewels: number;
-  level: string;
-  avatar: string;
-}
+// IMPORTANT: Import LeaderboardEntry and CommunityRankingsProps from lib/types.ts
+import { LeaderboardEntry, CommunityRankingsProps as ImportedCommunityRankingsProps } from '../lib/types';
 
+
+// LeaderboardEntry interface is now imported from lib/types.ts
+// leaderboard data is local mock data; in production, this would be fetched from Firestore.
 const leaderboard: LeaderboardEntry[] = [
   { rank: 1, name: 'AstraRebel', jewels: 15000, level: 'Mythic PET', avatar: '/avatar1.jpg' },
   { rank: 2, name: 'QuantumSage', jewels: 12000, level: 'Elder', avatar: '/avatar2.jpg' },
@@ -20,9 +16,9 @@ const leaderboard: LeaderboardEntry[] = [
   { rank: 5, name: 'LunarSeeker', jewels: 5000, level: 'Sage', avatar: '/avatar5.jpg' },
 ];
 
-const CommunityRankings: React.FC = () => {
+const CommunityRankings: React.FC<ImportedCommunityRankingsProps> = ({ userId, setActiveModal, setShowMessage }) => {
   const [rankFilter, setRankFilter] = useState<'all' | 'jewels' | 'level'>('all');
-  const { setActiveModal, setShowMessage } = useModal();
+  // Removed const { setActiveModal, setShowMessage } = useModal(); as they are now passed as props
 
   const filteredRankings = [...leaderboard].sort((a, b) => {
     if (rankFilter === 'jewels') return b.jewels - a.jewels;
@@ -34,13 +30,14 @@ const CommunityRankings: React.FC = () => {
   });
 
   const handleRankingClick = (name: string) => {
-    if (!auth.currentUser) {
+    // Rely on userId prop for authentication check, consistent with other components
+    if (!userId) { // Using userId prop directly for auth check
       setActiveModal('auth');
       setShowMessage('⚠️ Sign in to interact with rankings!');
       return;
     }
     setShowMessage(`ℹ️ Viewing ${name}'s profile! Deposit to compete!`);
-    setActiveModal('payment');
+    setActiveModal('payment'); // Trigger payment modal as intended
   };
 
   return (
@@ -50,7 +47,7 @@ const CommunityRankings: React.FC = () => {
     >
       <div
         className="absolute inset-0 bg-cover bg-center opacity-20"
-        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop)' }}
+        style={{ backgroundImage: 'ur[](https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop)' }} // Example background image
       />
       <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3 font-poppins">
         <Trophy className="w-8 h-8 text-cyan-400 animate-pulse" /> Community Rankings
@@ -91,7 +88,7 @@ const CommunityRankings: React.FC = () => {
         <div className="space-y-4">
           {filteredRankings.map((pet) => (
             <motion.div
-              key={pet.rank}
+              key={pet.rank} // Using rank as key assuming it's unique for mock data
               className="flex items-center gap-4 bg-gray-800/80 p-4 rounded-lg border border-cyan-500/20"
               whileHover={{ scale: 1.02 }}
               onClick={() => handleRankingClick(pet.name)}

@@ -1,17 +1,16 @@
 import { FC, memo } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ShieldCheck } from 'lucide-react'; // Import ShieldCheck for the icon
 import { SwytchCard } from './SwytchCard';
-import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
+import { auth } from '@/lib/firebaseConfig'; // Keep auth for auth.currentUser check
 
-interface Dont {
-  title: string;
-  description: string;
-  details: string;
-}
+// IMPORTANT: Import Dont and BenefitsPitfallsProps from lib/types.ts
+import { Dont, BenefitsPitfallsProps as ImportedBenefitsPitfallsProps } from '../lib/types';
 
-const donts: Dont[] = [
+
+// Dont interface is now imported from lib/types.ts
+
+const donts: Dont[] = [ // This array remains local, or could be moved to a constants file.
   {
     title: 'Never Share Keys',
     description: 'Risk losing all assets.',
@@ -39,16 +38,16 @@ const sectionVariants = {
   visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut' } },
 };
 
-const BenefitsPitfalls: FC<{ handlePitfallsView: () => void }> = memo(({ handlePitfallsView }) => {
-  const { setActiveModal, setShowMessage } = useModal();
-
+// Use ImportedBenefitsPitfallsProps as the type for the FC
+const BenefitsPitfalls: FC<ImportedBenefitsPitfallsProps> = memo(({ handlePitfallsView, setActiveModal, setShowMessage }) => {
   const handleCardClick = (title: string) => {
+    // Rely on auth.currentUser for authentication check, as userId prop is used for messages.
     if (!auth.currentUser) {
       setActiveModal('auth');
       setShowMessage('⚠️ Sign in to access security features!');
       return;
     }
-    handlePitfallsView();
+    handlePitfallsView(); // Call the prop function
     setShowMessage(`ℹ️ Viewed ${title} pitfall. Secure your wallet now!`);
     setActiveModal('payment'); // Suggest deposit for security upgrades
   };
@@ -78,6 +77,7 @@ const BenefitsPitfalls: FC<{ handlePitfallsView: () => void }> = memo(({ handleP
             >
               <div className="space-y-3">
                 <div className="flex items-center text-rose-400">
+                  {/* Using ShieldCheck as a generic icon for these points */}
                   <ShieldCheck className="w-6 h-6 mr-2 animate-pulse text-cyan-400" />
                   <h4 className="text-lg font-semibold font-poppins">{item.title}</h4>
                 </div>

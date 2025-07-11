@@ -1,135 +1,119 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Send } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebaseConfig';
-import { useModal } from '@/context/ModalContext';
-import Confetti from 'react-confetti';
+import { FC, useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { MessageCircle, Send } from 'lucide-react';
+import { addDoc, collection, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/firebaseConfig';
 
-interface ChatMessage {
-  id: number;
-  user: string;
-  avatar: string;
-  message: string;
-  timestamp: string;
-}
+// IMPORTANT: Import ChatMessage and CommunityChatProps from lib/types.ts
+import { ChatMessage, CommunityChatProps } from '../lib/types';
 
-const chatMessages: ChatMessage[] = [
-  { id: 1, user: 'AstraRebel', avatar: '/avatar1.jpg', message: 'Who’s joining the new planet mission?', timestamp: '10:15 AM' },
-  { id: 2, user: 'NovaGuardian', avatar: '/avatar3.jpg', message: 'Count me in! Need JEWELS for gear?', timestamp: '10:18 AM' },
-  { id: 3, user: 'QuantumSage', avatar: '/avatar2.jpg', message: 'Just voted for the Raziel Quests. Thoughts?', timestamp: '10:20 AM' },
-];
 
-interface CommunityChatProps {
-  userId: string | null;
-}
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.15 } },
+};
 
-const CommunityChat: React.FC<CommunityChatProps> = ({ userId }) => {
-  const [chatMessage, setChatMessage] = useState('');
-  const [showConfetti, setShowConfetti] = useState(false);
-  const chatRef = useRef<HTMLDivElement>(null);
-  const { setActiveModal, setShowMessage } = useModal();
+const messageVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+};
+
+const CommunityChat: FC<CommunityChatProps> = ({ userId, setActiveModal, setShowMessage }) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState<string>('');
 
   useEffect(() => {
-    if (chatRef.current) {
-      chatRef.current.scrollTop = chatRef.current.scrollHeight;
-    }
-  }, []);
+    const q = query(collection(db, 'ChatMessages'), orderBy('timestamp', 'asc'));
+    const unsubscribe = onSnapshot(q, (querySnap) => {
+      const fetchedMessages: ChatMessage[] = [];
+      querySnap.forEach((doc) => {
+        fetchedMessages.push({ id: doc.id, ...doc.data() } as ChatMessage);
+      });
+      setMessages(fetchedMessages);
+    }, (err) => {
+      console.error('Failed to fetch chat messages:', err);
+      setShowMessage('⚠️ Failed to load chat messages.');
+      setActiveModal('error');
+    });
+    return () => unsubscribe();
+  }, [setShowMessage, setActiveModal]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId || !auth.currentUser) {
-      setActiveModal('auth');
+  const handleSendMessage = useCallback(async () => {
+    if (!userId) {
       setShowMessage('⚠️ Please sign in to send messages!');
+      setActiveModal('auth');
       return;
     }
-    if (chatMessage.trim()) {
-      try {
-        await addDoc(collection(db, 'chatMessages'), {
-          userId,
-          message: chatMessage,
-          timestamp: serverTimestamp(),
-          avatar: `/avatar${Math.floor(Math.random() * 5) + 1}.jpg`,
-          user: userId.slice(0, 6),
-        });
-        setShowMessage('ℹ️ Message sent! Deposit JEWELS to boost visibility.');
-        setActiveModal('payment');
-        setChatMessage('');
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 2000);
-      } catch (err) {
-        console.error('Message submission error:', err);
-        setShowMessage('⚠️ Failed to send message. Try again.');
-        setActiveModal('error');
-      }
+    if (!newMessage.trim()) {
+      setShowMessage('⚠️ Message cannot be empty!');
+      return;
     }
-  };
+    try {
+      await addDoc(collection(db, 'ChatMessages'), {
+        user: 'Anonymous', // Replace with actual user name if available
+        avatar: '/default-avatar.jpg', // Replace with actual avatar
+        message: newMessage,
+        timestamp: serverTimestamp(),
+        userId,
+      });
+      setNewMessage('');
+      setShowMessage('🎉 Message sent!');
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setShowMessage('⚠️ Failed to send message. Try again.');
+      setActiveModal('error');
+    }
+  }, [userId, newMessage, setShowMessage, setActiveModal]);
 
   return (
     <motion.div
-      variants={{ hidden: { opacity: 0, y: 50, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } } }}
-      className="relative space-y-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6 relative bg-gray-900/70 border border-rose-500/30 p-6 rounded-2xl shadow-xl backdrop-blur-md hover:shadow-cyan-500/50 transition-all bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
     >
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-20"
-        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1612835362596-4b0b2b1b0b0c?q=80&w=2070&auto=format&fit=crop)' }}
-      />
-      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
       <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3 font-poppins">
-        <MessageSquare className="w-8 h-8 text-cyan-400 animate-pulse" /> PET Chat Room
+        <MessageCircle className="w-8 h-8 text-cyan-400 animate-pulse" /> Community Chat
       </h3>
       <p className="text-lg text-gray-300 text-center max-w-3xl mx-auto font-inter">
-        Connect with PETs worldwide, discuss missions, and share ideas.
+        Chat with fellow PETs in real-time.
       </p>
-      <motion.div
-        className="relative bg-gray-900/70 border border-rose-500/30 p-6 rounded-2xl shadow-xl backdrop-blur-md hover:shadow-cyan-500/50 transition-all bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-        whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(34, 211, 238, 0.7)' }}
-      >
-        <div className="space-y-4">
-          <div ref={chatRef} className="h-[300px] overflow-y-auto no-scrollbar p-4 bg-gray-900/80 rounded-lg">
-            <AnimatePresence>
-              {chatMessages.map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="flex items-start gap-3 mb-4"
-                >
-                  <img src={msg.avatar} alt={msg.user} className="w-8 h-8 rounded-full border border-cyan-500/20" />
-                  <div>
-                    <p className="text-white font-semibold font-poppins">
-                      {msg.user} <span className="text-gray-400 text-xs ml-2">{msg.timestamp}</span>
-                    </p>
-                    <p className="text-gray-300 text-sm font-inter">{msg.message}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <input
-              type="text"
-              value={chatMessage}
-              onChange={(e) => setChatMessage(e.target.value)}
-              placeholder="Type your message..."
-              className="flex-1 p-3 bg-gray-800 text-white rounded-md border border-cyan-500/20 focus:border-cyan-500"
-              required
-              aria-label="Chat message"
-              disabled={!userId}
-            />
-            <motion.button
-              type="submit"
-              className="px-4 py-2 bg-rose-600 text-white hover:bg-cyan-500 rounded-md flex items-center gap-2 font-poppins"
-              whileHover={{ scale: 1.05 }}
-              disabled={!userId || !chatMessage.trim()}
-              aria-label="Send message"
-            >
-              <Send className="w-5 h-5" /> Send
-            </motion.button>
-          </form>
-        </div>
-      </motion.div>
+      <div className="h-64 overflow-y-auto space-y-4 bg-gray-800/80 p-4 rounded-lg border border-cyan-500/20">
+        {messages.map((msg) => (
+          <motion.div
+            key={msg.id}
+            variants={messageVariants}
+            className={`flex items-start gap-3 ${msg.userId === userId ? 'justify-end' : ''}`}
+          >
+            <img src={msg.avatar} alt={msg.user} className="w-8 h-8 rounded-full" onError={(e) => { e.currentTarget.src = '/fallback-avatar.jpg'; }} />
+            <div className={`p-3 rounded-lg ${msg.userId === userId ? 'bg-rose-600' : 'bg-gray-700'}`}>
+              <p className="text-sm text-white font-inter">{msg.message}</p>
+              <p className="text-xs text-gray-400 mt-1 font-inter">{new Date(msg.timestamp?.toDate()).toLocaleString()}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Type your message..."
+          className="flex-1 p-3 bg-gray-800 text-white rounded-md border border-gray-700 focus:border-rose-500 focus:ring-2 focus:ring-rose-500"
+          aria-label="Chat message input"
+          disabled={!userId}
+        />
+        <motion.button
+          className="px-4 py-2 bg-rose-600 text-white rounded-md font-semibold font-poppins flex items-center gap-2"
+          onClick={handleSendMessage}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          aria-label="Send message"
+          disabled={!userId || !newMessage.trim()}
+        >
+          <Send className="w-5 h-5" /> Send
+        </motion.button>
+      </div>
     </motion.div>
   );
 };

@@ -1,68 +1,131 @@
-import { motion } from 'framer-motion';
-import { Award, Star } from 'lucide-react';
-import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
+// src/lib/types.ts (The Definitive, Final, Launch-Ready Version - Achievements Fix)
 
-interface Achievement {
+import { Dispatch, SetStateAction } from 'react';
+import type { Address, FeeValues } from 'viem';
+import type { GetBalanceReturnType } from '@wagmi/core';
+
+
+export type MembershipTier = "ecosystem" | "gamers" | "gold";
+
+export const MEMBERSHIP_TIERS: Record<MembershipTier, { name: string; amount: number; usdAmount: number; contentRoute: string }> = {
+  ecosystem: { name: "Ecosystem Membership", amount: 99, usdAmount: 10, contentRoute: "/ecosystem-content" },
+  gamers: { name: "Gamers Membership", amount: 199, usdAmount: 49, contentRoute: "/gamers-content" },
+  gold: { name: "Gold Membership", amount: 499, usdAmount: 199, contentRoute: "/gold-content" },
+};
+
+export type SupportedCurrency = "INR" | "USD" | "ETH" | "JEWELS" | "USDT";
+export type TransactionType = "membership" | "deposit" | "withdraw" | "level-purchase" | "quest-reward" | "payout";
+export type TransactionStatus = "success" | "pending" | "failed";
+
+export interface Transaction {
+  [x: string]: any;
+  transactionId: string;
+  userId: string;
+  amount: number;
+  currency: SupportedCurrency;
+  transactionType: TransactionType;
+  status: TransactionStatus;
+  timestamp: any;
+  screenshot?: string;
+  itemId?: string | null;
+  game?: string;
+  adminId?: string;
+  paypalOrderId?: string;
+  paymentMethod?: string;
+  paymentUrl?: string;
+  walletAddress?: string;
+  updatedAt?: any;
+}
+
+export interface RazorTransactionProps {
+  amount: number;
+  currency: SupportedCurrency;
+  itemId: string | null;
+  transactionType: TransactionType;
+  userId: string | null;
+  onSuccess: (submittedItemId: string | null) => void;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+}
+
+export interface TopNavProps {
+  userId: string | null;
+  jewelsBalance: number;
+  isPETMember: boolean;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+  setActiveAuthModal: (modalName: 'auth' | null) => void;
+  setShowPaymentModal: (show: boolean) => void;
+}
+
+export interface PaymentModalProps {
+  userId: string | null;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+  setIsPETMember: Dispatch<SetStateAction<boolean>>;
+  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
+}
+
+export interface BottomNavProps {
+  userId: string | null;
+  jewelsBalance: number;
+  isPETMember: boolean;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+}
+
+export interface AppProps {
+  userId: string | null;
+  activeModal: string | null;
+  setActiveModal: Dispatch<SetStateAction<string | null>>;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+  setIsPETMember: Dispatch<SetStateAction<boolean>>;
+  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
+  jewelsBalance: number;
+  goldBalance: number;
+  currentLevel: number;
+  isPending: boolean;
+  authLoading: boolean;
+  mousePosition: { x: number; y: number; };
+}
+
+export interface PageProps extends AppProps {}
+export interface GamesPageProps extends AppProps {}
+export interface GameProps extends Pick<AppProps, 'userId' | 'setIsPETMember' | 'updatePlayerFirestore' | 'setShowMessage' | 'setActiveModal'> {}
+export interface RedDogGameProps extends Pick<AppProps, 'userId' | 'activeModal' | 'setActiveModal' | 'setIsPETMember' | 'setShowMessage' | 'updatePlayerFirestore'> {}
+export interface BenefitsProps extends AppProps {}
+export interface CommunityProps extends AppProps {}
+export interface DSPETDisclosureProps extends AppProps {}
+export interface DSPETPrivacyProps extends AppProps {}
+export interface LandingPageProps extends AppProps {}
+export interface TokenomicsProps extends AppProps {}
+export interface VisionProps extends AppProps {}
+export interface BlackjackGameProps extends AppProps {}
+export interface AccountActionsProps extends Pick<AppProps, 'userId' | 'updatePlayerFirestore' | 'setActiveModal' | 'setShowMessage'> {
+  referralViews: number;
+  setReferralViews: React.Dispatch<React.SetStateAction<number>>;
+}
+
+export interface VaultWalletInfoProps {
+  isConnected: boolean;
+  address: Address | undefined;
+  chainId: number | undefined;
+  ensName: string | null | undefined;
+  blockNumber: bigint | null | undefined;
+  feeData: FeeValues | undefined;
+  usdtBalance: GetBalanceReturnType | undefined;
+}
+
+// ADDED Achievement and AchievementsProps
+export interface Achievement {
   id: string;
   title: string;
   description: string;
   unlocked: boolean;
 }
 
-interface AchievementsProps {
+// AchievementsProps now aligns with props needed and often passed from PageProps
+export interface AchievementsProps {
   achievements: Achievement[];
+  userId: string | null;
+  setActiveModal: Dispatch<SetStateAction<string | null>>;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+  // If more props from AppProps are used, extend it:
+  // extends Pick<AppProps, 'userId' | 'activeModal' | 'setActiveModal' | 'setShowMessage'>
 }
-
-const Achievements: React.FC<AchievementsProps> = ({ achievements }) => {
-  const { setActiveModal, setShowMessage } = useModal();
-
-  const handleAchievementClick = (title: string) => {
-    if (!auth.currentUser) {
-      setActiveModal('auth');
-      setShowMessage('⚠️ Sign in to unlock achievements!');
-      return;
-    }
-    setShowMessage(`ℹ️ Viewing ${title}! Deposit to unlock more!`);
-    setActiveModal('payment');
-  };
-
-  return (
-    <motion.div
-      className="relative bg-gray-900/70 border border-rose-500/30 p-6 rounded-2xl shadow-xl backdrop-blur-md hover:shadow-cyan-500/50 transition-all bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-      whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(34, 211, 238, 0.7)' }}
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8 }}
-    >
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-20 rounded-2xl"
-        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop)' }}
-      />
-      <div className="space-y-6 relative">
-        <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3 font-poppins">
-          <Award className="w-8 h-8 text-cyan-400 animate-pulse" /> Achievements
-        </h3>
-        <p className="text-gray-300 font-inter">Earn milestones to showcase your mastery in the Swytch Petaverse!</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {achievements.map((achievement) => (
-            <motion.div
-              key={achievement.id}
-              className={`p-4 rounded-lg border ${achievement.unlocked ? 'border-cyan-400 bg-gray-800/50' : 'border-gray-600 opacity-50'}`}
-              onClick={() => handleAchievementClick(achievement.title)}
-              whileHover={{ scale: 1.03 }}
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <Star className={`w-6 h-6 ${achievement.unlocked ? 'text-cyan-400' : 'text-gray-400'}`} />
-                <p className="text-white font-semibold font-poppins">{achievement.title}</p>
-              </div>
-              <p className="text-sm text-gray-400 font-inter">{achievement.description}</p>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-export default Achievements;

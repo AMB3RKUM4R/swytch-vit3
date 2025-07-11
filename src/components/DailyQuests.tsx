@@ -1,30 +1,20 @@
 import { motion } from 'framer-motion';
 import { Target } from 'lucide-react';
-import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
 
-interface Quest {
-  id: string;
-  title: string;
-  progress: number;
-  goal: number;
-  rewardJEWELS: number;
-  rewardXP: number;
-  completed: boolean;
-}
+// IMPORTANT: Import Quest and DailyQuestsProps from lib/types.ts
+import { DailyQuestsProps as ImportedDailyQuestsProps } from '../lib/types';
 
-interface DailyQuestsProps {
-  userId: string | null;
-  quests: Quest[];
-  setQuests: React.Dispatch<React.SetStateAction<Quest[]>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-}
 
-const DailyQuests: React.FC<DailyQuestsProps> = ({ userId, quests, setQuests, updatePlayerFirestore }) => {
-  const { setActiveModal, setShowMessage } = useModal();
+// Quest interface is now imported from lib/types.ts
+// initialQuests array is local mock data; in production, this might come from Firestore/backend.
+
+// Use ImportedDailyQuestsProps as the type for the FC
+const DailyQuests: React.FC<ImportedDailyQuestsProps> = ({ userId, quests, setQuests, updatePlayerFirestore, jewelsBalance, setActiveModal, setShowMessage }) => {
+  // Removed const { setActiveModal, setShowMessage } = useModal(); as they are now passed as props
 
   const handleClaimQuest = (questId: string) => {
-    if (!userId || !auth.currentUser) {
+    // Rely on userId prop for authentication check
+    if (!userId) {
       setActiveModal('auth');
       setShowMessage('⚠️ Please sign in to claim quests!');
       return;
@@ -34,13 +24,20 @@ const DailyQuests: React.FC<DailyQuestsProps> = ({ userId, quests, setQuests, up
       setShowMessage('⚠️ Quest not ready to claim!');
       return;
     }
-    setQuests((prev) => {
-      const newQuests = prev.map((q) => (q.id === questId ? { ...q, completed: true } : q));
-      updatePlayerFirestore({ quests: newQuests, jewels: (quest?.rewardJEWELS || 0) });
-      return newQuests;
+    
+    // Update local quests state to mark as completed
+    const updatedQuests = quests.map((q) => (q.id === questId ? { ...q, completed: true } : q));
+    setQuests(updatedQuests); // Update local state first
+
+    // Update Firestore: Add reward JEWELS to current balance, and update quests array
+    // Ensure jewelsBalance passed here is the current effective balance
+    updatePlayerFirestore({
+      quests: updatedQuests,
+      jewels: jewelsBalance + (quest.rewardJEWELS || 0), // Add reward to current balance
     });
+    
     setShowMessage(`✅ Quest Completed: ${quest.title}! +${quest.rewardJEWELS} JEWELS, +${quest.rewardXP} XP`);
-    setActiveModal('payment'); // Prompt deposit for more quests
+    setActiveModal('payment'); // Trigger payment modal as intended for monetization/engagement
   };
 
   return (

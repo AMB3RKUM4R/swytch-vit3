@@ -2,14 +2,9 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Wallet, Trophy } from 'lucide-react';
 
-// Define props to match PageProps from App.tsx
-interface MembershipWalletInfoProps {
-  userId: string | null;
-  jewelsBalance: number;
-  isPETMember: boolean;
-  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
-}
+// IMPORTANT: Import MembershipWalletInfoProps from lib/types.ts
+import { MembershipWalletInfoProps as ImportedMembershipWalletInfoProps } from '../lib/types';
+
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -21,9 +16,11 @@ const buttonVariants = {
   tap: { scale: 0.95 },
 };
 
-const MembershipWalletInfo: FC<MembershipWalletInfoProps> = ({ userId, jewelsBalance, isPETMember, setShowMessage, setActiveModal }) => {
+// Use ImportedMembershipWalletInfoProps as the type for the FC
+const MembershipWalletInfo: FC<ImportedMembershipWalletInfoProps> = ({ userId, jewelsBalance, isPETMember, setShowMessage, setActiveModal }) => {
   const handleConnect = () => {
-    if (!userId) {
+    // Rely on userId prop for authentication check, consistent with other components
+    if (!userId) { // Using userId prop directly for auth check
       setShowMessage('⚠️ Please sign in to connect wallet!');
       setActiveModal('auth');
     }
@@ -48,7 +45,7 @@ const MembershipWalletInfo: FC<MembershipWalletInfoProps> = ({ userId, jewelsBal
           <p>Status: {isPETMember ? 'PET Member' : 'Non-Member'}</p>
         </div>
         <p>JEWELS Balance: {jewelsBalance.toFixed(2)}</p>
-        {!userId && (
+        {!userId && ( // Only show connect button if not logged in
           <motion.button
             className="px-4 py-2 rounded-full bg-rose-400 text-white font-poppins hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-rose-400"
             onClick={handleConnect}

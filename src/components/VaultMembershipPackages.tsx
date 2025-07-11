@@ -1,11 +1,11 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { useModal } from '@/context/ModalContext';
 
 interface VaultMembershipPackagesProps {
   isMember: boolean;
   isPending: boolean;
   handleMembershipPayment: (packageName: string, amount: number) => Promise<void>;
+  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const fadeUp = {
@@ -13,9 +13,7 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
 };
 
-const VaultMembershipPackages: FC<VaultMembershipPackagesProps> = ({ isMember, isPending, handleMembershipPayment }) => {
-  const { setShowMessage } = useModal();
-
+const VaultMembershipPackages: FC<VaultMembershipPackagesProps> = ({ isMember, isPending, handleMembershipPayment, setShowMessage }) => {
   const packages: [string, number][] = [
     ['Standard', 100],
     ['Classic', 250],

@@ -1,6 +1,5 @@
-import { FC } from 'react';
+import { FC, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useModal } from '@/context/ModalContext';
 
 interface VaultWithdrawalProps {
   isConnected: boolean;
@@ -9,7 +8,8 @@ interface VaultWithdrawalProps {
   withdrawalAmount: string;
   setWithdrawalAmount: React.Dispatch<React.SetStateAction<string>>;
   handleWithdrawal: () => Promise<void>;
-  handlePayPalPayment: () => Promise<void>;
+  handlePayPalPayment: (paypalEmail: string) => Promise<void>;
+  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const fadeUp = {
@@ -25,8 +25,9 @@ const VaultWithdrawal: FC<VaultWithdrawalProps> = ({
   setWithdrawalAmount,
   handleWithdrawal,
   handlePayPalPayment,
+  setShowMessage,
 }) => {
-  const { setShowMessage } = useModal();
+  const [paypalEmail, setPaypalEmail] = useState<string>('');
 
   const onWithdraw = async () => {
     if (!isConnected) {
@@ -45,8 +46,12 @@ const VaultWithdrawal: FC<VaultWithdrawalProps> = ({
       setShowMessage('⚠️ Select a membership first.');
       return;
     }
+    if (!paypalEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paypalEmail)) {
+      setShowMessage('⚠️ Please enter a valid PayPal email.');
+      return;
+    }
     try {
-      await handlePayPalPayment();
+      await handlePayPalPayment(paypalEmail);
     } catch (err) {
       setShowMessage(`⚠️ PayPal payment failed: ${(err as Error).message || 'Unknown error'}`);
     }
@@ -76,13 +81,21 @@ const VaultWithdrawal: FC<VaultWithdrawalProps> = ({
       </div>
       <div>
         <label className="text-xs mb-1 block text-gray-400 font-inter">PayPal Payment</label>
-        <p className="text-gray-300 text-sm font-inter">PayPal payments are processed via email confirmation.</p>
+        <input
+          type="email"
+          value={paypalEmail}
+          onChange={(e) => setPaypalEmail(e.target.value)}
+          placeholder="Enter PayPal email"
+          className="w-full rounded-lg border px-3 py-2 bg-gray-900 border-neon-green/20 text-white text-sm font-inter focus:ring-2 focus:ring-neon-green"
+          aria-label="PayPal email"
+        />
+        <p className="text-gray-300 text-sm font-inter mt-1">PayPal withdrawals are processed via email confirmation.</p>
         <motion.button
           onClick={onPayPal}
           className="mt-2 bg-purple-500 hover:bg-purple-600 text-white w-full py-2 rounded-xl text-sm transition flex items-center justify-center gap-1 font-poppins"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          disabled={isPending || !isMember}
+          disabled={isPending || !isMember || !paypalEmail}
           aria-label="Pay with PayPal"
         >
           {isPending ? 'Processing...' : 'Pay with PayPal'}

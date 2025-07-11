@@ -1,9 +1,17 @@
 import { FC, memo, FormEvent } from 'react';
 import { motion } from 'framer-motion';
-import { Gift } from 'lucide-react';
-import { SwytchCard } from './SwytchCard';
+import SwytchCard from '../components/SwytchCard';
+import { Gift } from 'lucide-react'; // Ensure Gift icon is imported
 import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
+import { auth } from '@/lib/firebaseConfig'; // Firebase auth import
+
+// Assuming BenefitsSupportProps is defined in lib/types.ts
+// If not, it should be added there like this:
+// export interface BenefitsSupportProps {
+//   userId: string | null;
+//   logUpiIntent: (amount: number) => Promise<void>;
+// }
+// For this component, we'll assume it is NOT imported as a prop and uses internal context/auth.
 
 interface BenefitsSupportProps {
   userId: string | null;
@@ -25,7 +33,7 @@ const BenefitsSupport: FC<BenefitsSupportProps> = memo(({ userId, logUpiIntent }
 
   const handleUPIPayment = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!userId || !auth.currentUser) {
+    if (!userId || !auth.currentUser) { // Check both userId prop and auth.currentUser
       setActiveModal('auth');
       setShowMessage('⚠️ Please sign in to contribute!');
       return;
@@ -38,9 +46,9 @@ const BenefitsSupport: FC<BenefitsSupportProps> = memo(({ userId, logUpiIntent }
       return;
     }
     try {
-      await logUpiIntent(amount);
+      await logUpiIntent(amount); // Call the prop function
       setShowMessage(`ℹ️ Initiating payment for ₹${amount}.`);
-      setActiveModal('payment');
+      setActiveModal('payment'); // Trigger payment modal
     } catch (err) {
       console.error('UPI payment error:', err);
       setShowMessage('⚠️ Failed to initiate payment. Try again.');
@@ -57,7 +65,7 @@ const BenefitsSupport: FC<BenefitsSupportProps> = memo(({ userId, logUpiIntent }
     >
       <div
         className="absolute inset-0 bg-cover bg-center opacity-20"
-        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop)' }}
+        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1600585154340-be6161a58a0c?q=80&w=2070&auto=format&fit=crop)' }} // Example background image
       />
       <div className="max-w-6xl mx-auto space-y-8 relative">
         <motion.h3

@@ -1,28 +1,24 @@
-import { FC } from 'react';
+import { FC, memo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
-import React from 'react';
 
-// Define props to match PageProps from App.tsx and Shop.tsx
-interface MembershipUpgradeProps {
-  userId: string | null;
-  setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-  setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
-  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-}
+// IMPORTANT: Import MembershipUpgradeProps, SupportedCurrency, TransactionType, TransactionStatus from lib/types.ts
+import { MembershipUpgradeProps as ImportedMembershipUpgradeProps, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
+
 
 const cardVariants = {
   hover: { scale: 1.05, boxShadow: '0 0 15px rgba(236, 72, 153, 0.5)' },
 };
 
-const MembershipUpgrade: FC<MembershipUpgradeProps> = ({ userId, setIsPETMember, updatePlayerFirestore, setActiveModal, setShowMessage }) => {
-  const [isPending, setIsPending] = React.useState<boolean>(false);
+// Use ImportedMembershipUpgradeProps as the type for the FC
+const MembershipUpgrade: FC<ImportedMembershipUpgradeProps> = memo(({ userId, setIsPETMember, updatePlayerFirestore, setActiveModal, setShowMessage }) => {
+  const [isPending, setIsPending] = useState<boolean>(false); // Use useState from React
 
   const payMembership = async () => {
-    if (!userId) {
+    // Rely on userId prop for authentication check, consistent with other components
+    if (!userId) { // Using userId prop directly for auth check
       setShowMessage('⚠️ Please sign in to purchase PET membership!');
       setActiveModal('auth');
       return;
@@ -30,21 +26,21 @@ const MembershipUpgrade: FC<MembershipUpgradeProps> = ({ userId, setIsPETMember,
     setIsPending(true);
     try {
       const transactionId = `${userId}_${Date.now()}`;
-      await addDoc(collection(db, 'Transactions'), {
+      await addDoc(collection(db, 'Transactions'), { // Ensure 'Transactions' matches your Firestore rule
         transactionId,
         userId,
         amount: 10, // $10 USDT
-        currency: 'USD' as 'INR' | 'USD' | 'ETH',
-        transactionType: 'membership' as 'membership' | 'deposit' | 'withdraw' | 'connect' | 'disconnect',
-        status: 'pending' as 'success' | 'pending' | 'failed',
+        currency: 'USD' as SupportedCurrency, // FIX: Correctly typed as SupportedCurrency
+        transactionType: 'membership' as TransactionType, // FIX: Correctly typed as TransactionType
+        status: 'pending' as TransactionStatus, // FIX: Correctly typed as TransactionStatus
         timestamp: serverTimestamp(),
         game: 'membership-upgrade',
         adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
       });
-      await updatePlayerFirestore({ isPETMember: true });
-      setIsPETMember(true);
+      await updatePlayerFirestore({ isPETMember: true }); // Update Firestore
+      setIsPETMember(true); // Update local state
       setShowMessage('🎉 PET Membership purchased! Welcome to the Swytch PETverse!');
-      setActiveModal('payment');
+      setActiveModal('payment'); // Trigger payment modal as intended
     } catch (err) {
       console.error('Payment error:', err);
       setShowMessage('⚠️ Failed to initiate membership payment. Please try again.');
@@ -55,7 +51,7 @@ const MembershipUpgrade: FC<MembershipUpgradeProps> = ({ userId, setIsPETMember,
 
   return (
     <motion.div
-      className="relative bg-gray-900/50 border border-rose-400/20 p-6 rounded-2xl shadow-xl backdrop-blur-md bg-gradient-to-r from-rose-400/10 to-cyan-500/10 bg-noise"
+      className="relative bg-gray-900/50 border border-rose-400/20 p-6 rounded-2xl shadow-xl backdrop-blur-md bg-gradient-to-r from-rose-400/10 to-cyan-500/10 bg-noise" // Added bg-noise class
       variants={cardVariants}
       whileHover="hover"
       transition={{ duration: 0.3 }}
@@ -81,6 +77,6 @@ const MembershipUpgrade: FC<MembershipUpgradeProps> = ({ userId, setIsPETMember,
       </div>
     </motion.div>
   );
-};
+});
 
 export default MembershipUpgrade;

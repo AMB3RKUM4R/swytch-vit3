@@ -1,23 +1,17 @@
-
-import { Component, ReactNode } from 'react';
+import { Component } from 'react';
 import { motion } from 'framer-motion';
 
-interface SwytchErrorBoundaryProps {
-  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
-  children: ReactNode;
-}
+// IMPORTANT: Import SwytchErrorBoundaryProps and SwytchErrorBoundaryState from lib/types.ts
+import { SwytchErrorBoundaryProps as ImportedSwytchErrorBoundaryProps, SwytchErrorBoundaryState } from '../lib/types';
 
-interface SwytchErrorBoundaryState {
-  hasError: boolean;
-}
 
-class SwytchErrorBoundary extends Component<SwytchErrorBoundaryProps, SwytchErrorBoundaryState> {
-  state: SwytchErrorBoundaryState = {
+// Use ImportedSwytchErrorBoundaryProps for the component props
+class SwytchErrorBoundary extends Component<ImportedSwytchErrorBoundaryProps, SwytchErrorBoundaryState> {
+  state: SwytchErrorBoundaryState = { // Use ImportedSwytchErrorBoundaryState
     hasError: false,
   };
 
-  static getDerivedStateFromError(): SwytchErrorBoundaryState {
+  static getDerivedStateFromError(): SwytchErrorBoundaryState { // Use ImportedSwytchErrorBoundaryState for return type
     return { hasError: true };
   }
 

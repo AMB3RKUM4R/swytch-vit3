@@ -1,70 +1,69 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Send } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebaseConfig';
 import { useModal } from '@/context/ModalContext';
 import Confetti from 'react-confetti';
-
-interface ChatMessage {
-  id: number;
-  user: string;
-  avatar: string;
-  message: string;
-  timestamp: string;
-}
-
-const chatMessages: ChatMessage[] = [
-  { id: 1, user: 'AstraRebel', avatar: '/avatar1.jpg', message: 'Just reviewed the DSPET terms—any questions?', timestamp: '10:15 AM' },
-  { id: 2, user: 'NovaGuardian', avatar: '/avatar3.jpg', message: 'What’s the deal with gas fees?', timestamp: '10:18 AM' },
-  { id: 3, user: 'QuantumSage', avatar: '/avatar2.jpg', message: 'Smart contracts look solid. Audits?', timestamp: '10:20 AM' },
-];
-
-interface DisclosureChatProps {
-  userId: string | null;
-  goldBalance: number;
-  setGoldBalance: React.Dispatch<React.SetStateAction<number>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-}
+import { ChatMessage, DisclosureChatProps } from '@/lib/types';
 
 const DisclosureChat: React.FC<DisclosureChatProps> = ({ userId, goldBalance, setGoldBalance, updatePlayerFirestore }) => {
   const [chatMessage, setChatMessage] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
-  const { setActiveModal, setShowMessage } = useModal();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const chatRef = useRef<HTMLDivElement>(null);
+  const { setActiveModal, setShowMessage } = useModal();
 
   useEffect(() => {
+    const q = query(collection(db, 'chatMessages'), orderBy('timestamp', 'asc'), limit(50));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedMessages: ChatMessage[] = [];
+      snapshot.forEach((doc) => {
+        fetchedMessages.push({ ...doc.data(), id: doc.id } as ChatMessage);
+      });
+      setMessages(fetchedMessages);
+      if (chatRef.current) {
+        chatRef.current.scrollTop = chatRef.current.scrollHeight;
+      }
+    }, (error) => {
+      console.error("Error fetching chat messages:", error);
+      setShowMessage("⚠️ Failed to load chat messages.");
+    });
+
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
-  }, []);
+
+    return () => unsubscribe();
+  }, [setShowMessage]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !auth.currentUser) {
+    if (!userId) {
       setActiveModal('auth');
       setShowMessage('⚠️ Please sign in to send messages!');
       return;
     }
     if (goldBalance < 1) {
       setActiveModal('payment');
-      setShowMessage('⚠️ You need at least 1 JEWEL to send a message! Deposit now.');
+      setShowMessage('⚠️ You need at least 1 GOLD to send a message! Deposit now.');
       return;
     }
     if (chatMessage.trim()) {
       try {
         const newGoldBalance = goldBalance - 1;
         setGoldBalance(newGoldBalance);
-        await updatePlayerFirestore({ jewels: newGoldBalance });
+        await updatePlayerFirestore({ gold: newGoldBalance });
+
         await addDoc(collection(db, 'chatMessages'), {
           userId,
-          message: chatMessage,
+          message: chatMessage.trim(),
           timestamp: serverTimestamp(),
-          avatar: `/avatar${Math.floor(Math.random() * 5) + 1}.jpg`,
-          user: userId.slice(0, 6),
+          avatar: auth.currentUser?.photoURL || `/avatar${Math.floor(Math.random() * 5) + 1}.jpg`,
+          user: auth.currentUser?.displayName || auth.currentUser?.email || userId.slice(0, 6),
         });
         setShowMessage(`✅ Message sent: ${chatMessage}`);
-        setActiveModal('payment'); // Prompt deposit for more messages
+        setActiveModal('payment');
         setChatMessage('');
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 2000);
@@ -102,7 +101,7 @@ const DisclosureChat: React.FC<DisclosureChatProps> = ({ userId, goldBalance, se
             className="h-[300px] overflow-y-auto no-scrollbar p-4 bg-gray-800/80 rounded-lg"
           >
             <AnimatePresence>
-              {chatMessages.map((msg) => (
+              {messages.map((msg) => (
                 <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -113,7 +112,7 @@ const DisclosureChat: React.FC<DisclosureChatProps> = ({ userId, goldBalance, se
                   <img src={msg.avatar} alt={msg.user} className="w-8 h-8 rounded-full border border-cyan-500/20" onError={(e) => { e.currentTarget.src = '/fallback-avatar.jpg'; }} />
                   <div>
                     <p className="text-white font-semibold font-poppins">
-                      {msg.user} <span className="text-gray-400 text-xs ml-2">{msg.timestamp}</span>
+                      {msg.user} <span className="text-gray-400 text-xs ml-2">{msg.timestamp && typeof msg.timestamp === 'object' ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : msg.timestamp}</span>
                     </p>
                     <p className="text-gray-300 text-sm font-inter">{msg.message}</p>
                   </div>

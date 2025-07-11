@@ -1,38 +1,88 @@
-import { motion, Variants } from 'framer-motion';
-import { Key, Users, Zap } from 'lucide-react';
+import { FC, memo } from 'react';
+import { motion } from 'framer-motion';
+import { CheckCircle, Users, BarChart, Gem, MessageSquare } from 'lucide-react'; // Example Lucide icons
 
-const fadeRight: Variants = { hidden: { opacity: 0, x: 50 }, visible: { opacity: 1, x: 0, transition: { duration: 0.8, ease: 'easeOut' } } };
+// IMPORTANT: Import MembershipBenefitsProps from lib/types.ts
+import { MembershipBenefitsProps as ImportedMembershipBenefitsProps } from '../lib/types';
 
-const MembershipBenefits: React.FC = () => {
+
+// Define your specific benefits data (could also be imported from a constants file)
+const benefitsData = [
+  {
+    icon: CheckCircle,
+    title: 'Yield Multipliers',
+    description: 'Unlock higher monthly JEWELS yields with each level.',
+  },
+  {
+    icon: Gem,
+    title: 'Exclusive Rewards',
+    description: 'Gain access to unique NFTs, skins, and in-game items.',
+  },
+  {
+    icon: Users,
+    title: 'DAO Governance',
+    description: 'Participate in voting and proposing changes to the PETverse.',
+  },
+  {
+    icon: BarChart,
+    title: 'Advanced Analytics',
+    description: 'Track your progress, earnings, and impact on the ecosystem.',
+  },
+  {
+    icon: MessageSquare,
+    title: 'Priority Support',
+    description: 'Receive faster assistance from the Swytch PET team.',
+  },
+];
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.15 } },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 50 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+  hover: { scale: 1.05, boxShadow: '0 0 15px rgba(34, 211, 238, 0.5)' },
+};
+
+// Use ImportedMembershipBenefitsProps as the type for the FC
+const MembershipBenefits: FC<ImportedMembershipBenefitsProps> = memo(() => { // No props destructured from FC
   return (
-    <motion.div variants={fadeRight}>
-      <h3 className="text-3xl font-bold text-white flex items-center gap-3 mb-6 font-poppins">
-        <Users className="w-8 h-8 text-neon-green animate-pulse" /> PET Benefits
-      </h3>
-      <p className="text-lg text-gray-300 mb-6 font-inter">
-        As a Swytch PET, you gain access to exclusive rewards, voting rights, and a vibrant community driving decentralized finance and gaming.
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          { icon: <Key className="w-6 h-6 text-neon-green" />, title: 'Exclusive Access', desc: 'Unlock private channels, beta features, and premium content.' },
-          { icon: <Users className="w-6 h-6 text-neon-green" />, title: 'Community Governance', desc: 'Vote on platform upgrades and shape the Swytch ecosystem.' },
-          { icon: <Zap className="w-6 h-6 text-neon-green" />, title: 'AI-Driven Yields', desc: 'Earn up to 3.3% monthly yield through AI-powered arbitrage.' }
-        ].map((benefit, index) => (
+    <motion.section
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="py-16 px-6 sm:px-8 lg:px-16 text-center font-inter relative"
+    >
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-20"
+        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1620121692029-0d02b21b0b0c?q=80&w=2070&auto=format&fit=crop)' }} // Example background image
+      />
+      <h2 className="text-4xl font-extrabold text-white flex items-center justify-center gap-4 mb-12 font-poppins">
+        <Gem className="w-10 h-10 text-cyan-400 animate-pulse" /> Membership Benefits
+      </h2>
+      <motion.div
+        variants={containerVariants}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 relative"
+      >
+        {benefitsData.map((benefit, index) => (
           <motion.div
-            key={index}
-            className="p-6 bg-gray-900/50 rounded-lg border border-neon-green/20 hover:shadow-neon-green/30 transition-all backdrop-blur-md"
-            whileHover={{ scale: 1.05 }}
+            key={index} // Using index as key is acceptable for static lists
+            variants={cardVariants}
+            whileHover="hover"
+            className="bg-gray-900/70 border border-cyan-500/30 p-6 rounded-2xl shadow-xl backdrop-blur-md bg-gradient-to-r from-cyan-500/10 to-blue-500/10"
           >
-            <div className="flex items-center gap-2 mb-4">
-              {benefit.icon}
-              <p className="text-white font-semibold font-poppins">{benefit.title}</p>
+            <div className="flex flex-col items-center gap-3">
+              <benefit.icon className="w-10 h-10 text-cyan-400 animate-pulse" />
+              <h3 className="text-xl font-bold text-white font-poppins">{benefit.title}</h3>
+              <p className="text-gray-300 text-sm font-inter">{benefit.description}</p>
             </div>
-            <p className="text-gray-400 text-sm font-inter">{benefit.desc}</p>
           </motion.div>
         ))}
-      </div>
-    </motion.div>
+      </motion.div>
+    </motion.section>
   );
-};
+});
 
 export default MembershipBenefits;

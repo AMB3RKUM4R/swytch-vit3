@@ -2,8 +2,11 @@ import { FC, memo } from 'react';
 import { motion } from 'framer-motion';
 import { PiggyBank, Banknote, Users } from 'lucide-react';
 import { SwytchCard } from './SwytchCard';
-import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
+import { useModal } from '@/context/ModalContext'; // Correct useModal import
+import { auth } from '@/lib/firebaseConfig'; // Firebase auth import
+
+// No local interface for BenefitsEcosphereProps needed as it doesn't receive any props.
+// The `Achievement` and `AchievementsProps` interfaces are handled in lib/types.ts.
 
 interface BusinessModel {
   icon: React.ComponentType<{ className?: string }>;
@@ -43,17 +46,18 @@ const sectionVariants = {
   visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut' } },
 };
 
-const BenefitsEcosphere: FC = memo(() => {
-  const { setActiveModal, setShowMessage } = useModal();
+const BenefitsEcosphere: FC = memo(() => { // No props passed to this FC directly
+  const { setActiveModal, setShowMessage } = useModal(); // Correctly consuming context
 
   const handleEcosphereAction = (title: string) => {
+    // Relying on auth.currentUser for authentication check, as no userId prop is passed.
     if (!auth.currentUser) {
       setActiveModal('auth');
       setShowMessage('⚠️ Sign in to access the ecosphere!');
       return;
     }
     setShowMessage(`ℹ️ Exploring ${title}!`);
-    setActiveModal('payment'); // Prompt deposit for ecosphere participation
+    setActiveModal('payment'); // Trigger payment modal as intended
   };
 
   return (

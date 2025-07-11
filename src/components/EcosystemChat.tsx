@@ -1,74 +1,84 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Send } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot } from 'firebase/firestore'; // Added query, orderBy, limit, onSnapshot
 import { db, auth } from '@/lib/firebaseConfig';
-import { useModal } from '@/context/ModalContext';
 import Confetti from 'react-confetti';
 
-interface ChatMessage {
-  id: number;
-  user: string;
-  avatar: string;
-  message: string;
-  timestamp: string;
-}
+// IMPORTANT: Import ChatMessage and EcosystemChatProps from lib/types.ts
+import { ChatMessage as ImportedChatMessage, EcosystemChatProps as ImportedEcosystemChatProps } from '../lib/types';
 
-const chatMessages: ChatMessage[] = [
-  { id: 1, user: 'AstraRebel', avatar: '/avatar1.jpg', message: 'Just joined the Petaverse—how do I earn JEWELS?', timestamp: '10:15 AM' },
-  { id: 2, user: 'NovaGuardian', avatar: '/avatar3.jpg', message: 'Check out the quests in Vault Access!', timestamp: '10:18 AM' },
-  { id: 3, user: 'QuantumSage', avatar: '/avatar2.jpg', message: 'The Truth Panel is dope for noobs.', timestamp: '10:20 AM' },
-];
 
-interface EcosystemChatProps {
-  userId: string | null;
-  goldBalance: number;
-  setGoldBalance: React.Dispatch<React.SetStateAction<number>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-}
+// chatMessages will be dynamically loaded from Firestore.
+// const chatMessages: ChatMessage[] = [ ... ]; // Removed static mock data
 
-const EcosystemChat: React.FC<EcosystemChatProps> = ({ userId, goldBalance, setGoldBalance, updatePlayerFirestore }) => {
+// Use ImportedEcosystemChatProps as the type for the FC
+const EcosystemChat: React.FC<ImportedEcosystemChatProps> = ({ userId, goldBalance, setGoldBalance, updatePlayerFirestore, setActiveModal, setShowMessage }) => {
   const [chatMessage, setChatMessage] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
-  const { setActiveModal, setShowMessage } = useModal();
+  const [messages, setMessages] = useState<ImportedChatMessage[]>([]); // State to hold fetched messages
   const chatRef = useRef<HTMLDivElement>(null);
+  // Removed const { setActiveModal, setShowMessage } = useModal(); as they are now passed as props
 
+  // Effect for fetching and listening to chat messages from Firestore
   useEffect(() => {
+    // Order by timestamp and limit to recent messages
+    const q = query(collection(db, 'chatMessages'), orderBy('timestamp', 'asc'), limit(50));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedMessages: ImportedChatMessage[] = [];
+      snapshot.forEach((doc) => {
+        fetchedMessages.push({ ...doc.data(), id: doc.id } as ImportedChatMessage); // Cast to ImportedChatMessage
+      });
+      setMessages(fetchedMessages);
+      // Scroll to bottom after new messages arrive
+      if (chatRef.current) {
+        chatRef.current.scrollTop = chatRef.current.scrollHeight;
+      }
+    }, (error) => {
+      console.error("Error fetching chat messages:", error);
+      setShowMessage("⚠️ Failed to load chat messages.");
+    });
+
+    // Initial scroll to bottom when component mounts
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
-  }, []);
+
+    return () => unsubscribe(); // Clean up listener on unmount
+  }, [setShowMessage]); // Dependencies include setShowMessage
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !auth.currentUser) {
+    // Rely on userId prop for authentication check
+    if (!userId) { // Using userId prop directly for auth check
       setActiveModal('auth');
       setShowMessage('⚠️ Please sign in to send messages!');
       return;
     }
     const messageCost = 1;
-    if (goldBalance < messageCost) {
-      setActiveModal('payment');
-      setShowMessage('⚠️ You need at least 1 JEWEL to send a message! Deposit now.');
+    if (goldBalance < messageCost) { // Check goldBalance
+      setActiveModal('payment'); // Open payment modal if not enough gold
+      setShowMessage('⚠️ You need at least 1 GOLD to send a message! Deposit now.'); // Corrected from JEWEL to GOLD
       return;
     }
     if (chatMessage.trim()) {
       try {
-        const newGoldBalance = goldBalance - messageCost;
-        setGoldBalance(newGoldBalance);
-        await updatePlayerFirestore({ jewels: newGoldBalance });
-        await addDoc(collection(db, 'chatMessages'), {
+        const newGoldBalance = goldBalance - messageCost; // Deduct 1 GOLD
+        setGoldBalance(newGoldBalance); // Update local state immediately
+        await updatePlayerFirestore({ gold: newGoldBalance }); // FIX: Update 'gold' field in Firestore
+        
+        await addDoc(collection(db, 'chatMessages'), { // Ensure 'chatMessages' collection exists
           userId,
-          message: chatMessage,
+          message: chatMessage.trim(),
           timestamp: serverTimestamp(),
-          avatar: `/avatar${Math.floor(Math.random() * 5) + 1}.jpg`,
-          user: userId.slice(0, 6),
+          avatar: auth.currentUser?.photoURL || `/avatar${Math.floor(Math.random() * 5) + 1}.jpg`, // Use user's photoURL or random
+          user: auth.currentUser?.displayName || auth.currentUser?.email || userId.slice(0, 6), // Use user's display name, email, or sliced ID
         });
         setShowMessage(`✅ Message sent: ${chatMessage}`);
-        setActiveModal('payment'); // Prompt deposit for more messages
-        setChatMessage('');
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 2000);
+        setActiveModal('payment'); // Trigger payment modal (as intended for monetization/engagement)
+        setChatMessage(''); // Clear input
+        setShowConfetti(true); // Trigger confetti
+        setTimeout(() => setShowConfetti(false), 2000); // Hide confetti after 2 seconds
       } catch (err) {
         console.error('Chat message error:', err);
         setShowMessage('⚠️ Failed to send message. Please try again.');
@@ -84,7 +94,7 @@ const EcosystemChat: React.FC<EcosystemChatProps> = ({ userId, goldBalance, setG
     >
       <div
         className="absolute inset-0 bg-cover bg-center opacity-20"
-        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1612835362596-4b0b2b1b0b0c?q=80&w=2070&auto=format&fit=crop)' }}
+        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1612835362596-4b0b2b1b0b0c?q=80&w=2070&auto=format&fit=crop)' }} // Example background image
       />
       {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
       <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3 font-poppins">
@@ -98,11 +108,14 @@ const EcosystemChat: React.FC<EcosystemChatProps> = ({ userId, goldBalance, setG
         whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(34, 211, 238, 0.7)' }}
       >
         <div className="space-y-4">
-          <div className="h-[300px] overflow-y-auto no-scrollbar p-4 bg-gray-800/80 rounded-lg" ref={chatRef}>
+          <div
+            ref={chatRef}
+            className="h-[300px] overflow-y-auto no-scrollbar p-4 bg-gray-800/80 rounded-lg"
+          >
             <AnimatePresence>
-              {chatMessages.map((msg) => (
+              {messages.map((msg) => ( // Use 'messages' state here
                 <motion.div
-                  key={msg.id}
+                  key={msg.id} // Use Firestore doc ID for key
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
@@ -111,7 +124,7 @@ const EcosystemChat: React.FC<EcosystemChatProps> = ({ userId, goldBalance, setG
                   <img src={msg.avatar} alt={msg.user} className="w-8 h-8 rounded-full border border-cyan-500/20" onError={(e) => { e.currentTarget.src = '/fallback-avatar.jpg'; }} />
                   <div>
                     <p className="text-white font-semibold font-poppins">
-                      {msg.user} <span className="text-gray-400 text-xs ml-2">{msg.timestamp}</span>
+                      {msg.user} <span className="text-gray-400 text-xs ml-2">{msg.timestamp && typeof msg.timestamp === 'object' ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : msg.timestamp}</span>
                     </p>
                     <p className="text-gray-300 text-sm font-inter">{msg.message}</p>
                   </div>
@@ -128,13 +141,13 @@ const EcosystemChat: React.FC<EcosystemChatProps> = ({ userId, goldBalance, setG
               className="flex-1 p-3 bg-gray-800 text-white rounded-md border border-cyan-500/20 focus:border-cyan-500"
               required
               aria-label="Chat message"
-              disabled={!userId || goldBalance < 1}
+              disabled={!userId || goldBalance < 1} // Disable if no userId or not enough gold
             />
             <motion.button
               type="submit"
               className="px-4 py-2 bg-rose-600 text-white hover:bg-cyan-500 rounded-md flex items-center gap-2 font-poppins"
               whileHover={{ scale: 1.05 }}
-              disabled={!userId || goldBalance < 1 || !chatMessage.trim()}
+              disabled={!userId || goldBalance < 1 || !chatMessage.trim()} // Disable if no userId, not enough gold, or empty message
               aria-label="Send message"
             >
               <Send className="w-5 h-5" /> Send

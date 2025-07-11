@@ -1,58 +1,84 @@
+import { FC, memo } from 'react';
 import { motion } from 'framer-motion';
-import { Star, Flame, Users, LockKeyhole, Landmark, BarChart3, Globe, BookOpen, ShieldCheck, Scale, Zap } from 'lucide-react';
+import { Shield, Lock, Activity, Users, Globe } from 'lucide-react';
+import { TrustFeature, TrustFeaturesProps } from '@/lib/types';
 
-interface Feature {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}
-
-const features: Feature[] = [
-  { icon: Star, title: 'Vision: Unmatched', description: 'Swytch fuses psychology, economy, governance, and tech. PETs are citizens of a new metaverse.' },
-  { icon: Flame, title: 'Emotional Driver: Real AF', description: 'Swytch ignites hope and empowers rebels. It’s a movement that feels alive.' },
-  { icon: Users, title: 'Scalable & Sustainable', description: 'Rewards effort, education, and community for a lasting ecosphere.' },
-  { icon: LockKeyhole, title: 'Ethical Structure', description: 'PETs as beneficiaries ensure compliance and empowerment.' },
-  { icon: Landmark, title: 'Private Energy Trust', description: 'Smart contract vault for autonomy, privacy, and rewards.' },
-  { icon: BarChart3, title: 'Decentralized Rewards', description: 'Up to 3% monthly returns, plus 0.3% JEWELS via Raziel education.' },
-  { icon: Globe, title: 'Raziel: The Executor', description: 'AI guardian manages assets with transparent logic.' },
-  { icon: BookOpen, title: 'Know Your Freedom', description: 'Learn rights via UDHR, U.S. Constitution, and PMA charter.' },
-  { icon: ShieldCheck, title: 'Membership & PMA Rights', description: 'Private contract protects under constitutional law.' },
-  { icon: Scale, title: 'Self-Sovereign Control', description: 'You hold your keys, identity, and decisions.' },
+const featuresData: TrustFeature[] = [
+  {
+    icon: Shield,
+    title: 'Secure Wallet Integration',
+    description: 'Seamless and secure connection with your Web3 wallet.',
+  },
+  {
+    icon: Lock,
+    title: 'Decentralized Identity',
+    description: 'Control your digital identity and data on-chain.',
+  },
+  {
+    icon: Activity,
+    title: 'Transparent Transactions',
+    description: 'All operations are verifiable on the blockchain.',
+  },
+  {
+    icon: Users,
+    title: 'Community Governance',
+    description: 'Participate in shaping the platform’s future.',
+  },
+  {
+    icon: Globe,
+    title: 'Cross-Chain Compatibility',
+    description: 'Interact with assets across multiple EVM chains.',
+  },
 ];
 
-const TrustFeatures: React.FC = () => {
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.15 } },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 50 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+  hover: { scale: 1.05, boxShadow: '0 0 15px rgba(236, 72, 153, 0.5)' },
+};
+
+const TrustFeatures: FC<TrustFeaturesProps> = memo(({ setShowMessage }) => {
   return (
-    <motion.div
-      variants={{ hidden: { opacity: 0, y: 50, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 80 } } }}
-      className="space-y-8"
+    <motion.section
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="py-16 px-6 sm:px-8 lg:px-16 text-center font-inter relative"
     >
-      <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3 font-poppins">
-        <Zap className="w-8 h-8 text-rose-400 animate-pulse" /> Features
-      </h3>
-      <p className="text-lg text-gray-300 max-w-3xl mx-auto text-center font-inter">
-        Explore the core features that make Swytch a revolutionary platform.
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {features.map((feature, i) => (
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-20"
+        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1620121692029-d088224ddc74?q=80&w=2070&auto=format&fit=crop)' }}
+      />
+      <h2 className="text-4xl font-extrabold text-white flex items-center justify-center gap-4 mb-12 font-poppins">
+        <Shield className="w-10 h-10 text-rose-400 animate-pulse" /> Trust Features
+      </h2>
+      <motion.div
+        variants={containerVariants}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 relative"
+      >
+        {featuresData.map((feature) => (
           <motion.div
-            key={i}
-            className="relative bg-gray-900/50 border border-rose-500/20 p-6 rounded-2xl shadow-xl backdrop-blur-md hover:shadow-rose-400/30 transition-all bg-gradient-to-r from-rose-500/10 to-pink-500/10"
-            whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(244, 63, 94, 0.5)' }}
+            key={feature.title}
+            variants={cardVariants}
+            whileHover="hover"
+            className="bg-gray-900/70 border border-rose-500/30 p-6 rounded-2xl shadow-xl backdrop-blur-md bg-gradient-to-r from-rose-500/10 to-pink-500/10"
+            onClick={() => setShowMessage(`ℹ️ Viewing ${feature.title}`)}
           >
-            <div className="flex items-start space-x-6">
-              <div className="p-4 bg-rose-400/20 rounded-full shadow-lg">
-                <feature.icon className="w-8 h-8 text-rose-400 animate-pulse" aria-hidden="true" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-extrabold text-white mb-3 tracking-tight font-poppins">{feature.title}</h3>
-                <p className="text-gray-300 text-lg leading-relaxed font-inter">{feature.description}</p>
-              </div>
+            <div className="flex flex-col items-center gap-3">
+              <feature.icon className="w-10 h-10 text-cyan-400 animate-pulse" />
+              <h3 className="text-xl font-bold text-white font-poppins">{feature.title}</h3>
+              <p className="text-gray-300 text-sm font-inter">{feature.description}</p>
             </div>
           </motion.div>
         ))}
-      </div>
-    </motion.div>
+      </motion.div>
+    </motion.section>
   );
-};
+});
 
 export default TrustFeatures;

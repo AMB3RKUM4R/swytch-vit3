@@ -1,20 +1,15 @@
-import { FC, SetStateAction } from 'react';
+import { FC } from 'react'; // Removed SetStateAction as it's not directly used here
 import { motion } from 'framer-motion';
-// Ensure these are the only icons imported if no others are used
-import { Wallet, Sparkles } from 'lucide-react';
+import { Wallet, Sparkles } from 'lucide-react'; // Only icons needed for this component
 import { useAccount } from 'wagmi';
 import { useTheme } from '../context/ThemeContext';
 
-interface TopNavProps {
-  userId: string | null;
-  jewelsBalance: number;
-  isPETMember: boolean;
-  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  setActiveAuthModal: (modalName: 'auth' | null) => void;
-  setShowPaymentModal: React.Dispatch<SetStateAction<boolean>>;
-}
+// IMPORTANT: Import TopNavProps from types.ts
+import { TopNavProps as ImportedTopNavProps } from '../lib/types';
 
-const TopNav: FC<TopNavProps> = ({
+
+// Use ImportedTopNavProps as the type for the FC
+const TopNav: FC<ImportedTopNavProps> = ({
   userId,
   jewelsBalance,
   isPETMember,
@@ -52,13 +47,12 @@ const TopNav: FC<TopNavProps> = ({
       <div className="flex items-center gap-2">
         {userId && (
           <div className="hidden md:flex items-center gap-2 text-foreground font-inter text-sm md:text-base">
-            {/* Sparkles icon for PET Member/Jewels Balance */}
             <Sparkles className="text-primary w-5 h-5 animate-pulse" aria-hidden="true" />
             <span>{isPETMember ? 'PET Member' : 'Non-Member'} | {jewelsBalance.toFixed(0)} JEWELS</span>
           </div>
         )}
 
-        {/* Auth/Wallet Button with Wallet icon */}
+        {/* Auth/Wallet Button */}
         <motion.button
           className="btn-secondary flex items-center gap-2"
           onClick={handleAuthWalletClick}
@@ -66,11 +60,11 @@ const TopNav: FC<TopNavProps> = ({
           whileTap={{ scale: 0.95 }}
           aria-label={isConnected ? 'Wallet Connected' : 'Sign In / Connect Wallet'}
         >
-          <Wallet className="w-5 h-5" /> {/* Using the Wallet icon */}
+          <Wallet className="w-5 h-5" />
           {isConnected && address ? `${address.slice(0, 4)}...${address.slice(-4)}` : 'Sign In / Connect'}
         </motion.button>
 
-        {/* Payment Button with Sparkles icon (or choose another relevant icon if you have one, e.g., 'DollarSign') */}
+        {/* Payment Button */}
         <motion.button
           className="btn-primary flex items-center gap-2"
           onClick={handlePaymentClick}
@@ -78,7 +72,7 @@ const TopNav: FC<TopNavProps> = ({
           whileTap={{ scale: 0.95 }}
           aria-label="Make a Payment"
         >
-          <Sparkles className="w-5 h-5" /> Pay {/* Using Sparkles here, or consider 'DollarSign', 'CreditCard' etc. */}
+          <Sparkles className="w-5 h-5" /> Pay
         </motion.button>
 
         <motion.button

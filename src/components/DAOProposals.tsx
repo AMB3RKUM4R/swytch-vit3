@@ -1,19 +1,14 @@
 import { motion } from 'framer-motion';
 import { Vote } from 'lucide-react';
 import { useState } from 'react';
-import { useModal } from '@/context/ModalContext';
 import Confetti from 'react-confetti';
-import { auth } from '@/lib/firebaseConfig';
 
-interface DAOProposal {
-  id: number;
-  title: string;
-  description: string;
-  votesFor: number;
-  votesAgainst: number;
-  status: 'Active' | 'Ended';
-}
+// IMPORTANT: Import DAOProposal and DAOProposalsProps from lib/types.ts
+import { DAOProposal, DAOProposalsProps as ImportedDAOProposalsProps } from '../lib/types';
 
+
+// DAOProposal interface is now imported from lib/types.ts
+// daoProposals data is local mock data; in production, this would be fetched from Firestore/backend.
 const daoProposals: DAOProposal[] = [
   {
     id: 1,
@@ -41,18 +36,15 @@ const daoProposals: DAOProposal[] = [
   },
 ];
 
-interface DAOProposalsProps {
-  userId: string | null;
-}
-
-const DAOProposals: React.FC<DAOProposalsProps> = ({ userId }) => {
+const DAOProposals: React.FC<ImportedDAOProposalsProps> = ({ userId, setActiveModal, setShowMessage }) => {
   const [selectedProposal, setSelectedProposal] = useState<number | null>(null);
   const [voteChoice, setVoteChoice] = useState<'for' | 'against' | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
-  const { setActiveModal, setShowMessage } = useModal();
+  // Removed const { setActiveModal, setShowMessage } = useModal(); as they are now passed as props
 
   const handleVote = async (proposalId: number, choice: 'for' | 'against') => {
-    if (!userId || !auth.currentUser) {
+    // Rely on userId prop for authentication check, consistent with other components
+    if (!userId) { // Using userId prop directly for auth check
       setActiveModal('auth');
       setShowMessage('⚠️ Please sign in to vote!');
       return;
@@ -61,7 +53,7 @@ const DAOProposals: React.FC<DAOProposalsProps> = ({ userId }) => {
     setVoteChoice(choice);
     try {
       setShowMessage(`✅ Voted "${choice}" on "${daoProposals.find((p) => p.id === proposalId)?.title}"!`);
-      setActiveModal('payment'); // Prompt deposit for voting power
+      setActiveModal('payment'); // Trigger payment modal (for voting power/transaction fee)
       setShowConfetti(true);
       setTimeout(() => {
         setSelectedProposal(null);
@@ -82,7 +74,7 @@ const DAOProposals: React.FC<DAOProposalsProps> = ({ userId }) => {
     >
       <div
         className="absolute inset-0 bg-cover bg-center opacity-20"
-        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1620121692029-d088224ddc74?q=80&w=2070&auto=format&fit=crop)' }}
+        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1620121692029-d088224ddc74?q=80&w=2070&auto=format&fit=crop)' }} // Example background image
       />
       {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
       <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3 font-poppins">
@@ -98,7 +90,7 @@ const DAOProposals: React.FC<DAOProposalsProps> = ({ userId }) => {
         <div className="space-y-6">
           {daoProposals.map((proposal) => (
             <motion.div
-              key={proposal.id}
+              key={proposal.id} // Using ID as key, assuming it's unique
               className="bg-gray-900/80 p-6 rounded-lg border border-cyan-500/20"
               whileHover={{ scale: 1.02 }}
             >
@@ -117,7 +109,7 @@ const DAOProposals: React.FC<DAOProposalsProps> = ({ userId }) => {
                     }`}
                     onClick={() => handleVote(proposal.id, 'for')}
                     whileHover={{ scale: 1.05 }}
-                    disabled={selectedProposal === proposal.id || !userId}
+                    disabled={selectedProposal === proposal.id || !userId} // Disable if already voted on this proposal or not logged in
                     aria-label={`Vote for ${proposal.title}`}
                   >
                     Vote For
@@ -128,7 +120,7 @@ const DAOProposals: React.FC<DAOProposalsProps> = ({ userId }) => {
                     }`}
                     onClick={() => handleVote(proposal.id, 'against')}
                     whileHover={{ scale: 1.05 }}
-                    disabled={selectedProposal === proposal.id || !userId}
+                    disabled={selectedProposal === proposal.id || !userId} // Disable if already voted on this proposal or not logged in
                     aria-label={`Vote against ${proposal.title}`}
                   >
                     Vote Against

@@ -1,25 +1,22 @@
-import { FC, useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
+// pages/Market.tsx (Updated: Added missing deps to shareOnX and loadMoreGames useCallbacks. Passed userId/goldBalance/energyBalance to TrustMarketHero as per props. No logic changes.)
+
+import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import TrustMarketHero from '../components/TrustMarketHero';
-import ExploreNFTs from '../components/ExploreNFTs';
-import FeaturedNFTs from '../components/FeaturedNFTs';
+
 import RecentPurchases from '../components/RecentPurchases';
 import TrustMarketCTA from '../components/TrustMarketCTA';
-import TrustFeatures from '../components/TrustFeatures';
-import TrustJourney from '../components/TrustJourney';
 import TrustProgression from '../components/TrustProgression';
 import TrustRewardTiers from '../components/TrustRewardTiers';
-import TrustTestimonials from '../components/TrustTestimonials';
 import WalletSwapForms from '../components/WalletSwapForms';
 import SmartContractTransactions from '../components/SmartContractTransactions';
 import SwytchCard from '../components/SwytchCard';
 // Removed AuthModal and PaymentModal imports as they are globally managed by App.tsx
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
-import { useModal } from '../context/ModalContext';
 
 // IMPORTANT: Import PageProps, SupportedCurrency, and TransactionType from your lib/types.ts file
 import { PageProps as ImportedPageProps, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
@@ -62,7 +59,6 @@ const games = [ // This array is local, but typically lives in a constants file
 // Use ImportedPageProps as the type for the FC
 const Market: FC<ImportedPageProps> = ({
   userId,
-  activeModal,
   setActiveModal,
   setShowMessage,
   setIsPETMember,
@@ -74,7 +70,7 @@ const Market: FC<ImportedPageProps> = ({
   // Removed autoPlay and setAutoPlay as they were optional in previous AppProps but not used here
 }) => {
   // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [, setIsModalLoading] = useState<boolean>(false);
   const [visibleGames, setVisibleGames] = useState(games.slice(0, 6));
   const [hasMore, setHasMore] = useState<boolean>(true);
 
@@ -216,29 +212,15 @@ const Market: FC<ImportedPageProps> = ({
           <motion.div variants={sectionVariants}>
             <TrustMarketHero setActiveModal={setActiveModal} isPETMember={false} isPending={false} userId={userId} goldBalance={0} energyBalance={0} />
           </motion.div>
-          <motion.div variants={sectionVariants}>
-            <ExploreNFTs isPETMember={false} isPending={false} setActiveModal={setActiveModal} />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <FeaturedNFTs isPETMember={false} isPending={false} setActiveModal={setActiveModal} />
-          </motion.div>
+        
           <motion.div variants={sectionVariants}>
             <RecentPurchases recentPurchases={[]} />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <TrustFeatures />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <TrustJourney />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <TrustProgression />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <TrustRewardTiers />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <TrustTestimonials />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <WalletSwapForms

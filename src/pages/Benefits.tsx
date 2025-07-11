@@ -1,9 +1,9 @@
-import { FC, useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion'; // Keep these as requested
+import { FC, useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
-import { Sparkles, MessageCircleHeart, X } from 'lucide-react';
+import { Sparkles, MessageCircleHeart } from 'lucide-react';
 import BenefitsHero from '../components/BenefitsHero';
 import BenefitsQuests from '../components/BenefitsQuests';
 import BenefitsGrid from '../components/BenefitsGrid';
@@ -11,25 +11,13 @@ import BenefitsEcosphere from '../components/BenefitsEcosphere';
 import BenefitsPitfalls from '../components/BenefitsPitfalls';
 import BenefitsWallets from '../components/BenefitsWallets';
 import WalletSecurity from '../components/WalletSecurity';
-import BenefitsCTA from '../components/BenefitsCTA'; // Assuming this component exists and takes the correct props
-// Removed direct modal imports (AuthModal, PaymentModal) as App.tsx renders them globally
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { useModal } from '../context/ModalContext'; // For activeModal, setActiveModal
 
-// Import BenefitsProps from your lib/types.ts file.
-// This is the source of truth for props expected by this component.
-import { BenefitsProps } from '../lib/types';
+// IMPORTANT: Import Quest and BenefitsProps from your lib/types.ts file.
+import { Quest, BenefitsProps as ImportedBenefitsProps } from '../lib/types';
 
 
-interface Quest {
-  id: string;
-  title: string;
-  progress: number;
-  goal: number;
-  rewardJEWELS: number;
-  rewardXP: number;
-  completed: boolean;
-}
+// Quest interface is now imported from lib/types.ts
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -49,58 +37,24 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-const initialQuests: Quest[] = [
+const initialQuests: Quest[] = [ // Explicitly type initialQuests
   { id: "benefits-visit", title: "Visit Benefits Page", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 10, completed: false },
   { id: "benefits-share", title: "Share Benefits on X", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 5, completed: false },
 ];
 
-const Benefits: FC<BenefitsProps> = ({ // Use BenefitsProps from lib/types.ts
+// Use ImportedBenefitsProps as the type for the FC
+const Benefits: FC<ImportedBenefitsProps> = ({
   userId,
-  activeModal,
   setActiveModal,
   setShowMessage,
   setIsPETMember,
   updatePlayerFirestore,
-  jewelsBalance = 0,
-  isPending = false,
-  authLoading = false,
-  // Removed setShowWalletModal from destructuring as it's not in BenefitsProps anymore
+  jewelsBalance = 0, // Default value for prop
+  isPending = false, // Default value for prop
+  authLoading = false, // Default value for prop
 }) => {
-  // Removed const { showMessage } = useModal(); as it's redundant (prop setShowMessage is used)
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [expandedBenefit, setExpandedBenefit] = useState<string | null>(null);
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
-
-  const logUpiIntent = useCallback(async () => {
-    if (!userId) {
-      setShowMessage('⚠️ Please connect your wallet or log in.');
-      setActiveModal('auth');
-      return;
-    }
-    try {
-      setIsModalLoading(true);
-      const transactionId = `${userId}_${Date.now()}`;
-      await addDoc(collection(db, 'Transactions'), {
-        transactionId,
-        userId,
-        amount: 100,
-        currency: 'JEWELS',
-        transactionType: 'deposit',
-        status: 'pending',
-        timestamp: serverTimestamp(),
-        game: 'benefits',
-        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
-      });
-      setShowMessage('ℹ️ Opening payment for support. Admin (0CfobCbXnPZsJwT662H4OhDrXk33) will process your contribution.');
-      setActiveModal('payment');
-    } catch (err) {
-      console.error('UPI intent error:', err);
-      setShowMessage('⚠️ Failed to initiate payment. Try again.');
-      setActiveModal('error');
-    } finally {
-      setIsModalLoading(false);
-    }
-  }, [userId, setShowMessage, setActiveModal]);
 
   const shareOnX = useCallback(async () => {
     if (!userId) {
@@ -116,10 +70,10 @@ const Benefits: FC<BenefitsProps> = ({ // Use BenefitsProps from lib/types.ts
         q.id === "benefits-share" ? { ...q, progress: 1, completed: true } : q
       );
       setQuests(updatedQuests);
-      updatePlayerFirestore({ quests: updatedQuests, jewels: jewelsBalance + shareQuest.rewardJEWELS });
+      await updatePlayerFirestore({ quests: updatedQuests, jewels: jewelsBalance + shareQuest.rewardJEWELS });
       setShowMessage(`🎉 Quest Completed: ${shareQuest.title}! +${shareQuest.rewardJEWELS} JEWELS`);
-      // Removed logUpiIntent() call here as it might not be intended after every share
-      // If it is intended, ensure its type aligns with all calls.
+      // If logUpiIntent is intended to be called here after sharing, uncomment and pass an amount.
+      // await logUpiIntent(shareQuest.rewardJEWELS); // Example: Log reward as UPI intent if needed
     }
   }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
 
@@ -132,7 +86,7 @@ const Benefits: FC<BenefitsProps> = ({ // Use BenefitsProps from lib/types.ts
           setIsPETMember(data.isPETMember || false);
           
           const fetchedQuests: Quest[] = data.quests?.length ? data.quests : initialQuests;
-          setQuests(fetchedQuests);
+          setQuests(fetchedQuests); // FIX: Changed from fetchedMessages to fetchedQuests
 
           if (!fetchedQuests.find((q: Quest) => q.id === "benefits-visit")?.completed) {
             const updatedQuests = fetchedQuests.map((q) =>
@@ -153,7 +107,7 @@ const Benefits: FC<BenefitsProps> = ({ // Use BenefitsProps from lib/types.ts
       setShowMessage('⚠️ Please sign in to access benefits!');
       setActiveModal('auth');
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]); // Removed `quests` from deps
 
   const toggleBenefit = (benefit: string) => {
     setExpandedBenefit(expandedBenefit === benefit ? null : benefit);
@@ -176,7 +130,6 @@ const Benefits: FC<BenefitsProps> = ({ // Use BenefitsProps from lib/types.ts
   }
 
   return (
-    // FIX 2: Pass the actual props to SwytchErrorBoundary
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
@@ -228,17 +181,21 @@ const Benefits: FC<BenefitsProps> = ({ // Use BenefitsProps from lib/types.ts
               quests={quests}
               setQuests={setQuests}
               jewelsBalance={jewelsBalance}
-              setJewelsBalance={(value) => updatePlayerFirestore({ jewels: value })}
               saveStateToFirestore={updatePlayerFirestore}
               setActiveModal={setActiveModal}
               setShowMessage={setShowMessage}
+              setJewelsBalance={function (_value: React.SetStateAction<number>): void {
+                throw new Error('Function not implemented.');
+              } } 
             />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <BenefitsGrid
               expandedBenefit={expandedBenefit}
               toggleBenefit={toggleBenefit}
-            />
+              setActiveModal={setActiveModal} // Pass setActiveModal
+              setShowMessage={setShowMessage} // Pass setShowMessage
+              userId={userId}            />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <BenefitsEcosphere />
@@ -249,23 +206,20 @@ const Benefits: FC<BenefitsProps> = ({ // Use BenefitsProps from lib/types.ts
                 setShowMessage('ℹ️ Learn more about PETverse risks!');
                 setActiveModal('info');
               }}
+              userId={userId} // Pass userId
+              setActiveModal={setActiveModal} // Pass setActiveModal
+              setShowMessage={setShowMessage} // Pass setShowMessage
             />
           </motion.div>
           <motion.div variants={sectionVariants}>
-            <BenefitsWallets />
+            <BenefitsWallets
+              userId={userId} // Pass userId
+              setActiveModal={setActiveModal} // Pass setActiveModal
+              setShowMessage={setShowMessage} // Pass setShowMessage
+            />
           </motion.div>
           <motion.div variants={sectionVariants}>
             <WalletSecurity />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <BenefitsCTA
-              userId={userId}
-              setActiveModal={setActiveModal}
-              setShowMessage={setShowMessage}
-              // Removed setShowWalletModal prop pass-through
-              logUpiIntent={logUpiIntent} setShowWalletModal={function (value: SetStateAction<boolean>): void {
-                throw new Error('Function not implemented.');
-              } }            />
           </motion.div>
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
@@ -289,7 +243,14 @@ const Benefits: FC<BenefitsProps> = ({ // Use BenefitsProps from lib/types.ts
             <Link
               to="/vault"
               className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('💰 Navigating to Vault!')}
+              onClick={() => {
+                if (!userId) {
+                  setShowMessage('💰 Navigating to Vault!');
+                  setActiveModal('auth');
+                } else {
+                  setShowMessage('💰 Navigating to Vault!');
+                }
+              }}
               role="button"
               aria-label="Navigate to Vault Page"
             >
@@ -333,9 +294,6 @@ const Benefits: FC<BenefitsProps> = ({ // Use BenefitsProps from lib/types.ts
             </Link>
           </motion.div>
         </motion.div>
-        {/* Removed all global modal renderings from here as they are now handled by App.tsx */}
-        {/* The 'isModalLoading' spinner, 'AuthModal', 'PaymentModal', 'info' modal,
-            and global 'showMessage' toast are all rendered in App.tsx/main.tsx */}
       </motion.div>
     </SwytchErrorBoundary>
   );

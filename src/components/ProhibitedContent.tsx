@@ -1,7 +1,24 @@
 import { motion } from 'framer-motion';
-import { Code, Cpu, Gavel, Link, Users, UserX } from 'lucide-react';
+import { Code, Cpu, Gavel, Link as LinkIcon, Users, UserX } from 'lucide-react'; // Renamed Link to LinkIcon to avoid conflict with react-router-dom Link
 
-const ProhibitedContent: React.FC = () => {
+// No local interface for ProhibitedContentProps as it's self-contained and takes no props.
+
+interface ProhibitedItem { // Local interface for clarity, as it's only used here
+  icon: React.ElementType; // Lucide icon components are React.ElementType
+  title: string; // Added for clarity, though not rendered directly
+  description: string;
+}
+
+const prohibitedContentItems: ProhibitedItem[] = [ // Renamed from 'donts' for clarity
+  { icon: UserX, title: 'Illegal Activities', description: 'Illegal activities.' },
+  { icon: Code, title: 'Malicious Code', description: 'Malicious code.' },
+  { icon: LinkIcon, title: 'Unauthorized Commercial Use', description: 'Unauthorized commercial use.' },
+  { icon: Cpu, title: 'Security Interference', description: 'Security interference.' },
+  { icon: Users, title: 'Anticompetitive Behavior', description: 'Anticompetitive behavior.' },
+];
+
+
+const ProhibitedContent: React.FC = () => { // No props destructured from FC
   return (
     <motion.div
       variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } } }}
@@ -19,43 +36,20 @@ const ProhibitedContent: React.FC = () => {
             Comply with Swytch’s Agreement and laws. Prohibited conduct includes:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <motion.div
-              variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } } }}
-              className="bg-gray-800/50 p-6 rounded-lg hover:bg-gray-800/70 transition"
-            >
-              <UserX className="text-rose-400 w-8 h-8 mx-auto mb-4" />
-              <p className="text-sm text-gray-200 font-inter">Illegal activities.</p>
-            </motion.div>
-            <motion.div
-              variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } } }}
-              className="bg-gray-800/50 p-6 rounded-lg hover:bg-gray-800/70 transition"
-            >
-              <Code className="text-rose-400 w-8 h-8 mx-auto mb-4" />
-              <p className="text-sm text-gray-200 font-inter">Malicious code.</p>
-            </motion.div>
-            <motion.div
-              variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } } }}
-              className="bg-gray-800/50 p-6 rounded-lg hover:bg-gray-800/70 transition"
-            >
-              <Link className="text-rose-400 w-8 h-8 mx-auto mb-4" />
-              <p className="text-sm text-gray-200 font-inter">Unauthorized commercial use.</p>
-            </motion.div>
-            <motion.div
-              variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } } }}
-              className="bg-gray-800/50 p-6 rounded-lg hover:bg-gray-800/70 transition"
-            >
-              <Cpu className="text-rose-400 w-8 h-8 mx-auto mb-4" />
-              <p className="text-sm text-gray-200 font-inter">Security interference.</p>
-            </motion.div>
-            <motion.div
-              variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } } }}
-              className="bg-gray-800/50 p-6 rounded-lg hover:bg-gray-800/70 transition"
-            >
-              <Users className="text-rose-400 w-8 h-8 mx-auto mb-4" />
-              <p className="text-sm text-gray-200 font-inter">Anticompetitive behavior.</p>
-            </motion.div>
+            {prohibitedContentItems.map((item) => ( // Using the renamed array
+              <motion.div
+                key={item.title} // FIX: Use item.title as key assuming it's unique
+                variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } } }}
+                className="bg-gray-800/50 p-6 rounded-lg hover:bg-gray-800/70 transition"
+              >
+                {/* Dynamically render icon component */}
+                {item.icon && <item.icon className="text-rose-400 w-8 h-8 mx-auto mb-4" />}
+                <p className="text-sm text-gray-200 font-inter">{item.description}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
+        <p className="text-xl text-cyan-300 italic font-inter mt-8">Avoid blockchain if uncomfortable with risks.</p>
       </motion.div>
     </motion.div>
   );

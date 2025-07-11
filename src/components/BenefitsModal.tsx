@@ -1,25 +1,22 @@
 import { FC, memo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, X, Wallet } from 'lucide-react';
-import { useModal } from '@/context/ModalContext';
-import { auth } from '@/lib/firebaseConfig';
+import { useModal } from '@/context/ModalContext'; // Correct useModal import
+import { auth } from '@/lib/firebaseConfig'; // Firebase auth import
 
-interface BenefitsModalProps {
-  title: string;
-  content: string;
-  onClose: () => void;
-  showConnect?: boolean;
-  handleWalletConnect?: () => void;
-}
+// IMPORTANT: Import BenefitsModalProps from lib/types.ts
+import { BenefitsModalProps as ImportedBenefitsModalProps } from '../lib/types';
+
 
 const sectionVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut' } },
 };
 
-const BenefitsModal: FC<BenefitsModalProps> = memo(({ title, content, onClose, showConnect, handleWalletConnect }) => {
+// Use ImportedBenefitsModalProps as the type for the FC
+const BenefitsModal: FC<ImportedBenefitsModalProps> = memo(({ title, content, onClose, showConnect, handleWalletConnect }) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  const { setActiveModal, setShowMessage } = useModal();
+  const { setActiveModal, setShowMessage } = useModal(); // Correctly consuming context
 
   useEffect(() => {
     if (modalRef.current) {
@@ -33,15 +30,16 @@ const BenefitsModal: FC<BenefitsModalProps> = memo(({ title, content, onClose, s
   }, [onClose]);
 
   const handleConnect = () => {
+    // Rely on auth.currentUser for authentication check, as no userId prop is passed.
     if (!auth.currentUser) {
       setActiveModal('auth');
       setShowMessage('⚠️ Sign in to connect wallet!');
       return;
     }
-    if (handleWalletConnect) {
+    if (handleWalletConnect) { // Only call if handler is provided
       handleWalletConnect();
       setShowMessage('ℹ️ Connecting MetaMask...');
-      setActiveModal('payment'); // Prompt deposit post-connection
+      setActiveModal('payment'); // Prompt deposit post-connection, as intended
     }
   };
 

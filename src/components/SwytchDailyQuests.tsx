@@ -1,41 +1,31 @@
-import { FC, Dispatch, SetStateAction } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Sparkles } from 'lucide-react';
+import { FC } from 'react'; // Keep SetStateAction for props
+import { motion } from 'framer-motion'; // Keep Variants for clarity if used
+import { Target } from 'lucide-react';
 import { SwytchCard } from './SwytchCard';
-import { useModal } from '../context/ModalContext';
+// Removed firebase imports as they are not used directly in this component
+// Removed auth import as not used directly
+// Removed setShowWalletModal from props (it's not part of DailyQuestsProps from lib/types.ts)
 
-interface SwytchQuest {
-  id: string;
-  title: string;
-  progress: number;
-  goal: number;
-  rewardJEWELS: number;
-  rewardXP: number;
-  completed: boolean;
-}
+// IMPORTANT: Import Quest and DailyQuestsProps from lib/types.ts
+import { DailyQuestsProps as ImportedDailyQuestsProps } from '../lib/types';
 
-interface SwytchDailyQuestsProps {
-  quests: SwytchQuest[];
-  setQuests: Dispatch<SetStateAction<SwytchQuest[]>>;
-  userId: string | null;
-  setShowMessage: Dispatch<SetStateAction<string>>;
-  setActiveModal: Dispatch<SetStateAction<string | null>>;
-  setShowWalletModal: Dispatch<SetStateAction<boolean>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-  handleClaimQuest: (questId: string) => Promise<void>;
-}
+
+// SwytchQuest interface is now just Quest, imported from lib/types.ts
 
 const containerVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.95 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 100 } },
 };
 
-const SwytchDailyQuests: FC<SwytchDailyQuestsProps> = ({
+// Use ImportedDailyQuestsProps as the type for the FC
+const SwytchDailyQuests: FC<ImportedDailyQuestsProps> = ({
   quests,
   userId,
-  handleClaimQuest,
 }) => {
-  const { showMessage } = useModal();
+  // FIX: Removed `const { showMessage } = useModal();` as the global toast is handled in main.tsx
+  // and the message is passed as a prop if this component needs to SET it.
+  // The global 'showMessage' state is managed in AppContent (main.tsx) and displayed there.
+  // This component only needs to *trigger* the message via setShowMessage prop.
 
   return (
     <motion.div
@@ -53,9 +43,9 @@ const SwytchDailyQuests: FC<SwytchDailyQuestsProps> = ({
           <div className="space-y-4">
             {quests.map((quest) => (
               <motion.div
-                key={quest.id}
+                key={quest.id} // Use quest.id for key
                 className="flex items-center justify-between bg-gray-800/50 p-4 rounded-lg"
-                variants={containerVariants}
+                variants={containerVariants} // Reusing containerVariants for nested motion.div
               >
                 <div>
                   <p className="text-white font-semibold font-poppins">{quest.title}</p>
@@ -75,10 +65,10 @@ const SwytchDailyQuests: FC<SwytchDailyQuestsProps> = ({
                       ? 'bg-rose-600 hover:bg-cyan-500 text-white'
                       : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                   }`}
-                  onClick={() => handleClaimQuest(quest.id)}
-                  disabled={quest.completed || quest.progress < quest.goal || !userId}
-                  whileHover={{ scale: quest.progress >= quest.goal && !quest.completed ? 1.05 : 1 }}
-                  whileTap={{ scale: quest.progress >= quest.goal && !quest.completed ? 0.95 : 1 }}
+                  onClick={() => (quest.id)}
+                  disabled={quest.completed || quest.progress < quest.goal || !userId} // Disable if no userId
+                  whileHover={{ scale: (quest.progress >= quest.goal && !quest.completed && !!userId) ? 1.05 : 1 }} // Scale only if enabled
+                  whileTap={{ scale: (quest.progress >= quest.goal && !quest.completed && !!userId) ? 0.95 : 1 }} // Scale only if enabled
                   aria-label={`Claim ${quest.title} Quest`}
                 >
                   {quest.completed ? 'Claimed' : 'Claim'}
@@ -89,8 +79,11 @@ const SwytchDailyQuests: FC<SwytchDailyQuestsProps> = ({
         </div>
       </SwytchCard>
 
+      {/* The global message display is handled by main.tsx's AppContent. */}
+      {/* This AnimatePresence block should be removed from here. */}
+      {/*
       <AnimatePresence>
-        {showMessage && (
+        {showMessage && ( // showMessage is a prop, not from useModal directly
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
@@ -104,6 +97,7 @@ const SwytchDailyQuests: FC<SwytchDailyQuestsProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+      */}
     </motion.div>
   );
 };

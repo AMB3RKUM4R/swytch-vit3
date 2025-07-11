@@ -1,50 +1,47 @@
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
 import { useRef } from 'react';
-import { useModal } from '@/context/ModalContext';
+import { serverTimestamp } from 'firebase/firestore';
+import { EnergyVaultProps } from '@/lib/types';
 
 const vaultClickVariants = {
   click: { scale: [1, 1.2, 1], transition: { duration: 0.3 } },
 };
 
-interface EnergyVaultProps {
-  userId: string | null;
-  goldBalance: number;
-  setGoldBalance: React.Dispatch<React.SetStateAction<number>>;
-  energyBalance: number;
-  dailyClicks: number;
-  setDailyClicks: React.Dispatch<React.SetStateAction<number>>;
-  loginStreak: number;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-}
-
-const EnergyVault: React.FC<EnergyVaultProps> = ({ userId, goldBalance, setGoldBalance, dailyClicks, setDailyClicks, loginStreak, updatePlayerFirestore }) => {
-  const { setActiveModal, setShowMessage } = useModal();
+const EnergyVault: React.FC<EnergyVaultProps> = ({ userId, jewelsBalance, setJewelsBalance, dailyClicks, setDailyClicks, loginStreak, updatePlayerFirestore, setActiveModal, setShowMessage }) => {
   const vaultRef = useRef<HTMLCanvasElement>(null);
 
   const handleVaultClick = () => {
-    if (dailyClicks >= 10) {
-      setActiveModal('error');
-      setShowMessage("⚠️ Daily click limit reached! Come back tomorrow.");
-      return;
-    }
     if (!userId) {
       setActiveModal('auth');
       setShowMessage("⚠️ Please sign in to collect JEWELS!");
       return;
     }
+    if (dailyClicks >= 10) {
+      setActiveModal('error');
+      setShowMessage("⚠️ Daily click limit reached! Come back tomorrow.");
+      return;
+    }
+
     const jewelsGain = Math.floor(Math.random() * 3) + 1;
-    setGoldBalance((prev) => {
-      const newGold = prev + jewelsGain;
-      updatePlayerFirestore({ jewels: newGold });
-      return newGold;
+    const newJewelsBalance = jewelsBalance + jewelsGain;
+    const newDailyClicks = dailyClicks + 1;
+
+    setJewelsBalance(newJewelsBalance);
+    setDailyClicks(newDailyClicks);
+
+    updatePlayerFirestore({
+      jewels: newJewelsBalance,
+      clicks: newDailyClicks,
+      updatedAt: serverTimestamp(),
+    }).catch((error) => {
+      console.error("Failed to update Firestore:", error);
+      setShowMessage("⚠️ Failed to save JEWELS. Please try again.");
+      setActiveModal('error');
     });
-    setDailyClicks((prev) => {
-      const newClicks = prev + 1;
-      updatePlayerFirestore({ clicks: newClicks });
-      return newClicks;
-    });
+
     setShowMessage(`✅ Collected ${jewelsGain} JEWELS!`);
+
     const canvas = vaultRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
@@ -59,6 +56,7 @@ const EnergyVault: React.FC<EnergyVaultProps> = ({ userId, goldBalance, setGoldB
           }, i * 50);
         }
         setTimeout(() => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           const gradient = ctx.createRadialGradient(50, 50, 10, 50, 50, 50);
           gradient.addColorStop(0, 'rgba(244, 63, 94, 0.8)');
           gradient.addColorStop(1, 'rgba(107, 70, 193, 0.2)');
@@ -81,7 +79,7 @@ const EnergyVault: React.FC<EnergyVaultProps> = ({ userId, goldBalance, setGoldB
         <h3 className="text-3xl font-bold text-white flex items-center justify-center gap-3 font-poppins">
           <Zap className="w-8 h-8 text-rose-400 animate-pulse" /> Energy Vault
         </h3>
-        <p className="text-2xl text-gray-300 font-inter">JEWELS: {goldBalance} 💎</p>
+        <p className="text-2xl text-gray-300 font-inter">JEWELS: {jewelsBalance} 💎</p>
         <p className="text-lg text-gray-400 font-inter">Check-In Streak: {loginStreak} Day{loginStreak !== 1 ? 's' : ''}</p>
         <motion.canvas
           ref={vaultRef}

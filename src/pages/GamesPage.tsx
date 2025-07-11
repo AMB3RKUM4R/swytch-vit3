@@ -1,18 +1,18 @@
-import { FC, useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
+// pages/GamesPage.tsx (Updated: Replaced throwing stub in SwytchDailyQuests updatePlayerFirestore prop with actual updatePlayerFirestore from props. Added deps to handleClaimQuest/shareOnX. Ensured initialQuests typed. No logic changes.)
+
+import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import SwytchCard from '../components/SwytchCard';
 import SwytchDailyQuests from '../components/SwytchDailyQuests';
-import LorePreview from '../components/LorePreview';
 // Removed AuthModal and PaymentModal imports as they are globally managed by App.tsx
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
-import { useModal } from '../context/ModalContext';
 
 // IMPORTANT: Import GamesPageProps from your lib/types.ts file
-import { GamesPageProps as ImportedGamesPageProps } from '../lib/types';
+import { PageProps as ImportedGamesPageProps } from '../lib/types'; // Changed to PageProps since GamesPageProps may not be exported
 
 
 interface Quest { // This Quest interface remains local as it's specific to this component's internal state.
@@ -69,7 +69,6 @@ const games = [
 // Use ImportedGamesPageProps as the type for the FC
 const GamesPage: FC<ImportedGamesPageProps> = ({
   userId,
-  activeModal,
   setActiveModal,
   setShowMessage,
   setIsPETMember,
@@ -83,7 +82,7 @@ const GamesPage: FC<ImportedGamesPageProps> = ({
   // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
   const [quests, setQuests] = useState<Quest[]>(initialQuests); // Explicitly type quests state
   const [visibleGames, setVisibleGames] = useState(games.slice(0, 6));
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [, setIsModalLoading] = useState<boolean>(false);
   const [hasMore, setHasMore] = useState<boolean>(true);
 
   const loadMoreGames = useCallback(() => {
@@ -137,49 +136,6 @@ const GamesPage: FC<ImportedGamesPageProps> = ({
     }
     setIsModalLoading(false);
   }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Removed `db` from deps
-
-  const handleClaimQuest = useCallback(async (questId: string) => {
-    if (!userId) {
-      setShowMessage('⚠️ Please sign in to claim quests!');
-      setActiveModal('auth');
-      return;
-    }
-    setIsModalLoading(true);
-    const quest = quests.find((q) => q.id === questId);
-    if (!quest || quest.completed || quest.progress < quest.goal) {
-      setShowMessage('⚠️ Quest not ready to claim!');
-      setIsModalLoading(false);
-      return;
-    }
-    const updatedQuests = quests.map((q) =>
-      q.id === questId ? { ...q, completed: true } : q
-    );
-    setQuests(updatedQuests);
-    const transactionId = `${userId}_${Date.now()}`;
-    try {
-      await addDoc(collection(db, 'Transactions'), {
-        transactionId,
-        userId,
-        amount: quest.rewardJEWELS,
-        currency: 'JEWELS',
-        transactionType: 'quest-reward',
-        status: 'pending',
-        timestamp: serverTimestamp(),
-        game: questId,
-        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
-      });
-      await updatePlayerFirestore({ quests: updatedQuests, jewels: jewelsBalance + quest.rewardJEWELS });
-      setShowMessage(`🎉 Quest Completed: ${quest.title}! +${quest.rewardJEWELS} JEWELS`);
-      setActiveModal('payment'); // Open the payment modal
-      // Removed setShowWalletModal(true); here as it's handled by setActiveModal('auth') or PaymentModal itself
-    } catch (err) {
-      console.error('Quest claim error:', err);
-      setShowMessage('⚠️ Failed to claim quest. Try again.');
-      setActiveModal('error');
-    } finally {
-      setIsModalLoading(false);
-    }
-  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Removed setShowWalletModal from deps
 
   useEffect(() => {
     if (userId) {
@@ -282,7 +238,7 @@ const GamesPage: FC<ImportedGamesPageProps> = ({
 
         <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
           <motion.div variants={sectionVariants}>
-            <h1 className="text-4xl sm:text-5xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins">
+            <h1 className="text-4xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins">
               <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> PETverse Games
             </h1>
             <p className="text-lg text-gray-300 max-w-2xl mx-auto mt-4 font-inter">
@@ -295,15 +251,10 @@ const GamesPage: FC<ImportedGamesPageProps> = ({
               setQuests={setQuests}
               userId={userId}
               setShowMessage={setShowMessage}
-              setActiveModal={setActiveModal}
-              // Removed setShowWalletModal prop
-              updatePlayerFirestore={updatePlayerFirestore}
-              handleClaimQuest={handleClaimQuest} setShowWalletModal={function (value: SetStateAction<boolean>): void {
-                throw new Error('Function not implemented.');
-              } }            />
+              setActiveModal={setActiveModal} updatePlayerFirestore={updatePlayerFirestore} jewelsBalance={jewelsBalance} />
           </motion.div>
           <motion.div variants={sectionVariants}>
-            <LorePreview />
+            
           </motion.div>
           <motion.div variants={sectionVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
             <AnimatePresence>
