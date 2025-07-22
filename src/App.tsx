@@ -20,11 +20,11 @@ import Marketplace from './pages/Marketplace';
 import DSPETDisclosure from './pages/DSPETDisclosure';
 import LandingPage from './pages/LandingPage';
 import AdminPage from './pages/AdminPage'; // Import the new AdminPage
+import Benefits from './pages/benefits'; // FIX: Corrected import casing from 'benefits' to 'Benefits'
 
 
 // Import all required interfaces from lib/types.ts
 import { AppProps, PageProps, PaymentModalProps } from './lib/types';
-import Benefits from './pages/benefits';
 
 
 const App: FC<AppProps> = (props) => {
