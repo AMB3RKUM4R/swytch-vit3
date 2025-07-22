@@ -7,10 +7,10 @@ import AuthModal from './components/AuthModal';
 import PaymentModal from './components/PaymentModal';
 import LoadingSpinner from './components/LoadingSpinner';
 
-// Import all main page components
+// Import all main page components with explicit capitalization for file names
 import Home from './pages/Home';
 import { Vault } from './pages/Vault';
-import Benefits from './pages/benefits';
+import Benefits from './pages/Benefits'; // FIX: Ensure this import path matches file system casing
 import Market from './pages/Market';
 import Shop from './pages/Shop';
 import Community from './pages/Community';
@@ -19,7 +19,7 @@ import GamesPage from './pages/GamesPage';
 import Inventory from './pages/Inventory';
 import Marketplace from './pages/Marketplace';
 import DSPETDisclosure from './pages/DSPETDisclosure';
-import LandingPage from './pages/LandingPage'; // Re-import LandingPage for its potential use as a non-auth route
+import LandingPage from './pages/LandingPage';
 
 
 // Import all required interfaces from lib/types.ts
@@ -32,12 +32,9 @@ const App: FC<AppProps> = (props) => {
 
   // Effect to show AuthModal if no user is logged in after initial auth check
   useEffect(() => {
-    // Only trigger if auth check is complete, no user is logged in, and AuthModal isn't already active
     if (initialAuthCheckComplete && !userId && activeModal !== 'auth') {
       setActiveModal('auth');
       setShowMessage('👋 Welcome! Please sign in to continue.');
-      // Optionally navigate to a specific path like '/' if you want a blank screen behind the modal
-      // navigate('/');
     }
   }, [userId, initialAuthCheckComplete, activeModal, setActiveModal, setShowMessage, navigate]);
 
@@ -61,7 +58,6 @@ const App: FC<AppProps> = (props) => {
   return (
     <>
       <Routes>
-        {/* LandingPage is still available but won't be the initial view if AuthModal is forced */}
         <Route path="/" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><LandingPage {...pageProps} /></SwytchErrorBoundary>} />
         <Route path="/home" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Home {...pageProps} /></SwytchErrorBoundary>} />
         <Route path="/vault" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Vault {...pageProps} /></SwytchErrorBoundary>} />
@@ -73,14 +69,10 @@ const App: FC<AppProps> = (props) => {
         <Route path="/games" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><GamesPage {...pageProps} /></SwytchErrorBoundary>} />
         <Route path="/dspet-disclosure" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><DSPETDisclosure {...pageProps} /></SwytchErrorBoundary>} />
 
-        {/* New Pages for MVP (Inventory and Marketplace) */}
         <Route path="/inventory" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Inventory {...pageProps} /></SwytchErrorBoundary>} />
         <Route path="/marketplace" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Marketplace {...pageProps} /></SwytchErrorBoundary>} />
-
-        {/* Removed specific game routes as per request - Unity games will be launched via a generic link */}
       </Routes>
 
-      {/* Modals rendered as overlays based on activeModal state */}
       <AnimatePresence>
         {activeModal === 'auth' && (
           <AuthModal setShowMessage={setShowMessage} />

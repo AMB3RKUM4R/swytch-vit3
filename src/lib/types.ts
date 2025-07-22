@@ -159,7 +159,7 @@ export interface AppProps {
   isPending: boolean;
   authLoading: boolean;
   mousePosition: { x: number; y: number };
-  initialAuthCheckComplete: boolean; // FIX: Added initialAuthCheckComplete to AppProps
+  initialAuthCheckComplete: boolean;
 }
 
 export interface PageProps extends AppProps {}
