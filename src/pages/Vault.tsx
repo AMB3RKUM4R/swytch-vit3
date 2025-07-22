@@ -54,7 +54,6 @@ export const Vault: FC<PageProps> = ({
   setShowMessage,
   setIsPETMember,
   updatePlayerFirestore, // Keep for logging, not direct player data modification
-  jewelsBalance, // Keep for display purposes
   isPending,
   authLoading,
   initialAuthCheckComplete, // Added initialAuthCheckComplete
