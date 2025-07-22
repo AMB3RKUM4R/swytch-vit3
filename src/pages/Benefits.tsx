@@ -10,7 +10,7 @@ import { Sparkles, MessageCircleHeart } from 'lucide-react';
 // Import PageProps and PlayerData types
 import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData, Quest } from '../lib/types'; // Keep types for transaction logging
 
-// Import modular components for Benefits page
+// Import modular components for the Benefits page
 import BenefitsGrid from '../components/benefits/BenefitsGrid';
 import BenefitsCTA from '../components/benefits/BenefitsCTA';
 import BenefitsWallets from '../components/benefits/BenefitsWallets';

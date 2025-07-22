@@ -20,7 +20,7 @@ import Marketplace from './pages/Marketplace';
 import DSPETDisclosure from './pages/DSPETDisclosure';
 import LandingPage from './pages/LandingPage';
 import AdminPage from './pages/AdminPage';
-import Benefits from './pages/benefits'; // FIX: Corrected import casing to lowercase 'benefits'
+import Benefits from './pages/Benefits'; // FIX: Corrected import casing to lowercase 'benefits'
 
 
 // Import all required interfaces from lib/types.ts
