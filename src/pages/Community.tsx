@@ -2,13 +2,13 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore'; // Keep addDoc, collection, serverTimestamp for transaction logging
 import { db } from '../lib/firebaseConfig';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 
 // Import PageProps and Quest types
-import { PageProps, Quest, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
+import { PageProps, Quest, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types'; // Keep types for transaction logging
 
 // Import modular components for Community page
 import CommunityHero from '../components/community/CommunityHero';
@@ -45,10 +45,10 @@ const Community: FC<PageProps> = ({
   setActiveModal,
   setShowMessage,
   setIsPETMember,
-  jewelsBalance,
+  jewelsBalance, // Keep for display purposes
   isPending,
   authLoading,
-  initialAuthCheckComplete, // Added initialAuthCheckComplete
+  initialAuthCheckComplete,
 }) => {
   const [, setPlayerData] = useState<PlayerData | null>(null); // PlayerData state not directly used in render, but for fetching
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
@@ -78,7 +78,6 @@ const Community: FC<PageProps> = ({
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          // Only show auth modal if auth check is complete and no user
           if (initialAuthCheckComplete) {
             setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
             setActiveModal('auth');
@@ -93,7 +92,6 @@ const Community: FC<PageProps> = ({
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      // Only show auth modal if auth check is complete and no user
       if (initialAuthCheckComplete) {
         setShowMessage('⚠️ Please sign in to join the community!');
         setActiveModal('auth');
@@ -112,15 +110,7 @@ const Community: FC<PageProps> = ({
     if (shareQuest && !shareQuest.completed) {
       const shareText = encodeURIComponent("Joined the vibrant Swytch PETverse community! 👥 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      // --- IMPORTANT: Quest completion logic now requires backend Cloud Function ---
-      // The client-side app should not directly update 'quests' or 'jewels'
-      // due to strict Firestore rules.
-      //
-      // const updatedQuests = quests.map((q) =>
-      //   q.id === "community-share" ? { ...q, progress: 1, completed: true } : q
-      // );
-      // setQuests(updatedQuests); // Optimistic local update for UI
-      //
+      // Log transaction for sharing, actual reward by backend
       try {
         await addDoc(collection(db, 'Transactions'), {
           transactionId: `${userId}_share_community_${Date.now()}`,

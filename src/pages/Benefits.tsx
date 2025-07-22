@@ -1,5 +1,5 @@
 // src/pages/Benefits.tsx
-import { FC, useState, useEffect, useCallback, SetStateAction } from 'react';
+import { FC, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore'; // Keep addDoc, collection, serverTimestamp for transaction logging
@@ -53,7 +53,7 @@ const Benefits: FC<PageProps> = ({
   authLoading,
   initialAuthCheckComplete,
 }) => {
-  const [, setPlayerData] = useState<PlayerData | null>(null);
+  const [, setPlayerData] = useState<PlayerData | null>(null); // PlayerData state not directly used in render, but for fetching
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [, setIsModalLoading] = useState<boolean>(false);
   const [expandedBenefit, setExpandedBenefit] = useState<string | null>(null);
@@ -102,7 +102,7 @@ const Benefits: FC<PageProps> = ({
         setActiveModal('auth');
       }
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]); // Removed updatePlayerFirestore from deps as it's not directly used for client-side updates here
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
   const handleShareOnX = useCallback(async () => {
     if (!userId) {
@@ -147,7 +147,7 @@ const Benefits: FC<PageProps> = ({
     setShowMessage(showPitfalls ? 'Returning to benefits overview.' : 'Understanding potential pitfalls...');
   }, [showPitfalls, setShowMessage]);
 
-  const saveBenefitsQuestsToFirestore = useCallback(async (_updates: Partial<PlayerData>) => {
+  const saveBenefitsQuestsToFirestore = useCallback(async () => {
     if (!userId) return;
     // --- IMPORTANT: Quest saving logic now requires backend Cloud Function ---
     // The client-side app should not directly update 'quests' or 'jewels'
@@ -212,12 +212,10 @@ const Benefits: FC<PageProps> = ({
               quests={quests}
               setQuests={setQuests}
               jewelsBalance={jewelsBalance}
-              // Removed setJewelsBalance prop as it's not used directly by BenefitsQuests
               saveStateToFirestore={saveBenefitsQuestsToFirestore}
               setActiveModal={setActiveModal}
-              setShowMessage={setShowMessage} setJewelsBalance={function (_value: SetStateAction<number>): void {
-                throw new Error('Function not implemented.');
-              } }            />
+              setShowMessage={setShowMessage}
+            />
           </motion.div>
 
           {/* Benefits Grid */}
@@ -254,7 +252,7 @@ const Benefits: FC<PageProps> = ({
           <motion.div variants={sectionVariants} className="mb-8">
             <BenefitsSupport
               userId={userId}
-              logUpiIntent={async (amount: number) => { // Corrected type to number
+              logUpiIntent={async (amount: number) => {
                 setShowMessage(`Initiating UPI intent for ${amount} INR.`);
                 setActiveModal('payment');
               }}
@@ -267,7 +265,7 @@ const Benefits: FC<PageProps> = ({
               userId={userId}
               setActiveModal={setActiveModal}
               setShowMessage={setShowMessage}
-              logUpiIntent={async (amount: number) => { // Corrected type to number
+              logUpiIntent={async (amount: number) => {
                 setShowMessage(`Initiating UPI intent for ${amount} INR.`);
                 setActiveModal('payment');
               }}

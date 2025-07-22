@@ -290,7 +290,7 @@ export interface UserInventoryDisplayProps {
   updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
   setShowMessage: (message: string) => void;
   setActiveModal: (modalName: string | null) => void;
-  playerData: PlayerData | null; // Added to correctly access equipped/energy/mana
+  playerData: PlayerData | null;
 }
 
 export interface InventoryItemCardProps {
@@ -309,13 +309,13 @@ export interface ListForSaleModalProps {
   setShowMessage: (message: string) => void;
   setActiveModal: (modalName: string | null) => void;
   updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
-  playerInventoryItems: Record<string, InventoryItem>; // Pass the full player's items map
-  playerEquipped: { armor: string; weapon: string; } | null; // Pass equipped items directly, can be null
+  playerInventoryItems: Record<string, InventoryItem>;
+  playerEquipped: { armor: string; weapon: string; } | null;
 }
 
 // Marketplace Page Components
 export interface MarketplaceGridProps {
-  items: MarketItem[]; // Using MarketItem type for listed items
+  items: MarketItem[];
   onBuyItem: (item: MarketItem) => void; // FIX: onBuyItem now expects MarketItem
   userId: string | null;
   setShowMessage: (message: string) => void;
@@ -323,13 +323,13 @@ export interface MarketplaceGridProps {
 }
 
 export interface MarketItemCardProps {
-  item: MarketItem; // Using MarketItem type
+  item: MarketItem;
   onBuyItem: (item: MarketItem) => void;
   isOwner: boolean;
 }
 
 export interface BuyItemModalProps {
-  item: MarketItem; // Using MarketItem type
+  item: MarketItem;
   userId: string | null;
   onClose: () => void;
   onSuccess: (item: MarketItem) => void;
@@ -346,8 +346,8 @@ export interface VaultWalletInfoProps {
   chainId: number | undefined;
   ensName: string | null | undefined;
   blockNumber: bigint | null | undefined;
-  feeData: any; // Wagmi FeeData type
-  usdtBalance: any; // Wagmi Balance type for USDT
+  feeData: any;
+  usdtBalance: any;
 }
 
 export interface CryptoSwapModuleProps {
@@ -363,8 +363,8 @@ export interface FiatWithdrawalFormProps {
   userId: string | null;
   setShowMessage: (message: string) => void;
   setActiveModal: (modalName: string | null) => void;
-  handleWithdrawal: () => Promise<void>; // For crypto withdrawal
-  handlePayPalWithdrawal: () => Promise<void>; // For PayPal withdrawal
+  handleWithdrawal: () => Promise<void>;
+  handlePayPalWithdrawal: () => Promise<void>;
   withdrawalAmount: string;
   setWithdrawalAmount: React.Dispatch<SetStateAction<string>>;
   paypalEmail: string;
@@ -401,8 +401,7 @@ export interface CommunityHeroProps {
   setShowMessage: Dispatch<SetStateAction<string>>;
 }
 
-// FIX: Export FeatureItem interface
-export interface FeatureItem { // Used in CommunityFeatures
+export interface FeatureItem {
   icon: ReactNode;
   title: string;
   description: string;
@@ -420,7 +419,7 @@ export interface ChatMessage {
   user: string;
   avatar: string;
   message: string;
-  timestamp: any; // Firestore Timestamp
+  timestamp: any;
   userId: string;
 }
 
@@ -479,8 +478,8 @@ export interface MembershipUpgradeProps {
   setShowMessage: Dispatch<SetStateAction<string>>;
 }
 
-export interface Level { // Used in SwytchLevelsGrid
-  id: Exclude<MembershipTier, 'none'>; // Changed to Exclude 'none'
+export interface Level {
+  id: Exclude<MembershipTier, 'none'>;
   title: string;
   cost: number;
   contentRoute: string;
@@ -504,26 +503,25 @@ export interface SwytchLevelsGridProps {
 }
 
 // Shop Page Components
-export interface Purchase { // Used in RecentPurchases (shop and market)
+export interface Purchase {
   id: string;
   avatar: string;
   address: string;
   amount: string;
-  timestamp: any; // Date or Firestore Timestamp
+  timestamp: any;
 }
 
-export interface WalletSwapFormsProps { // Used in Shop (and Market, if distinct)
+export interface WalletSwapFormsProps {
   userId: string | null;
   setShowMessage: (message: string) => void;
   updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
 }
 
-export interface RecentPurchasesProps { // Used in Shop (and Market)
+export interface RecentPurchasesProps {
   recentPurchases: Purchase[];
 }
 
 // Disclosure Page Components
-// FIX: Export Benefit and Dont interfaces
 export interface Benefit {
   icon: LucideIcon;
   title: string;
@@ -563,8 +561,8 @@ export interface GameRoom {
   phase: 'IDLE' | 'PLAYING' | 'RESULT';
   activePlayer: string | null;
   result: string;
-  players: string[]; // Array of userIds
-  game: string; // Name of the game
+  players: string[];
+  game: string;
   roomId: string;
 }
 
@@ -579,7 +577,7 @@ export interface BingoCard {
   playerId: string;
 }
 
-export interface GameState { // For Bingo or similar turn-based games
+export interface GameState {
   roomId: string;
   players: { [playerId: string]: PlayerInRoom };
   calledNumbers: number[];
@@ -587,17 +585,17 @@ export interface GameState { // For Bingo or similar turn-based games
   winner: string | null;
   currentCallerId: string | null;
   lastCalledNumber: number | null;
-  createdAt?: any; // Firestore Timestamp
+  createdAt?: any;
 }
 
-export interface PlayerInRoom { // For Bingo or similar
+export interface PlayerInRoom {
   name: string;
   jewels: number;
   card: BingoCard;
   isReady: boolean;
 }
 
-export interface GameConfig { // Generic game config
+export interface GameConfig {
   bet: number;
   useJewels: boolean;
 }

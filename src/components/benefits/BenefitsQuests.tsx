@@ -1,17 +1,17 @@
 // src/components/benefits/BenefitsQuests.tsx
 import { FC, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle, Trophy, Gem } from 'lucide-react';
+import { CheckCircle, XCircle, Trophy, Sparkles } from 'lucide-react'; // Changed Gem to Sparkles for consistency
 import SwytchCard from '../SwytchCard';
-import { Quest } from '@/lib/types'; // Import Quest and PlayerData types
+import { Quest, PlayerData } from '@/lib/types'; // Import Quest and PlayerData types
 
 interface BenefitsQuestsProps {
   userId: string | null;
   quests: Quest[];
   setQuests: React.Dispatch<React.SetStateAction<Quest[]>>;
   jewelsBalance: number;
-  setJewelsBalance: React.Dispatch<React.SetStateAction<number>>; // Direct setter for jewels (or use updatePlayerFirestore)
-  saveStateToFirestore: (updates: { jewels: number; quests: Quest[] }) => Promise<void>;
+  // Removed: setJewelsBalance: React.Dispatch<React.SetStateAction<number>>; // Removed as per strict rules
+  saveStateToFirestore: (updates: Partial<PlayerData>) => Promise<void>; // Type correctly
   setActiveModal: (modalName: string | null) => void;
   setShowMessage: (message: string) => void;
 }
@@ -45,23 +45,30 @@ const BenefitsQuests: FC<BenefitsQuestsProps> = ({
     setShowMessage(`Claiming reward for "${questToClaim.title}"...`);
 
     try {
-      // Update quest status locally
+      // --- IMPORTANT: Quest reward claiming logic now requires backend Cloud Function ---
+      // The client-side app should not directly update 'quests' or 'jewels'
+      // due to strict Firestore rules.
+      //
+      // This client-side code will only simulate the claim and inform the user.
+      // A backend Cloud Function would be triggered by a Firestore write (e.g., to a 'claim_requests' collection)
+      // and would then update the user's actual jewels and mark the quest as claimed/rewarded.
+
+      // Optimistic local update for UI (rewards are zeroed out locally after "claim")
       const updatedQuests = quests.map(q =>
-        q.id === questId ? { ...q, rewardJEWELS: 0, rewardXP: 0 } : q // Zero out rewards after claiming
+        q.id === questId ? { ...q, rewardJEWELS: 0, rewardXP: 0 } : q
       );
       setQuests(updatedQuests);
 
-      // Update user's jewels and XP in Firestore
-      const newJewelsBalance = jewelsBalance + questToClaim.rewardJEWELS;
-      // Assuming XP is also part of PlayerData and needs to be updated
-      // You'd fetch current XP, add questToClaim.rewardXP, then update.
-      // For simplicity, let's just update jewels and quests state.
+      // Simulate saving state to Firestore (which would trigger backend)
       await saveStateToFirestore({
-        jewels: newJewelsBalance,
-        quests: updatedQuests, // Save the updated quests array
+        // This object would typically contain data for the backend to process the claim
+        // e.g., { questId: questToClaim.id, action: 'claim_reward' }
+        // The backend would then update jewels and mark quest as truly completed/rewarded
+        quests: updatedQuests, // Pass updated quests for backend to process
+        // jewels: newJewelsBalance, // This line is removed as direct update is not allowed
       });
 
-      setShowMessage(`🎉 Claimed ${questToClaim.rewardJEWELS} JEWELS and ${questToClaim.rewardXP} XP from "${questToClaim.title}"!`);
+      setShowMessage(`🎉 Claimed ${questToClaim.rewardJEWELS} JEWELS and ${questToClaim.rewardXP} XP from "${questToClaim.title}"! Reward pending backend verification.`);
     } catch (error) {
       console.error('Failed to claim quest reward:', error);
       setShowMessage('⚠️ Failed to claim reward. Please try again.');
@@ -101,7 +108,7 @@ const BenefitsQuests: FC<BenefitsQuestsProps> = ({
               )}
               {quest.rewardJEWELS > 0 && (
                 <span className="text-yellow-400 font-bold flex items-center">
-                  +{quest.rewardJEWELS} <Gem className="w-4 h-4 ml-1" />
+                  +{quest.rewardJEWELS} <Sparkles className="w-4 h-4 ml-1" />
                 </span>
               )}
               {quest.rewardXP > 0 && (

@@ -54,7 +54,7 @@ const GamesPage: FC<PageProps> = ({
   jewelsBalance, // Keep for display purposes
   isPending,
   authLoading,
-  initialAuthCheckComplete, // Added initialAuthCheckComplete
+  initialAuthCheckComplete,
 }) => {
   const [, setPlayerData] = useState<PlayerData | null>(null); // PlayerData state not directly used in render, but for fetching
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
@@ -85,7 +85,6 @@ const GamesPage: FC<PageProps> = ({
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          // Only show auth modal if auth check is complete and no user
           if (initialAuthCheckComplete) {
             setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
             setActiveModal('auth');
@@ -100,7 +99,6 @@ const GamesPage: FC<PageProps> = ({
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      // Only show auth modal if auth check is complete and no user
       if (initialAuthCheckComplete) {
         setShowMessage('⚠️ Please sign in to explore games!');
         setActiveModal('auth');
@@ -119,15 +117,7 @@ const GamesPage: FC<PageProps> = ({
     if (shareQuest && !shareQuest.completed) {
       const shareText = encodeURIComponent("Playing awesome games in Swytch PETverse! 🎮 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      // --- IMPORTANT: Quest completion logic now requires backend Cloud Function ---
-      // The client-side app should not directly update 'quests' or 'jewels'
-      // due to strict Firestore rules.
-      //
-      // const updatedQuests = quests.map((q) =>
-      //   q.id === "games-share" ? { ...q, progress: 1, completed: true } : q
-      // );
-      // setQuests(updatedQuests); // Optimistic local update for UI
-      //
+      // Log transaction for sharing, actual reward by backend
       try {
         await addDoc(collection(db, 'Transactions'), {
           transactionId: `${userId}_share_games_${Date.now()}`,
@@ -210,12 +200,7 @@ const GamesPage: FC<PageProps> = ({
                 // The client-side app should not directly update 'quests' or 'jewels'
                 // due to strict Firestore rules.
                 //
-                // try {
-                //   await updatePlayerFirestore(updates);
-                // } catch (error) {
-                //   console.error("Failed to save quest progress:", error);
-                //   setShowMessage("⚠️ Failed to save quest progress.");
-                // }
+                // This function will now primarily be a placeholder for indicating that a backend call is needed.
                 setShowMessage("ℹ️ Quest progress saved (requires backend to apply changes).");
                 // --- END IMPORTANT ---
               }}
