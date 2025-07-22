@@ -1,17 +1,15 @@
-// PaymentModal.tsx
+// src/components/PaymentModal.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, DollarSign, ArrowUpCircle, ArrowDownCircle, Star } from 'lucide-react';
-import { useModal } from '../context/ModalContext';
-import { useTheme } from '../context/ThemeContext';
+import { useModal } from '../components/context/ModalContext';
+import { useTheme } from '../components/context/ThemeContext';
 
-import RazorTransaction from '../RazorWithdraw'; // Your RazorTransaction component
-import { MEMBERSHIP_TIERS, SupportedCurrency, TransactionType } from '@/lib/types'; // Types from your lib/types.ts
+import RazorTransaction from '../components/RazorWithdraw'; // Your RazorTransaction component
+import { MEMBERSHIP_TIERS, SupportedCurrency, TransactionType, PaymentModalProps } from '@/lib/types'; // Types from your lib/types.ts
 
-interface PaymentModalProps {
-  userId: string | null;
-  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-}
+// The PaymentModalProps interface is already defined in types.ts and passed down from App.tsx
+// No need to redefine it here.
 
 type PaymentView = 'selection' | 'transaction';
 
@@ -22,22 +20,23 @@ const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
   const [currentView, setCurrentView] = useState<PaymentView>('selection');
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
   const [amount, setAmount] = useState<number>(0);
-  const [currency, setCurrency] = useState<SupportedCurrency>('INR');
+  const [currency, setCurrency] = useState<SupportedCurrency>('INR'); // Default to INR
   const [itemId, setItemId] = useState<string | null>(null);
 
+  // Reset modal state when it's opened or closed
   useEffect(() => {
     if (activeModal === 'payment') {
       setCurrentView('selection');
       setTransactionType(null);
       setAmount(0);
-      setCurrency('INR');
+      setCurrency('INR'); // Reset currency to default
       setItemId(null);
     }
   }, [activeModal]);
 
   const handleTransactionSuccess = (submittedItemId: string | null) => {
     setShowMessage(`🎉 Your ${submittedItemId ? 'membership' : transactionType} transaction is submitted! Awaiting verification.`);
-    setActiveModal(null);
+    setActiveModal(null); // Close modal on success
   };
 
   const handleCloseModal = () => {
@@ -57,7 +56,7 @@ const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
           className="btn-primary flex items-center justify-center gap-2"
           onClick={() => {
             setTransactionType('deposit');
-            setAmount(0);
+            setAmount(0); // Reset amount for new input
             setCurrentView('transaction');
           }}
           whileHover={{ scale: 1.05 }}
@@ -70,7 +69,7 @@ const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
           className="btn-primary flex items-center justify-center gap-2"
           onClick={() => {
             setTransactionType('withdraw');
-            setAmount(0);
+            setAmount(0); // Reset amount for new input
             setCurrentView('transaction');
           }}
           whileHover={{ scale: 1.05 }}
@@ -96,7 +95,7 @@ const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
             <Star className="w-5 h-5" />
             <span className="font-bold">{tier.name}</span>
             <span className="text-sm">{tier.amount} {currency}</span>
-            <span className="text-xs text-gray-400">{tier.usdAmount}</span>
+            <span className="text-xs text-gray-400">({tier.usdAmount} USD)</span>
           </motion.button>
         ))}
       </div>
@@ -113,7 +112,7 @@ const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className={`relative modal ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
+            className={`relative modal ${isDarkMode ? 'glass-dark' : 'glass-light'} p-6 rounded-lg max-w-sm w-full mx-4 border border-rose-400/20`}
             initial={{ scale: 0.8, y: 50 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.8, y: 50 }}
@@ -145,8 +144,9 @@ const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
                               value={amount === 0 ? '' : amount}
                               onChange={(e) => setAmount(Number(e.target.value))}
                               placeholder="Enter amount"
-                              className={`input`}
+                              className={`input bg-${isDarkMode ? 'gray-700' : 'gray-300'} p-3 rounded-md border border-rose-400/20 w-full text-${isDarkMode ? 'gray-200' : 'gray-700'} placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter`}
                               aria-label="Amount"
+                              min={transactionType === 'deposit' && currency === 'INR' ? 50 : 0} // Enforce minimum deposit
                           />
                       </div>
                   )}
@@ -159,8 +159,8 @@ const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
                           transactionType={transactionType}
                           userId={userId}
                           onSuccess={handleTransactionSuccess}
-                          // THIS IS THE CRITICAL FIX: Pass setShowMessage
-                          setShowMessage={setShowMessage} 
+                          setShowMessage={setShowMessage}
+                          // paymentMethod is handled internally by RazorTransaction based on context
                       />
                   ) : (
                       <p className="text-rose-400 text-center">Please sign in to make payments.</p>

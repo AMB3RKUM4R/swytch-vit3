@@ -1,0 +1,159 @@
+// src/pages/Marketplace.tsx
+import { FC, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { collection, query, where, onSnapshot, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore'; // Import DocumentData
+import { db } from '../lib/firebaseConfig';
+import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
+import { Sparkles } from 'lucide-react';
+
+// Import PageProps and InventoryItem types
+import { PageProps, InventoryItem, SupportedCurrency, TransactionType, TransactionStatus, MarketItem } from '../lib/types'; // Import MarketItem
+
+// Import new modular components for Marketplace page
+import MarketplaceGrid from '../components/marketplace/MarketplaceGrid';
+import BuyItemModal from '../components/marketplace/BuyItemModal';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.2 } },
+};
+
+const sectionVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+};
+
+const flareVariants = {
+  animate: { scale: [1, 1.3, 1], opacity: [0.5, 0.7, 0.5], transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' } },
+};
+
+const particleVariants = {
+  animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
+};
+
+const Marketplace: FC<PageProps> = ({
+  userId,
+  setActiveModal,
+  setShowMessage,
+  isPending,
+  authLoading,
+  updatePlayerFirestore,
+  jewelsBalance, // Needed for purchase logic
+}) => {
+  const [listedItems, setListedItems] = useState<MarketItem[]>([]); // FIX: Use MarketItem[]
+  const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null); // FIX: Use MarketItem
+  const [showBuyItemModal, setShowBuyItemModal] = useState(false);
+
+  useEffect(() => {
+    // Fetch items that are listed for sale from 'MarketItems' collection
+    const q = query(collection(db, 'MarketItems'), where('isListedForSale', '==', true));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items: MarketItem[] = []; // FIX: Cast to MarketItem[]
+      snapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => { // FIX: Explicitly type docSnap
+        items.push(docSnap.data() as MarketItem); // FIX: Cast data to MarketItem
+      });
+      setListedItems(items);
+    }, (err) => {
+      console.error('Failed to fetch marketplace items:', err);
+      setShowMessage('⚠️ Failed to load marketplace items. Please check your connection.');
+      setActiveModal('error');
+    });
+
+    return () => unsubscribe();
+  }, [setShowMessage, setActiveModal]);
+
+  const handleBuyItem = (item: MarketItem) => { // FIX: Use MarketItem
+    setSelectedItem(item);
+    setShowBuyItemModal(true);
+  };
+
+  const handleCloseBuyItemModal = () => {
+    setShowBuyItemModal(false);
+    setSelectedItem(null);
+  };
+
+  // This function would be passed to BuyItemModal and called on successful purchase
+  const onPurchaseSuccess = (purchasedItem: MarketItem) => { // FIX: Use MarketItem
+    setShowMessage(`✅ You bought ${purchasedItem.name}! (Requires backend verification)`);
+    handleCloseBuyItemModal();
+    // Logic to update buyer's inventory and seller's balance would be handled in BuyItemModal and Firestore listeners
+  };
+
+  if (authLoading || isPending) {
+    return null; // LoadingSpinner is handled by App.tsx
+  }
+
+  return (
+    <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
+      <motion.div
+        className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div
+          className="fixed inset-0 pointer-events-none z-10"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div
+            className="absolute w-96 h-96 bg-gradient-to-br from-rose-400/50 via-cyan-500/40 to-rose-400/30 rounded-full opacity-30 blur-3xl"
+            variants={flareVariants}
+            animate="animate"
+            style={{ top: "33%", left: "33%" }}
+          />
+          <motion.div
+            className="absolute w-64 h-64 bg-gradient-to-br from-cyan-400/40 via-rose-500/30 to-cyan-400/20 rounded-full opacity-20 blur-2xl"
+            variants={flareVariants}
+            animate="animate"
+            style={{ top: "50%", right: "25%" }}
+          />
+          {[...Array(10)].map((_, i) => (
+            <motion.div
+              key={`particle-${i}`}
+              className="absolute w-1.5 h-1.5 bg-cyan-400 rounded-full opacity-30"
+              style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%` }}
+              variants={particleVariants}
+              animate="animate"
+            />
+          ))}
+        </motion.div>
+
+        <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
+          <h1 className="text-4xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mb-8">
+            <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> Item Marketplace
+          </h1>
+
+          <motion.div variants={sectionVariants}>
+            <MarketplaceGrid
+              items={listedItems}
+              userId={userId}
+              setShowMessage={setShowMessage}
+              setActiveModal={setActiveModal} onBuyItem={function (item: InventoryItem): void {
+                throw new Error('Function not implemented.');
+              } }            />
+          </motion.div>
+        </motion.div>
+      </motion.div>
+
+      <AnimatePresence>
+        {showBuyItemModal && selectedItem && (
+          <BuyItemModal
+            item={selectedItem}
+            userId={userId}
+            onClose={handleCloseBuyItemModal}
+            onSuccess={onPurchaseSuccess}
+            setShowMessage={setShowMessage}
+            setActiveModal={setActiveModal}
+            updatePlayerFirestore={updatePlayerFirestore}
+            jewelsBalance={jewelsBalance} // Pass balance for client-side check
+          />
+        )}
+      </AnimatePresence>
+    </SwytchErrorBoundary>
+  );
+};
+
+export default Marketplace;

@@ -1,22 +1,21 @@
-// pages/Shop.tsx (Updated: No major issues here, but added missing deps to useCallback hooks for handlePurchaseLevel and shareOnX to prevent stale closures. Ensured SwytchErrorBoundary props are actual functions, not stubs. No logic changes.)
-
-import { FC, useState, useEffect, useCallback, SetStateAction } from 'react';
+// src/pages/Shop.tsx
+import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
-import WalletSwapForms from '../components/WalletSwapForms';
-import RecentPurchases from '../components/RecentPurchases';
-import SwytchLevelsGrid from '../components/SwytchLevelsGrid';
-import MembershipUpgrade from '../components/MembershipUpgrade';
-import SwytchCard from '../components/SwytchCard';
-// Removed AuthModal and PaymentModal imports as they are globally managed by App.tsx
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { Sparkles, MessageCircleHeart } from 'lucide-react';
+import { Sparkles, MessageCircleHeart, Package, Store } from 'lucide-react'; // Added Package and Store icons
 
-// IMPORTANT: Import PageProps, SupportedCurrency, TransactionType, TransactionStatus from your lib/types.ts file
-import { PageProps as ImportedPageProps } from '../lib/types';
+// Import PageProps and other types
+import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
 
+// Import modular components for Shop page
+import WalletSwapForms from '../components/shop/WalletSwapForms'; // Assuming this is shop-specific
+import RecentPurchases from '../components/shop/RecentPurchases'; // Assuming this is shop-specific
+import SwytchLevelsGrid from '../components/membership/SwytchLevelsGrid'; // Re-using from membership
+import MembershipUpgrade from '../components/membership/MembershipUpgrade'; // Re-using from membership
+import SwytchCard from '../components/SwytchCard'; // Re-using SwytchCard for games display
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -36,54 +35,57 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-// This 'games' array seems copied into multiple pages. Consider moving to a central constants file.
-const games = [
-  { id: 'bingo', title: 'Bingo', path: '/games/bingo', description: 'Match numbers and win big!' },
-  { id: 'blackjack', title: 'Blackjack', path: '/games/blackjack', description: 'Beat the dealer to 21!' },
-  { id: 'bridge', title: 'Bridge', path: '/games/bridge', description: 'Outsmart opponents in this classic!' },
-  { id: 'caribbean-stud', title: 'Caribbean Stud', path: '/games/caribbean-stud', description: 'Play poker against the house!' },
-  { id: 'fortune-wheel', title: 'Fortune Wheel', path: '/games/fortune-wheel', description: 'Spin for epic rewards!' },
-  { id: 'horse-racing', title: 'Horse Racing', path: '/games/horse-racing', description: 'Bet on the fastest horse!' },
-  { id: 'pontoon', title: 'Pontoon', path: '/games/pontoon', description: 'Get closer to 21 than the dealer!' },
-  { id: 'red-dog', title: 'Red Dog', path: '/games/red-dog', description: 'Predict the card spread!' },
-  { id: 'rocket-crash', title: 'Rocket Crash', path: '/games/rocket-crash', description: 'Cash out before the crash!' },
-  { id: 'scratch-cards', title: 'Scratch Cards', path: '/games/scratch-cards', description: 'Scratch to reveal prizes!' },
-  { id: 'solitaire', title: 'Solitaire', path: '/games/solitaire', description: 'Master the classic card game!' },
-  { id: 'crypto-quest', title: 'Crypto Quest (Coming Soon)', path: '#', description: 'Embark on a blockchain adventure!', comingSoon: true },
-  { id: 'nft-rumble', title: 'NFT Rumble (Coming Soon)', path: '#', description: 'Battle with NFTs for rewards!', comingSoon: true },
+// Consolidated game features list for quick access
+const gameFeatures = [
+  { id: 'inventory', title: 'Your Inventory', path: '/inventory', description: 'Manage your in-game items.', icon: <Package className="w-5 h-5" /> },
+  { id: 'marketplace', title: 'Item Marketplace', path: '/marketplace', description: 'Buy and sell items with crypto.', icon: <Store className="w-5 h-5" /> },
+  { id: 'unity-games', title: 'Play Unity Games', path: '/games', description: 'Launch your Unity games here.', icon: <Sparkles className="w-5 h-5" /> }, // Generic link to launch Unity games
 ];
 
-// Use ImportedPageProps as the type for the FC
-const Shop: FC<ImportedPageProps> = ({
+
+const Shop: FC<PageProps> = ({
   userId,
   setActiveModal,
   setShowMessage,
   setIsPETMember,
   updatePlayerFirestore,
   jewelsBalance,
-  currentLevel, // Passed as a prop
+  currentLevel,
   isPending,
   authLoading,
-  // Removed setShowWalletModal from destructuring as it's not part of AppProps/PageProps anymore
-  // Removed autoPlay and setAutoPlay as they were optional in previous AppProps but not used here
 }) => {
-  // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
-  const [, setIsModalLoading] = useState<boolean>(false);
-  const [visibleGames, setVisibleGames] = useState(games.slice(0, 6));
-  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [, setPlayerData] = useState<PlayerData | null>(null);
+  const [visibleGameFeatures, setVisibleGameFeatures] = useState(gameFeatures.slice(0, 3)); // Show fewer game features initially
+  const [, setIsModalLoading] = useState<boolean>(false); // Used for general loading states
+  const [hasMore, setHasMore] = useState<boolean>(true); // For "Load More" functionality
 
-  const loadMoreGames = useCallback(() => {
-    if (visibleGames.length >= games.length) {
-      setHasMore(false);
-      return;
+
+  useEffect(() => {
+    if (userId) {
+      const userRef = doc(db, 'Players', userId);
+      const unsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setPlayerData(docSnap.data() as PlayerData);
+          setIsPETMember(docSnap.data().isPETMember || false);
+        } else {
+          setPlayerData(null);
+          setIsPETMember(false);
+          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+          setActiveModal('auth');
+        }
+      }, (err) => {
+        console.error('Failed to fetch user data for Shop page:', err);
+        setShowMessage('⚠️ Failed to load shop data.');
+        setActiveModal('error');
+      });
+      return () => unsubscribe();
+    } else {
+      setPlayerData(null);
+      setIsPETMember(false);
+      setShowMessage('⚠️ Please sign in to explore the shop!');
+      setActiveModal('auth');
     }
-    setTimeout(() => {
-      setVisibleGames((prev) => [
-        ...prev,
-        ...games.slice(prev.length, prev.length + 3),
-      ]);
-    }, 500);
-  }, [visibleGames]); // Removed `games` from deps as it's a constant
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
 
   const handlePurchaseLevel = useCallback(async (level: { id: string; name: string; cost: number; contentRoute: string }) => {
     if (!userId) {
@@ -91,33 +93,31 @@ const Shop: FC<ImportedPageProps> = ({
       setActiveModal('auth');
       return;
     }
-    setIsModalLoading(true);
+    // This logic should ideally be in MembershipUpgrade or a dedicated hook/service
+    // For now, we'll keep it here as a placeholder for triggering the payment modal.
     try {
-      const transactionId = `${userId}_${Date.now()}`;
-      await addDoc(collection(db, 'Transactions'), { // Ensure 'Transactions' matches your Firestore rule
+      const transactionId = `${userId}_level_purchase_${level.id}_${Date.now()}`;
+      await addDoc(collection(db, 'Transactions'), {
         transactionId,
         userId,
         amount: level.cost,
-        currency: 'JEWELS', // FIX: Correctly typed as SupportedCurrency
-        transactionType: 'membership', // FIX: Correctly typed as TransactionType
-        status: 'pending', // FIX: Correctly typed as TransactionStatus
+        currency: 'JEWELS' as SupportedCurrency, // Assuming level purchase is with JEWELS
+        transactionType: 'level-purchase' as TransactionType,
+        status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'shop',
-        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
+        itemId: level.id,
       });
       setShowMessage(`ℹ️ Opening payment for ${level.name}. Admin will assign level after payment.`);
-      setActiveModal('payment');
-      // Removed setShowWalletModal(true); here as it's handled by setActiveModal('auth') or PaymentModal itself
+      setActiveModal('payment'); // Open the global payment modal
     } catch (err) {
       console.error('Level purchase error:', err);
       setShowMessage('⚠️ Failed to initiate level purchase. Try again.');
       setActiveModal('error');
-    } finally {
-      setIsModalLoading(false);
     }
-  }, [userId, setShowMessage, setActiveModal]); // Removed setShowWalletModal from deps, added missing deps
+  }, [userId, setShowMessage, setActiveModal]);
 
-  const shareOnX = useCallback(async () => {
+  const handleShareOnX = useCallback(async () => {
     if (!userId) {
       setShowMessage('⚠️ Please sign in to share.');
       setActiveModal('auth');
@@ -127,17 +127,16 @@ const Shop: FC<ImportedPageProps> = ({
     try {
       const shareText = encodeURIComponent("Shopping for NFTs in the Swytch PETverse! 🛒 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      const transactionId = `${userId}_${Date.now()}`;
+      // Log transaction for sharing
       await addDoc(collection(db, 'Transactions'), {
-        transactionId,
+        transactionId: `${userId}_share_shop_${Date.now()}`,
         userId,
-        amount: 5,
-        currency: 'JEWELS', // FIX: Correctly typed as SupportedCurrency
-        transactionType: 'deposit', // FIX: Correctly typed as TransactionType
-        status: 'pending', // FIX: Correctly typed as TransactionStatus
+        amount: 5, // Example reward
+        currency: 'JEWELS' as SupportedCurrency,
+        transactionType: 'quest-reward' as TransactionType,
+        status: 'success' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'shop',
-        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
       });
       await updatePlayerFirestore({ jewels: jewelsBalance + 5 });
       setShowMessage('🎉 Shared Shop on X! +5 JEWELS');
@@ -148,27 +147,20 @@ const Shop: FC<ImportedPageProps> = ({
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Added missing deps
+  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
 
-  useEffect(() => {
-    if (userId) {
-      const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (docSnap) => { // Renamed 'doc' to 'docSnap' for clarity
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setIsPETMember(data.isPETMember || false);
-        }
-      }, (err) => {
-        console.error('Failed to fetch user data:', err);
-        setShowMessage('⚠️ Failed to load shop data.');
-        setActiveModal('error');
-      });
-      return () => unsubscribe();
-    } else {
-      setShowMessage('⚠️ Please sign in to explore the shop!');
-      setActiveModal('auth');
+  const loadMoreGameFeatures = useCallback(() => {
+    if (visibleGameFeatures.length >= gameFeatures.length) {
+      setHasMore(false);
+      return;
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
+    setTimeout(() => {
+      setVisibleGameFeatures((prev) => [
+        ...prev,
+        ...gameFeatures.slice(prev.length, prev.length + 3),
+      ]);
+    }, 500);
+  }, [visibleGameFeatures]); // `gameFeatures` is constant, no need in deps
 
   useEffect(() => {
     const handleScroll = () => {
@@ -177,31 +169,19 @@ const Shop: FC<ImportedPageProps> = ({
         document.documentElement.offsetHeight - 100 &&
         hasMore
       ) {
-        loadMoreGames();
+        loadMoreGameFeatures();
       }
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasMore, loadMoreGames]);
+  }, [hasMore, loadMoreGameFeatures]);
+
 
   if (authLoading || isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-center"
-        >
-          <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-          <p>Loading Shop...</p>
-        </motion.div>
-      </div>
-    );
+    return null; // LoadingSpinner is handled by App.tsx
   }
 
   return (
-    // FIX: Pass the actual props to SwytchErrorBoundary
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
@@ -239,39 +219,40 @@ const Shop: FC<ImportedPageProps> = ({
         </motion.div>
 
         <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          <motion.div variants={sectionVariants}>
-            <h1 className="text-4xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins">
-              <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> PETverse Shop
-            </h1>
-            <p className="text-lg text-gray-300 max-w-2xl mx-auto mt-4 font-inter">
-              Discover NFTs, memberships, and more in the Swytch PETverse Shop!
-            </p>
-          </motion.div>
-         
-          <motion.div variants={sectionVariants}>
+          <h1 className="text-4xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mb-8">
+            <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> PETverse Shop
+          </h1>
+
+          {/* Wallet Swap Forms (if distinct from Vault's CryptoSwapModule) */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <WalletSwapForms
                 userId={userId}
                 setShowMessage={setShowMessage}
                 updatePlayerFirestore={updatePlayerFirestore}
             />
           </motion.div>
-          <motion.div variants={sectionVariants}>
-            <RecentPurchases recentPurchases={[]} />
+
+          {/* Recent Purchases */}
+          <motion.div variants={sectionVariants} className="mb-8">
+            <RecentPurchases recentPurchases={[]} /> {/* Pass actual recent purchases data */}
           </motion.div>
-          <motion.div variants={sectionVariants}>
+
+          {/* Swytch Levels Grid (for purchasing levels/memberships) */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <SwytchLevelsGrid
               userId={userId}
               currentLevel={currentLevel}
               isPending={isPending}
               authLoading={authLoading}
               updatePlayerFirestore={updatePlayerFirestore}
-              handlePurchaseLevel={handlePurchaseLevel} setActiveModal={function (_value: SetStateAction<string | null>): void {
-                throw new Error('Function not implemented.');
-              } } setShowMessage={function (_value: SetStateAction<string>): void {
-                throw new Error('Function not implemented.');
-              } }            />
+              handlePurchaseLevel={handlePurchaseLevel}
+              setActiveModal={setActiveModal}
+              setShowMessage={setShowMessage}
+            />
           </motion.div>
-          <motion.div variants={sectionVariants}>
+
+          {/* Membership Upgrade (if distinct from Levels Grid) */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <MembershipUpgrade
               userId={userId}
               setIsPETMember={setIsPETMember}
@@ -280,19 +261,21 @@ const Shop: FC<ImportedPageProps> = ({
               setShowMessage={setShowMessage}
             />
           </motion.div>
+
+          {/* Explore Game Features Section */}
           <motion.div variants={sectionVariants}>
             <h2 className="text-3xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mt-8">
-              <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> Explore Our Games
+              Explore Game Features
             </h2>
-            <p className="text-lg text-gray-300 max-w-2xl mx-auto mt-4 font-inter">
-              Play thrilling games and earn JEWELS in the PETverse! Scroll to explore all games.
+            <p className="text-lg text-gray-300 max-w-2xl mx-auto mt-4 font-inter text-center">
+              Access your inventory or dive into the marketplace!
             </p>
           </motion.div>
           <motion.div variants={sectionVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
             <AnimatePresence>
-              {visibleGames.map((game) => (
+              {visibleGameFeatures.map((item) => (
                 <motion.div
-                  key={game.id}
+                  key={item.id}
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 30 }}
@@ -300,24 +283,24 @@ const Shop: FC<ImportedPageProps> = ({
                 >
                   <SwytchCard gradient="from-rose-500/20 to-cyan-500/20" className="p-6">
                     <motion.div className="text-center" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <h3 className="text-xl font-bold text-white font-poppins">{game.title}</h3>
-                      <p className="text-gray-300 font-inter mt-2">{game.description}</p>
+                      {item.icon && <div className="mx-auto mb-2">{item.icon}</div>}
+                      <h3 className="text-xl font-bold text-white font-poppins">{item.title}</h3>
+                      <p className="text-gray-300 font-inter mt-2">{item.description}</p>
                       <Link
-                        to={game.path}
-                        className={`inline-block bg-${game.comingSoon ? 'gray-600' : 'rose-600'} text-white px-4 py-2 rounded-full font-poppins hover:bg-${game.comingSoon ? 'gray-500' : 'cyan-500'} mt-4`}
+                        to={item.path}
+                        className={`inline-block bg-rose-600 text-white px-4 py-2 rounded-full font-poppins hover:bg-cyan-500 mt-4`}
                         onClick={() => {
                           if (!userId) {
-                            setShowMessage('⚠️ Sign in to play games!');
+                            setShowMessage('⚠️ Sign in to access this feature!');
                             setActiveModal('auth');
-                          } else if (!game.comingSoon) {
-                            setShowMessage(`🎮 Navigating to ${game.title}!`);
+                          } else {
+                            setShowMessage(`🎮 Navigating to ${item.title}!`);
                           }
                         }}
                         role="button"
-                        aria-label={`Play ${game.title}`}
-                        style={{ pointerEvents: game.comingSoon ? 'none' : 'auto' }}
+                        aria-label={`Go to ${item.title}`}
                       >
-                        {game.comingSoon ? 'Coming Soon' : 'Play Now'}
+                        Go to {item.title}
                       </Link>
                     </motion.div>
                   </SwytchCard>
@@ -332,19 +315,21 @@ const Shop: FC<ImportedPageProps> = ({
             >
               <motion.button
                 className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins"
-                onClick={loadMoreGames}
+                onClick={loadMoreGameFeatures}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                aria-label="Load More Games"
+                aria-label="Load More Game Features"
               >
                 Load More
               </motion.button>
             </motion.div>
           )}
+
+          {/* Share on X Button */}
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
               className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins mr-4"
-              onClick={shareOnX}
+              onClick={handleShareOnX}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               aria-label="Share Shop on X"
@@ -352,69 +337,16 @@ const Shop: FC<ImportedPageProps> = ({
               <MessageCircleHeart className="w-5 h-5 mr-2" /> Share Shop on X
             </motion.button>
             <Link
-              to="/games"
+              to="/home"
               className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500"
-              onClick={() => setShowMessage('🎮 Navigating to Games!')}
+              onClick={() => setShowMessage('🏠 Navigating to Home!')}
               role="button"
-              aria-label="Navigate to Games Page"
+              aria-label="Navigate to Home Page"
             >
-              Explore Games
-            </Link>
-            <Link
-              to="/vault"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => {
-                if (!userId) {
-                  setShowMessage('⚠️ Sign in to access Vault!');
-                  setActiveModal('auth');
-                } else {
-                  setShowMessage('💰 Navigating to Vault!');
-                }
-              }}
-              role="button"
-              aria-label="Navigate to Vault Page"
-            >
-              Visit Vault
-            </Link>
-            <Link
-              to="/market"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🛒 Navigating to Market!')}
-              role="button"
-              aria-label="Navigate to Market Page"
-            >
-              Visit Market
-            </Link>
-            <Link
-              to="/community"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('👥 Navigating to Community!')}
-              role="button"
-              aria-label="Navigate to Community Page"
-            >
-              Community
-            </Link>
-            <Link
-              to="/membership"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🌟 Navigating to Membership!')}
-              role="button"
-              aria-label="Navigate to Membership Page"
-            >
-              Membership
-            </Link>
-            <Link
-              to="/benefits"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🌟 Navigating to Benefits!')}
-              role="button"
-              aria-label="Navigate to Benefits Page"
-            >
-              Benefits
+              Back to Home
             </Link>
           </motion.div>
         </motion.div>
-        {/* Modals are rendered by App.tsx, so no need to render them here again */}
       </motion.div>
     </SwytchErrorBoundary>
   );

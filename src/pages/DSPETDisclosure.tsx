@@ -1,64 +1,53 @@
-// pages/DSPETDisclosure.tsx (Updated: Replaced throwing stubs in SwytchErrorBoundary with actual setters from props/context. Removed deprecated setShowWalletModal from Link. No logic changes.)
-
-import { FC, Dispatch, SetStateAction, useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// src/pages/DSPETDisclosure.tsx
+import { FC, useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import SwytchCard from '../components/SwytchCard';
-import AuthModal from '../components/AuthModal';
-import PaymentModal from '../components/PaymentModal';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
-import { useModal } from '../context/ModalContext';
 
-// Placeholder DisclosureHeader component
+// Import PageProps and PlayerData types
+import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
+
+// Placeholder DisclosureHeader component (consider moving to components/disclosure)
 const DisclosureHeader: FC = () => (
   <SwytchCard gradient="from-rose-500/20 to-cyan-500/20" className="max-w-4xl mx-auto p-8">
     <h1 className="text-4xl font-bold text-white flex items-center justify-center gap-3 font-poppins">
       <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> Swytch PET Disclosure
     </h1>
-    <p className="text-gray-300 max-w-xl mx-auto mt-4 font-inter">
+    <p className="text-gray-300 max-w-xl mx-auto mt-4 font-inter text-center">
       Understand the risks and responsibilities of joining the PETverse.
     </p>
   </SwytchCard>
 );
 
-// Placeholder DisclosureContent component (based on provided code)
+// Placeholder DisclosureContent component (consider moving to components/disclosure)
 const DisclosureContent: FC = () => (
   <SwytchCard gradient="from-rose-500/20 to-cyan-500/20" className="max-w-4xl mx-auto p-8">
-    <h2 className="text-2xl font-bold text-white font-poppins mb-4">Swytch PET Disclosure</h2>
+    <h2 className="text-2xl font-bold text-white font-poppins mb-4">Important Information</h2>
     <p className="mb-4 text-gray-300 font-inter">
       The Swytch Private Energy Trust (PET) is a decentralized platform designed to empower users with financial sovereignty through gamified rewards and community governance. Participation involves risks, including cryptocurrency volatility and regulatory uncertainties.
     </p>
     <p className="mb-4 text-gray-300 font-inter">
-      <strong>Investment Risks:</strong> All investments in Swytch PET, including JEWELS and membership levels, are subject to market risks. Prices may fluctuate, and past performance is not indicative of future results.
+      <strong>Investment Risks:</strong> All interactions within Swytch PET, including JEWELS and membership levels, are subject to market risks. Prices may fluctuate, and past performance is not indicative of future results. Users should exercise caution and conduct their own research before engaging.
     </p>
     <p className="mb-4 text-gray-300 font-inter">
-      <strong>Legal Disclaimer:</strong> Swytch PET operates on blockchain technology and is not a registered financial institution. Users are responsible for complying with local regulations regarding cryptocurrency transactions.
+      <strong>Legal Disclaimer:</strong> Swytch PET operates on blockchain technology and is not a registered financial institution, bank, or investment advisor. The platform does not offer financial advice. Users are solely responsible for complying with all local, national, and international regulations regarding cryptocurrency transactions, digital asset ownership, and gaming activities.
     </p>
     <p className="mb-4 text-gray-300 font-inter">
-      <strong>Contact:</strong> For support, reach out to our team at support@swytch.pet or join our community channels.
+      <strong>No Gambling:</strong> Swytch PET games are designed as games of skill, and any in-game currency or item with real-world value is obtained through skill-based achievements or marketplace transactions, not through games of chance. We adhere strictly to applicable gaming laws and app store policies.
+    </p>
+    <p className="mb-4 text-gray-300 font-inter">
+      <strong>KYC/AML:</strong> For fiat withdrawals and certain high-value transactions, Know Your Customer (KYC) and Anti-Money Laundering (AML) procedures may be required to comply with financial regulations.
+    </p>
+    <p className="mb-4 text-gray-300 font-inter">
+      <strong>Contact:</strong> For support or further inquiries, please reach out to our team via official channels.
     </p>
   </SwytchCard>
 );
 
-interface DSPETDisclosureProps {
-  userId: string | null;
-  activeModal: string | null;
-  setActiveModal: Dispatch<SetStateAction<string | null>>;
-  setShowMessage: Dispatch<SetStateAction<string>>;
-  setIsPETMember: Dispatch<SetStateAction<boolean>>;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-  jewelsBalance: number;
-  goldBalance: number;
-  currentLevel: number;
-  isPending: boolean;
-  authLoading: boolean;
-  setShowWalletModal: Dispatch<SetStateAction<boolean>>;
-  autoPlay?: boolean;
-  setAutoPlay?: Dispatch<SetStateAction<boolean>>;
-}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -78,9 +67,8 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-const DSPETDisclosure: FC<DSPETDisclosureProps> = ({
+const DSPETDisclosure: FC<PageProps> = ({
   userId,
-  activeModal,
   setActiveModal,
   setShowMessage,
   setIsPETMember,
@@ -88,32 +76,55 @@ const DSPETDisclosure: FC<DSPETDisclosureProps> = ({
   jewelsBalance,
   isPending,
   authLoading,
-  setShowWalletModal,
 }) => {
-  const { showMessage } = useModal();
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [, setPlayerData] = useState<PlayerData | null>(null);
 
-  const shareOnX = useCallback(async () => {
+  useEffect(() => {
+    if (userId) {
+      const userRef = doc(db, 'Players', userId);
+      const unsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setPlayerData(docSnap.data() as PlayerData);
+          setIsPETMember(docSnap.data().isPETMember || false);
+        } else {
+          setPlayerData(null);
+          setIsPETMember(false);
+          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+          setActiveModal('auth');
+        }
+      }, (err) => {
+        console.error('Failed to fetch user data for Disclosure page:', err);
+        setShowMessage('⚠️ Failed to load disclosure data.');
+        setActiveModal('error');
+      });
+      return () => unsubscribe();
+    } else {
+      setPlayerData(null);
+      setIsPETMember(false);
+      setShowMessage('⚠️ Please sign in to view the disclosure!');
+      setActiveModal('auth');
+    }
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
+
+  const handleShareOnX = useCallback(async () => {
     if (!userId) {
       setShowMessage('⚠️ Please sign in to share.');
       setActiveModal('auth');
       return;
     }
-    setIsModalLoading(true);
     try {
       const shareText = encodeURIComponent("Learned about Swytch PETverse’s transparency! 📜 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      const transactionId = `${userId}_${Date.now()}`;
+      // Log transaction for sharing
       await addDoc(collection(db, 'Transactions'), {
-        transactionId,
+        transactionId: `${userId}_share_disclosure_${Date.now()}`,
         userId,
-        amount: 5,
-        currency: 'JEWELS',
-        transactionType: 'deposit',
-        status: 'pending',
+        amount: 5, // Example reward
+        currency: 'JEWELS' as SupportedCurrency,
+        transactionType: 'quest-reward' as TransactionType,
+        status: 'success' as TransactionStatus, // Assuming immediate reward for sharing
         timestamp: serverTimestamp(),
         game: 'disclosure',
-        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
       });
       await updatePlayerFirestore({ jewels: jewelsBalance + 5 });
       setShowMessage('🎉 Shared Disclosure on X! +5 JEWELS');
@@ -122,40 +133,11 @@ const DSPETDisclosure: FC<DSPETDisclosureProps> = ({
       setShowMessage('⚠️ Failed to share on X. Try again.');
       setActiveModal('error');
     }
-    setIsModalLoading(false);
   }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
 
-  useEffect(() => {
-    if (userId) {
-      const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
-          setIsPETMember(data.isPETMember || false);
-        }
-      }, (err) => {
-        console.error('Failed to fetch user data:', err);
-        setShowMessage('⚠️ Failed to load disclosure data.');
-        setActiveModal('error');
-      });
-      return () => unsubscribe();
-    }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
 
   if (authLoading || isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-center"
-        >
-          <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-          <p>Loading Disclosure...</p>
-        </motion.div>
-      </div>
-    );
+    return null; // LoadingSpinner is handled by App.tsx
   }
 
   return (
@@ -196,16 +178,21 @@ const DSPETDisclosure: FC<DSPETDisclosureProps> = ({
         </motion.div>
 
         <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          <motion.div variants={sectionVariants}>
+          {/* Disclosure Header */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <DisclosureHeader />
           </motion.div>
-          <motion.div variants={sectionVariants}>
+
+          {/* Disclosure Content */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <DisclosureContent />
           </motion.div>
+
+          {/* Action Buttons */}
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
               className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins mr-4"
-              onClick={shareOnX}
+              onClick={handleShareOnX}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               aria-label="Share Disclosure on X"
@@ -213,133 +200,16 @@ const DSPETDisclosure: FC<DSPETDisclosureProps> = ({
               <MessageCircleHeart className="w-5 h-5 mr-2" /> Share Disclosure on X
             </motion.button>
             <Link
-              to="/terms"
+              to="/home"
               className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500"
-              onClick={() => setShowMessage('📜 Navigating to Terms!')}
+              onClick={() => setShowMessage('🏠 Navigating to Home!')}
               role="button"
-              aria-label="Navigate to Terms Page"
+              aria-label="Navigate to Home Page"
             >
-              View Terms
-            </Link>
-            <Link
-              to="/privacy"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🔒 Navigating to Privacy!')}
-              role="button"
-              aria-label="Navigate to Privacy Page"
-            >
-              View Privacy
-            </Link>
-            <Link
-              to="/vault"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => {
-                if (!userId) {
-                  setShowMessage('⚠️ Sign in to access Vault!');
-                  setActiveModal('auth');
-                } else {
-                  setShowMessage('💰 Navigating to Vault!');
-                  setShowWalletModal(true);
-                }
-              }}
-              role="button"
-              aria-label="Navigate to Vault Page"
-            >
-              Visit Vault
-            </Link>
-            <Link
-              to="/games"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🎮 Navigating to Games!')}
-              role="button"
-              aria-label="Navigate to Games Page"
-            >
-              Explore Games
+              Back to Home
             </Link>
           </motion.div>
         </motion.div>
-
-        <AnimatePresence>
-          {isModalLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Loading Modal"
-            >
-              <motion.div
-                className="bg-gray-900 rounded-2xl max-w-md w-full p-8 border border-rose-500/30 backdrop-blur-lg bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.8 }}
-                transition={{ duration: 0.4 }}
-              >
-                <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-                <p className="text-white text-center font-inter">Processing...</p>
-              </motion.div>
-            </motion.div>
-          )}
-          {activeModal === 'auth' && (
-            <AuthModal
-              setShowMessage={setShowMessage}
-            />
-          )}
-          {activeModal === 'payment' && (
-            <PaymentModal
-              userId={userId}
-              setShowMessage={setShowMessage}/>
-          )}
-          {showMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-16 right-4 max-w-xs w-full bg-gray-900/70 border border-rose-500/30 rounded-xl shadow-xl p-4 backdrop-blur-lg z-50 bg-gradient-to-r from-rose-500/20 to-cyan-500/20"
-            >
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-6 h-6 text-cyan-400 animate-pulse" />
-                <p className="text-white font-bold font-poppins">{showMessage}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <style>{`
-          :root {
-            --rose-500: #ec4899;
-            --cyan-500: #22d3ee;
-          }
-          .bg-noise {
-            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAC3SURBVFhH7ZZBCsAgCER7/6W9WZoKUSO4ro0Q0v+UQKcZJnTf90EQBF3X9UIIh8Ph0Ov1er3RaDSi0WhEkiSpp9OJIAiC3nEcxyHLMgqCILlcLhFFUdTr9WK5XC6VSqVUkqVJutxuNRqMhSRJpmkYkSVKpVJutxuNRqNRkiRJMk3TiCRJKpVKqVJutxuNRqVSqlUKqVSqZQqlaIoimI4HIZKpVJKpVJutxuNRqNRkiRJMk3TqCRZQqlUKqlaVSqlUKqVqlaKQlJ/kfgBQUzS2f8eAAAAAElFTkSuQmCC");
-            background-repeat: repeat;
-            background-size: 64px 64px;
-          }
-          .blur-3xl { filter: blur(64px); }
-          .blur-2xl { filter: blur(32px); }
-          input:focus, select:focus, button:focus, [role="button"]:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.5);
-          }
-          .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-          }
-          @media (prefers-reduced-motion) {
-            .animate-pulse { animation: none !important; }
-            .transition, .transition-all, .hover\\:scale-105:hover, .hover\\:bg-gray-800\\/90:hover {
-              transition: none !important;
-            }
-          }
-        `}</style>
       </motion.div>
     </SwytchErrorBoundary>
   );

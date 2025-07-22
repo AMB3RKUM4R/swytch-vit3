@@ -1,19 +1,24 @@
+// src/pages/Vault.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
-import VaultWalletInfo from '../components/VaultWalletInfo';
-import VaultMembershipBenefits from '../components/VaultMembershipBenefits';
-import VaultMembershipPackages from '../components/VaultMembershipPackages';
-import VaultWithdrawal from '../components/VaultWithdrawal';
-import VaultRules from '../components/VaultRules';
-import YieldCalculator from '../components/YieldCalculator';
-import SwytchCard from '../components/SwytchCard';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
 import { useAccount, useFeeData, useBalance, useChainId, useBlockNumber } from 'wagmi';
-import { PageProps as ImportedPageProps } from '../lib/types';
+
+// Import PageProps and PlayerData types
+import { PageProps, PlayerData, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
+
+// Import modular components for Vault
+import VaultWalletInfo from '../components/vault/VaultWalletInfo';
+import VaultMembershipPackages from '../components/vault/VaultMembershipPackages'; // New component
+import FiatWithdrawalForm from '../components/vault/FiatWithdrawalForm';
+import CryptoSwapModule from '../components/vault/CryptoSwapModule';
+import VaultRules from '../components/vault/VaultRules'; // New component
+import YieldCalculator from '../components/vault/YieldCalculator'; // New component
+import SwytchCard from '../components/SwytchCard'; // Re-using SwytchCard for games display
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -33,23 +38,16 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
+// Simplified games list for Quick Access, consider moving to a constants file
 const games = [
+  { id: 'inventory', title: 'Your Inventory', path: '/inventory', description: 'View your in-game items.' },
+  { id: 'marketplace', title: 'Item Marketplace', path: '/marketplace', description: 'Buy & sell items with crypto.' },
   { id: 'bingo', title: 'Bingo', path: '/games/bingo', description: 'Match numbers and win big!' },
   { id: 'blackjack', title: 'Blackjack', path: '/games/blackjack', description: 'Beat the dealer to 21!' },
-  { id: 'bridge', title: 'Bridge', path: '/games/bridge', description: 'Outsmart opponents in this classic!' },
-  { id: 'caribbean-stud', title: 'Caribbean Stud', path: '/games/caribbean-stud', description: 'Play poker against the house!' },
-  { id: 'fortune-wheel', title: 'Fortune Wheel', path: '/games/fortune-wheel', description: 'Spin for epic rewards!' },
-  { id: 'horse-racing', title: 'Horse Racing', path: '/games/horse-racing', description: 'Bet on the fastest horse!' },
-  { id: 'pontoon', title: 'Pontoon', path: '/games/pontoon', description: 'Get closer to 21 than the dealer!' },
-  { id: 'red-dog', title: 'Red Dog', path: '/games/red-dog', description: 'Predict the card spread!' },
-  { id: 'rocket-crash', title: 'Rocket Crash', path: '/games/rocket-crash', description: 'Cash out before the crash!' },
-  { id: 'scratch-cards', title: 'Scratch Cards', path: '/games/scratch-cards', description: 'Scratch to reveal prizes!' },
-  { id: 'solitaire', title: 'Solitaire', path: '/games/solitaire', description: 'Master the classic card game!' },
-  { id: 'crypto-quest', title: 'Crypto Quest (Coming Soon)', path: '#', description: 'Embark on a blockchain adventure!', comingSoon: true },
-  { id: 'nft-rumble', title: 'NFT Rumble (Coming Soon)', path: '#', description: 'Battle with NFTs for rewards!', comingSoon: true },
 ];
 
-export const Vault: FC<ImportedPageProps> = ({
+
+export const Vault: FC<PageProps> = ({
   userId,
   setActiveModal,
   setShowMessage,
@@ -59,101 +57,129 @@ export const Vault: FC<ImportedPageProps> = ({
   isPending,
   authLoading,
 }) => {
-  const [, setIsModalLoading] = useState<boolean>(false);
-  const [visibleGames, setVisibleGames] = useState(games.slice(0, 6));
-  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
+  const [visibleGames, setVisibleGames] = useState(games.slice(0, 4)); // Show fewer games initially
+  const [hasMore, setHasMore] = useState<boolean>(true); // For "Load More" functionality
+  const [, setIsModalLoading] = useState<boolean>(false); // Used for general loading states
 
   // Wagmi V2 hooks for wallet info
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  useFeeData();
-  useBalance({ address, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' });
+  const { data: feeData } = useFeeData(); // Get gas price, etc.
+  const { data: usdtBalance } = useBalance({ address, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' }); // Example USDT balance
   const { data: currentBlockNumber } = useBlockNumber({ watch: true });
 
-  // States for VaultWithdrawal/AdminPayout
+  // State for FiatWithdrawalForm
   const [withdrawalAmount, setWithdrawalAmount] = useState<string>('');
-  const [] = useState<`0x${string}` | ''>('');
-  const [] = useState<string>('');
+  const [paypalEmail, setPaypalEmail] = useState<string>(''); // For PayPal withdrawals
+
+  useEffect(() => {
+    if (userId) {
+      const userRef = doc(db, 'Players', userId);
+      const unsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setPlayerData(docSnap.data() as PlayerData);
+          setIsPETMember(docSnap.data().isPETMember || false);
+        } else {
+          setPlayerData(null);
+          setIsPETMember(false);
+          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+          setActiveModal('auth');
+        }
+      }, (err) => {
+        console.error('Failed to fetch user data for Vault:', err);
+        setShowMessage('⚠️ Failed to load vault data. Please check your connection.');
+        setActiveModal('error');
+      });
+      return () => unsubscribe();
+    } else {
+      setPlayerData(null);
+      setIsPETMember(false);
+      setShowMessage('⚠️ Please sign in to access the vault!');
+      setActiveModal('auth');
+    }
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
+
 
   const handleWithdrawal = useCallback(async () => {
     if (!userId) { setShowMessage('⚠️ Sign in to withdraw!'); setActiveModal('auth'); return; }
-    if (!isConnected || !address) { setShowMessage('⚠️ Connect wallet to withdraw!'); setActiveModal('auth'); return; }
-    if (!withdrawalAmount || Number(withdrawalAmount) < 10) {
-      setShowMessage('⚠️ Withdrawal amount must be at least $10.');
+    if (!isConnected || !address) { setShowMessage('⚠️ Connect wallet to withdraw crypto!'); setActiveModal('auth'); return; }
+    if (!withdrawalAmount || Number(withdrawalAmount) <= 0) {
+      setShowMessage('⚠️ Please enter a valid withdrawal amount.');
       return;
     }
-    setShowMessage(`Withdrawal of ${withdrawalAmount} JEWELS initiated! (Requires backend processing)`);
+    // Basic client-side check for JEWELS balance
+    if (playerData && (playerData.jewels || 0) < Number(withdrawalAmount)) {
+      setShowMessage('⚠️ Insufficient JEWELS balance for withdrawal.');
+      return;
+    }
+
+    setShowMessage(`Withdrawal of ${withdrawalAmount} JEWELS initiated! (Requires admin processing)`);
     setIsModalLoading(true);
     try {
-      const userRef = doc(db, 'Players', userId);
-      const userSnap = await getDoc(userRef);
-      const userData = userSnap.data();
-      if (!userData || userData.jewels < Number(withdrawalAmount)) {
-        setShowMessage('⚠️ Insufficient JEWELS balance for withdrawal.');
-        return;
-      }
-
-      const transactionId = `${userId}_${Date.now()}_withdraw`;
+      // Record the withdrawal request in Firestore
+      const transactionId = `${userId}_${Date.now()}_withdraw_crypto`;
       await addDoc(collection(db, 'Transactions'), {
         transactionId,
         userId,
         amount: Number(withdrawalAmount),
-        currency: 'JEWELS',
-        transactionType: 'withdraw',
-        status: 'pending',
+        currency: 'JEWELS' as SupportedCurrency, // Assuming JEWELS are withdrawn as crypto equivalent
+        transactionType: 'withdraw' as TransactionType,
+        status: 'pending' as TransactionStatus, // Pending admin approval
         timestamp: serverTimestamp(),
-        walletAddress: address,
+        walletAddress: address, // User's connected crypto wallet address
         paymentMethod: 'crypto',
       });
 
-      await setDoc(userRef, { jewels: userData.jewels - Number(withdrawalAmount), updatedAt: serverTimestamp() }, { merge: true });
-      setShowMessage('✅ Withdrawal request submitted successfully! Transaction ID: ' + transactionId);
+      // Optimistically deduct jewels from user's balance in Firestore
+      await updatePlayerFirestore({ jewels: (playerData?.jewels || 0) - Number(withdrawalAmount) });
+
+      setShowMessage('✅ Crypto withdrawal request submitted successfully! Admin will process it shortly.');
+      setWithdrawalAmount(''); // Clear input
     } catch (err) {
-      console.error('Withdrawal error:', err);
-      setShowMessage(`⚠️ Withdrawal failed: ${(err as Error).message || 'Unknown error'}`);
+      console.error('Crypto withdrawal error:', err);
+      setShowMessage(`⚠️ Crypto withdrawal failed: ${(err as Error).message || 'Unknown error'}`);
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, isConnected, address, withdrawalAmount, setShowMessage, setActiveModal]);
+  }, [userId, isConnected, address, withdrawalAmount, playerData, setShowMessage, setActiveModal, updatePlayerFirestore]);
 
-  const handlePayPalPayment = useCallback(async (paypalEmail: string) => {
+  const handlePayPalWithdrawal = useCallback(async () => {
     if (!userId) { setShowMessage('⚠️ Sign in to withdraw!'); setActiveModal('auth'); return; }
-    if (!withdrawalAmount || Number(withdrawalAmount) < 10) {
-      setShowMessage('⚠️ Withdrawal amount must be at least $10.');
+    if (!withdrawalAmount || Number(withdrawalAmount) <= 0) {
+      setShowMessage('⚠️ Please enter a valid withdrawal amount.');
       return;
     }
     if (!paypalEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paypalEmail)) {
-      setShowMessage('⚠️ Please enter a valid PayPal email.');
+      setShowMessage('⚠️ Please enter a valid PayPal email address.');
       return;
     }
-    setShowMessage(`PayPal withdrawal of ${withdrawalAmount} USDT to ${paypalEmail} initiated!`);
+    // Basic client-side check for JEWELS balance
+    if (playerData && (playerData.jewels || 0) < Number(withdrawalAmount)) {
+      setShowMessage('⚠️ Insufficient JEWELS balance for withdrawal.');
+      return;
+    }
+
+    setShowMessage(`PayPal withdrawal of ${withdrawalAmount} JEWELS to ${paypalEmail} initiated! (Requires admin processing)`);
     setIsModalLoading(true);
     try {
-      const userRef = doc(db, 'Players', userId);
-      const userSnap = await getDoc(userRef);
-      const userData = userSnap.data();
-      if (!userData || userData.jewels < Number(withdrawalAmount)) {
-        setShowMessage('⚠️ Insufficient JEWELS balance for withdrawal.');
-        return;
-      }
-
-      const transactionId = `${userId}_${Date.now()}_paypal_withdraw`;
+      const transactionId = `${userId}_${Date.now()}_withdraw_paypal`;
       // Note: Actual PayPal order creation requires PayPalScriptProvider, typically in App.tsx
       // This assumes PayPalButtons will be rendered in VaultWithdrawal.tsx
       const transactionData = {
         transactionId,
         userId,
         amount: Number(withdrawalAmount),
-        currency: 'USDT',
-        transactionType: 'withdraw',
-        status: 'pending',
+        currency: 'JEWELS' as SupportedCurrency, // Assuming JEWELS are withdrawn as fiat equivalent
+        transactionType: 'withdraw' as TransactionType,
+        status: 'pending' as TransactionStatus, // Pending admin approval
         timestamp: serverTimestamp(),
         paymentMethod: 'paypal',
-        paypalEmail,
+        paypalEmail: paypalEmail, // Store the PayPal email for admin
       };
 
       await addDoc(collection(db, 'Transactions'), transactionData);
-      await setDoc(userRef, { jewels: userData.jewels - Number(withdrawalAmount), updatedAt: serverTimestamp() }, { merge: true });
+      await setDoc(doc(db, 'Players', userId), { jewels: (playerData?.jewels || 0) - Number(withdrawalAmount), updatedAt: serverTimestamp() }, { merge: true });
       setShowMessage('✅ PayPal withdrawal request submitted successfully! Transaction ID: ' + transactionId);
     } catch (err) {
       console.error('PayPal withdrawal error:', err);
@@ -161,13 +187,12 @@ export const Vault: FC<ImportedPageProps> = ({
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, withdrawalAmount, setShowMessage, setActiveModal]);
-
+  }, [userId, withdrawalAmount, paypalEmail, playerData, setShowMessage, setActiveModal]);
 
   const handleMembershipPayment = useCallback(async (packageName: string, amount: number) => {
     if (!userId) { setShowMessage('⚠️ Sign in to buy membership!'); setActiveModal('auth'); return; }
     setShowMessage(`Attempting to buy ${packageName} for ${amount}! (Redirecting to Payment Modal)`);
-    setActiveModal('payment');
+    setActiveModal('payment'); // Trigger the global payment modal
   }, [userId, setShowMessage, setActiveModal]);
 
   const handleCalculateYield = useCallback(async (e: React.FormEvent) => {
@@ -186,10 +211,10 @@ export const Vault: FC<ImportedPageProps> = ({
     setTimeout(() => {
       setVisibleGames((prev) => [
         ...prev,
-        ...games.slice(prev.length, prev.length + 3),
+        ...games.slice(prev.length, prev.length + 2), // Load 2 more games
       ]);
     }, 500);
-  }, [visibleGames]);
+  }, [visibleGames]); // `games` is constant, no need in deps
 
   const shareOnX = useCallback(async () => {
     if (!userId) {
@@ -201,17 +226,16 @@ export const Vault: FC<ImportedPageProps> = ({
     try {
       const shareText = encodeURIComponent("Managing my assets in the Swytch PETverse Vault! 💰 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      const transactionId = `${userId}_${Date.now()}`;
+      const transactionId = `${userId}_share_vault_${Date.now()}`;
       await addDoc(collection(db, 'Transactions'), {
         transactionId,
         userId,
         amount: 5,
-        currency: 'JEWELS',
-        transactionType: 'deposit',
-        status: 'pending',
+        currency: 'JEWELS' as SupportedCurrency,
+        transactionType: 'quest-reward' as TransactionType,
+        status: 'success' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'vault',
-        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
       });
       await updatePlayerFirestore({ jewels: jewelsBalance + 5 });
       setShowMessage('🎉 Shared Vault on X! +5 JEWELS');
@@ -223,26 +247,6 @@ export const Vault: FC<ImportedPageProps> = ({
       setIsModalLoading(false);
     }
   }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
-
-  useEffect(() => {
-    if (userId) {
-      const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setIsPETMember(data.isPETMember || false);
-        }
-      }, (err) => {
-        console.error('Failed to fetch user data:', err);
-        setShowMessage('⚠️ Failed to load vault data.');
-        setActiveModal('error');
-      });
-      return () => unsubscribe();
-    } else {
-      setShowMessage('⚠️ Please sign in to access the vault!');
-      setActiveModal('auth');
-    }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -258,20 +262,9 @@ export const Vault: FC<ImportedPageProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, [hasMore, loadMoreGames]);
 
+
   if (authLoading || isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-center"
-        >
-          <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-          <p>Loading Vault...</p>
-        </motion.div>
-      </div>
-    );
+    return null; // LoadingSpinner is handled by App.tsx
   }
 
   return (
@@ -312,40 +305,67 @@ export const Vault: FC<ImportedPageProps> = ({
         </motion.div>
 
         <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          <motion.div variants={sectionVariants}>
+          <h1 className="text-4xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mb-8">
+            <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> Energy Vault
+          </h1>
+
+          {/* Wallet Information */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <VaultWalletInfo
               isConnected={isConnected}
+              address={address}
               chainId={chainId}
-              ensName={null}
-              blockNumber={currentBlockNumber || null} address={undefined} feeData={undefined} usdtBalance={undefined}/>
+              ensName={null} // ENS name fetching is complex, keeping null for MVP
+              blockNumber={currentBlockNumber || null}
+              feeData={feeData}
+              usdtBalance={usdtBalance}
+            />
           </motion.div>
-          <motion.div variants={sectionVariants}>
-            <VaultMembershipBenefits />
+
+          {/* Crypto Swap Module */}
+          <motion.div variants={sectionVariants} className="mb-8">
+            <CryptoSwapModule
+              userId={userId}
+              setShowMessage={setShowMessage}
+              setActiveModal={setActiveModal}
+              updatePlayerFirestore={updatePlayerFirestore}
+              isConnected={isConnected}
+              walletAddress={address || null}
+            />
           </motion.div>
-          <motion.div variants={sectionVariants}>
+
+          {/* Fiat Withdrawal Form */}
+          <motion.div variants={sectionVariants} className="mb-8">
+            <FiatWithdrawalForm
+              userId={userId}
+              setShowMessage={setShowMessage}
+              setActiveModal={setActiveModal}
+              handleWithdrawal={handleWithdrawal} // Crypto withdrawal (from this page's state)
+              handlePayPalWithdrawal={handlePayPalWithdrawal} // PayPal withdrawal (from this page's state)
+              withdrawalAmount={withdrawalAmount}
+              setWithdrawalAmount={setWithdrawalAmount}
+              paypalEmail={paypalEmail}
+              setPaypalEmail={setPaypalEmail}
+            />
+          </motion.div>
+
+          {/* Membership Packages */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <VaultMembershipPackages
-              isMember={false}
+              isMember={playerData?.isPETMember || false}
               isPending={isPending}
               handleMembershipPayment={handleMembershipPayment}
               setShowMessage={setShowMessage}
             />
           </motion.div>
-          <motion.div variants={sectionVariants}>
-            <VaultWithdrawal
-              isConnected={isConnected}
-              isMember={false}
-              isPending={isPending}
-              withdrawalAmount={withdrawalAmount}
-              setWithdrawalAmount={setWithdrawalAmount}
-              handleWithdrawal={handleWithdrawal}
-              handlePayPalPayment={handlePayPalPayment}
-              setShowMessage={setShowMessage}
-            />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
+
+          {/* Vault Rules */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <VaultRules />
           </motion.div>
-          <motion.div variants={sectionVariants}>
+
+          {/* Yield Calculator */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <YieldCalculator
               userId={userId}
               handleCalculateYield={handleCalculateYield}
@@ -353,13 +373,14 @@ export const Vault: FC<ImportedPageProps> = ({
               setActiveModal={setActiveModal}
             />
           </motion.div>
-         
+
+          {/* Explore Games Section */}
           <motion.div variants={sectionVariants}>
-            <h2 className="text-3xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins">
+            <h2 className="text-3xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mt-8">
               <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> Explore Our Games
             </h2>
-            <p className="text-lg text-gray-300 max-w-2xl mx-auto mt-4 font-inter">
-              Play thrilling games and earn JEWELS in the PETverse! Scroll to explore all games.
+            <p className="text-lg text-gray-300 max-w-2xl mx-auto mt-4 font-inter text-center">
+              Dive into thrilling games and manage your assets!
             </p>
           </motion.div>
           <motion.div variants={sectionVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
@@ -378,20 +399,19 @@ export const Vault: FC<ImportedPageProps> = ({
                       <p className="text-gray-300 font-inter mt-2">{game.description}</p>
                       <Link
                         to={game.path}
-                        className={`inline-block bg-${game.comingSoon ? 'gray-600' : 'rose-600'} text-white px-4 py-2 rounded-full font-poppins hover:bg-${game.comingSoon ? 'gray-500' : 'cyan-500'} mt-4`}
+                        className={`inline-block bg-rose-600 text-white px-4 py-2 rounded-full font-poppins hover:bg-cyan-500 mt-4`}
                         onClick={() => {
                           if (!userId) {
                             setShowMessage('⚠️ Sign in to play games!');
                             setActiveModal('auth');
-                          } else if (!game.comingSoon) {
+                          } else {
                             setShowMessage(`🎮 Navigating to ${game.title}!`);
                           }
                         }}
                         role="button"
                         aria-label={`Play ${game.title}`}
-                        style={{ pointerEvents: game.comingSoon ? 'none' : 'auto' }}
                       >
-                        {game.comingSoon ? 'Coming Soon' : 'Play Now'}
+                        Go to {game.title}
                       </Link>
                     </motion.div>
                   </SwytchCard>
@@ -415,6 +435,8 @@ export const Vault: FC<ImportedPageProps> = ({
               </motion.button>
             </motion.div>
           )}
+
+          {/* Share on X Button */}
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
               className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins mr-4"
@@ -425,60 +447,6 @@ export const Vault: FC<ImportedPageProps> = ({
             >
               <MessageCircleHeart className="w-5 h-5 mr-2" /> Share Vault on X
             </motion.button>
-            <Link
-              to="/games"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500"
-              onClick={() => setShowMessage('🎮 Navigating to Games!')}
-              role="button"
-              aria-label="Navigate to Games Page"
-            >
-              Explore Games
-            </Link>
-            <Link
-              to="/market"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🛒 Navigating to Market!')}
-              role="button"
-              aria-label="Navigate to Market Page"
-            >
-              Visit Market
-            </Link>
-            <Link
-              to="/shop"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🛒 Navigating to Shop!')}
-              role="button"
-              aria-label="Navigate to Shop Page"
-            >
-              Visit Shop
-            </Link>
-            <Link
-              to="/community"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('👥 Navigating to Community!')}
-              role="button"
-              aria-label="Navigate to Community Page"
-            >
-              Community
-            </Link>
-            <Link
-              to="/membership"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🌟 Navigating to Membership!')}
-              role="button"
-              aria-label="Navigate to Membership Page"
-            >
-              Membership
-            </Link>
-            <Link
-              to="/benefits"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🌟 Navigating to Benefits!')}
-              role="button"
-              aria-label="Navigate to Benefits Page"
-            >
-              Benefits
-            </Link>
           </motion.div>
         </motion.div>
       </motion.div>

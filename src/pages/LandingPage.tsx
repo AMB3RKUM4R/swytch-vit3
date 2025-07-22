@@ -1,24 +1,12 @@
-// pages/LandingPage.tsx (Final version as provided, with minimal fixes for syntax/import consistency: Added back AnimatePresence if needed for JSX; ensured mousePosition is passed as placeholder to CosmicHero if required by its props; removed unused setIsModalLoading call. No logic changes beyond ensuring it compiles.)
-
-import { FC, useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebaseConfig';
-import CosmicHero from '../components/CosmicHero';
-import SwytchMembership from '../components/MembershipUpgrade'; // Renamed to SwytchMembership for clarity
-
-import TestimonialsCarousel from '../components/TestimonialsCarousel';
-
-
-import SwytchCard from '../components/SwytchCard';
-// Removed AuthModal and PaymentModal imports as they are globally managed by App.tsx
+// src/pages/LandingPage.tsx
+import { FC } from 'react';
+import { motion } from 'framer-motion';
+import { Sparkles, ArrowRight, Wallet, Gamepad2, Gem, Link } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { Sparkles, MessageCircleHeart } from 'lucide-react';
+import SwytchCard from '../components/SwytchCard'; // Re-using SwytchCard
 
-// IMPORTANT: Import LandingPageProps from your lib/types.ts file
-import { LandingPageProps as ImportedLandingPageProps } from '../lib/types';
-
+// Import PageProps for consistency
+import { PageProps } from '../lib/types';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -38,139 +26,14 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-const games = [
-  { id: 'bingo', title: 'Bingo', path: '/games/bingo', description: 'Match numbers and win big!' },
-  { id: 'blackjack', title: 'Blackjack', path: '/games/blackjack', description: 'Beat the dealer to 21!' },
-  { id: 'bridge', title: 'Bridge', path: '/games/bridge', description: 'Outsmart opponents in this classic!' },
-  { id: 'caribbean-stud', title: 'Caribbean Stud', path: '/games/caribbean-stud', description: 'Play poker against the house!' },
-  { id: 'fortune-wheel', title: 'Fortune Wheel', path: '/games/fortune-wheel', description: 'Spin for epic rewards!' },
-  { id: 'horse-racing', title: 'Horse Racing', path: '/games/horse-racing', description: 'Bet on the fastest horse!' },
-  { id: 'pontoon', title: 'Pontoon', path: '/games/pontoon', description: 'Get closer to 21 than the dealer!' },
-  { id: 'red-dog', title: 'Red Dog', path: '/games/red-dog', description: 'Predict the card spread!' },
-  { id: 'rocket-crash', title: 'Rocket Crash', path: '/games/rocket-crash', description: 'Cash out before the crash!' },
-  { id: 'scratch-cards', title: 'Scratch Cards', path: '/games/scratch-cards', description: 'Scratch to reveal prizes!' },
-  { id: 'solitaire', title: 'Solitaire', path: '/games/solitaire', description: 'Master the classic card game!' },
-  { id: 'crypto-quest', title: 'Crypto Quest (Coming Soon)', path: '#', description: 'Embark on a blockchain adventure!', comingSoon: true },
-  { id: 'nft-rumble', title: 'NFT Rumble (Coming Soon)', path: '#', description: 'Battle with NFTs for rewards!', comingSoon: true },
-];
+const LandingPage: FC<PageProps> = ({ setActiveModal, setShowMessage }) => {
 
-// Use ImportedLandingPageProps as the type for the FC
-const LandingPage: FC<ImportedLandingPageProps> = ({
-  userId,
-  setActiveModal,
-  setShowMessage,
-  setIsPETMember,
-  updatePlayerFirestore,
-  jewelsBalance,
-  isPending,
-  authLoading,
-  // Removed setShowWalletModal from destructuring as it's not part of AppProps/LandingPageProps anymore
-  // Removed autoPlay and setAutoPlay as they were optional in previous AppProps but not used here
-}) => {
-  // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
-  const [, setIsModalLoading] = useState<boolean>(false);
-  const [visibleGames, setVisibleGames] = useState(games.slice(0, 6));
-  const [hasMore, setHasMore] = useState<boolean>(true);
-
-
-  const loadMoreGames = useCallback(() => {
-    if (visibleGames.length >= games.length) {
-      setHasMore(false);
-      return;
-    }
-    setTimeout(() => {
-      setVisibleGames((prev) => [
-        ...prev,
-        ...games.slice(prev.length, prev.length + 3),
-      ]);
-    }, 500);
-  }, [visibleGames]); // Removed `games` from deps as it's a constant
-
-  const shareOnX = useCallback(async () => {
-    if (!userId) {
-      setShowMessage('⚠️ Please sign in to share.');
-      setActiveModal('auth');
-      return;
-    }
-    setIsModalLoading(true);
-    try {
-      const shareText = encodeURIComponent("Exploring the Swytch PETverse! 🌟 Join at swytch.io! #SwytchPETverse");
-      window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      const transactionId = `${userId}_${Date.now()}`;
-      await addDoc(collection(db, 'Transactions'), { // Ensure 'Transactions' matches your Firestore rule
-        transactionId,
-        userId,
-        amount: 5,
-        currency: 'JEWELS',
-        transactionType: 'deposit',
-        status: 'pending',
-        timestamp: serverTimestamp(),
-        game: 'landing',
-        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
-      });
-      await updatePlayerFirestore({ jewels: jewelsBalance + 5 });
-      setShowMessage('🎉 Shared PETverse on X! +5 JEWELS');
-    } catch (err) {
-      console.error('Failed to share on X:', err);
-      setShowMessage('⚠️ Failed to share on X. Try again.');
-      setActiveModal('error');
-    } finally {
-      setIsModalLoading(false);
-    }
-  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Added missing dependencies
-
-  useEffect(() => {
-    if (userId) {
-      const userRef = doc(db, 'Players', userId); // Ensure 'Players' matches Firestore collection name
-      const unsubscribe = onSnapshot(userRef, (docSnap) => { // Renamed 'doc' to 'docSnap' for clarity
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setIsPETMember(data.isPETMember || false);
-        }
-      }, (err) => {
-        console.error('Failed to fetch user data:', err);
-        setShowMessage('⚠️ Failed to load landing page data.');
-        setActiveModal('error');
-      });
-      return () => unsubscribe();
-    } else {
-      setShowMessage('⚠️ Please sign in to explore the PETverse!');
-      setActiveModal('auth');
-    }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.offsetHeight - 100 &&
-        hasMore
-      ) {
-        loadMoreGames();
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasMore, loadMoreGames]);
-
-  if (authLoading || isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-center"
-        >
-          <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-          <p>Loading PETverse...</p>
-        </motion.div>
-      </div>
-    );
-  }
+  const handleGetStartedClick = () => {
+    setActiveModal('auth'); // Open the AuthModal
+    setShowMessage('👋 Welcome! Please sign in or connect your wallet to get started.');
+  };
 
   return (
-    // FIX: Pass the actual props to SwytchErrorBoundary
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
@@ -178,6 +41,7 @@ const LandingPage: FC<ImportedLandingPageProps> = ({
         initial="hidden"
         animate="visible"
       >
+        {/* Background flares and particles */}
         <motion.div
           className="fixed inset-0 pointer-events-none z-10"
           variants={containerVariants}
@@ -188,17 +52,17 @@ const LandingPage: FC<ImportedLandingPageProps> = ({
             className="absolute w-96 h-96 bg-gradient-to-br from-rose-400/50 via-cyan-500/40 to-rose-400/30 rounded-full opacity-30 blur-3xl"
             variants={flareVariants}
             animate="animate"
-            style={{ top: "33%", left: "33%" }}
+            style={{ top: "15%", left: "20%" }}
           />
           <motion.div
             className="absolute w-64 h-64 bg-gradient-to-br from-cyan-400/40 via-rose-500/30 to-cyan-400/20 rounded-full opacity-20 blur-2xl"
             variants={flareVariants}
             animate="animate"
-            style={{ top: "50%", right: "25%" }}
+            style={{ bottom: "10%", right: "15%" }}
           />
-          {[...Array(10)].map((_, i) => (
+          {[...Array(15)].map((_, i) => (
             <motion.div
-              key={`particle-${i}`}
+              key={`particle-landing-${i}`}
               className="absolute w-1.5 h-1.5 bg-cyan-400 rounded-full opacity-30"
               style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%` }}
               variants={particleVariants}
@@ -207,162 +71,59 @@ const LandingPage: FC<ImportedLandingPageProps> = ({
           ))}
         </motion.div>
 
-        <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          <motion.div variants={sectionVariants}>
-            <CosmicHero />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <SwytchMembership
-              userId={userId}
-              setIsPETMember={setIsPETMember}
-              updatePlayerFirestore={updatePlayerFirestore}
-              setActiveModal={setActiveModal}
-              setShowMessage={setShowMessage}
-            />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <TestimonialsCarousel />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <h2 className="text-3xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins">
-              <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> Explore Our Games
-            </h2>
-            <p className="text-lg text-gray-300 max-w-2xl mx-auto mt-4 font-inter">
-              Dive into thrilling games and earn JEWELS in the PETverse! Scroll to explore all games.
+        <motion.div className="relative z-20 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16 flex flex-col items-center justify-center min-h-screen">
+          {/* Hero Section */}
+          <motion.div variants={sectionVariants} className="text-center mb-12">
+            <h1 className="text-5xl lg:text-7xl font-extrabold text-white leading-tight font-poppins mb-6">
+              <Sparkles className="inline-block w-12 h-12 text-cyan-400 animate-pulse mr-4" />
+              SWYTCH PETverse
+            </h1>
+            <p className="text-xl lg:text-2xl text-gray-300 max-w-3xl mx-auto font-inter mb-8">
+              Re-innovate your favorite classic games with **real item ownership**, **crypto rewards**, and a **decentralized marketplace**.
             </p>
-          </motion.div>
-          <motion.div variants={sectionVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-            <AnimatePresence>
-              {visibleGames.map((game) => (
-                <motion.div
-                  key={game.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 30 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <SwytchCard gradient="from-rose-500/20 to-cyan-500/20" className="p-6">
-                    <motion.div className="text-center" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <h3 className="text-xl font-bold text-white font-poppins">{game.title}</h3>
-                      <p className="text-gray-300 font-inter mt-2">{game.description}</p>
-                      <Link
-                        to={game.path}
-                        className={`inline-block bg-${game.comingSoon ? 'gray-600' : 'rose-600'} text-white px-4 py-2 rounded-full font-poppins hover:bg-${game.comingSoon ? 'gray-500' : 'cyan-500'} mt-4`}
-                        onClick={() => {
-                          if (!userId) {
-                            setShowMessage('⚠️ Sign in to play games!');
-                            setActiveModal('auth');
-                          } else if (!game.comingSoon) {
-                            setShowMessage(`🎮 Navigating to ${game.title}!`);
-                          }
-                        }}
-                        role="button"
-                        aria-label={`Play ${game.title}`}
-                        style={{ pointerEvents: game.comingSoon ? 'none' : 'auto' }}
-                      >
-                        {game.comingSoon ? 'Coming Soon' : 'Play Now'}
-                      </Link>
-                    </motion.div>
-                  </SwytchCard>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-          {hasMore && (
-            <motion.div
-              className="text-center py-8"
-              variants={sectionVariants}
-            >
-              <motion.button
-                className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins"
-                onClick={loadMoreGames}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                aria-label="Load More Games"
-              >
-                Load More
-              </motion.button>
-            </motion.div>
-          )}
-     
-        
-          <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
-              className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins mr-4"
-              onClick={shareOnX}
+              className="btn-primary inline-flex items-center px-8 py-4 text-lg font-semibold group"
+              onClick={handleGetStartedClick}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              aria-label="Share PETverse on X"
+              aria-label="Get Started"
             >
-              <MessageCircleHeart className="w-5 h-5 mr-2" /> Share PETverse on X
+              Get Started <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
             </motion.button>
-            <Link
-              to="/games"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500"
-              onClick={() => setShowMessage('🎮 Navigating to Games!')}
-              role="button"
-              aria-label="Navigate to Games Page"
-            >
-              Explore Games
-            </Link>
-            <Link
-              to="/vault"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => {
-                if (!userId) {
-                  setShowMessage('⚠️ Sign in to access Vault!');
-                  setActiveModal('auth');
-                } else {
-                  setShowMessage('💰 Navigating to Vault!');
-                }
-              }}
-              role="button"
-              aria-label="Navigate to Vault Page"
-            >
-              Visit Vault
-            </Link>
-            <Link
-              to="/market"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🛒 Navigating to Market!')}
-              role="button"
-              aria-label="Navigate to Market Page"
-            >
-              Visit Market
-            </Link>
-            <Link
-              to="/shop"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🛒 Navigating to Shop!')}
-              role="button"
-              aria-label="Navigate to Shop Page"
-            >
-              Visit Shop
-            </Link>
-            <Link
-              to="/community"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('👥 Navigating to Community!')}
-              role="button"
-              aria-label="Navigate to Community Page"
-            >
-              Community
-            </Link>
-            <Link
-              to="/membership"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🌟 Navigating to Membership!')}
-              role="button"
-              aria-label="Navigate to Membership Page"
-            >
-              Membership
-            </Link>
+          </motion.div>
+
+          {/* Feature Highlights */}
+          <motion.div variants={sectionVariants} className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-12">
+            <SwytchCard gradient="from-rose-500/20 to-pink-700/20" className="p-6 text-center">
+              <Gem className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-white font-poppins mb-2">True Ownership</h3>
+              <p className="text-gray-300 text-sm">Your in-game items become real, tradable assets.</p>
+            </SwytchCard>
+            <SwytchCard gradient="from-cyan-500/20 to-blue-700/20" className="p-6 text-center">
+              <Gamepad2 className="w-12 h-12 text-purple-400 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-white font-poppins mb-2">Play & Earn</h3>
+              <p className="text-gray-300 text-sm">Earn crypto and valuable items by playing skill-based games.</p>
+            </SwytchCard>
+            <SwytchCard gradient="from-green-500/20 to-teal-700/20" className="p-6 text-center">
+              <Wallet className="w-12 h-12 text-green-400 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-white font-poppins mb-2">Seamless Economy</h3>
+              <p className="text-gray-300 text-sm">Buy, sell, and swap items and currencies with ease.</p>
+            </SwytchCard>
+          </motion.div>
+
+          {/* Footer Navigation Links (Optional, can be removed if BottomNav is sufficient) */}
+          <motion.div variants={sectionVariants} className="text-center mt-auto pt-8">
+            <p className="text-gray-400 text-sm font-inter">
+              Learn more about Swytch PETverse:
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 mt-4">
+              <Link to="/dspet-disclosure" className="text-primary hover:underline font-inter" onClick={() => setShowMessage('📜 Navigating to Disclosure!')}>Disclosure</Link>
+              <Link to="/community" className="text-primary hover:underline font-inter" onClick={() => setShowMessage('👥 Navigating to Community!')}>Community</Link>
+              <Link to="/membership" className="text-primary hover:underline font-inter" onClick={() => setShowMessage('🌟 Navigating to Membership!')}>Membership</Link>
+              <Link to="/vault" className="text-primary hover:underline font-inter" onClick={() => setShowMessage('💰 Navigating to Vault!')}>Vault</Link>
+            </div>
           </motion.div>
         </motion.div>
-        {/* Modals are rendered by App.tsx, so no need to render them here again */}
       </motion.div>
     </SwytchErrorBoundary>
   );

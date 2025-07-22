@@ -1,22 +1,23 @@
+// src/pages/Benefits.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
-import { Sparkles, MessageCircleHeart } from 'lucide-react';
-import BenefitsQuests from '../components/BenefitsQuests';
-import BenefitsGrid from '../components/BenefitsGrid';
-import BenefitsEcosphere from '../components/BenefitsEcosphere';
-import BenefitsPitfalls from '../components/BenefitsPitfalls';
-import BenefitsWallets from '../components/BenefitsWallets';
-import WalletSecurity from '../components/WalletSecurity';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
+import { Sparkles, MessageCircleHeart } from 'lucide-react';
 
-// IMPORTANT: Import Quest and BenefitsProps from your lib/types.ts file.
-import { Quest, BenefitsProps as ImportedBenefitsProps } from '../lib/types';
+// Import PageProps and PlayerData types
+import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData, Quest } from '../lib/types';
 
+// Import modular components for Benefits page
+import BenefitsGrid from '../components/benefits/BenefitsGrid';
+import BenefitsCTA from '../components/benefits/BenefitsCTA';
+import BenefitsWallets from '../components/benefits/BenefitsWallets';
+import BenefitsPitfalls from '../components/benefits/BenefitsPitfalls';
+import BenefitsSupport from '../components/benefits/BenefitsSupport';
+import BenefitsQuests from '../components/benefits/BenefitsQuests'; // Assuming this component exists
 
-// Quest interface is now imported from lib/types.ts
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -36,96 +37,133 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-const initialQuests: Quest[] = [ // Explicitly type initialQuests
+const initialQuests: Quest[] = [
   { id: "benefits-visit", title: "Visit Benefits Page", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 10, completed: false },
   { id: "benefits-share", title: "Share Benefits on X", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 5, completed: false },
 ];
 
-// Use ImportedBenefitsProps as the type for the FC
-const Benefits: FC<ImportedBenefitsProps> = ({
+
+const Benefits: FC<PageProps> = ({
   userId,
   setActiveModal,
   setShowMessage,
   setIsPETMember,
   updatePlayerFirestore,
-  jewelsBalance = 0, // Default value for prop
-  isPending = false, // Default value for prop
-  authLoading = false, // Default value for prop
+  jewelsBalance,
+  isPending,
+  authLoading,
 }) => {
+  const [, setPlayerData] = useState<PlayerData | null>(null);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
-  const [expandedBenefit, setExpandedBenefit] = useState<string | null>(null);
-
-  const shareOnX = useCallback(async () => {
-    if (!userId) {
-      setShowMessage('⚠️ Please sign in to share.');
-      setActiveModal('auth');
-      return;
-    }
-    const shareQuest = quests.find((q) => q.id === "benefits-share");
-    if (shareQuest && !shareQuest.completed) {
-      const shareText = encodeURIComponent("Exploring the awesome benefits of Swytch PETverse! 🌟 Join at swytch.io! #SwytchPETverse");
-      window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      const updatedQuests = quests.map((q) =>
-        q.id === "benefits-share" ? { ...q, progress: 1, completed: true } : q
-      );
-      setQuests(updatedQuests);
-      await updatePlayerFirestore({ quests: updatedQuests, jewels: jewelsBalance + shareQuest.rewardJEWELS });
-      setShowMessage(`🎉 Quest Completed: ${shareQuest.title}! +${shareQuest.rewardJEWELS} JEWELS`);
-      // If logUpiIntent is intended to be called here after sharing, uncomment and pass an amount.
-      // await logUpiIntent(shareQuest.rewardJEWELS); // Example: Log reward as UPI intent if needed
-    }
-  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  const [, setIsModalLoading] = useState<boolean>(false); // Used for general loading states
+  const [expandedBenefit, setExpandedBenefit] = useState<string | null>(null); // For BenefitsGrid
+  const [showPitfalls, setShowPitfalls] = useState(false); // For BenefitsPitfalls
 
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
       const unsubscribe = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
-          const data = docSnap.data();
+          const data = docSnap.data() as PlayerData;
+          setPlayerData(data);
           setIsPETMember(data.isPETMember || false);
-          
-          const fetchedQuests: Quest[] = data.quests?.length ? data.quests : initialQuests;
-          setQuests(fetchedQuests); // FIX: Changed from fetchedMessages to fetchedQuests
+          // Merge initial quests with saved quests
+          const mergedQuests = initialQuests.map((initialQuest) => {
+            const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
+            return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
+          });
+          setQuests(mergedQuests);
 
-          if (!fetchedQuests.find((q: Quest) => q.id === "benefits-visit")?.completed) {
-            const updatedQuests = fetchedQuests.map((q) =>
+          // Auto-complete "Visit Benefits Page" quest if not already completed
+          if (!mergedQuests.find((q) => q.id === "benefits-visit")?.completed) {
+            const updatedQuests = mergedQuests.map((q) =>
               q.id === "benefits-visit" ? { ...q, progress: 1, completed: true } : q
             );
             setQuests(updatedQuests);
             updatePlayerFirestore({ quests: updatedQuests, jewels: (data.jewels || 0) + 5 });
             setShowMessage('🎉 Quest Completed: Visit Benefits Page! +5 JEWELS');
           }
+        } else {
+          setPlayerData(null);
+          setIsPETMember(false);
+          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+          setActiveModal('auth');
         }
       }, (err) => {
-        console.error('Failed to fetch user data for benefits:', err);
-        setShowMessage('⚠️ Failed to load user data for benefits.');
+        console.error('Failed to fetch user data for Benefits page:', err);
+        setShowMessage('⚠️ Failed to load benefits data.');
         setActiveModal('error');
       });
       return () => unsubscribe();
     } else {
-      setShowMessage('⚠️ Please sign in to access benefits!');
+      setPlayerData(null);
+      setIsPETMember(false);
+      setShowMessage('⚠️ Please sign in to explore benefits!');
       setActiveModal('auth');
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]); // Removed `quests` from deps
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]);
 
-  const toggleBenefit = (benefit: string) => {
-    setExpandedBenefit(expandedBenefit === benefit ? null : benefit);
+  const handleShareOnX = useCallback(async () => {
+    if (!userId) {
+      setShowMessage('⚠️ Please sign in to share.');
+      setActiveModal('auth');
+      return;
+    }
+    setIsModalLoading(true);
+    const shareQuest = quests.find((q) => q.id === "benefits-share");
+    if (shareQuest && !shareQuest.completed) {
+      const shareText = encodeURIComponent("Unlocking amazing benefits in the Swytch PETverse! 🌟 Join at swytch.io! #SwytchPETverse");
+      window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
+      const updatedQuests = quests.map((q) =>
+        q.id === "benefits-share" ? { ...q, progress: 1, completed: true } : q
+      );
+      setQuests(updatedQuests);
+      // Log transaction for sharing
+      const transactionId = `${userId}_share_benefits_${Date.now()}`;
+      try {
+        await addDoc(collection(db, 'Transactions'), {
+          transactionId,
+          userId,
+          amount: shareQuest.rewardJEWELS,
+          currency: 'JEWELS' as SupportedCurrency,
+          transactionType: 'quest-reward' as TransactionType,
+          status: 'success' as TransactionStatus,
+          timestamp: serverTimestamp(),
+          game: 'benefits',
+        });
+        await updatePlayerFirestore({ quests: updatedQuests, jewels: jewelsBalance + shareQuest.rewardJEWELS });
+        setShowMessage(`🎉 Quest Completed: ${shareQuest.title}! +${shareQuest.rewardJEWELS} JEWELS`);
+      } catch (err) {
+        console.error('Failed to log transaction:', err);
+        setShowMessage('⚠️ Failed to share on X. Try again.');
+        setActiveModal('error');
+      }
+    }
+    setIsModalLoading(false);
+  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
+
+  const toggleBenefit = (title: string) => {
+    setExpandedBenefit(expandedBenefit === title ? null : title);
   };
 
+  const handlePitfallsView = useCallback(() => {
+    setShowPitfalls(!showPitfalls);
+    setShowMessage(showPitfalls ? 'Returning to benefits overview.' : 'Understanding potential pitfalls...');
+  }, [showPitfalls, setShowMessage]);
+
+  const saveBenefitsQuestsToFirestore = useCallback(async (updates: { jewels: number; quests: Quest[] }) => {
+    if (!userId) return;
+    try {
+      await updatePlayerFirestore(updates);
+    } catch (error) {
+      console.error("Failed to save benefits quests:", error);
+      setShowMessage("⚠️ Failed to save quest progress.");
+    }
+  }, [userId, updatePlayerFirestore, setShowMessage]);
+
+
   if (authLoading || isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-center"
-        >
-          <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-          <p>Loading Benefits...</p>
-        </motion.div>
-      </div>
-    );
+    return null; // LoadingSpinner is handled by App.tsx
   }
 
   return (
@@ -165,58 +203,86 @@ const Benefits: FC<ImportedBenefitsProps> = ({
           ))}
         </motion.div>
 
-        <motion.div className="relative z-10 max-w-6xl mx-auto">
-        
-          <motion.div variants={sectionVariants}>
+        <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
+          <h1 className="text-4xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mb-8">
+            <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> PETverse Benefits
+          </h1>
+
+          {/* Benefits Quests Section */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <BenefitsQuests
               userId={userId}
               quests={quests}
               setQuests={setQuests}
               jewelsBalance={jewelsBalance}
-              saveStateToFirestore={updatePlayerFirestore}
+              setJewelsBalance={() => {}} // No direct setter, use updatePlayerFirestore
+              saveStateToFirestore={saveBenefitsQuestsToFirestore}
               setActiveModal={setActiveModal}
               setShowMessage={setShowMessage}
-              setJewelsBalance={function (_value: React.SetStateAction<number>): void {
-                throw new Error('Function not implemented.');
-              } } 
             />
           </motion.div>
-          <motion.div variants={sectionVariants}>
+
+          {/* Benefits Grid */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <BenefitsGrid
               expandedBenefit={expandedBenefit}
               toggleBenefit={toggleBenefit}
-              setActiveModal={setActiveModal} // Pass setActiveModal
-              setShowMessage={setShowMessage} // Pass setShowMessage
-              userId={userId}            />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <BenefitsEcosphere />
-          </motion.div>
-          <motion.div variants={sectionVariants}>
-            <BenefitsPitfalls
-              handlePitfallsView={() => {
-                setShowMessage('ℹ️ Learn more about PETverse risks!');
-                setActiveModal('info');
-              }}
-              userId={userId} // Pass userId
-              setActiveModal={setActiveModal} // Pass setActiveModal
-              setShowMessage={setShowMessage} // Pass setShowMessage
+              userId={userId}
+              setActiveModal={setActiveModal}
+              setShowMessage={setShowMessage}
             />
           </motion.div>
-          <motion.div variants={sectionVariants}>
+
+          {/* Benefits Wallets */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <BenefitsWallets
-              userId={userId} // Pass userId
-              setActiveModal={setActiveModal} // Pass setActiveModal
-              setShowMessage={setShowMessage} // Pass setShowMessage
+              userId={userId}
+              setActiveModal={setActiveModal}
+              setShowMessage={setShowMessage}
             />
           </motion.div>
-          <motion.div variants={sectionVariants}>
-            <WalletSecurity />
+
+          {/* Benefits Pitfalls */}
+          <motion.div variants={sectionVariants} className="mb-8">
+            <BenefitsPitfalls
+              handlePitfallsView={handlePitfallsView}
+              userId={userId}
+              setActiveModal={setActiveModal}
+              setShowMessage={setShowMessage}
+            />
           </motion.div>
+
+          {/* Benefits Support */}
+          <motion.div variants={sectionVariants} className="mb-8">
+            <BenefitsSupport
+              userId={userId}
+              logUpiIntent={async (amount: any) => {
+                setShowMessage(`Initiating UPI intent for ${amount} INR.`);
+                // This would trigger the actual UPI intent, perhaps via a payment modal
+                setActiveModal('payment');
+              }}
+            />
+          </motion.div>
+
+          {/* Benefits CTA */}
+          <motion.div variants={sectionVariants} className="mb-8">
+            <BenefitsCTA
+              userId={userId}
+              setActiveModal={setActiveModal}
+              setShowMessage={setShowMessage}
+              logUpiIntent={async (amount: any) => {
+                setShowMessage(`Initiating UPI intent for ${amount} INR.`);
+                // This would trigger the actual UPI intent, perhaps via a payment modal
+                setActiveModal('payment');
+              }}
+            />
+          </motion.div>
+
+          {/* Share on X Button */}
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
               className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins mr-4"
-              onClick={shareOnX}
+              onClick={handleShareOnX}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               aria-label="Share Benefits on X"
@@ -224,65 +290,13 @@ const Benefits: FC<ImportedBenefitsProps> = ({
               <MessageCircleHeart className="w-5 h-5 mr-2" /> Share Benefits on X
             </motion.button>
             <Link
-              to="/games"
+              to="/home"
               className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500"
-              onClick={() => setShowMessage('🎮 Navigating to Games!')}
+              onClick={() => setShowMessage('🏠 Navigating to Home!')}
               role="button"
-              aria-label="Navigate to Games Page"
+              aria-label="Navigate to Home Page"
             >
-              Explore Games
-            </Link>
-            <Link
-              to="/vault"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => {
-                if (!userId) {
-                  setShowMessage('💰 Navigating to Vault!');
-                  setActiveModal('auth');
-                } else {
-                  setShowMessage('💰 Navigating to Vault!');
-                }
-              }}
-              role="button"
-              aria-label="Navigate to Vault Page"
-            >
-              Visit Vault
-            </Link>
-            <Link
-              to="/market"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🛒 Navigating to Market!')}
-              role="button"
-              aria-label="Navigate to Market Page"
-            >
-              Visit Market
-            </Link>
-            <Link
-              to="/shop"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🛒 Navigating to Shop!')}
-              role="button"
-              aria-label="Navigate to Shop Page"
-            >
-              Visit Shop
-            </Link>
-            <Link
-              to="/community"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('👥 Navigating to Community!')}
-              role="button"
-              aria-label="Navigate to Community Page"
-            >
-              Community
-            </Link>
-            <Link
-              to="/membership"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🌟 Navigating to Membership!')}
-              role="button"
-              aria-label="Navigate to Membership Page"
-            >
-              Membership
+              Back to Home
             </Link>
           </motion.div>
         </motion.div>
@@ -290,6 +304,5 @@ const Benefits: FC<ImportedBenefitsProps> = ({
     </SwytchErrorBoundary>
   );
 };
-
 
 export default Benefits;

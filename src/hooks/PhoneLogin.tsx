@@ -3,8 +3,8 @@ import { RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthUser } from './useAuthUser';
 import { auth } from '../lib/firebaseConfig';
-import { useModal } from '../context/ModalContext';
-import { useTheme } from '../context/ThemeContext';
+import { useModal } from '../components/context/ModalContext';
+import { useTheme } from '../components/context/ThemeContext';
 import { X } from 'lucide-react';
 
 interface PhoneLoginProps {

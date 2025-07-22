@@ -1,25 +1,27 @@
-import { memo } from 'react'; // Added memo for performance optimization
+// src/components/SwytchCard.tsx
+import { FC } from 'react';
 import { motion } from 'framer-motion';
+import { SwytchCardProps } from '@/lib/types'; // Import the type from your types.ts
 
-// SwytchCardProps interface (will be moved to lib/types.ts later)
-interface SwytchCardProps {
-  children: React.ReactNode;
-  gradient: string;
-  className?: string;
-  onClick?: () => void;
-}
-
-export const SwytchCard: React.FC<SwytchCardProps> = memo(({ children, gradient, className = '', onClick }) => (
-  <motion.div
-    className={`relative bg-gray-900/50 border border-rose-500/20 p-6 rounded-2xl shadow-xl backdrop-blur-md hover:shadow-rose-500/30 transition-all bg-gradient-to-r ${gradient} ${className}`}
-    whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(244, 63, 94, 0.5)' }}
-    onClick={onClick}
-    role={onClick ? 'button' : undefined}
-    tabIndex={onClick ? 0 : undefined} // Make focusable only if clickable
-    aria-label={onClick ? 'Interactive card' : undefined}
-  >
-    {children}
-  </motion.div>
-));
+const SwytchCard: FC<SwytchCardProps> = ({ children, gradient, className = '', onClick }) => {
+  return (
+    <motion.div
+      className={`relative p-6 rounded-xl shadow-lg border border-rose-500/20 overflow-hidden
+                  bg-gradient-to-br ${gradient} ${className}`}
+      whileHover={{ scale: onClick ? 1.02 : 1 }}
+      whileTap={{ scale: onClick ? 0.98 : 1 }}
+      transition={{ duration: 0.2 }}
+      onClick={onClick}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
+    >
+      {/* Background noise texture */}
+      <div className="absolute inset-0 bg-noise opacity-10 z-0"></div>
+      {/* Content */}
+      <div className="relative z-10">
+        {children}
+      </div>
+    </motion.div>
+  );
+};
 
 export default SwytchCard;

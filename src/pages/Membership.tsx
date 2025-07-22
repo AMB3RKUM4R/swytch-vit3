@@ -1,24 +1,19 @@
-// pages/Membership.tsx (Updated: Added missing deps to handleUpgradeClick/shareOnX. Passed currentLevel to SwytchLevelsGrid. Implemented handleUpgradeClick with example amount. Distributed components like SwytchLevelsGrid, MembershipBenefits, MembershipUpgrade, FeatureCards. No logic changes.)
-
-import { FC, useState, useEffect, useCallback, SetStateAction } from 'react';
+// src/pages/Membership.tsx
+import { FC, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
-// These components are likely used within Membership, but removing direct imports for global modals.
-// import AuthModal from '../components/AuthModal';
-// import PaymentModal from '../components/PaymentModal';
-// Page-specific components for Membership
-import MembershipBenefits from '../components/MembershipBenefits';
-import MembershipUpgrade from '../components/MembershipUpgrade'; // Assuming this is used for specific upgrade calls
-import FeatureCards from '../components/FeatureCards';// Assuming this is used
-import SwytchLevelsGrid from '../components/SwytchLevelsGrid';
-
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
 
-// IMPORTANT: Import PageProps, SupportedCurrency, and TransactionType from your lib/types.ts file
-import { PageProps as ImportedPageProps, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
+// Import PageProps and other types
+import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
+
+// Import modular components for Membership page
+import MembershipBenefits from '../components/membership/MembershipBenefits';
+import MembershipUpgrade from '../components/membership/MembershipUpgrade';
+import SwytchLevelsGrid from '../components/membership/SwytchLevelsGrid';
 
 
 const containerVariants = {
@@ -39,28 +34,80 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-// This 'games' array seems copied into multiple pages. Consider moving to a central constants file.
 
-
-// Use ImportedPageProps as the type for the FC
-const Membership: FC<ImportedPageProps> = ({
+const Membership: FC<PageProps> = ({
   userId,
   setActiveModal,
   setShowMessage,
   setIsPETMember,
   updatePlayerFirestore,
   jewelsBalance,
+  currentLevel,
   isPending,
   authLoading,
-  // Removed setShowWalletModal from destructuring as it's not part of AppProps/PageProps anymore
-  // Removed autoPlay and setAutoPlay as they were optional in previous AppProps but not used here
 }) => {
-  // Removed const { showMessage } = useModal(); as it's redundant (setShowMessage prop is used)
-  const [, setIsModalLoading] = useState<boolean>(false);
+  const [, setPlayerData] = useState<PlayerData | null>(null);
+  const [, setIsModalLoading] = useState<boolean>(false); // Used for general loading states
+
+  useEffect(() => {
+    if (userId) {
+      const userRef = doc(db, 'Players', userId);
+      const unsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setPlayerData(docSnap.data() as PlayerData);
+          setIsPETMember(docSnap.data().isPETMember || false);
+        } else {
+          setPlayerData(null);
+          setIsPETMember(false);
+          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+          setActiveModal('auth');
+        }
+      }, (err) => {
+        console.error('Failed to fetch user data for Membership page:', err);
+        setShowMessage('⚠️ Failed to load membership data.');
+        setActiveModal('error');
+      });
+      return () => unsubscribe();
+    } else {
+      setPlayerData(null);
+      setIsPETMember(false);
+      setShowMessage('⚠️ Please sign in to explore membership!');
+      setActiveModal('auth');
+    }
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
+
+  const handlePurchaseLevel = useCallback(async (level: { id: string; name: string; cost: number; contentRoute: string }) => {
+    if (!userId) {
+      setShowMessage('⚠️ Please connect your wallet or log in.');
+      setActiveModal('auth');
+      return;
+    }
+    // This logic should ideally be in MembershipUpgrade or a dedicated hook/service
+    // For now, we'll keep it here as a placeholder for triggering the payment modal.
+    try {
+      const transactionId = `${userId}_level_purchase_${level.id}_${Date.now()}`;
+      await addDoc(collection(db, 'Transactions'), {
+        transactionId,
+        userId,
+        amount: level.cost,
+        currency: 'JEWELS' as SupportedCurrency, // Assuming level purchase is with JEWELS
+        transactionType: 'level-purchase' as TransactionType,
+        status: 'pending' as TransactionStatus,
+        timestamp: serverTimestamp(),
+        game: 'membership',
+        itemId: level.id,
+      });
+      setShowMessage(`ℹ️ Opening payment for ${level.name}. Admin will assign level after payment.`);
+      setActiveModal('payment'); // Open the global payment modal
+    } catch (err) {
+      console.error('Level purchase error:', err);
+      setShowMessage('⚠️ Failed to initiate level purchase. Try again.');
+      setActiveModal('error');
+    }
+  }, [userId, setShowMessage, setActiveModal]);
 
 
-
-  const shareOnX = useCallback(async () => {
+  const handleShareOnX = useCallback(async () => {
     if (!userId) {
       setShowMessage('⚠️ Please sign in to share.');
       setActiveModal('auth');
@@ -70,17 +117,16 @@ const Membership: FC<ImportedPageProps> = ({
     try {
       const shareText = encodeURIComponent("Upgrading my PETverse Membership! 🌟 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      const transactionId = `${userId}_${Date.now()}`;
+      // Log transaction for sharing
       await addDoc(collection(db, 'Transactions'), {
-        transactionId,
+        transactionId: `${userId}_share_membership_${Date.now()}`,
         userId,
-        amount: 5,
-        currency: 'JEWELS' as SupportedCurrency, // FIX: Use SupportedCurrency type
-        transactionType: 'deposit' as TransactionType,
-        status: 'pending' as TransactionStatus,
+        amount: 5, // Example reward
+        currency: 'JEWELS' as SupportedCurrency,
+        transactionType: 'quest-reward' as TransactionType,
+        status: 'success' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'membership',
-        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
       });
       await updatePlayerFirestore({ jewels: jewelsBalance + 5 });
       setShowMessage('🎉 Shared Membership on X! +5 JEWELS');
@@ -91,78 +137,14 @@ const Membership: FC<ImportedPageProps> = ({
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]); // Added missing deps
+  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
 
-  const handleUpgradeClick = useCallback(async () => {
-    if (!userId) {
-      setShowMessage('⚠️ Please sign in to upgrade membership!');
-      setActiveModal('auth');
-      return;
-    }
-    setIsModalLoading(true);
-    try {
-      const transactionId = `${userId}_${Date.now()}`;
-      await addDoc(collection(db, 'Transactions'), {
-        transactionId,
-        userId,
-        amount: 99, // Example amount for membership upgrade
-        currency: 'JEWELS' as SupportedCurrency, // FIX: Use SupportedCurrency type
-        transactionType: 'membership' as TransactionType,
-        status: 'pending' as TransactionStatus,
-        timestamp: serverTimestamp(),
-        game: 'membership',
-        adminId: '0CfobCbXnPZsJwT662H4OhDrXk33',
-      });
-      setShowMessage('ℹ️ Opening payment for PET Membership upgrade. Admin will process your request.');
-      setActiveModal('payment');
-      // Removed setShowWalletModal(true); here as it's handled by setActiveModal('auth') or PaymentModal itself
-    } catch (err) {
-      console.error('Membership upgrade error:', err);
-      setShowMessage('⚠️ Failed to initiate membership upgrade. Try again.');
-      setActiveModal('error');
-    } finally {
-      setIsModalLoading(false);
-    }
-  }, [userId, setShowMessage, setActiveModal]); // Removed setShowWalletModal from deps
-
-  useEffect(() => {
-    if (userId) {
-      const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (docSnap) => { // Renamed 'doc' to 'docSnap' for clarity
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setIsPETMember(data.isPETMember || false);
-        }
-      }, (err) => {
-        console.error('Failed to fetch user data:', err);
-        setShowMessage('⚠️ Failed to load membership data.');
-        setActiveModal('error');
-      });
-      return () => unsubscribe();
-    } else {
-      setShowMessage('⚠️ Please sign in to explore membership!');
-      setActiveModal('auth');
-    }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
 
   if (authLoading || isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-center"
-        >
-          <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mb-4" />
-          <p>Loading Membership...</p>
-        </motion.div>
-      </div>
-    );
+    return null; // LoadingSpinner is handled by App.tsx
   }
 
   return (
-    // FIX: Pass the actual props to SwytchErrorBoundary
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
@@ -200,26 +182,32 @@ const Membership: FC<ImportedPageProps> = ({
         </motion.div>
 
         <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          <motion.div variants={sectionVariants}>
-            {/* This assumes currentLevel, isPending, authLoading are relevant for SwytchLevelsGrid */}
+          <h1 className="text-4xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mb-8">
+            <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> PETverse Membership
+          </h1>
+
+          {/* Membership Levels Grid */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <SwytchLevelsGrid
               userId={userId}
-              currentLevel={0} // Pass actual currentLevel if needed
+              currentLevel={currentLevel}
               isPending={isPending}
               authLoading={authLoading}
               updatePlayerFirestore={updatePlayerFirestore}
-              handlePurchaseLevel={handleUpgradeClick} // Re-using handleUpgradeClick for level purchase
-              setActiveModal={function (_value: SetStateAction<string | null>): void {
-                throw new Error('Function not implemented.');
-              } } setShowMessage={function (_value: SetStateAction<string>): void {
-                throw new Error('Function not implemented.');
-              } }            />
+              handlePurchaseLevel={handlePurchaseLevel}
+              setActiveModal={setActiveModal}
+              setShowMessage={setShowMessage}
+            />
           </motion.div>
-          <motion.div variants={sectionVariants}>
+
+          {/* Membership Benefits */}
+          <motion.div variants={sectionVariants} className="mb-8">
             <MembershipBenefits />
           </motion.div>
-          <motion.div variants={sectionVariants}>
-            <MembershipUpgrade // This might be a specific component that triggers handleUpgradeClick
+
+          {/* Membership Upgrade Section */}
+          <motion.div variants={sectionVariants} className="mb-8">
+            <MembershipUpgrade
               userId={userId}
               setIsPETMember={setIsPETMember}
               updatePlayerFirestore={updatePlayerFirestore}
@@ -227,17 +215,13 @@ const Membership: FC<ImportedPageProps> = ({
               setShowMessage={setShowMessage}
             />
           </motion.div>
-          <motion.div variants={sectionVariants}>
-            <FeatureCards setActiveModal={function (_value: SetStateAction<string | null>): void {
-              throw new Error('Function not implemented.');
-            } } setShowMessage={function (_value: SetStateAction<string>): void {
-              throw new Error('Function not implemented.');
-            } } />
-          </motion.div>
+
+
+          {/* Action Buttons */}
           <motion.div variants={sectionVariants} className="text-center py-8">
             <motion.button
               className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins mr-4"
-              onClick={shareOnX}
+              onClick={handleShareOnX}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               aria-label="Share Membership on X"
@@ -245,69 +229,16 @@ const Membership: FC<ImportedPageProps> = ({
               <MessageCircleHeart className="w-5 h-5 mr-2" /> Share Membership on X
             </motion.button>
             <Link
-              to="/games"
+              to="/home"
               className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500"
-              onClick={() => setShowMessage('🎮 Navigating to Games!')}
+              onClick={() => setShowMessage('🏠 Navigating to Home!')}
               role="button"
-              aria-label="Navigate to Games Page"
+              aria-label="Navigate to Home Page"
             >
-              Explore Games
-            </Link>
-            <Link
-              to="/vault"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => {
-                if (!userId) {
-                  setShowMessage('⚠️ Sign in to access Vault!');
-                  setActiveModal('auth');
-                } else {
-                  setShowMessage('💰 Navigating to Vault!');
-                }
-              }}
-              role="button"
-              aria-label="Navigate to Vault Page"
-            >
-              Visit Vault
-            </Link>
-            <Link
-              to="/market"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🛒 Navigating to Market!')}
-              role="button"
-              aria-label="Navigate to Market Page"
-            >
-              Visit Market
-            </Link>
-            <Link
-              to="/shop"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🛒 Navigating to Shop!')}
-              role="button"
-              aria-label="Navigate to Shop Page"
-            >
-              Visit Shop
-            </Link>
-            <Link
-              to="/community"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('👥 Navigating to Community!')}
-              role="button"
-              aria-label="Navigate to Community Page"
-            >
-              Community
-            </Link>
-            <Link
-              to="/benefits"
-              className="inline-block bg-rose-600 text-white px-6 py-3 rounded-full font-poppins hover:bg-cyan-500 ml-4"
-              onClick={() => setShowMessage('🌟 Navigating to Benefits!')}
-              role="button"
-              aria-label="Navigate to Benefits Page"
-            >
-              Benefits
+              Back to Home
             </Link>
           </motion.div>
         </motion.div>
-        {/* Modals are rendered by App.tsx, so no need to render them here again */}
       </motion.div>
     </SwytchErrorBoundary>
   );
