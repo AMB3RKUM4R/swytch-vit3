@@ -3,7 +3,7 @@ import { FC, useState, useEffect } from 'react';
 import {
   Home, Star, LogOut, User, Gamepad2,
   Sparkles, // Keep Sparkles for MessageDisplay
-  LandPlot
+  LandPlot, Users // Added LandPlot for Vault, Users for Community
 } from 'lucide-react'; // Only core icons needed
 import { signOut } from 'firebase/auth';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -13,11 +13,12 @@ import { auth } from '@/lib/firebaseConfig';
 import { BottomNavProps } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Define primary navigation items for BottomNav (fewer, core items for mobile)
-const navItems = [
+// Define core navigation items for BottomNav (for mobile visibility)
+const bottomNavItems = [
   { path: '/home', label: 'Home', icon: <Home className="w-7 h-7" /> },
   { path: '/membership', label: 'Membership', icon: <Star className="w-7 h-7" /> },
-  { path: '/vault', label: 'Vault', icon: <LandPlot className="w-7 h-7" /> }, // Vault is still important
+  { path: '/vault', label: 'Vault', icon: <LandPlot className="w-7 h-7" /> },
+  { path: '/community', label: 'Community', icon: <Users className="w-7 h-7" /> }, // Community is a core social hub
   { path: '/games', label: 'Games', icon: <Gamepad2 className="w-7 h-7" /> }, // Direct link to Games page
 ];
 
@@ -122,7 +123,7 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage, globalMessage }
       </AnimatePresence>
 
 
-      {navItems.map(({ path, label, icon }) => (
+      {bottomNavItems.map(({ path, label, icon }) => (
         <Link
           to={path}
           key={path}

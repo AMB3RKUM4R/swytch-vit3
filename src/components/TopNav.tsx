@@ -1,26 +1,23 @@
 // src/components/TopNav.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Sparkles, User, Package, Store, Home, Star, LandPlot, Car, ShoppingBag, Users, ShieldCheck, Gamepad2, Info } from 'lucide-react'; // Import all necessary icons
+import { Wallet, Sparkles, User, Package, Store, Car, ShoppingBag, ShieldCheck, Gamepad2, Info, Settings } from 'lucide-react'; // Import all necessary icons
 import { useAccount } from 'wagmi';
 import { useTheme } from '../components/context/ThemeContext';
 import { TopNavProps } from '../lib/types';
 import { useAuthUser } from '@/hooks/useAuthUser';
 import { Link } from 'react-router-dom';
 
-// Define primary navigation items for TopNav
-const primaryNavItems = [
-  { path: '/home', label: 'Home', icon: <Home className="w-5 h-5" /> },
-  { path: '/membership', label: 'Membership', icon: <Star className="w-5 h-5" /> },
-  { path: '/vault', label: 'Vault', icon: <LandPlot className="w-5 h-5" /> },
+// Define primary navigation items for TopNav (these were previously in "More" or are new direct links)
+const topNavPrimaryItems = [
   { path: '/market', label: 'Market', icon: <Car className="w-5 h-5" /> },
   { path: '/shop', label: 'Shop', icon: <ShoppingBag className="w-5 h-5" /> },
-  { path: '/community', label: 'Community', icon: <Users className="w-5 h-5" /> },
   { path: '/benefits', label: 'Benefits', icon: <ShieldCheck className="w-5 h-5" /> },
   { path: '/games', label: 'Games', icon: <Gamepad2 className="w-5 h-5" /> },
   { path: '/inventory', label: 'Inventory', icon: <Package className="w-5 h-5" /> },
   { path: '/marketplace', label: 'Marketplace', icon: <Store className="w-5 h-5" /> },
-  { path: '/dspet-disclosure', label: 'Disclosure', icon: <Info className="w-5 h-5" /> }, // Added Disclosure
+  { path: '/dspet-disclosure', label: 'Disclosure', icon: <Info className="w-5 h-5" /> },
+  { path: '/admin', label: 'Admin', icon: <Settings className="w-5 h-5" /> }, // Admin page link
 ];
 
 const TopNav: FC<TopNavProps> = ({
@@ -74,10 +71,10 @@ const TopNav: FC<TopNavProps> = ({
         <span className="text-xl font-bold text-foreground font-poppins hidden sm:block">SWYTCH</span>
       </div>
 
-      {/* Primary Navigation Links (Icons + optional labels for larger screens) */}
-      {/* Hide on mobile, show on md and up */}
+      {/* Primary Navigation Links (Icons + labels for larger screens) */}
+      {/* Show on md and up, responsive for mobile (will be in BottomNav instead) */}
       <div className="hidden md:flex flex-grow justify-center items-center gap-2 sm:gap-4 overflow-x-auto px-2 md:px-0">
-        {primaryNavItems.map(({ path, label, icon }) => (
+        {topNavPrimaryItems.map(({ path, label, icon }) => (
           <Link
             to={path}
             key={path}
