@@ -2,14 +2,15 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore'; // Keep addDoc, collection, serverTimestamp for transaction logging
 import { db } from '../lib/firebaseConfig';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
+// FIX: Import Wagmi hooks directly in Vault.tsx
 import { useAccount, useFeeData, useBalance, useChainId, useBlockNumber } from 'wagmi';
 
 // Import PageProps and PlayerData types
-import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
+import { PageProps, PlayerData, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
 
 // Import modular components for Vault
 import VaultWalletInfo from '../components/vault/VaultWalletInfo';
@@ -53,22 +54,23 @@ export const Vault: FC<PageProps> = ({
   setActiveModal,
   setShowMessage,
   setIsPETMember,
-  updatePlayerFirestore, // Keep for logging, not direct player data modification
+  updatePlayerFirestore, // Keep updatePlayerFirestore for logging, not direct player data modification
   isPending,
   authLoading,
-  initialAuthCheckComplete, // Added initialAuthCheckComplete
+  initialAuthCheckComplete,
 }) => {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [visibleGames, setVisibleGames] = useState(games.slice(0, 4));
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [, setIsModalLoading] = useState<boolean>(false);
 
-  // Wagmi V2 hooks for wallet info
+  // FIX: Fetch Wagmi data directly within Vault.tsx
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { data: feeData } = useFeeData();
   const { data: usdtBalance } = useBalance({ address, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' });
   const { data: currentBlockNumber } = useBlockNumber({ watch: true });
+
 
   // State for FiatWithdrawalForm
   const [withdrawalAmount, setWithdrawalAmount] = useState<string>('');
@@ -85,7 +87,6 @@ export const Vault: FC<PageProps> = ({
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          // Only show auth modal if auth check is complete and no user
           if (initialAuthCheckComplete) {
             setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
             setActiveModal('auth');
@@ -100,7 +101,6 @@ export const Vault: FC<PageProps> = ({
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      // Only show auth modal if auth check is complete and no user
       if (initialAuthCheckComplete) {
         setShowMessage('⚠️ Please sign in to access the vault!');
         setActiveModal('auth');
@@ -153,7 +153,7 @@ export const Vault: FC<PageProps> = ({
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, isConnected, address, withdrawalAmount, playerData, setShowMessage, setActiveModal]); // Removed updatePlayerFirestore from deps
+  }, [userId, isConnected, address, withdrawalAmount, playerData, setShowMessage, setActiveModal]);
 
   const handlePayPalWithdrawal = useCallback(async () => {
     if (!userId) { setShowMessage('⚠️ Sign in to withdraw!'); setActiveModal('auth'); return; }
@@ -201,7 +201,7 @@ export const Vault: FC<PageProps> = ({
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, withdrawalAmount, paypalEmail, playerData, setShowMessage, setActiveModal]); // Removed updatePlayerFirestore from deps
+  }, [userId, withdrawalAmount, paypalEmail, playerData, setShowMessage, setActiveModal]);
 
   const handleMembershipPayment = useCallback(async (packageName: string, amount: number) => {
     if (!userId) { setShowMessage('⚠️ Sign in to buy membership!'); setActiveModal('auth'); return; }
@@ -240,21 +240,17 @@ export const Vault: FC<PageProps> = ({
     try {
       const shareText = encodeURIComponent("Managing my assets in the Swytch PETverse Vault! 💰 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      // --- IMPORTANT: Removed client-side update to jewels for quest reward. ---
-      // This update MUST be handled by a trusted backend (e.g., Firebase Cloud Function)
-      // after the share is verified.
-      // The client-side app will only log the transaction.
+      // Log transaction for sharing, actual reward by backend
       await addDoc(collection(db, 'Transactions'), {
         transactionId: `${userId}_share_vault_${Date.now()}`,
         userId,
         amount: 5,
         currency: 'JEWELS' as SupportedCurrency,
         transactionType: 'quest-reward' as TransactionType,
-        status: 'pending' as TransactionStatus, // Status is pending backend verification
+        status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'vault',
       });
-      // await updatePlayerFirestore({ jewels: jewelsBalance + 5 }); // Removed client-side update
       setShowMessage('🎉 Shared Vault on X! Reward pending verification.');
     } catch (err) {
       console.error('Failed to share on X:', err);
@@ -330,13 +326,13 @@ export const Vault: FC<PageProps> = ({
           {/* Wallet Information */}
           <motion.div variants={sectionVariants} className="mb-8">
             <VaultWalletInfo
-              isConnected={isConnected} // Use props.isConnected
-              address={address} // Use props.address
-              chainId={chainId} // Use props.chainId
+              isConnected={isConnected} // FIX: Use local isConnected
+              address={address} // FIX: Use local address
+              chainId={chainId} // FIX: Use local chainId
               ensName={null}
-              blockNumber={currentBlockNumber || null} // Use props.currentBlockNumber
-              feeData={feeData} // Use props.feeData
-              usdtBalance={usdtBalance} // Use props.usdtBalance
+              blockNumber={currentBlockNumber || null} // FIX: Use local currentBlockNumber
+              feeData={feeData} // FIX: Use local feeData
+              usdtBalance={usdtBalance} // FIX: Use local usdtBalance
             />
           </motion.div>
 
@@ -347,8 +343,8 @@ export const Vault: FC<PageProps> = ({
               setShowMessage={setShowMessage}
               setActiveModal={setActiveModal}
               updatePlayerFirestore={updatePlayerFirestore}
-              isConnected={isConnected} // Use props.isConnected
-              walletAddress={address || null} // Use props.address
+              isConnected={isConnected} // FIX: Use local isConnected
+              walletAddress={address || null} // FIX: Use local address
             />
           </motion.div>
 

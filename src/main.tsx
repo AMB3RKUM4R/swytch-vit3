@@ -12,7 +12,6 @@ import SwytchErrorBoundary from './components/ErrorBoundaryComponent';
 import App from './App';
 import TopNav from './components/TopNav';
 import BottomNav from './components/BottomNav';
-// Removed: import MessageDisplay from './components/MessageDisplay'; // MessageDisplay moved to BottomNav
 import { useAuthUser } from './hooks/useAuthUser';
 import { db } from './lib/firebaseConfig';
 import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -179,6 +178,7 @@ const AppContent: React.FC = () => {
         }
       );
     } else if (initialAuthCheckComplete && !userId && !authLoading) {
+      // This block now correctly triggers AuthModal if not logged in after initial check
       setActiveModal('auth');
       setShowMessage('👋 Welcome! Please sign in to continue.');
       setIsPending(false);
@@ -229,7 +229,7 @@ const AppContent: React.FC = () => {
     isPending,
     authLoading,
     mousePosition,
-    initialAuthCheckComplete,
+    initialAuthCheckComplete, // Pass initialAuthCheckComplete to App
   };
 
   return (

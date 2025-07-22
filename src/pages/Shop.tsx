@@ -52,7 +52,7 @@ const Shop: FC<PageProps> = ({
   currentLevel, // Keep for display purposes
   isPending,
   authLoading,
-  initialAuthCheckComplete, // Added initialAuthCheckComplete
+  initialAuthCheckComplete,
 }) => {
   const [, setPlayerData] = useState<PlayerData | null>(null); // PlayerData state not directly used in render, but for fetching
   const [visibleGameFeatures, setVisibleGameFeatures] = useState(gameFeatures.slice(0, 3));
@@ -70,7 +70,6 @@ const Shop: FC<PageProps> = ({
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          // Only show auth modal if auth check is complete and no user
           if (initialAuthCheckComplete) {
             setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
             setActiveModal('auth');
@@ -85,7 +84,6 @@ const Shop: FC<PageProps> = ({
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      // Only show auth modal if auth check is complete and no user
       if (initialAuthCheckComplete) {
         setShowMessage('⚠️ Please sign in to explore the shop!');
         setActiveModal('auth');
@@ -135,10 +133,7 @@ const Shop: FC<PageProps> = ({
     try {
       const shareText = encodeURIComponent("Shopping for NFTs in the Swytch PETverse! 🛒 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      // --- IMPORTANT: Removed client-side update to jewels for quest reward. ---
-      // This update MUST be handled by a trusted backend (e.g., Firebase Cloud Function)
-      // after the share is verified.
-      // The client-side app will only log the transaction.
+      // Log transaction for sharing, actual reward by backend
       await addDoc(collection(db, 'Transactions'), {
         transactionId: `${userId}_share_shop_${Date.now()}`,
         userId,
@@ -149,7 +144,6 @@ const Shop: FC<PageProps> = ({
         timestamp: serverTimestamp(),
         game: 'shop',
       });
-      // await updatePlayerFirestore({ jewels: jewelsBalance + 5 }); // Removed client-side update
       setShowMessage('🎉 Shared Shop on X! Reward pending verification.');
     } catch (err) {
       console.error('Failed to share on X:', err);

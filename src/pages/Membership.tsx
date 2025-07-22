@@ -2,7 +2,7 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore'; // Keep addDoc, collection, serverTimestamp for transaction logging
 import { db } from '../lib/firebaseConfig';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
@@ -45,7 +45,7 @@ const Membership: FC<PageProps> = ({
   currentLevel, // Keep for display purposes
   isPending,
   authLoading,
-  initialAuthCheckComplete, // Added initialAuthCheckComplete
+  initialAuthCheckComplete,
 }) => {
   const [, setPlayerData] = useState<PlayerData | null>(null); // PlayerData state not directly used in render, but for fetching
   const [, setIsModalLoading] = useState<boolean>(false);
@@ -61,7 +61,6 @@ const Membership: FC<PageProps> = ({
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          // Only show auth modal if auth check is complete and no user
           if (initialAuthCheckComplete) {
             setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
             setActiveModal('auth');
@@ -69,14 +68,13 @@ const Membership: FC<PageProps> = ({
         }
       }, (err) => {
         console.error('Failed to fetch user data for Membership page:', err);
-        setShowMessage('⚠️ Failed to load membership data. Please check your connection.');
+        setShowMessage('⚠️ Failed to load membership data.');
         setActiveModal('error');
       });
       return () => unsubscribe();
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      // Only show auth modal if auth check is complete and no user
       if (initialAuthCheckComplete) {
         setShowMessage('⚠️ Please sign in to explore membership!');
         setActiveModal('auth');
@@ -104,8 +102,8 @@ const Membership: FC<PageProps> = ({
         transactionType: 'level-purchase' as TransactionType,
         status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
-        itemId: level.id,
         game: 'membership',
+        itemId: level.id,
       });
       setShowMessage(`ℹ️ Membership upgrade to ${level.name} submitted! Awaiting payment confirmation and backend processing.`);
       setActiveModal('payment'); // Open the global payment modal for the user to complete payment
@@ -127,10 +125,7 @@ const Membership: FC<PageProps> = ({
     try {
       const shareText = encodeURIComponent("Upgrading my PETverse Membership! 🌟 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      // --- IMPORTANT: Removed client-side update to jewels for quest reward. ---
-      // This update MUST be handled by a trusted backend (e.g., Firebase Cloud Function)
-      // after the share is verified.
-      // The client-side app will only log the transaction.
+      // Log transaction for sharing, actual reward by backend
       await addDoc(collection(db, 'Transactions'), {
         transactionId: `${userId}_share_membership_${Date.now()}`,
         userId,
@@ -141,7 +136,6 @@ const Membership: FC<PageProps> = ({
         timestamp: serverTimestamp(),
         game: 'membership',
       });
-      // await updatePlayerFirestore({ jewels: jewelsBalance + 5 }); // Removed client-side update
       setShowMessage('🎉 Shared Membership on X! Reward pending verification.');
     } catch (err) {
       console.error('Failed to share on X:', err);

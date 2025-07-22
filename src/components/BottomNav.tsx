@@ -2,8 +2,9 @@
 import { FC, useState, useEffect } from 'react';
 import {
   Home, Star, LogOut, User, Gamepad2,
-  Car, ShoppingBag, Users, ShieldCheck, LandPlot, Sparkles // Keep Sparkles for MessageDisplay
-} from 'lucide-react'; // Removed unused specific game icons
+  Sparkles, // Keep Sparkles for MessageDisplay
+  LandPlot
+} from 'lucide-react'; // Only core icons needed
 import { signOut } from 'firebase/auth';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from './context/ThemeContext';
@@ -12,18 +13,16 @@ import { auth } from '@/lib/firebaseConfig';
 import { BottomNavProps } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Define navigation items with Lucide icons (fewer, core pages)
+// Define primary navigation items for BottomNav (fewer, core items for mobile)
 const navItems = [
   { path: '/home', label: 'Home', icon: <Home className="w-7 h-7" /> },
   { path: '/membership', label: 'Membership', icon: <Star className="w-7 h-7" /> },
-  { path: '/vault', label: 'Vault', icon: <LandPlot className="w-7 h-7" /> },
-  { path: '/community', label: 'Community', icon: <Users className="w-7 h-7" /> },
-  // Shop, Market, Benefits, Games are now accessed via TopNav or specific sections/buttons
+  { path: '/vault', label: 'Vault', icon: <LandPlot className="w-7 h-7" /> }, // Vault is still important
+  { path: '/games', label: 'Games', icon: <Gamepad2 className="w-7 h-7" /> }, // Direct link to Games page
 ];
 
 
 const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage, globalMessage }) => {
-  const [isGamesOpen, setIsGamesOpen] = useState(false);
   const { isDarkMode } = useTheme();
   const { setActiveModal, setShowMessage: setGlobalMessageInContext } = useModal();
   const location = useLocation();
@@ -33,7 +32,7 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage, globalMessage }
   const [messageTimeoutId, setMessageTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    setIsGamesOpen(false);
+    // Clear any lingering hover message when route changes
     if (messageTimeoutId) {
       clearTimeout(messageTimeoutId);
       setMessageTimeoutId(null);
@@ -59,7 +58,10 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage, globalMessage }
   };
 
   const handleRestrictedNav = (path: string, label: string) => {
-    const restrictedPaths = ['/vault', '/membership', '/shop', '/market', '/inventory', '/marketplace', '/games', '/community']; // Include community if it has restricted features
+    const restrictedPaths = [
+      '/home', '/vault', '/benefits', '/market', '/shop', '/community',
+      '/membership', '/games', '/inventory', '/marketplace', '/admin'
+    ];
     if (!userId && restrictedPaths.includes(path)) {
       setShowMessage(`⚠️ Please sign in to access ${label}.`);
       setActiveModal('auth');
@@ -98,7 +100,7 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage, globalMessage }
     <nav
       className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-xl backdrop-blur-md border border-border
         shadow-xl transition-all duration-300 ease-out max-w-lg w-[90vw]
-        flex justify-between items-center gap-4 ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
+        flex justify-around items-center gap-4 md:hidden ${isDarkMode ? 'glass-dark' : 'glass-light'}`} // Hide on md and up
     >
       {/* Message Display integrated directly into BottomNav */}
       <AnimatePresence>
@@ -139,67 +141,6 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage, globalMessage }
           <span className="text-xs mt-1 font-inter text-muted">{label}</span>
         </Link>
       ))}
-
-      {/* Games & Other Pages Dropdown */}
-      <button
-        onClick={() => setIsGamesOpen(!isGamesOpen)}
-        onMouseEnter={() => handleNavItemHover('More')}
-        onMouseLeave={handleNavItemLeave}
-        className="flex flex-col items-center group"
-        aria-label="More Navigation"
-      >
-        <div className="transition-transform duration-150 group-hover:scale-125 group-hover:-translate-y-1">
-          <Gamepad2 className="w-7 h-7 text-primary" /> {/* Using Gamepad2 as a generic "More" icon */}
-        </div>
-        <span className="text-xs mt-1 font-inter text-muted">More</span>
-      </button>
-
-      {isGamesOpen && (
-        <div
-          className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-background border border-border p-3 rounded-lg shadow-xl
-            w-[90vw] max-w-md grid grid-cols-2 gap-2 ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
-        >
-          {/* Links previously in BottomNav, now in "More" dropdown */}
-          <Link
-            to="/shop"
-            className="flex items-center gap-2 text-sm hover:text-secondary transition-all rounded px-2 py-1"
-            onClick={(e) => { if (!handleRestrictedNav('/shop', 'Shop')) { e.preventDefault(); } else { setIsGamesOpen(false); } }}
-          >
-            <ShoppingBag className="w-5 h-5" /> Shop
-          </Link>
-          <Link
-            to="/market"
-            className="flex items-center gap-2 text-sm hover:text-secondary transition-all rounded px-2 py-1"
-            onClick={(e) => { if (!handleRestrictedNav('/market', 'Market')) { e.preventDefault(); } else { setIsGamesOpen(false); } }}
-          >
-            <Car className="w-5 h-5" /> Market
-          </Link>
-          <Link
-            to="/benefits"
-            className="flex items-center gap-2 text-sm hover:text-secondary transition-all rounded px-2 py-1"
-            onClick={(e) => { if (!handleRestrictedNav('/benefits', 'Benefits')) { e.preventDefault(); } else { setIsGamesOpen(false); } }}
-          >
-            <ShieldCheck className="w-5 h-5" /> Benefits
-          </Link>
-          <Link
-            to="/games"
-            className="flex items-center gap-2 text-sm hover:text-secondary transition-all rounded px-2 py-1"
-            onClick={(e) => { if (!handleRestrictedNav('/games', 'Games')) { e.preventDefault(); } else { setIsGamesOpen(false); } }}
-          >
-            <Gamepad2 className="w-5 h-5" /> Games
-          </Link>
-          <Link
-            to="/dspet-disclosure"
-            className="flex items-center gap-2 text-sm hover:text-secondary transition-all rounded px-2 py-1"
-            onClick={() => setIsGamesOpen(false)} // Disclosure is generally public
-          >
-            <ShieldCheck className="w-5 h-5" /> Disclosure
-          </Link>
-          {/* Add Inventory and Marketplace to this dropdown too, if not in TopNav */}
-          {/* If Inventory/Marketplace are in TopNav, remove them from here to avoid duplication */}
-          {/* For now, assuming they are in TopNav, so not adding here */}
-        </div>
-      )}
 
       {/* Auth/SignIn or SignOut */}
       {userId ? (

@@ -1,16 +1,16 @@
 // src/App.tsx
 import { FC, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import SwytchErrorBoundary from './components/ErrorBoundaryComponent';
 import AuthModal from './components/AuthModal';
 import PaymentModal from './components/PaymentModal';
 import LoadingSpinner from './components/LoadingSpinner';
 
-// Import all main page components with explicit capitalization for file names
+// Import all main page components
 import Home from './pages/Home';
 import { Vault } from './pages/Vault';
-import Benefits from './pages/Benefits'; // FIX: Ensure this import path matches file system casing
+import Benefits from './pages/benefits';
 import Market from './pages/Market';
 import Shop from './pages/Shop';
 import Community from './pages/Community';
@@ -20,6 +20,7 @@ import Inventory from './pages/Inventory';
 import Marketplace from './pages/Marketplace';
 import DSPETDisclosure from './pages/DSPETDisclosure';
 import LandingPage from './pages/LandingPage';
+import AdminPage from './pages/AdminPage'; // Import the new AdminPage
 
 
 // Import all required interfaces from lib/types.ts
@@ -29,14 +30,38 @@ import { AppProps, PageProps, PaymentModalProps } from './lib/types';
 const App: FC<AppProps> = (props) => {
   const { authLoading, isPending, activeModal, setActiveModal, setShowMessage, userId, initialAuthCheckComplete } = props;
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Effect to show AuthModal if no user is logged in after initial auth check
+  // Define restricted paths that require authentication
+  const restrictedPaths = [
+    '/home', '/vault', '/benefits', '/market', '/shop', '/community',
+    '/membership', '/games', '/inventory', '/marketplace', '/admin' // Admin page is also restricted
+  ];
+
+  // Effect to handle authentication and redirection
   useEffect(() => {
-    if (initialAuthCheckComplete && !userId && activeModal !== 'auth') {
-      setActiveModal('auth');
-      setShowMessage('👋 Welcome! Please sign in to continue.');
+    // If auth check is complete and no user is logged in
+    if (initialAuthCheckComplete && !userId) {
+      // If current path is restricted, redirect to LandingPage ('/') and open AuthModal
+      if (restrictedPaths.includes(location.pathname) && location.pathname !== '/') { // Don't redirect if already on '/'
+        navigate('/'); // Redirect to LandingPage
+        if (activeModal !== 'auth') { // Prevent opening if already open
+          setActiveModal('auth');
+          setShowMessage('👋 Please sign in to access this page.');
+        }
+      } else if (location.pathname === '/' && activeModal !== 'auth') {
+        // If on LandingPage and not logged in, and auth modal is not already open, open it
+        setActiveModal('auth');
+        setShowMessage('👋 Welcome! Please sign in to continue.');
+      }
+    } else if (initialAuthCheckComplete && userId) {
+      // If logged in and AuthModal is open, close it
+      if (activeModal === 'auth') {
+        setActiveModal(null);
+        setShowMessage('🎉 Signed in successfully!');
+      }
     }
-  }, [userId, initialAuthCheckComplete, activeModal, setActiveModal, setShowMessage, navigate]);
+  }, [userId, initialAuthCheckComplete, activeModal, setActiveModal, setShowMessage, navigate, location.pathname]);
 
 
   // Show a global loading spinner if auth or data is pending
@@ -58,7 +83,10 @@ const App: FC<AppProps> = (props) => {
   return (
     <>
       <Routes>
+        {/* Public Landing Page - accessible to all */}
         <Route path="/" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><LandingPage {...pageProps} /></SwytchErrorBoundary>} />
+
+        {/* Protected Routes - these will be redirected if not authenticated */}
         <Route path="/home" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Home {...pageProps} /></SwytchErrorBoundary>} />
         <Route path="/vault" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Vault {...pageProps} /></SwytchErrorBoundary>} />
         <Route path="/benefits" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Benefits {...pageProps} /></SwytchErrorBoundary>} />
@@ -69,10 +97,17 @@ const App: FC<AppProps> = (props) => {
         <Route path="/games" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><GamesPage {...pageProps} /></SwytchErrorBoundary>} />
         <Route path="/dspet-disclosure" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><DSPETDisclosure {...pageProps} /></SwytchErrorBoundary>} />
 
+        {/* New Pages for MVP (Inventory and Marketplace) */}
         <Route path="/inventory" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Inventory {...pageProps} /></SwytchErrorBoundary>} />
         <Route path="/marketplace" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Marketplace {...pageProps} /></SwytchErrorBoundary>} />
+
+        {/* Admin Page route (highly restricted) */}
+        <Route path="/admin" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><AdminPage {...pageProps} /></SwytchErrorBoundary>} />
+
+        {/* Removed specific game routes as per request - Unity games will be launched via a generic link */}
       </Routes>
 
+      {/* Modals rendered as overlays based on activeModal state */}
       <AnimatePresence>
         {activeModal === 'auth' && (
           <AuthModal setShowMessage={setShowMessage} />
