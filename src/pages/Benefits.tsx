@@ -43,7 +43,7 @@ const initialQuests: Quest[] = [
 ];
 
 
-const Benefits: FC<PageProps> = ({
+export const Benefits: FC<PageProps> = ({
   userId,
   setActiveModal,
   setShowMessage,
