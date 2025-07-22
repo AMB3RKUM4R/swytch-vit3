@@ -2,7 +2,7 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
@@ -13,7 +13,6 @@ import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, Playe
 
 // Import modular components for Vault
 import VaultWalletInfo from '../components/vault/VaultWalletInfo';
-import VaultMembershipBenefits from '../components/vault/VaultMembershipBenefits';
 import VaultMembershipPackages from '../components/vault/VaultMembershipPackages';
 import FiatWithdrawalForm from '../components/vault/FiatWithdrawalForm';
 import CryptoSwapModule from '../components/vault/CryptoSwapModule';
