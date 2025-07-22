@@ -5,17 +5,17 @@ import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { Sparkles, MessageCircleHeart, Package, Store } from 'lucide-react'; // Added Package and Store icons
+import { Sparkles, MessageCircleHeart, Package, Store } from 'lucide-react';
 
 // Import PageProps and other types
 import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
 
 // Import modular components for Shop page
-import WalletSwapForms from '../components/shop/WalletSwapForms'; // Assuming this is shop-specific
-import RecentPurchases from '../components/shop/RecentPurchases'; // Assuming this is shop-specific
-import SwytchLevelsGrid from '../components/membership/SwytchLevelsGrid'; // Re-using from membership
-import MembershipUpgrade from '../components/membership/MembershipUpgrade'; // Re-using from membership
-import SwytchCard from '../components/SwytchCard'; // Re-using SwytchCard for games display
+import WalletSwapForms from '../components/shop/WalletSwapForms';
+import RecentPurchases from '../components/shop/RecentPurchases';
+import SwytchLevelsGrid from '../components/membership/SwytchLevelsGrid';
+import MembershipUpgrade from '../components/membership/MembershipUpgrade';
+import SwytchCard from '../components/SwytchCard';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -39,7 +39,7 @@ const particleVariants = {
 const gameFeatures = [
   { id: 'inventory', title: 'Your Inventory', path: '/inventory', description: 'Manage your in-game items.', icon: <Package className="w-5 h-5" /> },
   { id: 'marketplace', title: 'Item Marketplace', path: '/marketplace', description: 'Buy and sell items with crypto.', icon: <Store className="w-5 h-5" /> },
-  { id: 'unity-games', title: 'Play Unity Games', path: '/games', description: 'Launch your Unity games here.', icon: <Sparkles className="w-5 h-5" /> }, // Generic link to launch Unity games
+  { id: 'unity-games', title: 'Play Unity Games', path: '/games', description: 'Launch your Unity games here.', icon: <Sparkles className="w-5 h-5" /> },
 ];
 
 
@@ -48,16 +48,16 @@ const Shop: FC<PageProps> = ({
   setActiveModal,
   setShowMessage,
   setIsPETMember,
-  updatePlayerFirestore,
-  jewelsBalance,
-  currentLevel,
+  updatePlayerFirestore, // Keep for logging, not direct player data modification
+  currentLevel, // Keep for display purposes
   isPending,
   authLoading,
+  initialAuthCheckComplete, // Added initialAuthCheckComplete
 }) => {
-  const [, setPlayerData] = useState<PlayerData | null>(null);
-  const [visibleGameFeatures, setVisibleGameFeatures] = useState(gameFeatures.slice(0, 3)); // Show fewer game features initially
-  const [, setIsModalLoading] = useState<boolean>(false); // Used for general loading states
-  const [hasMore, setHasMore] = useState<boolean>(true); // For "Load More" functionality
+  const [, setPlayerData] = useState<PlayerData | null>(null); // PlayerData state not directly used in render, but for fetching
+  const [visibleGameFeatures, setVisibleGameFeatures] = useState(gameFeatures.slice(0, 3));
+  const [, setIsModalLoading] = useState<boolean>(false);
+  const [hasMore, setHasMore] = useState<boolean>(true);
 
 
   useEffect(() => {
@@ -70,8 +70,11 @@ const Shop: FC<PageProps> = ({
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
-          setActiveModal('auth');
+          // Only show auth modal if auth check is complete and no user
+          if (initialAuthCheckComplete) {
+            setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+            setActiveModal('auth');
+          }
         }
       }, (err) => {
         console.error('Failed to fetch user data for Shop page:', err);
@@ -82,10 +85,13 @@ const Shop: FC<PageProps> = ({
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      setShowMessage('⚠️ Please sign in to explore the shop!');
-      setActiveModal('auth');
+      // Only show auth modal if auth check is complete and no user
+      if (initialAuthCheckComplete) {
+        setShowMessage('⚠️ Please sign in to explore the shop!');
+        setActiveModal('auth');
+      }
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
   const handlePurchaseLevel = useCallback(async (level: { id: string; name: string; cost: number; contentRoute: string }) => {
     if (!userId) {
@@ -93,23 +99,25 @@ const Shop: FC<PageProps> = ({
       setActiveModal('auth');
       return;
     }
-    // This logic should ideally be in MembershipUpgrade or a dedicated hook/service
-    // For now, we'll keep it here as a placeholder for triggering the payment modal.
+    // --- IMPORTANT: Level purchase logic now requires backend Cloud Function ---
+    // The client-side app should not directly update 'level' or 'jewels'
+    // due to strict Firestore rules.
+    //
     try {
       const transactionId = `${userId}_level_purchase_${level.id}_${Date.now()}`;
       await addDoc(collection(db, 'Transactions'), {
         transactionId,
         userId,
         amount: level.cost,
-        currency: 'JEWELS' as SupportedCurrency, // Assuming level purchase is with JEWELS
+        currency: 'INR' as SupportedCurrency, // Assuming INR for membership purchase
         transactionType: 'level-purchase' as TransactionType,
         status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'shop',
         itemId: level.id,
       });
-      setShowMessage(`ℹ️ Opening payment for ${level.name}. Admin will assign level after payment.`);
-      setActiveModal('payment'); // Open the global payment modal
+      setShowMessage(`ℹ️ Membership upgrade to ${level.name} submitted! Awaiting payment confirmation and backend processing.`);
+      setActiveModal('payment'); // Open the global payment modal for the user to complete payment
     } catch (err) {
       console.error('Level purchase error:', err);
       setShowMessage('⚠️ Failed to initiate level purchase. Try again.');
@@ -127,19 +135,22 @@ const Shop: FC<PageProps> = ({
     try {
       const shareText = encodeURIComponent("Shopping for NFTs in the Swytch PETverse! 🛒 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      // Log transaction for sharing
+      // --- IMPORTANT: Removed client-side update to jewels for quest reward. ---
+      // This update MUST be handled by a trusted backend (e.g., Firebase Cloud Function)
+      // after the share is verified.
+      // The client-side app will only log the transaction.
       await addDoc(collection(db, 'Transactions'), {
         transactionId: `${userId}_share_shop_${Date.now()}`,
         userId,
         amount: 5, // Example reward
         currency: 'JEWELS' as SupportedCurrency,
         transactionType: 'quest-reward' as TransactionType,
-        status: 'success' as TransactionStatus,
+        status: 'pending' as TransactionStatus, // Status is pending backend verification
         timestamp: serverTimestamp(),
         game: 'shop',
       });
-      await updatePlayerFirestore({ jewels: jewelsBalance + 5 });
-      setShowMessage('🎉 Shared Shop on X! +5 JEWELS');
+      // await updatePlayerFirestore({ jewels: jewelsBalance + 5 }); // Removed client-side update
+      setShowMessage('🎉 Shared Shop on X! Reward pending verification.');
     } catch (err) {
       console.error('Failed to share on X:', err);
       setShowMessage('⚠️ Failed to share on X. Try again.');
@@ -147,7 +158,7 @@ const Shop: FC<PageProps> = ({
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, setShowMessage, setActiveModal]);
 
   const loadMoreGameFeatures = useCallback(() => {
     if (visibleGameFeatures.length >= gameFeatures.length) {
@@ -160,7 +171,7 @@ const Shop: FC<PageProps> = ({
         ...gameFeatures.slice(prev.length, prev.length + 3),
       ]);
     }, 500);
-  }, [visibleGameFeatures]); // `gameFeatures` is constant, no need in deps
+  }, [visibleGameFeatures]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -234,7 +245,7 @@ const Shop: FC<PageProps> = ({
 
           {/* Recent Purchases */}
           <motion.div variants={sectionVariants} className="mb-8">
-            <RecentPurchases recentPurchases={[]} /> {/* Pass actual recent purchases data */}
+            <RecentPurchases recentPurchases={[]} />
           </motion.div>
 
           {/* Swytch Levels Grid (for purchasing levels/memberships) */}

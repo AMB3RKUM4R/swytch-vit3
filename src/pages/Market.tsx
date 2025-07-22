@@ -5,20 +5,20 @@ import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { Sparkles, MessageCircleHeart, Package, Store } from 'lucide-react'; // Added Package and Store icons
+import { Sparkles, MessageCircleHeart, Package, Store } from 'lucide-react';
 
 // Import PageProps and PlayerData types
 import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
 
-// Import modular components for Market page (assuming these exist or will be created)
-import TrustMarketHero from '../components/market/TrustMarketHero'; // Assuming this is market-specific
-import RecentPurchases from '../components/market/RecentPurchases'; // Assuming this is market-specific
-import TrustProgression from '../components/market/TrustProgression'; // Assuming this is market-specific
-import TrustRewardTiers from '../components/market/TrustRewardTiers'; // Assuming this is market-specific
-import WalletSwapForms from '../components/market/WalletSwapForms'; // Assuming this is market-specific
-import SmartContractTransactions from '../components/market/SmartContractTransactions'; // Assuming this is market-specific
-import TrustMarketCTA from '../components/market/TrustMarketCTA'; // Assuming this is market-specific
-import SwytchCard from '../components/SwytchCard'; // Re-using SwytchCard for games display
+// Import modular components for Market page
+import TrustMarketHero from '../components/market/TrustMarketHero';
+import RecentPurchases from '../components/market/RecentPurchases';
+import TrustProgression from '../components/market/TrustProgression';
+import TrustRewardTiers from '../components/market/TrustRewardTiers';
+import WalletSwapForms from '../components/market/WalletSwapForms';
+import SmartContractTransactions from '../components/market/SmartContractTransactions';
+import TrustMarketCTA from '../components/market/TrustMarketCTA';
+import SwytchCard from '../components/SwytchCard';
 
 
 const containerVariants = {
@@ -43,7 +43,7 @@ const particleVariants = {
 const gameFeatures = [
   { id: 'inventory', title: 'Your Inventory', path: '/inventory', description: 'Manage your in-game items.', icon: <Package className="w-5 h-5" /> },
   { id: 'marketplace', title: 'Item Marketplace', path: '/marketplace', description: 'Buy and sell items with crypto.', icon: <Store className="w-5 h-5" /> },
-  { id: 'unity-games', title: 'Play Unity Games', path: '/games', description: 'Launch your Unity games here.', icon: <Sparkles className="w-5 h-5" /> }, // Generic link to launch Unity games
+  { id: 'unity-games', title: 'Play Unity Games', path: '/games', description: 'Launch your Unity games here.', icon: <Sparkles className="w-5 h-5" /> },
 ];
 
 
@@ -53,14 +53,14 @@ const Market: FC<PageProps> = ({
   setShowMessage,
   setIsPETMember,
   updatePlayerFirestore,
-  goldBalance, // Pass goldBalance to Market
   isPending,
-  authLoading, // Pass mousePosition to Market
+  authLoading,
+  initialAuthCheckComplete, // Added initialAuthCheckComplete
 }) => {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
-  const [visibleGameFeatures, setVisibleGameFeatures] = useState(gameFeatures.slice(0, 3)); // Show fewer game features initially
-  const [, setIsModalLoading] = useState<boolean>(false); // Used for general loading states
-  const [hasMore, setHasMore] = useState<boolean>(true); // For "Load More" functionality
+  const [, setPlayerData] = useState<PlayerData | null>(null);
+  const [visibleGameFeatures, setVisibleGameFeatures] = useState(gameFeatures.slice(0, 3));
+  const [, setIsModalLoading] = useState<boolean>(false);
+  const [hasMore, setHasMore] = useState<boolean>(true);
 
   useEffect(() => {
     if (userId) {
@@ -73,22 +73,28 @@ const Market: FC<PageProps> = ({
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
-          setActiveModal('auth');
+          // Only show auth modal if auth check is complete and no user
+          if (initialAuthCheckComplete) {
+            setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+            setActiveModal('auth');
+          }
         }
       }, (err) => {
         console.error('Failed to fetch user data for Market page:', err);
-        setShowMessage('⚠️ Failed to load market data.');
+        setShowMessage('⚠️ Failed to load market data. Please check your connection.');
         setActiveModal('error');
       });
       return () => unsubscribe();
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      setShowMessage('⚠️ Please sign in to explore the market!');
-      setActiveModal('auth');
+      // Only show auth modal if auth check is complete and no user
+      if (initialAuthCheckComplete) {
+        setShowMessage('⚠️ Please sign in to explore the market!');
+        setActiveModal('auth');
+      }
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
   const handleShareOnX = useCallback(async () => {
     if (!userId) {
@@ -123,10 +129,10 @@ const Market: FC<PageProps> = ({
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, setShowMessage, setActiveModal]); // Removed jewelsBalance, updatePlayerFirestore from deps as they are no longer used for client-side update
+  }, [userId, setShowMessage, setActiveModal]);
 
 
-  const loadMoreGameFeatures = useCallback(() => { // Renamed from loadMoreGames for clarity
+  const loadMoreGameFeatures = useCallback(() => {
     if (visibleGameFeatures.length >= gameFeatures.length) {
       setHasMore(false);
       return;
@@ -137,7 +143,7 @@ const Market: FC<PageProps> = ({
         ...gameFeatures.slice(prev.length, prev.length + 3),
       ]);
     }, 500);
-  }, [visibleGameFeatures]); // `gameFeatures` is constant, no need in deps
+  }, [visibleGameFeatures]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -203,21 +209,17 @@ const Market: FC<PageProps> = ({
           {/* Trust Market Hero */}
           <motion.div variants={sectionVariants} className="mb-8">
             <TrustMarketHero
-              setActiveModal={setActiveModal}
-              setShowMessage={setShowMessage}
-              mousePosition={{
+              setActiveModal={setActiveModal} userId={null} goldBalance={0} energyBalance={0} mousePosition={{
                 x: 0,
                 y: 0
-              }}   
-              userId={userId}
-              goldBalance={goldBalance}
-              energyBalance={playerData?.energy || 0} 
-            />
+              }} setShowMessage={function (): void {
+                throw new Error('Function not implemented.');
+              } }            />
           </motion.div>
 
           {/* Recent Purchases */}
           <motion.div variants={sectionVariants} className="mb-8">
-            <RecentPurchases recentPurchases={[]} /> {/* Pass actual recent purchases data */}
+            <RecentPurchases recentPurchases={[]} />
           </motion.div>
 
           {/* Trust Progression */}

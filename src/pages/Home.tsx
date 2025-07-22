@@ -40,11 +40,11 @@ const Home: FC<PageProps> = ({
   setActiveModal,
   setShowMessage,
   setIsPETMember,
-  updatePlayerFirestore,
   jewelsBalance,
   goldBalance,
   isPending,
   authLoading,
+  initialAuthCheckComplete, // Added initialAuthCheckComplete
 }) => {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
 
@@ -53,27 +53,34 @@ const Home: FC<PageProps> = ({
       const userRef = doc(db, 'Players', userId);
       const unsubscribe = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
-          setPlayerData(docSnap.data() as PlayerData);
-          setIsPETMember(docSnap.data().isPETMember || false);
+          const data = docSnap.data() as PlayerData;
+          setPlayerData(data);
+          setIsPETMember(data.isPETMember || false);
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
-          setActiveModal('auth');
+          // Only show auth modal if auth check is complete and no user
+          if (initialAuthCheckComplete) {
+            setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+            setActiveModal('auth');
+          }
         }
       }, (err) => {
         console.error('Failed to fetch user data for Home page:', err);
-        setShowMessage('⚠️ Failed to load home data.');
+        setShowMessage('⚠️ Failed to load home data. Please check your connection.');
         setActiveModal('error');
       });
       return () => unsubscribe();
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      setShowMessage('⚠️ Please sign in to explore the PETverse!');
-      setActiveModal('auth');
+      // Only show auth modal if auth check is complete and no user
+      if (initialAuthCheckComplete) {
+        setShowMessage('⚠️ Please sign in to explore the PETverse!');
+        setActiveModal('auth');
+      }
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
   const handleShareOnX = useCallback(async () => {
     if (!userId) {
@@ -84,25 +91,28 @@ const Home: FC<PageProps> = ({
     try {
       const shareText = encodeURIComponent("Joined the Swytch PETverse! 🌟 Explore at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      // Log transaction for sharing
+      // --- IMPORTANT: Removed client-side update to jewels for quest reward. ---
+      // This update MUST be handled by a trusted backend (e.g., Firebase Cloud Function)
+      // after the share is verified.
+      // The client-side app will only log the transaction.
       await addDoc(collection(db, 'Transactions'), {
         transactionId: `${userId}_share_home_${Date.now()}`,
         userId,
         amount: 5, // Example reward
         currency: 'JEWELS' as SupportedCurrency,
         transactionType: 'quest-reward' as TransactionType,
-        status: 'success' as TransactionStatus, // Assuming immediate reward for sharing
+        status: 'pending' as TransactionStatus, // Status is pending backend verification
         timestamp: serverTimestamp(),
         game: 'home',
       });
-      await updatePlayerFirestore({ jewels: jewelsBalance + 5 });
-      setShowMessage('🎉 Shared PETverse on X! +5 JEWELS');
+      // await updatePlayerFirestore({ jewels: jewelsBalance + 5 }); // Removed client-side update
+      setShowMessage('🎉 Shared PETverse on X! Reward pending verification.');
     } catch (err) {
       console.error('Failed to share on X:', err);
       setShowMessage('⚠️ Failed to share on X. Try again.');
       setActiveModal('error');
     }
-  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, setShowMessage, setActiveModal]); // Removed jewelsBalance, updatePlayerFirestore from deps
 
 
   if (authLoading || isPending) {

@@ -3,16 +3,16 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Shield, Sword, Eye, DollarSign, ShoppingCart, Sparkles } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { InventoryItem } from '@/lib/types'; // Import InventoryItem type
+import { MarketItem } from '@/lib/types'; // FIX: Import MarketItem type
 
 interface MarketItemCardProps {
-  item: InventoryItem;
-  onBuyItem: (item: InventoryItem) => void;
+  item: MarketItem; // FIX: item prop now expects MarketItem
+  onBuyItem: (item: MarketItem) => void; // FIX: onBuyItem now expects MarketItem
   isOwner: boolean; // True if the current logged-in user owns this item (cannot buy their own)
 }
 
 const MarketItemCard: FC<MarketItemCardProps> = ({ item, onBuyItem, isOwner }) => {
-  const getRarityColor = (rarity: InventoryItem['rarity']) => {
+  const getRarityColor = (rarity: MarketItem['rarity']) => { // Use MarketItem['rarity'] for consistency
     switch (rarity) {
       case 'common': return 'text-gray-400';
       case 'uncommon': return 'text-green-400';

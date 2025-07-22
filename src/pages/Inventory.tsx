@@ -38,9 +38,10 @@ const Inventory: FC<PageProps> = ({
   isPending,
   authLoading,
   updatePlayerFirestore,
+  initialAuthCheckComplete, // Added initialAuthCheckComplete
 }) => {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null); // State to hold full player data
-  const [playerInventoryItems, setPlayerInventoryItems] = useState<Record<string, InventoryItem>>({}); // Renamed for clarity
+  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
+  const [playerInventoryItems, setPlayerInventoryItems] = useState<Record<string, InventoryItem>>({});
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [showListForSaleModal, setShowListForSaleModal] = useState(false);
 
@@ -50,13 +51,16 @@ const Inventory: FC<PageProps> = ({
       const unsubscribe = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data() as PlayerData;
-          setPlayerData(data); // Set full player data
-          setPlayerInventoryItems(data.inventory?.items || {}); // Set just the items map
+          setPlayerData(data);
+          setPlayerInventoryItems(data.inventory?.items || {});
         } else {
           setPlayerData(null);
           setPlayerInventoryItems({});
-          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
-          setActiveModal('auth');
+          // Only show auth modal if auth check is complete and no user
+          if (initialAuthCheckComplete) {
+            setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+            setActiveModal('auth');
+          }
         }
       }, (err) => {
         console.error('Failed to fetch inventory data:', err);
@@ -67,10 +71,13 @@ const Inventory: FC<PageProps> = ({
     } else {
       setPlayerData(null);
       setPlayerInventoryItems({});
-      setShowMessage('⚠️ Please sign in to view your inventory!');
-      setActiveModal('auth');
+      // Only show auth modal if auth check is complete and no user
+      if (initialAuthCheckComplete) {
+        setShowMessage('⚠️ Please sign in to view your inventory!');
+        setActiveModal('auth');
+      }
     }
-  }, [userId, setShowMessage, setActiveModal]);
+  }, [userId, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
   const handleListForSale = (item: InventoryItem) => {
     setSelectedItem(item);
@@ -137,13 +144,13 @@ const Inventory: FC<PageProps> = ({
 
           <motion.div variants={sectionVariants}>
             <UserInventoryDisplay
-              inventory={playerInventoryItems} // Pass the items map
+              inventory={playerInventoryItems}
               onListForSale={handleListForSale}
               userId={userId}
               updatePlayerFirestore={updatePlayerFirestore}
               setShowMessage={setShowMessage}
               setActiveModal={setActiveModal}
-              playerData={playerData} // FIX: Pass playerData
+              playerData={playerData}
             />
           </motion.div>
         </motion.div>
@@ -159,8 +166,8 @@ const Inventory: FC<PageProps> = ({
             setShowMessage={setShowMessage}
             setActiveModal={setActiveModal}
             updatePlayerFirestore={updatePlayerFirestore}
-            playerInventoryItems={playerInventoryItems} // FIX: Pass playerInventoryItems
-            playerEquipped={playerData?.inventory?.equipped || null} // FIX: Pass equipped or null
+            playerInventoryItems={playerInventoryItems}
+            playerEquipped={playerData?.inventory?.equipped || null}
           />
         )}
       </AnimatePresence>

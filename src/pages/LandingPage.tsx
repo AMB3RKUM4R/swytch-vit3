@@ -3,7 +3,7 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, Wallet, Gamepad2, Gem, Link } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import SwytchCard from '../components/SwytchCard'; // Re-using SwytchCard
+import SwytchCard from '../components/SwytchCard';
 
 // Import PageProps for consistency
 import { PageProps } from '../lib/types';
@@ -26,11 +26,17 @@ const particleVariants = {
   animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
 };
 
-const LandingPage: FC<PageProps> = ({ setActiveModal, setShowMessage }) => {
+const LandingPage: FC<PageProps> = ({ setActiveModal, setShowMessage, userId }) => { // Added userId prop
 
   const handleGetStartedClick = () => {
-    setActiveModal('auth'); // Open the AuthModal
-    setShowMessage('👋 Welcome! Please sign in or connect your wallet to get started.');
+    if (!userId) { // Only show auth modal if not already logged in
+      setActiveModal('auth');
+      setShowMessage('👋 Welcome! Please sign in or connect your wallet to get started.');
+    } else {
+      setShowMessage('🎉 Welcome back! Navigating to Home.');
+      // Optionally navigate to /home if already logged in
+      // navigate('/home');
+    }
   };
 
   return (

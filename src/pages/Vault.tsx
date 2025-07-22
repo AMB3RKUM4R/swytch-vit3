@@ -2,23 +2,25 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart } from 'lucide-react';
 import { useAccount, useFeeData, useBalance, useChainId, useBlockNumber } from 'wagmi';
 
 // Import PageProps and PlayerData types
-import { PageProps, PlayerData, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
+import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
 
 // Import modular components for Vault
 import VaultWalletInfo from '../components/vault/VaultWalletInfo';
-import VaultMembershipPackages from '../components/vault/VaultMembershipPackages'; // New component
+import VaultMembershipBenefits from '../components/vault/VaultMembershipBenefits';
+import VaultMembershipPackages from '../components/vault/VaultMembershipPackages';
 import FiatWithdrawalForm from '../components/vault/FiatWithdrawalForm';
 import CryptoSwapModule from '../components/vault/CryptoSwapModule';
-import VaultRules from '../components/vault/VaultRules'; // New component
-import YieldCalculator from '../components/vault/YieldCalculator'; // New component
-import SwytchCard from '../components/SwytchCard'; // Re-using SwytchCard for games display
+import VaultRules from '../components/vault/VaultRules';
+import YieldCalculator from '../components/vault/YieldCalculator';
+import SwytchCard from '../components/SwytchCard';
+
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -52,39 +54,44 @@ export const Vault: FC<PageProps> = ({
   setActiveModal,
   setShowMessage,
   setIsPETMember,
-  updatePlayerFirestore,
-  jewelsBalance,
+  updatePlayerFirestore, // Keep for logging, not direct player data modification
+  jewelsBalance, // Keep for display purposes
   isPending,
   authLoading,
+  initialAuthCheckComplete, // Added initialAuthCheckComplete
 }) => {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
-  const [visibleGames, setVisibleGames] = useState(games.slice(0, 4)); // Show fewer games initially
-  const [hasMore, setHasMore] = useState<boolean>(true); // For "Load More" functionality
-  const [, setIsModalLoading] = useState<boolean>(false); // Used for general loading states
+  const [visibleGames, setVisibleGames] = useState(games.slice(0, 4));
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [, setIsModalLoading] = useState<boolean>(false);
 
   // Wagmi V2 hooks for wallet info
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { data: feeData } = useFeeData(); // Get gas price, etc.
-  const { data: usdtBalance } = useBalance({ address, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' }); // Example USDT balance
+  const { data: feeData } = useFeeData();
+  const { data: usdtBalance } = useBalance({ address, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' });
   const { data: currentBlockNumber } = useBlockNumber({ watch: true });
 
   // State for FiatWithdrawalForm
   const [withdrawalAmount, setWithdrawalAmount] = useState<string>('');
-  const [paypalEmail, setPaypalEmail] = useState<string>(''); // For PayPal withdrawals
+  const [paypalEmail, setPaypalEmail] = useState<string>('');
 
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
       const unsubscribe = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
-          setPlayerData(docSnap.data() as PlayerData);
-          setIsPETMember(docSnap.data().isPETMember || false);
+          const data = docSnap.data() as PlayerData;
+          setPlayerData(data);
+          setIsPETMember(data.isPETMember || false);
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
-          setActiveModal('auth');
+          // Only show auth modal if auth check is complete and no user
+          if (initialAuthCheckComplete) {
+            setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+            setActiveModal('auth');
+          }
         }
       }, (err) => {
         console.error('Failed to fetch user data for Vault:', err);
@@ -95,10 +102,13 @@ export const Vault: FC<PageProps> = ({
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      setShowMessage('⚠️ Please sign in to access the vault!');
-      setActiveModal('auth');
+      // Only show auth modal if auth check is complete and no user
+      if (initialAuthCheckComplete) {
+        setShowMessage('⚠️ Please sign in to access the vault!');
+        setActiveModal('auth');
+      }
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal]);
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
 
   const handleWithdrawal = useCallback(async () => {
@@ -108,7 +118,7 @@ export const Vault: FC<PageProps> = ({
       setShowMessage('⚠️ Please enter a valid withdrawal amount.');
       return;
     }
-    // Basic client-side check for JEWELS balance
+    // Basic client-side check for JEWELS balance (display only, backend will verify)
     if (playerData && (playerData.jewels || 0) < Number(withdrawalAmount)) {
       setShowMessage('⚠️ Insufficient JEWELS balance for withdrawal.');
       return;
@@ -117,32 +127,35 @@ export const Vault: FC<PageProps> = ({
     setShowMessage(`Withdrawal of ${withdrawalAmount} JEWELS initiated! (Requires admin processing)`);
     setIsModalLoading(true);
     try {
+      // --- IMPORTANT: Withdrawal logic now requires backend Cloud Function ---
+      // The client-side app should only create a pending transaction request.
+      // The actual deduction of jewels and crypto/fiat transfer MUST be handled
+      // by a trusted backend (e.g., Firebase Cloud Function) after verification.
+      //
       // Record the withdrawal request in Firestore
       const transactionId = `${userId}_${Date.now()}_withdraw_crypto`;
       await addDoc(collection(db, 'Transactions'), {
         transactionId,
         userId,
         amount: Number(withdrawalAmount),
-        currency: 'JEWELS' as SupportedCurrency, // Assuming JEWELS are withdrawn as crypto equivalent
+        currency: 'JEWELS' as SupportedCurrency,
         transactionType: 'withdraw' as TransactionType,
         status: 'pending' as TransactionStatus, // Pending admin approval
         timestamp: serverTimestamp(),
-        walletAddress: address, // User's connected crypto wallet address
+        walletAddress: address,
         paymentMethod: 'crypto',
       });
 
-      // Optimistically deduct jewels from user's balance in Firestore
-      await updatePlayerFirestore({ jewels: (playerData?.jewels || 0) - Number(withdrawalAmount) });
-
+      // await updatePlayerFirestore({ jewels: (playerData?.jewels || 0) - Number(withdrawalAmount), updatedAt: serverTimestamp() }); // Removed client-side update
       setShowMessage('✅ Crypto withdrawal request submitted successfully! Admin will process it shortly.');
-      setWithdrawalAmount(''); // Clear input
+      setWithdrawalAmount('');
     } catch (err) {
       console.error('Crypto withdrawal error:', err);
       setShowMessage(`⚠️ Crypto withdrawal failed: ${(err as Error).message || 'Unknown error'}`);
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, isConnected, address, withdrawalAmount, playerData, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, isConnected, address, withdrawalAmount, playerData, setShowMessage, setActiveModal]); // Removed updatePlayerFirestore from deps
 
   const handlePayPalWithdrawal = useCallback(async () => {
     if (!userId) { setShowMessage('⚠️ Sign in to withdraw!'); setActiveModal('auth'); return; }
@@ -154,7 +167,7 @@ export const Vault: FC<PageProps> = ({
       setShowMessage('⚠️ Please enter a valid PayPal email address.');
       return;
     }
-    // Basic client-side check for JEWELS balance
+    // Basic client-side check for JEWELS balance (display only, backend will verify)
     if (playerData && (playerData.jewels || 0) < Number(withdrawalAmount)) {
       setShowMessage('⚠️ Insufficient JEWELS balance for withdrawal.');
       return;
@@ -163,23 +176,26 @@ export const Vault: FC<PageProps> = ({
     setShowMessage(`PayPal withdrawal of ${withdrawalAmount} JEWELS to ${paypalEmail} initiated! (Requires admin processing)`);
     setIsModalLoading(true);
     try {
+      // --- IMPORTANT: PayPal Withdrawal logic now requires backend Cloud Function ---
+      // The client-side app should only create a pending transaction request.
+      // The actual deduction of jewels and PayPal payout MUST be handled
+      // by a trusted backend (e.g., Firebase Cloud Function) after verification.
+      //
       const transactionId = `${userId}_${Date.now()}_withdraw_paypal`;
-      // Note: Actual PayPal order creation requires PayPalScriptProvider, typically in App.tsx
-      // This assumes PayPalButtons will be rendered in VaultWithdrawal.tsx
       const transactionData = {
         transactionId,
         userId,
         amount: Number(withdrawalAmount),
-        currency: 'JEWELS' as SupportedCurrency, // Assuming JEWELS are withdrawn as fiat equivalent
+        currency: 'JEWELS' as SupportedCurrency,
         transactionType: 'withdraw' as TransactionType,
-        status: 'pending' as TransactionStatus, // Pending admin approval
+        status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         paymentMethod: 'paypal',
-        paypalEmail: paypalEmail, // Store the PayPal email for admin
+        paypalEmail: paypalEmail,
       };
 
       await addDoc(collection(db, 'Transactions'), transactionData);
-      await setDoc(doc(db, 'Players', userId), { jewels: (playerData?.jewels || 0) - Number(withdrawalAmount), updatedAt: serverTimestamp() }, { merge: true });
+      // await setDoc(doc(db, 'Players', userId), { jewels: (playerData?.jewels || 0) - Number(withdrawalAmount), updatedAt: serverTimestamp() }, { merge: true }); // Removed client-side update
       setShowMessage('✅ PayPal withdrawal request submitted successfully! Transaction ID: ' + transactionId);
     } catch (err) {
       console.error('PayPal withdrawal error:', err);
@@ -187,12 +203,12 @@ export const Vault: FC<PageProps> = ({
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, withdrawalAmount, paypalEmail, playerData, setShowMessage, setActiveModal]);
+  }, [userId, withdrawalAmount, paypalEmail, playerData, setShowMessage, setActiveModal]); // Removed updatePlayerFirestore from deps
 
   const handleMembershipPayment = useCallback(async (packageName: string, amount: number) => {
     if (!userId) { setShowMessage('⚠️ Sign in to buy membership!'); setActiveModal('auth'); return; }
     setShowMessage(`Attempting to buy ${packageName} for ${amount}! (Redirecting to Payment Modal)`);
-    setActiveModal('payment'); // Trigger the global payment modal
+    setActiveModal('payment');
   }, [userId, setShowMessage, setActiveModal]);
 
   const handleCalculateYield = useCallback(async (e: React.FormEvent) => {
@@ -211,10 +227,10 @@ export const Vault: FC<PageProps> = ({
     setTimeout(() => {
       setVisibleGames((prev) => [
         ...prev,
-        ...games.slice(prev.length, prev.length + 2), // Load 2 more games
+        ...games.slice(prev.length, prev.length + 2),
       ]);
     }, 500);
-  }, [visibleGames]); // `games` is constant, no need in deps
+  }, [visibleGames]);
 
   const shareOnX = useCallback(async () => {
     if (!userId) {
@@ -226,19 +242,22 @@ export const Vault: FC<PageProps> = ({
     try {
       const shareText = encodeURIComponent("Managing my assets in the Swytch PETverse Vault! 💰 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      const transactionId = `${userId}_share_vault_${Date.now()}`;
+      // --- IMPORTANT: Removed client-side update to jewels for quest reward. ---
+      // This update MUST be handled by a trusted backend (e.g., Firebase Cloud Function)
+      // after the share is verified.
+      // The client-side app will only log the transaction.
       await addDoc(collection(db, 'Transactions'), {
-        transactionId,
+        transactionId: `${userId}_share_vault_${Date.now()}`,
         userId,
         amount: 5,
         currency: 'JEWELS' as SupportedCurrency,
         transactionType: 'quest-reward' as TransactionType,
-        status: 'success' as TransactionStatus,
+        status: 'pending' as TransactionStatus, // Status is pending backend verification
         timestamp: serverTimestamp(),
         game: 'vault',
       });
-      await updatePlayerFirestore({ jewels: jewelsBalance + 5 });
-      setShowMessage('🎉 Shared Vault on X! +5 JEWELS');
+      // await updatePlayerFirestore({ jewels: jewelsBalance + 5 }); // Removed client-side update
+      setShowMessage('🎉 Shared Vault on X! Reward pending verification.');
     } catch (err) {
       console.error('Failed to share on X:', err);
       setShowMessage('⚠️ Failed to share on X. Try again.');
@@ -246,7 +265,8 @@ export const Vault: FC<PageProps> = ({
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, setShowMessage, setActiveModal]);
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -312,13 +332,13 @@ export const Vault: FC<PageProps> = ({
           {/* Wallet Information */}
           <motion.div variants={sectionVariants} className="mb-8">
             <VaultWalletInfo
-              isConnected={isConnected}
-              address={address}
-              chainId={chainId}
-              ensName={null} // ENS name fetching is complex, keeping null for MVP
-              blockNumber={currentBlockNumber || null}
-              feeData={feeData}
-              usdtBalance={usdtBalance}
+              isConnected={isConnected} // Use props.isConnected
+              address={address} // Use props.address
+              chainId={chainId} // Use props.chainId
+              ensName={null}
+              blockNumber={currentBlockNumber || null} // Use props.currentBlockNumber
+              feeData={feeData} // Use props.feeData
+              usdtBalance={usdtBalance} // Use props.usdtBalance
             />
           </motion.div>
 
@@ -329,8 +349,8 @@ export const Vault: FC<PageProps> = ({
               setShowMessage={setShowMessage}
               setActiveModal={setActiveModal}
               updatePlayerFirestore={updatePlayerFirestore}
-              isConnected={isConnected}
-              walletAddress={address || null}
+              isConnected={isConnected} // Use props.isConnected
+              walletAddress={address || null} // Use props.address
             />
           </motion.div>
 
@@ -340,8 +360,8 @@ export const Vault: FC<PageProps> = ({
               userId={userId}
               setShowMessage={setShowMessage}
               setActiveModal={setActiveModal}
-              handleWithdrawal={handleWithdrawal} // Crypto withdrawal (from this page's state)
-              handlePayPalWithdrawal={handlePayPalWithdrawal} // PayPal withdrawal (from this page's state)
+              handleWithdrawal={handleWithdrawal}
+              handlePayPalWithdrawal={handlePayPalWithdrawal}
               withdrawalAmount={withdrawalAmount}
               setWithdrawalAmount={setWithdrawalAmount}
               paypalEmail={paypalEmail}

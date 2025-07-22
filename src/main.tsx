@@ -12,7 +12,7 @@ import SwytchErrorBoundary from './components/ErrorBoundaryComponent';
 import App from './App';
 import TopNav from './components/TopNav';
 import BottomNav from './components/BottomNav';
-import MessageDisplay from './components/MessageDisplay'; // Import MessageDisplay
+// Removed: import MessageDisplay from './components/MessageDisplay'; // MessageDisplay moved to BottomNav
 import { useAuthUser } from './hooks/useAuthUser';
 import { db } from './lib/firebaseConfig';
 import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -130,6 +130,8 @@ const AppContent: React.FC = () => {
             // due to strict Firestore rules. A Cloud Function triggered on a schedule
             // or by a user's action (verified by backend) should handle this.
             //
+            // const now = Date.now();
+            // const oneDay = 24 * 60 * 60 * 1000;
             // if (data.lastBonusTime === null || (data.lastBonusTime && now - (data.lastBonusTime.toDate().getTime() || 0) > oneDay)) {
             //   // This update will likely fail with current strict rules if done client-side.
             //   // Consider triggering a Cloud Function here to grant daily bonus.
@@ -211,6 +213,7 @@ const AppContent: React.FC = () => {
     jewelsBalance,
     isPETMember,
     setShowMessage,
+    globalMessage: showMessage, // Pass the global message state to BottomNav for display
   };
 
   const appProps: MainAppProps = {
@@ -237,9 +240,7 @@ const AppContent: React.FC = () => {
           <App {...appProps} />
         </main>
         <BottomNav {...bottomNavProps} />
-
-        {/* Global message display */}
-        <MessageDisplay message={showMessage} />
+        {/* MessageDisplay is now handled within BottomNav */}
       </div>
     </SwytchErrorBoundary>
   );

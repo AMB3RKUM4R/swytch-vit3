@@ -1,11 +1,12 @@
 // src/components/TopNav.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Sparkles, User } from 'lucide-react'; // Added User icon for display
+import { Wallet, Sparkles, User, Package, Store } from 'lucide-react'; // Added Package and Store icons for Inventory/Marketplace
 import { useAccount } from 'wagmi';
 import { useTheme } from '../components/context/ThemeContext';
 import { TopNavProps } from '../lib/types'; // Import TopNavProps from types.ts
 import { useAuthUser } from '@/hooks/useAuthUser'; // Import useAuthUser to get username
+import { Link } from 'react-router-dom'; // Import Link for navigation
 
 // Use TopNavProps as the type for the FC
 const TopNav: FC<TopNavProps> = ({
@@ -33,6 +34,17 @@ const TopNav: FC<TopNavProps> = ({
   // Determine display name for TopNav
   const displayName = user?.displayName || user?.email?.split('@')[0] || (userId ? `${userId.slice(0, 4)}...${userId.slice(-4)}` : 'Guest');
 
+  // Helper function for restricted navigation
+  const handleRestrictedNav = (_path: string, label: string) => {
+    if (!userId) {
+      setShowMessage(`⚠️ Please sign in to access ${label}.`);
+      setActiveAuthModal('auth');
+      return false;
+    }
+    setShowMessage(`➡️ Navigating to ${label}!`);
+    return true;
+  };
+
   return (
     <motion.nav
       className={`fixed top-0 left-0 w-full z-50 py-2 px-2 md:px-4 flex items-center justify-between nav-main ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
@@ -46,12 +58,39 @@ const TopNav: FC<TopNavProps> = ({
         <span className="text-xl font-bold text-foreground font-poppins">SWYTCH</span>
       </div>
 
+      {/* Center Navigation (New: Inventory, Marketplace) */}
+      <div className="hidden md:flex items-center gap-6">
+        <Link
+          to="/inventory"
+          className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
+          onClick={(e) => {
+            if (!handleRestrictedNav('/inventory', 'Inventory')) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <Package className="w-5 h-5" /> Inventory
+        </Link>
+        <Link
+          to="/marketplace"
+          className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
+          onClick={(e) => {
+            if (!handleRestrictedNav('/marketplace', 'Marketplace')) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <Store className="w-5 h-5" /> Marketplace
+        </Link>
+      </div>
+
+
       {/* Right side: User Status, Auth/Wallet Button, Payment Button, Theme Toggle */}
       <div className="flex items-center gap-2">
         {userId && (
           <div className="hidden md:flex items-center gap-2 text-foreground font-inter text-sm md:text-base">
             <User className="text-primary w-5 h-5" aria-hidden="true" />
-            <span className="truncate max-w-[100px]">{displayName}</span> {/* Truncate long names */}
+            <span className="truncate max-w-[100px]">{displayName}</span>
             <Sparkles className="text-primary w-5 h-5 animate-pulse" aria-hidden="true" />
             <span>{jewelsBalance.toFixed(0)} JEWELS</span>
             {isPETMember && <span className="text-xs text-yellow-400 ml-1">PET Member</span>}

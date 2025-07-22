@@ -1,13 +1,13 @@
 // src/pages/Marketplace.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { collection, query, where, onSnapshot, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore'; // Import DocumentData
+import { collection, query, where, onSnapshot, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles } from 'lucide-react';
 
-// Import PageProps and InventoryItem types
-import { PageProps, MarketItem } from '../lib/types'; // Import MarketItem
+// Import PageProps and MarketItem types
+import { PageProps, MarketItem } from '../lib/types';
 
 // Import new modular components for Marketplace page
 import MarketplaceGrid from '../components/marketplace/MarketplaceGrid';
@@ -39,9 +39,10 @@ const Marketplace: FC<PageProps> = ({
   authLoading,
   updatePlayerFirestore,
   jewelsBalance, // Needed for purchase logic
+  initialAuthCheckComplete, // Added initialAuthCheckComplete
 }) => {
-  const [listedItems, setListedItems] = useState<MarketItem[]>([]); // FIX: Use MarketItem[]
-  const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null); // FIX: Use MarketItem
+  const [listedItems, setListedItems] = useState<MarketItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
   const [showBuyItemModal, setShowBuyItemModal] = useState(false);
 
   useEffect(() => {
@@ -49,9 +50,9 @@ const Marketplace: FC<PageProps> = ({
     const q = query(collection(db, 'MarketItems'), where('isListedForSale', '==', true));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items: MarketItem[] = []; // FIX: Cast to MarketItem[]
-      snapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => { // FIX: Explicitly type docSnap
-        items.push(docSnap.data() as MarketItem); // FIX: Cast data to MarketItem
+      const items: MarketItem[] = [];
+      snapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => {
+        items.push(docSnap.data() as MarketItem);
       });
       setListedItems(items);
     }, (err) => {
@@ -63,6 +64,16 @@ const Marketplace: FC<PageProps> = ({
     return () => unsubscribe();
   }, [setShowMessage, setActiveModal]);
 
+  const handleBuyItem = (item: MarketItem) => {
+    // Only show auth modal if auth check is complete and no user
+    if (!userId && initialAuthCheckComplete) {
+      setShowMessage('⚠️ Please sign in to buy items!');
+      setActiveModal('auth');
+      return;
+    }
+    setSelectedItem(item);
+    setShowBuyItemModal(true);
+  };
 
   const handleCloseBuyItemModal = () => {
     setShowBuyItemModal(false);
@@ -70,10 +81,10 @@ const Marketplace: FC<PageProps> = ({
   };
 
   // This function would be passed to BuyItemModal and called on successful purchase
-  const onPurchaseSuccess = (purchasedItem: MarketItem) => { // FIX: Use MarketItem
+  const onPurchaseSuccess = (purchasedItem: MarketItem) => {
     setShowMessage(`✅ You bought ${purchasedItem.name}! (Requires backend verification)`);
     handleCloseBuyItemModal();
-    // Logic to update buyer's inventory and seller's balance would be handled in BuyItemModal and Firestore listeners
+    // Logic to update buyer's inventory and seller's balance would be handled by backend Cloud Functions
   };
 
   if (authLoading || isPending) {
@@ -125,11 +136,11 @@ const Marketplace: FC<PageProps> = ({
           <motion.div variants={sectionVariants}>
             <MarketplaceGrid
               items={listedItems}
+              onBuyItem={handleBuyItem}
               userId={userId}
               setShowMessage={setShowMessage}
-              setActiveModal={setActiveModal} onBuyItem={function (): void {
-                throw new Error('Function not implemented.');
-              } }            />
+              setActiveModal={setActiveModal}
+            />
           </motion.div>
         </motion.div>
       </motion.div>

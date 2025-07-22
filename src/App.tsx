@@ -49,7 +49,6 @@ const App: FC<AppProps> = (props) => {
 
   // Prepare props for different component types using the defined interfaces
   const pageProps: PageProps = { ...props };
-  // Removed gameProps as individual game routes are removed and it's not used directly here
 
   // PaymentModalProps for direct usage
   const paymentModalProps: PaymentModalProps = {

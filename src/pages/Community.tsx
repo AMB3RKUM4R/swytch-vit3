@@ -45,14 +45,14 @@ const Community: FC<PageProps> = ({
   setActiveModal,
   setShowMessage,
   setIsPETMember,
-  updatePlayerFirestore,
   jewelsBalance,
   isPending,
   authLoading,
+  initialAuthCheckComplete, // Added initialAuthCheckComplete
 }) => {
-  const [, setPlayerData] = useState<PlayerData | null>(null);
+  const [, setPlayerData] = useState<PlayerData | null>(null); // PlayerData state not directly used in render, but for fetching
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
-  const [, setIsModalLoading] = useState<boolean>(false); // Used for general loading states
+  const [, setIsModalLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (userId) {
@@ -62,41 +62,44 @@ const Community: FC<PageProps> = ({
           const data = docSnap.data() as PlayerData;
           setPlayerData(data);
           setIsPETMember(data.isPETMember || false);
-          // Merge initial quests with saved quests
           const mergedQuests = initialQuests.map((initialQuest) => {
             const savedQuest = data.quests?.find((q: Quest) => q.id === initialQuest.id);
             return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
           });
           setQuests(mergedQuests);
 
-          // Auto-complete "Visit Community Page" quest if not already completed
+          // Log visit quest completion, actual reward by backend
           if (!mergedQuests.find((q) => q.id === "community-visit")?.completed) {
-            const updatedQuests = mergedQuests.map((q) =>
-              q.id === "community-visit" ? { ...q, progress: 1, completed: true } : q
-            );
-            setQuests(updatedQuests);
-            updatePlayerFirestore({ quests: updatedQuests, jewels: (data.jewels || 0) + 5 });
-            setShowMessage('🎉 Quest Completed: Visit Community Page! +5 JEWELS');
+            setShowMessage('🎉 Quest "Visit Community Page" completed! Reward pending verification.');
+            // This would trigger a backend Cloud Function to update quests and jewels
+            // Example: call a Cloud Function via fetch or simple Firestore write to a 'quest_completion_requests' collection
           }
+
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
-          setActiveModal('auth');
+          // Only show auth modal if auth check is complete and no user
+          if (initialAuthCheckComplete) {
+            setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+            setActiveModal('auth');
+          }
         }
       }, (err) => {
         console.error('Failed to fetch user data for Community page:', err);
-        setShowMessage('⚠️ Failed to load community data.');
+        setShowMessage('⚠️ Failed to load community data. Please check your connection.');
         setActiveModal('error');
       });
       return () => unsubscribe();
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      setShowMessage('⚠️ Please sign in to join the community!');
-      setActiveModal('auth');
+      // Only show auth modal if auth check is complete and no user
+      if (initialAuthCheckComplete) {
+        setShowMessage('⚠️ Please sign in to join the community!');
+        setActiveModal('auth');
+      }
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
   const handleShareOnX = useCallback(async () => {
     if (!userId) {
@@ -109,25 +112,28 @@ const Community: FC<PageProps> = ({
     if (shareQuest && !shareQuest.completed) {
       const shareText = encodeURIComponent("Joined the vibrant Swytch PETverse community! 👥 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      const updatedQuests = quests.map((q) =>
-        q.id === "community-share" ? { ...q, progress: 1, completed: true } : q
-      );
-      setQuests(updatedQuests);
-      // Log transaction for sharing
-      const transactionId = `${userId}_share_community_${Date.now()}`;
+      // --- IMPORTANT: Quest completion logic now requires backend Cloud Function ---
+      // The client-side app should not directly update 'quests' or 'jewels'
+      // due to strict Firestore rules.
+      //
+      // const updatedQuests = quests.map((q) =>
+      //   q.id === "community-share" ? { ...q, progress: 1, completed: true } : q
+      // );
+      // setQuests(updatedQuests); // Optimistic local update for UI
+      //
       try {
         await addDoc(collection(db, 'Transactions'), {
-          transactionId,
+          transactionId: `${userId}_share_community_${Date.now()}`,
           userId,
           amount: shareQuest.rewardJEWELS,
           currency: 'JEWELS' as SupportedCurrency,
           transactionType: 'quest-reward' as TransactionType,
-          status: 'success' as TransactionStatus,
+          status: 'pending' as TransactionStatus, // Status is pending backend verification
           timestamp: serverTimestamp(),
           game: 'community',
+          itemId: shareQuest.id, // Reference the quest ID
         });
-        await updatePlayerFirestore({ quests: updatedQuests, jewels: jewelsBalance + shareQuest.rewardJEWELS });
-        setShowMessage(`🎉 Quest Completed: ${shareQuest.title}! +${shareQuest.rewardJEWELS} JEWELS`);
+        setShowMessage(`🎉 Shared Community on X! Reward pending verification.`);
       } catch (err) {
         console.error('Failed to log transaction:', err);
         setShowMessage('⚠️ Failed to share on X. Try again.');
@@ -135,7 +141,7 @@ const Community: FC<PageProps> = ({
       }
     }
     setIsModalLoading(false);
-  }, [userId, quests, jewelsBalance, setShowMessage, setActiveModal, updatePlayerFirestore]);
+  }, [userId, quests, setShowMessage, setActiveModal]);
 
 
   if (authLoading || isPending) {
