@@ -10,7 +10,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 // Import all main page components
 import Home from './pages/Home';
 import { Vault } from './pages/Vault';
-import Benefits from './pages/benefits';
+import Benefits from '../src/pages/benefits';
 import Market from './pages/Market';
 import Shop from './pages/Shop';
 import Community from './pages/Community';
