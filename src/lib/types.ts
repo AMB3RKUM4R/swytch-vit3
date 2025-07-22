@@ -194,7 +194,7 @@ export interface BottomNavProps {
   jewelsBalance: number;
   isPETMember: boolean;
   setShowMessage: Dispatch<SetStateAction<string>>;
-  globalMessage: string; // FIX: Added globalMessage to BottomNavProps
+  globalMessage: string;
 }
 
 export interface AuthModalProps {
@@ -233,8 +233,6 @@ export interface LoadingSpinnerProps {
 
 export interface MessageDisplayProps {
   message: string;
-  // No setShowMessage prop here, it's expected that the component
-  // that *sets* the message also handles its clearing via a timeout.
 }
 
 export interface SwytchErrorBoundaryProps {
@@ -316,7 +314,7 @@ export interface ListForSaleModalProps {
 // Marketplace Page Components
 export interface MarketplaceGridProps {
   items: MarketItem[];
-  onBuyItem: (item: MarketItem) => void; // FIX: onBuyItem now expects MarketItem
+  onBuyItem: (item: MarketItem) => void;
   userId: string | null;
   setShowMessage: (message: string) => void;
   setActiveModal: (modalName: string | null) => void;

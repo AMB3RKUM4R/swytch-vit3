@@ -71,7 +71,7 @@ const TopNav: FC<TopNavProps> = ({
         <span className="text-xl font-bold text-foreground font-poppins hidden sm:block">SWYTCH</span>
       </div>
 
-      {/* Primary Navigation Links (Icons + labels for larger screens) */}
+      {/* Primary Navigation Links (Icons + optional labels for larger screens) */}
       {/* Show on md and up, responsive for mobile (will be in BottomNav instead) */}
       <div className="hidden md:flex flex-grow justify-center items-center gap-2 sm:gap-4 overflow-x-auto px-2 md:px-0">
         {topNavPrimaryItems.map(({ path, label, icon }) => (

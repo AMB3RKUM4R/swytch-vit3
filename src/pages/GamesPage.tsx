@@ -2,14 +2,14 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore'; // Keep addDoc, collection, serverTimestamp for transaction logging
 import { db } from '../lib/firebaseConfig';
 import SwytchCard from '../components/SwytchCard';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles, MessageCircleHeart, Package, Store, PlayCircle } from 'lucide-react';
 
 // Import PageProps and Quest types
-import { PageProps, Quest, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
+import { PageProps, Quest, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types'; // Keep types for transaction logging
 
 // Import modular components for GamesPage
 import SwytchDailyQuests from '../components/games/SwytchDailyQuests';

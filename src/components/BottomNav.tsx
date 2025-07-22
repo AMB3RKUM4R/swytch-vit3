@@ -1,20 +1,24 @@
-// src/components/BottomNav.tsx
 import { FC, useState, useEffect } from 'react';
 import {
-  Home, Star, LogOut, User, Gamepad2,
-  Sparkles, // Keep Sparkles for MessageDisplay
-  LandPlot, Users // Added LandPlot for Vault, Users for Community
-} from 'lucide-react'; // Only core icons needed
+  Home, Star, LogOut, User, Gamepad2, 
+  
+  LandPlot,
+  Users
+} from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useTheme } from './context/ThemeContext';
-import { useModal } from './context/ModalContext';
+import { useTheme } from '@/components/context/ThemeContext';
+import { useModal } from '@/components/context/ModalContext';
 import { auth } from '@/lib/firebaseConfig';
-import { BottomNavProps } from '@/lib/types';
-import { motion, AnimatePresence } from 'framer-motion';
 
-// Define core navigation items for BottomNav (for mobile visibility)
-const bottomNavItems = [
+interface BottomNavProps {
+  userId: string | null;
+  jewelsBalance: number;
+  isPETMember: boolean;
+  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
+}
+
+const navItems = [
   { path: '/home', label: 'Home', icon: <Home className="w-7 h-7" /> },
   { path: '/membership', label: 'Membership', icon: <Star className="w-7 h-7" /> },
   { path: '/vault', label: 'Vault', icon: <LandPlot className="w-7 h-7" /> },
@@ -23,34 +27,28 @@ const bottomNavItems = [
 ];
 
 
-const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage, globalMessage }) => {
+
+const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage }) => {
+  const [, setIsGamesOpen] = useState(false);
   const { isDarkMode } = useTheme();
-  const { setActiveModal, setShowMessage: setGlobalMessageInContext } = useModal();
+  const { setActiveModal } = useModal();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [hoverMessage, setHoverMessage] = useState<string | null>(null);
-  const [messageTimeoutId, setMessageTimeoutId] = useState<NodeJS.Timeout | null>(null);
-
   useEffect(() => {
-    // Clear any lingering hover message when route changes
-    if (messageTimeoutId) {
-      clearTimeout(messageTimeoutId);
-      setMessageTimeoutId(null);
-    }
-    setHoverMessage(null);
-  }, [location.pathname, messageTimeoutId]);
+    setIsGamesOpen(false); // close game menu on route change
+  }, [location.pathname]);
 
   const handleSignOut = async () => {
     if (!auth.currentUser) {
-      setShowMessage('⚠️ Not signed in!');
+      setShowMessage('⚠️ Sign in first!');
       setActiveModal('auth');
       return;
     }
     try {
       await signOut(auth);
       setShowMessage('✅ Signed out successfully!');
-      navigate('/');
+      navigate('/auth');
     } catch (err) {
       console.error('Sign-out error:', err);
       setShowMessage('⚠️ Failed to sign out.');
@@ -59,81 +57,25 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage, globalMessage }
   };
 
   const handleRestrictedNav = (path: string, label: string) => {
-    const restrictedPaths = [
-      '/home', '/vault', '/benefits', '/market', '/shop', '/community',
-      '/membership', '/games', '/inventory', '/marketplace', '/admin'
-    ];
-    if (!userId && restrictedPaths.includes(path)) {
-      setShowMessage(`⚠️ Please sign in to access ${label}.`);
+    if (!auth.currentUser && (path === '/vault' || path === '/membership')) {
+      setShowMessage(`⚠️ Sign in to access ${label}`);
       setActiveModal('auth');
       return false;
     }
-    setShowMessage(`➡️ Navigating to ${label}!`);
     return true;
   };
-
-  const handleNavItemHover = (label: string) => {
-    if (messageTimeoutId) {
-      clearTimeout(messageTimeoutId);
-    }
-    setHoverMessage(`Go to ${label}`);
-  };
-
-  const handleNavItemLeave = () => {
-    const timeout = setTimeout(() => {
-      setHoverMessage(null);
-    }, 500);
-    setMessageTimeoutId(timeout);
-  };
-
-  // Effect to automatically clear the global message from main.tsx after a delay
-  useEffect(() => {
-    if (globalMessage) {
-      const timer = setTimeout(() => {
-        setGlobalMessageInContext('');
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [globalMessage, setGlobalMessageInContext]);
-
 
   return (
     <nav
       className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-xl backdrop-blur-md border border-border
         shadow-xl transition-all duration-300 ease-out max-w-lg w-[90vw]
-        flex justify-around items-center gap-4 md:hidden ${isDarkMode ? 'glass-dark' : 'glass-light'}`} // Hide on md and up
+        flex justify-between items-center gap-4 ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
     >
-      {/* Message Display integrated directly into BottomNav */}
-      <AnimatePresence>
-        {(globalMessage || hoverMessage) && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: -50 }} // Position above the nav bar
-            exit={{ opacity: 0, y: 10 }}
-            className={`absolute left-1/2 transform -translate-x-1/2 p-2 rounded-lg shadow-lg text-sm font-inter text-center whitespace-nowrap
-                        ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'} border border-primary`}
-            style={{ bottom: 'calc(100% + 10px)' }} // Position above the nav
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />
-              <p className="text-white font-bold font-poppins">{globalMessage || hoverMessage}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-
-      {bottomNavItems.map(({ path, label, icon }) => (
+      {navItems.map(({ path, label, icon }) => (
         <Link
           to={path}
           key={path}
-          onClick={(e) => {
-            if (!handleRestrictedNav(path, label)) {
-              e.preventDefault();
-            }
-          }}
-          onMouseEnter={() => handleNavItemHover(label)}
-          onMouseLeave={handleNavItemLeave}
+          onClick={() => handleRestrictedNav(path, label)}
           className="flex flex-col items-center text-sm group"
         >
           <div className="transition-transform duration-150 group-hover:scale-125 group-hover:-translate-y-1">
@@ -143,14 +85,12 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage, globalMessage }
         </Link>
       ))}
 
+
       {/* Auth/SignIn or SignOut */}
       {userId ? (
         <button
           onClick={handleSignOut}
-          onMouseEnter={() => handleNavItemHover('Sign Out')}
-          onMouseLeave={handleNavItemLeave}
           className="flex flex-col items-center group"
-          aria-label="Sign Out"
         >
           <div className="transition-transform duration-150 group-hover:scale-125 group-hover:-translate-y-1">
             <LogOut className="w-7 h-7 text-destructive" />
@@ -160,13 +100,7 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage, globalMessage }
       ) : (
         <Link
           to="/auth"
-          onClick={(e) => {
-            e.preventDefault();
-            setActiveModal('auth');
-            setShowMessage('👋 Welcome! Please sign in to continue.');
-          }}
-          onMouseEnter={() => handleNavItemHover('Sign In')}
-          onMouseLeave={handleNavItemLeave}
+          onClick={() => setActiveModal('auth')}
           className="flex flex-col items-center group"
         >
           <div className="transition-transform duration-150 group-hover:scale-125 group-hover:-translate-y-1">
