@@ -10,7 +10,6 @@ import LoadingSpinner from './components/LoadingSpinner';
 // Import all main page components
 import Home from './pages/Home';
 import { Vault } from './pages/Vault';
-import Benefits from '../src/pages/benefits';
 import Market from './pages/Market';
 import Shop from './pages/Shop';
 import Community from './pages/Community';
@@ -25,6 +24,7 @@ import AdminPage from './pages/AdminPage'; // Import the new AdminPage
 
 // Import all required interfaces from lib/types.ts
 import { AppProps, PageProps, PaymentModalProps } from './lib/types';
+import Benefits from './pages/benefits';
 
 
 const App: FC<AppProps> = (props) => {
