@@ -1,10 +1,10 @@
 // src/components/community/CommunityRankings.tsx
 import { FC, useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Trophy, Gem, BarChart } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 import { LeaderboardEntry } from '@/lib/types';
-import { collection, query, orderBy, limit, onSnapshot, DocumentData } from 'firebase/firestore'; // Import DocumentData
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore'; // Import DocumentData
 import { db } from '@/lib/firebaseConfig';
 
 interface CommunityRankingsProps {

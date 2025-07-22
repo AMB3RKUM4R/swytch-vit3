@@ -7,7 +7,7 @@ import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { Sparkles } from 'lucide-react';
 
 // Import PageProps and InventoryItem types
-import { PageProps, InventoryItem, SupportedCurrency, TransactionType, TransactionStatus, MarketItem } from '../lib/types'; // Import MarketItem
+import { PageProps, MarketItem } from '../lib/types'; // Import MarketItem
 
 // Import new modular components for Marketplace page
 import MarketplaceGrid from '../components/marketplace/MarketplaceGrid';
@@ -63,10 +63,6 @@ const Marketplace: FC<PageProps> = ({
     return () => unsubscribe();
   }, [setShowMessage, setActiveModal]);
 
-  const handleBuyItem = (item: MarketItem) => { // FIX: Use MarketItem
-    setSelectedItem(item);
-    setShowBuyItemModal(true);
-  };
 
   const handleCloseBuyItemModal = () => {
     setShowBuyItemModal(false);
@@ -131,7 +127,7 @@ const Marketplace: FC<PageProps> = ({
               items={listedItems}
               userId={userId}
               setShowMessage={setShowMessage}
-              setActiveModal={setActiveModal} onBuyItem={function (item: InventoryItem): void {
+              setActiveModal={setActiveModal} onBuyItem={function (): void {
                 throw new Error('Function not implemented.');
               } }            />
           </motion.div>

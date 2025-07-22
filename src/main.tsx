@@ -125,8 +125,6 @@ const AppContent: React.FC = () => {
             setIsPETMember(data.isPETMember || false);
             setCurrentLevel(data.level || 0);
 
-            const now = Date.now();
-            const oneDay = 24 * 60 * 60 * 1000;
             // --- IMPORTANT: Daily bonus logic now requires backend Cloud Function ---
             // The client-side app should not directly update 'jewels' or 'lastBonusTime'
             // due to strict Firestore rules. A Cloud Function triggered on a schedule
