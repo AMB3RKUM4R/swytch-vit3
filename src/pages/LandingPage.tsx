@@ -93,7 +93,7 @@ const LandingPage: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura border border-[hsl(var(--primary),0.2)]" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Hero+Rising"
+                  src="./bg (4).jpg"
                   alt="Hero Rising in PETverse"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -137,7 +137,7 @@ const LandingPage: FC<PageProps> = ({
                   icon: <Gem className="w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse" />,
                   title: 'Epic NFT Arsenal',
                   description: 'Craft and trade unique NFT weapons and artifacts on a secure blockchain, forging gear worthy of a legendary hunter.',
-                  image: 'https://via.placeholder.com/300x200?text=NFT+Weapon',
+                  image: './icon_1.gif',
                   tooltip: 'Forge rare NFTs to dominate the PETverse’s dungeons.',
                 },
                 {
