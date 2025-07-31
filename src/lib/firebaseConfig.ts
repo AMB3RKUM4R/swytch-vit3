@@ -1,90 +1,103 @@
 // src/lib/firebaseConfig.ts
 import { initializeApp, getApps, getApp, FirebaseApp, FirebaseOptions } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, Auth } from 'firebase/auth';
+import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, Auth, User } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
-// Removed: import { getStorage, FirebaseStorage } from 'firebase/storage'; // Firebase Storage removed
 
-// Declare global variables provided by the Canvas environment (optional for local dev)
+// Declare global variables provided by the Canvas environment for robust type checking.
 declare global {
   var __app_id: string | undefined;
   var __firebase_config: string | undefined;
   var __initial_auth_token: string | undefined;
 }
 
-// Define a default Firebase configuration using Vite environment variables
-// This will be used if __firebase_config is NOT provided by the Canvas environment.
+// Default Firebase configuration for local development (using Vite environment variables).
+// This is used as a fallback if the Canvas environment config is not available.
 const defaultFirebaseConfig: FirebaseOptions = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'YOUR_DEFAULT_VITE_API_KEY', // Replace with a real default if needed
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'YOUR_DEFAULT_VITE_AUTH_DOMAIN',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'YOUR_DEFAULT_VITE_PROJECT_ID',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'YOUR_DEFAULT_VITE_STORAGE_BUCKET', // Still needs to be defined in config but won't be used
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || 'YOUR_DEFAULT_VITE_MESSAGING_SENDER_ID',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || 'YOUR_DEFAULT_VITE_APP_ID',
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || 'YOUR_DEFAULT_VITE_DATABASE_URL',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
 };
 
-// Determine the Firebase configuration to use
+// --- Firebase Initialization ---
+
 let firebaseConfig: FirebaseOptions;
 
-// Check if __firebase_config is provided by the Canvas environment
+// Use the configuration provided by the Canvas environment if available.
 if (typeof __firebase_config !== 'undefined' && __firebase_config) {
   try {
     firebaseConfig = JSON.parse(__firebase_config);
     console.log("Using Firebase config from Canvas environment.");
   } catch (e) {
-    console.error("Error parsing __firebase_config from Canvas, falling back to default:", e);
+    console.error("Error parsing __firebase_config, falling back to default:", e);
     firebaseConfig = defaultFirebaseConfig;
   }
 } else {
-  console.log("Canvas __firebase_config not found, using default Vite environment variables.");
+  console.log("Using default Vite environment variables for Firebase config.");
   firebaseConfig = defaultFirebaseConfig;
 }
 
-// Initialize Firebase only once per unique app ID
-// The __app_id is provided by the Canvas environment to ensure unique app instances.
+// Initialize the Firebase app, ensuring only one instance is created per app ID.
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
 const app: FirebaseApp = !getApps().some(existingApp => existingApp.name === appId)
   ? initializeApp(firebaseConfig, appId)
   : getApp(appId);
 
-export const auth: Auth = getAuth(app);
+// Export singleton instances of Firestore and Auth services.
 export const db: Firestore = getFirestore(app);
-// Removed: export const storage: FirebaseStorage = getStorage(app); // Firebase Storage removed
+export const auth: Auth = getAuth(app);
+
+
+// --- Authentication Logic ---
 
 /**
- * Initializes Firebase authentication and sets up a persistent auth state listener.
- * This function should be called in a top-level component (e.g., App.tsx) or auth hook.
- * It ensures a user is signed in (anonymously or via custom token) and provides a cleanup function.
+ * Performs the initial sign-in for the user.
+ * It first attempts to sign in with a custom token if provided by the Canvas environment.
+ * If the token is absent or fails, it falls back to signing in anonymously.
+ * This function should be called once when the application loads.
  *
- * @returns {() => void} A cleanup function to unsubscribe from the auth state listener.
+ * @returns {Promise<User | null>} A promise that resolves with the signed-in user object or null on failure.
  */
-export const initializeFirebaseAuthAndListen = (): (() => void) => {
-  const unsubscribe = onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      console.log("Firebase auth state changed: User is signed in.", user.uid);
-    } else if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-      try {
-        await signInWithCustomToken(auth, __initial_auth_token);
-        console.log("Signed in with custom token from Canvas.");
-      } catch (error) {
-        console.error("Firebase custom token sign-in error, falling back to anonymous:", error);
-        try {
-          await signInAnonymously(auth);
-          console.log("Signed in anonymously after custom token failure.");
-        } catch (anonError) {
-          console.error("Firebase anonymous sign-in error:", anonError);
-        }
-      }
-    } else {
-      try {
-        await signInAnonymously(auth);
-        console.log("Signed in anonymously.");
-      } catch (error) {
-        console.error("Firebase anonymous sign-in error:", error);
-      }
-    }
-  });
+export const performInitialSignIn = async (): Promise<User | null> => {
+  // If a user is already signed in, return the current user.
+  if (auth.currentUser) {
+    console.log("User already signed in:", auth.currentUser.uid);
+    return auth.currentUser;
+  }
 
-  return unsubscribe;
+  // Attempt to sign in with a custom token if available.
+  if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+    try {
+      const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+      console.log("Successfully signed in with custom token.");
+      return userCredential.user;
+    } catch (error) {
+      console.error("Custom token sign-in failed, falling back to anonymous:", error);
+    }
+  }
+
+  // Fallback to anonymous sign-in.
+  try {
+    const userCredential = await signInAnonymously(auth);
+    console.log("Successfully signed in anonymously.");
+    return userCredential.user;
+  } catch (error) {
+    console.error("Anonymous sign-in failed:", error);
+    return null;
+  }
+};
+
+/**
+ * Sets up a listener for Firebase authentication state changes.
+ * This function wraps onAuthStateChanged to provide a clear way to react
+ * to user sign-in/sign-out events throughout the application.
+ *
+ * @param {(user: User | null) => void} callback - The function to call when the auth state changes.
+ * @returns {() => void} An unsubscribe function to clean up the listener.
+ */
+export const listenForAuthChanges = (callback: (user: User | null) => void): (() => void) => {
+  return onAuthStateChanged(auth, callback);
 };

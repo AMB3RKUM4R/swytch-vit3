@@ -1,49 +1,88 @@
 // src/components/ErrorBoundaryComponent.tsx
-import { Component } from 'react';
-import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react'; // Import Sparkles for the loading state
+import { useState, useEffect, ReactNode, FC } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, X } from 'lucide-react';
 
-// IMPORTANT: Import SwytchErrorBoundaryProps and SwytchErrorBoundaryState from lib/types.ts
-import { SwytchErrorBoundaryProps, SwytchErrorBoundaryState } from '../lib/types';
+interface SwytchErrorBoundaryProps {
+  children: ReactNode;
+  setShowMessage: (message: string) => void;
+  setActiveModal: (modalName: string | null) => void;
+}
 
+const errorModalVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: 'easeOut' } },
+  exit: { opacity: 0, scale: 0.8, transition: { duration: 0.3 } },
+};
 
-// Use ImportedSwytchErrorBoundaryProps for the component props
-class SwytchErrorBoundary extends Component<SwytchErrorBoundaryProps, SwytchErrorBoundaryState> {
-  state: SwytchErrorBoundaryState = { // Use ImportedSwytchErrorBoundaryState
-    hasError: false,
-  };
+const SwytchErrorBoundary: FC<SwytchErrorBoundaryProps> = ({ children, setShowMessage, setActiveModal }) => {
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  static getDerivedStateFromError(): SwytchErrorBoundaryState { // Use ImportedSwytchErrorBoundaryState for return type
-    return { hasError: true };
-  }
+  // A component that simulates the componentDidCatch behavior in a functional component
+  const ErrorCatchComponent = () => {
+    useEffect(() => {
+      const errorHandler = (error: ErrorEvent) => {
+        setHasError(true);
+        setErrorMessage(error.message || 'An unexpected error occurred.');
+        console.error('Error caught by Error Boundary:', error.error);
+        setShowMessage('⚠️ System protocol breached. Initiating recovery...');
+      };
+      window.addEventListener('error', errorHandler);
+      return () => window.removeEventListener('error', errorHandler);
+    }, []);
 
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error('Error caught:', error.message, info.componentStack);
-    // Use props to set global message and active modal
-    this.props.setShowMessage('⚠️ An unexpected error occurred. Please try again.');
-    this.props.setActiveModal('error'); // You might have a generic 'error' modal or just rely on the message
-  }
-
-  render() {
-    if (this.state.hasError) {
+    if (hasError) {
       return (
-        <motion.div
-          className="min-h-screen flex items-center justify-center text-white bg-gray-950 font-inter"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="text-center">
-            <h2 className="text-2xl font-bold font-poppins text-rose-400 mb-4">Something went wrong!</h2>
-            <p className="text-gray-300">Please refresh the page or try again later.</p>
-            <Sparkles className="w-10 h-10 text-rose-400 animate-pulse mx-auto mt-4" />
-          </div>
-        </motion.div>
+        <AnimatePresence>
+          <motion.div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="relative holographic-card p-8 rounded-lg max-w-sm w-full mx-4"
+              variants={errorModalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <motion.button
+                className="absolute top-4 right-4 text-foreground"
+                onClick={() => window.location.reload()}
+                whileHover={{ scale: 1.1 }}
+                aria-label="Close Modal"
+              >
+                <X className="w-6 h-6 text-[hsl(var(--secondary-hsl))] animate-neon-pulse" />
+              </motion.button>
+
+              <h2 className="text-3xl font-russo text-primary mb-4 text-center text-glow-primary">
+                System Breach!
+              </h2>
+              <p className="text-sm text-muted-foreground text-center mb-4">
+                An unexpected system anomaly was detected.
+                <br />
+                {errorMessage}
+              </p>
+              <motion.button
+                className="btn-primary w-full mt-4"
+                onClick={() => window.location.reload()}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Re-Initialize Protocol
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>
       );
     }
 
-    return this.props.children;
-  }
-}
+    return children;
+  };
+
+  return <ErrorCatchComponent />;
+};
 
 export default SwytchErrorBoundary;

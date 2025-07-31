@@ -1,17 +1,37 @@
 // src/components/AuthModal.tsx
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, SetStateAction } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, User, Wallet } from 'lucide-react'; // Only Lucide icons that are directly exported
+import { X, Mail, User, Wallet, Phone, Sparkles, Globe, GitBranchPlusIcon } from 'lucide-react';
 import { useAuthUser } from '../hooks/useAuthUser';
 import { useModal } from './context/ModalContext';
 import { useTheme } from './context/ThemeContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Link } from 'react-router-dom';
-import PhoneLogin from '../hooks/PhoneLogin'; // Assuming PhoneLogin is in hooks/
+import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
+import Tilt from 'react-parallax-tilt';
+import StarfieldBackground from './StarfieldBackground';
 
 interface AuthModalProps {
-  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
+  setShowMessage: (message: string) => void;
 }
+
+// Animation variants for modal and orbiting buttons
+const modalVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+};
+
+const orbitVariants = {
+  animate: (index: number) => ({
+    rotate: [0, 360],
+    transition: { duration: 10, repeat: Infinity, ease: 'linear', delay: index * 0.2 }
+  }),
+};
+
+const buttonVariants = {
+  hover: { scale: 1.1, transition: { duration: 0.2 } },
+  tap: { scale: 0.95 },
+};
 
 const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
   const { isDarkMode } = useTheme();
@@ -28,38 +48,32 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [showPhoneLogin, setShowPhoneLogin] = useState(false);
-  const [showSocialOrWallet, setShowSocialOrWallet] = useState(false);
+  const [view, setView] = useState<'main' | 'phone' | 'more'>('main');
 
-  // Reset state when modal closes
   useEffect(() => {
     if (activeModal === null) {
       setEmail('');
       setPassword('');
-      setName('');
       setIsSignUp(false);
-      setShowPhoneLogin(false);
-      setShowSocialOrWallet(false);
+      setView('main');
     }
   }, [activeModal]);
 
   const handleAuthSuccess = (message: string) => {
     setShowMessage(message);
-    setModalActive(null); // Close modal on success
+    setModalActive(null);
   };
 
   const handleAuthError = (error: any, defaultMessage: string) => {
     console.error('Authentication error:', error);
-    // Display a user-friendly message, falling back to default
     setShowMessage(error.message || defaultMessage);
   };
 
   const handleEmailAuth = async () => {
     try {
       if (isSignUp) {
-        await signUpWithEmail(email, password, name);
+        await signUpWithEmail(email, password);
         handleAuthSuccess('🎉 Signed up successfully!');
       } else {
         await signInWithEmail(email, password);
@@ -81,110 +95,91 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
 
   const handleCloseModal = () => {
     setModalActive(null);
-    // Reset all internal states
     setEmail('');
     setPassword('');
-    setName('');
     setIsSignUp(false);
-    setShowPhoneLogin(false);
-    setShowSocialOrWallet(false);
+    setView('main');
   };
 
-  // Common input styling for consistency
-  const inputClassName = `bg-${isDarkMode ? 'gray-700' : 'gray-300'} p-3 rounded-md border border-rose-400/20 w-full text-${isDarkMode ? 'gray-200' : 'gray-700'} placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter`;
-  const buttonBaseClassName = `py-2 px-4 rounded-lg font-semibold font-poppins w-full flex items-center justify-center gap-2`;
+  const inputClassName = `input-system bg-input/50 text-foreground p-3 rounded-md border border-[hsl(var(--primary-hsl),0.2)] w-full font-inter`;
+  const socialOptions = [
+    { name: 'Google Nexus', fn: signInWithGoogle, icon: <Sparkles className="w-6 h-6" />, image: 'https://via.placeholder.com/50x50?text=Google', tooltip: 'Access via Google Nexus' },
+    { name: 'Meta-Network', fn: signInWithFacebook, icon: <Globe className="w-6 h-6" />, image: 'https://via.placeholder.com/50x50?text=Facebook', tooltip: 'Connect through Meta-Network' },
+    { name: 'Cyber-Bird', fn: signInWithTwitter, icon: <X className="w-6 h-6" />, image: 'https://via.placeholder.com/50x50?text=Twitter', tooltip: 'Link via Cyber-Bird' },
+    { name: 'Git-Archive', fn: signInWithGithub, icon: <GitBranchPlusIcon className="w-6 h-6" />, image: 'https://via.placeholder.com/50x50?text=GitHub', tooltip: 'Authenticate with Git-Archive' },
+    { name: 'Micro-Matrix', fn: signInWithMicrosoft, icon: <Sparkles className="w-6 h-6" />, image: 'https://via.placeholder.com/50x50?text=Microsoft', tooltip: 'Access via Micro-Matrix' },
+  ];
 
   return (
     <AnimatePresence>
       {activeModal === 'auth' && (
         <motion.div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md bg-noise`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md bg-noise"
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          variants={modalVariants}
         >
+          <StarfieldBackground />
           <motion.div
-            className={`relative modal ${isDarkMode ? 'glass-dark' : 'glass-light'} p-6 rounded-lg max-w-sm w-full mx-4 border border-rose-400/20`}
-            initial={{ scale: 0.8, y: 50 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.8, y: 50 }}
+            className="relative holographic-card p-8 rounded-lg max-w-md w-full mx-4"
+            style={{ backgroundImage: 'url(https://via.placeholder.com/500x500?text=Cosmic+Auth)' }}
           >
             <motion.button
-              className={`absolute top-4 right-4 text-foreground`}
+              className="absolute top-4 right-4 text-foreground"
               onClick={handleCloseModal}
               whileHover={{ scale: 1.1 }}
               aria-label="Close Modal"
             >
-              <X className="w-6 h-6" />
+              <X className="w-6 h-6 text-[hsl(var(--secondary-hsl))] animate-neon-pulse" />
             </motion.button>
+            <h2 className="text-3xl font-russo text-primary mb-6 text-center text-glow-primary">
+              {isSignUp ? 'Initiate Profile' : 'Access Protocol'}
+            </h2>
 
-            {showPhoneLogin ? (
-              // Phone Login View
-              <>
-                <h2 className={`text-2xl font-bold font-poppins text-primary mb-4`}>Phone Login</h2>
-                <PhoneLogin setShowMessage={setShowMessage} />
-                <div className="text-center mt-4">
-                  <motion.button
-                    className={`text-foreground hover:text-secondary font-inter text-sm`}
-                    onClick={() => setModalActive('auth')} // Go back to main auth modal
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    Back to Main Options
-                  </motion.button>
+            {view === 'main' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-[hsl(var(--primary-hsl))]" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Operative ID (Email)"
+                    className={inputClassName}
+                    autoComplete="email"
+                  />
                 </div>
-              </>
-            ) : showSocialOrWallet ? (
-              // Social/Wallet Connect View
-              <>
-                <h2 className={`text-2xl font-bold font-poppins text-primary mb-4`}>Connect via Social / Wallet</h2>
-                <div className="space-y-4">
-                  {/* Social Login Buttons */}
-                  <motion.button
-                    className={`btn-secondary ${buttonBaseClassName}`}
-                    onClick={() => handleSocialSignIn(signInWithGoogle, 'Google')}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Sign in with Google
-                  </motion.button>
-                  <motion.button
-                    className={`btn-secondary ${buttonBaseClassName}`}
-                    onClick={() => handleSocialSignIn(signInWithFacebook, 'Facebook')}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Sign in with Facebook
-                  </motion.button>
-                  <motion.button
-                    className={`btn-secondary ${buttonBaseClassName}`}
-                    onClick={() => handleSocialSignIn(signInWithTwitter, 'Twitter')}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Sign in with Twitter
-                  </motion.button>
-                  <motion.button
-                    className={`btn-secondary ${buttonBaseClassName}`}
-                    onClick={() => handleSocialSignIn(signInWithGithub, 'GitHub')}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Sign in with GitHub
-                  </motion.button>
-                   <motion.button
-                    className={`btn-secondary ${buttonBaseClassName}`}
-                    onClick={() => handleSocialSignIn(signInWithMicrosoft, 'Microsoft')}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Sign in with Microsoft
-                  </motion.button>
-
-                  {/* RainbowKit Connect Button for Crypto Wallet */}
+                <div className="flex items-center gap-2">
+                  <User className="w-5 h-5 text-[hsl(var(--primary-hsl))]" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Access Key (Password)"
+                    className={inputClassName}
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  />
+                </div>
+                <motion.button
+                  className="btn-primary w-full"
+                  onClick={handleEmailAuth}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {isSignUp ? 'Initiate' : 'Access'}
+                </motion.button>
+                <div className="flex flex-col gap-2 pt-4 border-t border-border/50">
+                  <h3 className="text-sm text-muted-foreground text-center">Or connect with:</h3>
+                  <SocialButton
+                    onClick={() => handleSocialSignIn(signInWithGoogle, 'Google Nexus')}
+                    icon={<Sparkles className="w-5 h-5" />}
+                    label="Google Nexus"
+                  />
                   <ConnectButton.Custom>
                     {({ openConnectModal }) => (
                       <motion.button
-                        className={`btn-primary ${buttonBaseClassName}`}
+                        className="btn-secondary w-full"
                         onClick={() => {
                           openConnectModal();
                           handleAuthSuccess('ℹ️ Connecting crypto wallet...');
@@ -192,113 +187,113 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        <Wallet className="w-5 h-5" /> Connect Crypto Wallet
+                        <Wallet className="w-5 h-5" /> Connect Neural Link
                       </motion.button>
                     )}
                   </ConnectButton.Custom>
-
-                  <div className="text-center mt-4">
-                    <motion.button
-                      className={`text-foreground hover:text-secondary font-inter text-sm`}
-                      onClick={() => setShowSocialOrWallet(false)}
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      Back to Email Login
-                    </motion.button>
-                  </div>
                 </div>
-              </>
-            ) : (
-              // Email/Password Login/Sign Up View
-              <>
-                <h2 className={`text-2xl font-bold font-poppins text-primary mb-4`}>{isSignUp ? 'Sign Up' : 'Sign In'}</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-5 h-5 text-primary" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter email"
-                      className={inputClassName}
-                      aria-label="Email address"
-                      autoComplete="email"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <User className="w-5 h-5 text-primary" />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter password"
-                      className={inputClassName}
-                      aria-label="Password"
-                      autoComplete={isSignUp ? "new-password" : "current-password"}
-                    />
-                  </div>
-                  {isSignUp && (
-                    <div className="flex items-center gap-2">
-                      <User className="w-5 h-5 text-primary" />
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter name"
-                        className={inputClassName}
-                        aria-label="Full name"
-                        autoComplete="name"
-                      />
-                    </div>
-                  )}
+                <div className="flex justify-between mt-4">
                   <motion.button
-                    className={`btn-primary ${buttonBaseClassName}`}
-                    onClick={handleEmailAuth}
+                    className="text-foreground hover:text-secondary font-inter text-sm"
+                    onClick={() => setIsSignUp(!isSignUp)}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    {isSignUp ? 'Existing Operative?' : 'New Operative?'}
+                  </motion.button>
+                  <motion.button
+                    className="text-foreground hover:text-secondary font-inter text-sm"
+                    onClick={() => setView('more')}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    More Options
+                  </motion.button>
+                </div>
+              </div>
+            )}
+
+            {view === 'more' && (
+              <div className="relative flex flex-col items-center">
+                <h3 className="text-xl font-russo text-primary text-center mb-4 text-glow-primary">Orbital Access Network</h3>
+                <div className="space-y-4">
+                  <SocialButton
+                    onClick={() => handleSocialSignIn(signInWithGoogle, 'Google Nexus')}
+                    icon={<Sparkles className="w-5 h-5" />}
+                    label="Google Nexus"
+                  />
+                  <SocialButton
+                    onClick={() => handleSocialSignIn(signInWithFacebook, 'Meta-Network')}
+                    icon={<Globe className="w-5 h-5" />}
+                    label="Meta-Network"
+                  />
+                  <motion.button
+                    className="btn-secondary w-full flex items-center justify-center gap-2"
+                    onClick={() => setView('phone')}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    {isSignUp ? 'Sign Up' : 'Sign In'}
+                    <Phone className="w-5 h-5" /> Secure Comms (Phone)
                   </motion.button>
-                  <div className="flex justify-between flex-wrap gap-2 mt-4">
-                    <motion.button
-                      className={`text-foreground hover:text-secondary font-inter text-sm flex-grow`}
-                      onClick={() => setIsSignUp(!isSignUp)}
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      {isSignUp ? 'Switch to Sign In' : 'Switch to Sign Up'}
-                    </motion.button>
-                    <motion.button
-                      className={`text-foreground hover:text-secondary font-inter text-sm flex-grow`}
-                      onClick={() => setModalActive('phone-auth')} // Changed to set activeModal to 'phone-auth'
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      Sign in with Phone
-                    </motion.button>
-                    <motion.button
-                      className={`text-foreground hover:text-secondary font-inter text-sm flex-grow`}
-                      onClick={() => setShowSocialOrWallet(true)}
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      More Sign In Options
-                    </motion.button>
-                  </div>
-                  <div className="text-center mt-4">
-                    <Link
-                      to="/dspet-privacy"
-                      className={`text-muted-foreground hover:text-secondary font-inter text-sm`}
-                      onClick={handleCloseModal}
-                    >
-                      Privacy Policy
-                    </Link>
-                  </div>
                 </div>
-              </>
+                <motion.button
+                  className="text-muted-foreground hover:text-secondary font-inter text-sm mt-6"
+                  onClick={() => setView('main')}
+                  whileHover={{ scale: 1.05 }}
+                >
+                  Back to Email Access
+                </motion.button>
+              </div>
             )}
+
+            {view === 'phone' && (
+              <div className="relative flex flex-col items-center">
+                <h3 className="text-xl font-russo text-primary text-center mb-4 text-glow-primary">Secure Comms Access</h3>
+                <p className="text-sm text-muted-foreground mb-4 text-center">
+                  For secure access via phone, please enter your number and we will send a verification code.
+                </p>
+                <motion.button
+                  className="text-muted-foreground hover:text-secondary font-inter text-sm mt-4"
+                  onClick={() => setView('more')}
+                  whileHover={{ scale: 1.05 }}
+                >
+                  Back to More Options
+                </motion.button>
+              </div>
+            )}
+
+            <div className="text-center mt-6">
+              <Link
+                to="/dspet-privacy"
+                className="text-muted-foreground hover:text-secondary font-inter text-sm"
+                onClick={handleCloseModal}
+              >
+                Privacy Protocol
+              </Link>
+            </div>
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
   );
 };
+
+// SocialButton component for social login options
+interface SocialButtonProps {
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}
+
+const SocialButton: FC<SocialButtonProps> = ({ onClick, icon, label }) => (
+  <motion.button
+    className="btn-secondary w-full flex items-center justify-center gap-2"
+    onClick={onClick}
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    type="button"
+  >
+    {icon}
+    {label}
+  </motion.button>
+);
 
 export default AuthModal;

@@ -96,7 +96,6 @@ export interface Transaction {
   transactionType: TransactionType;
   status: TransactionStatus;
   timestamp: any; // Firestore Timestamp
-  screenshot?: string | null; // FIX: Made optional as storage is removed
   itemId?: string | null; // Can be membership_basic, ecosystem, etc., or an item ID
   game?: string | null; // Which game/section the transaction originated from
   adminId?: string | null;
@@ -145,7 +144,6 @@ export interface MarketItem extends InventoryItem {
 // ==========================================================
 // App & Page Props
 // ==========================================================
-
 export interface AppProps {
   userId: string | null;
   activeModal: string | null;
@@ -160,6 +158,8 @@ export interface AppProps {
   authLoading: boolean;
   mousePosition: { x: number; y: number };
   initialAuthCheckComplete: boolean;
+  isPETMember: boolean; // <-- ADD THIS LINE
+  logTransaction: (txData: Omit<Transaction, 'transactionId' | 'timestamp'>) => Promise<void>; // <-- AND ADD THIS LINE
 }
 
 export interface PageProps extends AppProps {}
@@ -610,4 +610,17 @@ export interface Reward {
   jewels: number;
   xp: number;
   message: string;
+}
+export interface Transaction {
+  transactionId: string;
+  userId: string;
+  amount: number;
+  currency: SupportedCurrency;
+  transactionType: TransactionType;
+  status: TransactionStatus;
+  timestamp: any;
+  receivedAmount?: number;
+}
+interface PhoneLoginProps {
+  setShowMessage: (message: string) => void;
 }

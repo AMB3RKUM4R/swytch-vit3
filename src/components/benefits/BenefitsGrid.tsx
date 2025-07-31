@@ -3,7 +3,7 @@ import { FC } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Gem, Shield, Zap, DollarSign, ArrowRight, Award, Star } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { Benefit } from '@/lib/types'; // FIX: Import Benefit type
+import { Benefit } from '@/lib/types';
 
 interface BenefitsGridProps {
   expandedBenefit: string | null;
@@ -79,7 +79,7 @@ const BenefitsGrid: FC<BenefitsGridProps> = ({
           >
             <div className="flex items-center gap-4 mb-4">
               {/* Ensure benefit.icon is a React component */}
-              {typeof benefit.icon === 'function' ? <benefit.icon className="w-8 h-8 text-primary flex-shrink-0" /> : benefit.icon}
+              {benefit.icon && <benefit.icon className="w-8 h-8 text-primary flex-shrink-0" />}
               <h3 className="text-xl font-bold text-white font-poppins">{benefit.title}</h3>
             </div>
             <p className="text-sm text-gray-300 flex-grow">{benefit.description}</p>

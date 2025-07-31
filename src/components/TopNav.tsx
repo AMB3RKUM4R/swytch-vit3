@@ -1,23 +1,23 @@
-// src/components/TopNav.tsx
-import { FC } from 'react';
+import { FC, useState, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Sparkles, User, Package, Store, Car, ShoppingBag, ShieldCheck, Gamepad2, Info, Settings } from 'lucide-react'; // Import all necessary icons
+import { Wallet, Sparkles, User, Package, Store, Car, ShoppingBag, ShieldCheck, Gamepad2, Info, Settings, Star, BarChart, HandCoins, Users } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { useTheme } from '../components/context/ThemeContext';
 import { TopNavProps } from '../lib/types';
 import { useAuthUser } from '@/hooks/useAuthUser';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import Tilt from 'react-parallax-tilt';
+import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 
-// Define primary navigation items for TopNav (these were previously in "More" or are new direct links)
-const topNavPrimaryItems = [
-  { path: '/market', label: 'Market', icon: <Car className="w-5 h-5" /> },
-  { path: '/shop', label: 'Shop', icon: <ShoppingBag className="w-5 h-5" /> },
-  { path: '/benefits', label: 'Benefits', icon: <ShieldCheck className="w-5 h-5" /> },
-  { path: '/games', label: 'Games', icon: <Gamepad2 className="w-5 h-5" /> },
-  { path: '/inventory', label: 'Inventory', icon: <Package className="w-5 h-5" /> },
-  { path: '/marketplace', label: 'Marketplace', icon: <Store className="w-5 h-5" /> },
-  { path: '/dspet-disclosure', label: 'Disclosure', icon: <Info className="w-5 h-5" /> },
-  { path: '/admin', label: 'Admin', icon: <Settings className="w-5 h-5" /> }, // Admin page link
+// Define a single, flat array of top navigation items
+const navItems = [
+  { path: '/home', label: 'Home', icon: <Sparkles className="w-6 h-6" /> },
+  { path: '/games', label: 'Games', icon: <Gamepad2 className="w-6 h-6" /> },
+  { path: '/market', label: 'Market', icon: <BarChart className="w-6 h-6" /> },
+  { path: '/vault', label: 'Vault', icon: <HandCoins className="w-6 h-6" /> },
+  { path: '/community', label: 'Community', icon: <Users className="w-6 h-6" /> },
+  { path: '/membership', label: 'Membership', icon: <Star className="w-6 h-6" /> },
+  { path: '/admin', label: 'Admin', icon: <Settings className="w-6 h-6" /> },
 ];
 
 const TopNav: FC<TopNavProps> = ({
@@ -31,6 +31,7 @@ const TopNav: FC<TopNavProps> = ({
   const { isConnected, address } = useAccount();
   const { isDarkMode, toggleTheme } = useTheme();
   const { user } = useAuthUser();
+  const navigate = useNavigate();
 
   const handleAuthWalletClick = () => {
     setActiveAuthModal('auth');
@@ -44,7 +45,7 @@ const TopNav: FC<TopNavProps> = ({
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || (userId ? `${userId.slice(0, 4)}...${userId.slice(-4)}` : 'Guest');
 
-  const handleRestrictedNav = (path: string, label: string) => {
+  const handleRestrictedNav = useCallback((path: string, label: string) => {
     const restrictedPaths = [
       '/home', '/vault', '/benefits', '/market', '/shop', '/community',
       '/membership', '/games', '/inventory', '/marketplace', '/admin'
@@ -56,82 +57,104 @@ const TopNav: FC<TopNavProps> = ({
     }
     setShowMessage(`➡️ Navigating to ${label}!`);
     return true;
-  };
+  }, [userId, setShowMessage, setActiveAuthModal]);
 
   return (
     <motion.nav
-      className={`fixed top-0 left-0 w-full z-50 py-2 px-2 md:px-4 flex items-center justify-between nav-main ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
+      className={`fixed top-0 left-0 w-full z-50 py-2 px-2 md:px-4 flex items-center justify-between bg-noise holographic-card animated-aura ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5 }}
+      style={{ background: 'linear-gradient(145deg, rgba(0,0,0,0.8), rgba(50,50,100,0.5))' }}
     >
       {/* Logo / Brand Name */}
       <div className="flex items-center gap-2">
-        <Sparkles className="text-primary w-6 h-6 animate-pulse" aria-hidden="true" />
-        <span className="text-xl font-bold text-foreground font-poppins hidden sm:block">SWYTCH</span>
+        <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
+          <Sparkles className="text-[hsl(var(--primary))] w-6 h-6 animate-neon-pulse" aria-hidden="true" />
+        </Tilt>
+        <span className="text-xl font-bold text-foreground font-russo text-glow-primary hidden sm:block">SWYTCH</span>
       </div>
 
-      {/* Primary Navigation Links (Icons + optional labels for larger screens) */}
-      {/* Show on md and up, responsive for mobile (will be in BottomNav instead) */}
-      <div className="hidden md:flex flex-grow justify-center items-center gap-2 sm:gap-4 overflow-x-auto px-2 md:px-0">
-        {topNavPrimaryItems.map(({ path, label, icon }) => (
+      {/* Primary Navigation Links */}
+      <div className="hidden md:flex flex-grow justify-center items-center gap-4 overflow-x-auto px-2 md:px-0">
+        {navItems.map(({ path, label, icon }) => (
           <Link
-            to={path}
             key={path}
+            to={path}
             onClick={(e) => {
-              if (!handleRestrictedNav(path, label)) {
-                e.preventDefault();
-              }
+              if (!handleRestrictedNav(path, label)) e.preventDefault();
             }}
-            className="flex flex-col items-center text-sm group p-1 rounded-md hover:bg-gray-700/30 transition-colors flex-shrink-0"
-            aria-label={label}
+            className="flex items-center gap-2 text-sm group p-1 rounded-md hover:bg-[hsla(var(--primary-hsl),0.2)] transition-colors"
           >
-            <div className="transition-transform duration-150 group-hover:scale-110">
+            <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
               {icon}
-            </div>
-            <span className="text-xs mt-1 font-inter text-muted">{label}</span> {/* Label always visible on md+ */}
+            </Tilt>
+            <span className="text-foreground font-inter text-glow-primary">{label}</span>
           </Link>
         ))}
       </div>
 
-
-      {/* Right side: User Status, Auth/Wallet Button, Payment Button, Theme Toggle */}
+      {/* Right Side: User Status, Auth/Wallet Button, Payment Button, Theme Toggle */}
       <div className="flex items-center gap-2 flex-shrink-0">
         {userId && (
           <div className="hidden md:flex items-center gap-2 text-foreground font-inter text-sm md:text-base">
-            <User className="text-primary w-5 h-5" aria-hidden="true" />
-            <span className="truncate max-w-[100px]">{displayName}</span>
-            <Sparkles className="text-primary w-5 h-5 animate-pulse" aria-hidden="true" />
-            <span>{jewelsBalance.toFixed(0)} JEWELS</span>
-            {isPETMember && <span className="text-xs text-yellow-400 ml-1">PET Member</span>}
+            <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
+              <User className="text-[hsl(var(--primary))] w-6 h-6 animate-neon-pulse" aria-hidden="true" />
+            </Tilt>
+            <span className="truncate max-w-[100px] text-glow-primary">{displayName}</span>
+            <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
+              <Sparkles className="text-[hsl(var(--primary))] w-6 h-6 animate-neon-pulse" aria-hidden="true" />
+            </Tilt>
+            <span className="text-glow-primary">{jewelsBalance.toFixed(0)} JEWELS</span>
+            {isPETMember && <span className="text-xs text-yellow-400 ml-1 text-glow-primary">PET Member</span>}
           </div>
         )}
 
         {/* Auth/Wallet Button */}
-        <motion.button
-          className="btn-secondary flex items-center gap-2 p-2 rounded-md"
-          onClick={handleAuthWalletClick}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          aria-label={isConnected ? 'Wallet Connected' : 'Sign In / Connect Wallet'}
-        >
-          <Wallet className="w-5 h-5" />
-          <span className="hidden md:block">{isConnected && address ? `${address.slice(0, 4)}...${address.slice(-4)}` : 'Sign In / Connect'}</span>
-        </motion.button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <motion.button
+              className="btn-secondary flex items-center gap-2 p-2 rounded-md"
+              onClick={handleAuthWalletClick}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label={isConnected ? 'Wallet Connected' : 'Sign In / Connect Wallet'}
+            >
+              <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
+                <Wallet className="w-6 h-6 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />
+              </Tilt>
+              <span className="hidden md:block text-glow-primary">{isConnected && address ? `${address.slice(0, 4)}...${address.slice(-4)}` : 'Sign In / Connect'}</span>
+            </motion.button>
+          </DialogTrigger>
+          <DialogContent className="tooltip max-w-md p-6">
+            <p className="text-sm text-muted-foreground">Sign in or connect your wallet to access the PETverse.</p>
+          </DialogContent>
+        </Dialog>
 
         {/* Payment Button */}
-        <motion.button
-          className="btn-primary flex items-center gap-2 p-2 rounded-md"
-          onClick={handlePaymentClick}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          aria-label="Make a Payment"
-        >
-          <Sparkles className="w-5 h-5" /> <span className="hidden md:block">Pay</span>
-        </motion.button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <motion.button
+              className="btn-primary flex items-center gap-2 p-2 rounded-md"
+              onClick={handlePaymentClick}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label="Make a Payment"
+            >
+              <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
+                <Sparkles className="w-6 h-6 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />
+              </Tilt>
+              <span className="hidden md:block text-glow-primary">Pay</span>
+            </motion.button>
+          </DialogTrigger>
+          <DialogContent className="tooltip max-w-md p-6">
+            <p className="text-sm text-muted-foreground">Access payment options to fund your cosmic adventures.</p>
+          </DialogContent>
+        </Dialog>
 
+        {/* Theme Toggle */}
         <motion.button
-          className="theme-toggle-btn p-2 rounded-md"
+          className="theme-toggle-btn p-2 rounded-md bg-[hsla(var(--primary-hsl),0.2)]"
           onClick={toggleTheme}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
@@ -145,3 +168,4 @@ const TopNav: FC<TopNavProps> = ({
 };
 
 export default TopNav;
+

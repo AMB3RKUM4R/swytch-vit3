@@ -1,16 +1,13 @@
-// src/pages/Market.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
+import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
+import Tilt from 'react-parallax-tilt';
+import { Sparkles, MessageCircleHeart, Package, Store, Info, TrendingUp, PlayCircle, Users } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { Sparkles, MessageCircleHeart, Package, Store } from 'lucide-react';
-
-// Import PageProps and PlayerData types
-import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
-
-// Import modular components for Market page
+import StarfieldBackground from '../components/StarfieldBackground';
 import TrustMarketHero from '../components/market/TrustMarketHero';
 import RecentPurchases from '../components/market/RecentPurchases';
 import TrustProgression from '../components/market/TrustProgression';
@@ -19,33 +16,29 @@ import WalletSwapForms from '../components/market/WalletSwapForms';
 import SmartContractTransactions from '../components/market/SmartContractTransactions';
 import TrustMarketCTA from '../components/market/TrustMarketCTA';
 import SwytchCard from '../components/SwytchCard';
+import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
 
-
+// Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.2 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.4 } },
 };
 
 const sectionVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 60 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.9, ease: 'easeOut' } },
 };
 
-const flareVariants = {
-  animate: { scale: [1, 1.3, 1], opacity: [0.5, 0.7, 0.5], transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' } },
+const imageVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.9, ease: 'easeOut' } },
 };
 
-const particleVariants = {
-  animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
-};
-
-// Consolidated game features list for quick access
 const gameFeatures = [
-  { id: 'inventory', title: 'Your Inventory', path: '/inventory', description: 'Manage your in-game items.', icon: <Package className="w-5 h-5" /> },
-  { id: 'marketplace', title: 'Item Marketplace', path: '/marketplace', description: 'Buy and sell items with crypto.', icon: <Store className="w-5 h-5" /> },
-  { id: 'unity-games', title: 'Play Unity Games', path: '/games', description: 'Launch your Unity games here.', icon: <Sparkles className="w-5 h-5" /> },
+  { id: 'inventory', title: 'Your Inventory', path: '/inventory', description: 'Manage your in-game items.', icon: <Package className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" /> },
+  { id: 'marketplace', title: 'Item Marketplace', path: '/marketplace', description: 'Buy and sell items with crypto.', icon: <Store className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" /> },
+  { id: 'unity-games', title: 'Play Unity Games', path: '/games', description: 'Launch your Unity games here.', icon: <Sparkles className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" /> },
 ];
-
 
 const Market: FC<PageProps> = ({
   userId,
@@ -55,11 +48,11 @@ const Market: FC<PageProps> = ({
   updatePlayerFirestore,
   isPending,
   authLoading,
-  initialAuthCheckComplete, // Added initialAuthCheckComplete
+  initialAuthCheckComplete,
 }) => {
-  const [, setPlayerData] = useState<PlayerData | null>(null);
+  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [visibleGameFeatures, setVisibleGameFeatures] = useState(gameFeatures.slice(0, 3));
-  const [, setIsModalLoading] = useState<boolean>(false);
+  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [hasMore, setHasMore] = useState<boolean>(true);
 
   useEffect(() => {
@@ -73,7 +66,6 @@ const Market: FC<PageProps> = ({
         } else {
           setPlayerData(null);
           setIsPETMember(false);
-          // Only show auth modal if auth check is complete and no user
           if (initialAuthCheckComplete) {
             setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
             setActiveModal('auth');
@@ -88,7 +80,6 @@ const Market: FC<PageProps> = ({
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      // Only show auth modal if auth check is complete and no user
       if (initialAuthCheckComplete) {
         setShowMessage('⚠️ Please sign in to explore the market!');
         setActiveModal('auth');
@@ -106,21 +97,16 @@ const Market: FC<PageProps> = ({
     try {
       const shareText = encodeURIComponent("Trading NFTs in the Swytch PETverse Market! 🛒 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      // --- IMPORTANT: Removed client-side update to jewels for quest reward. ---
-      // This update MUST be handled by a trusted backend (e.g., Firebase Cloud Function)
-      // after the share is verified.
-      // The client-side app will only log the transaction.
       await addDoc(collection(db, 'Transactions'), {
         transactionId: `${userId}_share_market_${Date.now()}`,
         userId,
-        amount: 5, // Example reward
+        amount: 5,
         currency: 'JEWELS' as SupportedCurrency,
         transactionType: 'quest-reward' as TransactionType,
-        status: 'pending' as TransactionStatus, // Status is pending backend verification
+        status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'market',
       });
-      // await updatePlayerFirestore({ jewels: jewelsBalance + 5 }); // Removed client-side update
       setShowMessage('🎉 Shared Market on X! Reward pending verification.');
     } catch (err) {
       console.error('Failed to share on X:', err);
@@ -130,7 +116,6 @@ const Market: FC<PageProps> = ({
       setIsModalLoading(false);
     }
   }, [userId, setShowMessage, setActiveModal]);
-
 
   const loadMoreGameFeatures = useCallback(() => {
     if (visibleGameFeatures.length >= gameFeatures.length) {
@@ -159,176 +144,339 @@ const Market: FC<PageProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, [hasMore, loadMoreGameFeatures]);
 
-
   if (authLoading || isPending) {
-    return null; // LoadingSpinner is handled by App.tsx
+    return null;
   }
 
   return (
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
-        className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
+        className="min-h-screen text-foreground font-orbitron bg-noise"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <motion.div
-          className="fixed inset-0 pointer-events-none z-10"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.div
-            className="absolute w-96 h-96 bg-gradient-to-br from-rose-400/50 via-cyan-500/40 to-rose-400/30 rounded-full opacity-30 blur-3xl"
-            variants={flareVariants}
-            animate="animate"
-            style={{ top: "33%", left: "33%" }}
-          />
-          <motion.div
-            className="absolute w-64 h-64 bg-gradient-to-br from-cyan-400/40 via-rose-500/30 to-cyan-400/20 rounded-full opacity-20 blur-2xl"
-            variants={flareVariants}
-            animate="animate"
-            style={{ top: "50%", right: "25%" }}
-          />
-          {[...Array(10)].map((_, i) => (
-            <motion.div
-              key={`particle-${i}`}
-              className="absolute w-1.5 h-1.5 bg-cyan-400 rounded-full opacity-30"
-              style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%` }}
-              variants={particleVariants}
-              animate="animate"
-            />
-          ))}
-        </motion.div>
+        <StarfieldBackground />
+        <motion.div className="relative z-20 max-w-7xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
+          {/* Hero Section */}
+          <motion.section variants={sectionVariants} className="text-center mb-16">
+            <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
+              <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
+                <img
+                  src="https://via.placeholder.com/1000x500?text=Cosmic+Market"
+                  alt="PETverse Market"
+                  className="w-full h-80 object-cover rounded-lg"
+                />
+              </motion.div>
+            </Tilt>
+            <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-6 text-glow-primary">
+              <Store className="inline-block w-12 h-12 text-[hsl(var(--secondary))] animate-neon-pulse mr-4" />
+              Cosmic Market
+            </h1>
+            <p className="text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto font-inter mb-8">
+              Trade, swap, and earn in the PETverse’s decentralized market. Secure your cosmic riches among the stars.
+            </p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <motion.button
+                  className="btn-system-glow text-lg font-semibold group"
+                  onClick={() => setShowMessage('🛒 Explore the cosmic market!')}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-label="Trade Now"
+                >
+                  Trade Now <TrendingUp className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
+                </motion.button>
+              </DialogTrigger>
+              <DialogContent className="tooltip max-w-md p-6">
+                <p className="text-sm text-muted-foreground">Dive into the PETverse market to trade NFTs and swap currencies!</p>
+              </DialogContent>
+            </Dialog>
+          </motion.section>
 
-        <motion.div className="relative z-10 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          <h1 className="text-4xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mb-8">
-            <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" /> PETverse Market
-          </h1>
+          {/* Market Highlights */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-secondary">
+              <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
+              Trending Items
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                {
+                  name: 'Nebula Dagger',
+                  image: 'https://via.placeholder.com/300x200?text=Nebula+Dagger',
+                  description: 'A swift NFT weapon for stealth attacks.',
+                  tooltip: 'This dagger enhances agility in PETverse battles.',
+                },
+                {
+                  name: 'Starlight Armor',
+                  image: 'https://via.placeholder.com/300x200?text=Starlight+Armor',
+                  description: 'Radiant armor for cosmic defense.',
+                  tooltip: 'Boosts defense stats across all games.',
+                },
+                {
+                  name: 'Astral Token',
+                  image: 'https://via.placeholder.com/300x200?text=Astral+Token',
+                  description: 'A rare token with trading value.',
+                  tooltip: 'Use this token to unlock premium market features.',
+                },
+              ].map((item, index) => (
+                <motion.div key={index} variants={sectionVariants}>
+                  <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
+                    <div className="holographic-card p-8 text-center animated-aura">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <div className="relative group">
+                            <img src={item.image} alt={item.name} className="w-full h-48 object-cover rounded-lg mb-6" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                              <Info className="w-8 h-8 text-[hsl(var(--secondary))] animate-neon-pulse" />
+                            </div>
+                          </div>
+                        </DialogTrigger>
+                        <DialogContent className="tooltip max-w-md p-6">
+                          <h3 className="text-lg font-bold text-foreground font-russo mb-2">{item.name}</h3>
+                          <p className="text-sm text-muted-foreground">{item.tooltip}</p>
+                        </DialogContent>
+                      </Dialog>
+                      <h3 className="text-2xl font-semibold text-foreground font-russo mt-4">{item.name}</h3>
+                      <p className="text-sm text-muted-foreground mt-2">{item.description}</p>
+                      <motion.button
+                        className="btn-accent mt-4 text-sm"
+                        onClick={() => setShowMessage(`🛒 Viewing ${item.name} (requires backend purchase logic)`)}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        View Item
+                      </motion.button>
+                    </div>
+                  </Tilt>
+                </motion.div>
+              ))}
+            </div>
+          </motion.section>
 
           {/* Trust Market Hero */}
-          <motion.div variants={sectionVariants} className="mb-8">
-            <TrustMarketHero
-              setActiveModal={setActiveModal} userId={null} goldBalance={0} energyBalance={0} mousePosition={{
-                x: 0,
-                y: 0
-              }} setShowMessage={function (): void {
-                throw new Error('Function not implemented.');
-              } }            />
-          </motion.div>
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
+              <Store className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
+              Market Hero
+            </h2>
+            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
+              <TrustMarketHero
+                setActiveModal={setActiveModal}
+                userId={userId}
+                goldBalance={playerData?.gold || 0}
+                energyBalance={playerData?.energy || 0}
+                mousePosition={{ x: 0, y: 0 }}
+                setShowMessage={setShowMessage}
+              />
+            </Tilt>
+          </motion.section>
 
           {/* Recent Purchases */}
-          <motion.div variants={sectionVariants} className="mb-8">
-            <RecentPurchases recentPurchases={[]} />
-          </motion.div>
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-primary">
+              <TrendingUp className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
+              Recent Purchases
+            </h2>
+            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
+              <RecentPurchases recentPurchases={[]} />
+            </Tilt>
+          </motion.section>
 
           {/* Trust Progression */}
-          <motion.div variants={sectionVariants} className="mb-8">
-            <TrustProgression />
-          </motion.div>
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
+              <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
+              Trust Progression
+            </h2>
+            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
+              <TrustProgression />
+            </Tilt>
+          </motion.section>
 
           {/* Trust Reward Tiers */}
-          <motion.div variants={sectionVariants} className="mb-8">
-            <TrustRewardTiers />
-          </motion.div>
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-secondary">
+              <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
+              Reward Tiers
+            </h2>
+            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
+              <TrustRewardTiers />
+            </Tilt>
+          </motion.section>
 
-          {/* Wallet Swap Forms (if distinct from Vault's CryptoSwapModule) */}
-          <motion.div variants={sectionVariants} className="mb-8">
-            <WalletSwapForms
+          {/* Wallet Swap Forms */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-primary">
+              <Store className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
+              Wallet Swaps
+            </h2>
+            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
+              <WalletSwapForms
                 userId={userId}
                 setShowMessage={setShowMessage}
                 updatePlayerFirestore={updatePlayerFirestore}
-            />
-          </motion.div>
+              />
+            </Tilt>
+          </motion.section>
 
           {/* Smart Contract Transactions */}
-          <motion.div variants={sectionVariants} className="mb-8">
-            <SmartContractTransactions />
-          </motion.div>
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
+              <TrendingUp className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
+              Smart Contract Transactions
+            </h2>
+            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
+              <SmartContractTransactions />
+            </Tilt>
+          </motion.section>
 
-          {/* Explore Game Features Section */}
-          <motion.div variants={sectionVariants}>
-            <h2 className="text-3xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mt-8">
+          {/* Market Activity Showcase */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-secondary">
+              <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
+              Market Activity
+            </h2>
+            <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
+              <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
+                <img
+                  src="https://via.placeholder.com/1000x500?text=Market+Activity"
+                  alt="Market Activity"
+                  className="w-full h-80 object-cover rounded-lg"
+                />
+              </motion.div>
+            </Tilt>
+            <p className="text-center text-muted-foreground max-w-2xl mx-auto mt-6 font-inter">
+              Track the pulse of the PETverse market with real-time transaction updates.
+            </p>
+          </motion.section>
+
+          {/* Game Features */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
+              <PlayCircle className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
               Explore Game Features
             </h2>
-            <p className="text-lg text-gray-300 max-w-2xl mx-auto mt-4 font-inter text-center">
-              Access your inventory or dive into the marketplace!
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 font-inter text-center">
+              Access your inventory, trade in the marketplace, or launch epic Unity games.
             </p>
-          </motion.div>
-          <motion.div variants={sectionVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-            <AnimatePresence>
-              {visibleGameFeatures.map((item) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 30 }}
-                  transition={{ duration: 0.4 }}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              <AnimatePresence>
+                {visibleGameFeatures.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 30 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
+                      <SwytchCard gradient="from-[hsl(var(--primary),0.2)] to-[hsl(var(--secondary),0.2)]" className="p-8 holographic-card">
+                        <motion.div className="text-center" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                          {item.icon && <div className="mx-auto mb-4">{item.icon}</div>}
+                          <h3 className="text-2xl font-bold text-foreground font-russo">{item.title}</h3>
+                          <p className="text-muted-foreground font-inter mt-2">{item.description}</p>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Link
+                                to={item.path}
+                                className="btn-accent inline-block px-4 py-2 text-sm mt-4"
+                                onClick={() => {
+                                  if (!userId) {
+                                    setShowMessage('⚠️ Sign in to access this feature!');
+                                    setActiveModal('auth');
+                                  } else {
+                                    setShowMessage(`🎮 Navigating to ${item.title}!`);
+                                  }
+                                }}
+                                role="button"
+                                aria-label={`Go to ${item.title}`}
+                              >
+                                Go to {item.title}
+                              </Link>
+                            </DialogTrigger>
+                            <DialogContent className="tooltip max-w-md p-6">
+                              <p className="text-sm text-muted-foreground">Navigate to {item.title.toLowerCase()} to manage assets or play games!</p>
+                            </DialogContent>
+                          </Dialog>
+                        </motion.div>
+                      </SwytchCard>
+                    </Tilt>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+            {hasMore && (
+              <motion.div className="text-center mt-8" variants={sectionVariants}>
+                <motion.button
+                  className="btn-system-glow text-lg font-semibold group"
+                  onClick={loadMoreGameFeatures}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-label="Load More Game Features"
                 >
-                  <SwytchCard gradient="from-rose-500/20 to-cyan-500/20" className="p-6">
-                    <motion.div className="text-center" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      {item.icon && <div className="mx-auto mb-2">{item.icon}</div>}
-                      <h3 className="text-xl font-bold text-white font-poppins">{item.title}</h3>
-                      <p className="text-gray-300 font-inter mt-2">{item.description}</p>
-                      <Link
-                        to={item.path}
-                        className={`inline-block bg-rose-600 text-white px-4 py-2 rounded-full font-poppins hover:bg-cyan-500 mt-4`}
-                        onClick={() => {
-                          if (!userId) {
-                            setShowMessage('⚠️ Sign in to access this feature!');
-                            setActiveModal('auth');
-                          } else {
-                            setShowMessage(`🎮 Navigating to ${item.title}!`);
-                          }
-                        }}
-                        role="button"
-                        aria-label={`Go to ${item.title}`}
-                      >
-                        Go to {item.title}
-                      </Link>
-                    </motion.div>
-                  </SwytchCard>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-          {hasMore && (
-            <motion.div
-              className="text-center py-8"
-              variants={sectionVariants}
-            >
-              <motion.button
-                className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins"
-                onClick={loadMoreGameFeatures}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                aria-label="Load More Game Features"
-              >
-                Load More
-              </motion.button>
-            </motion.div>
-          )}
+                  Load More <PlayCircle className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
+                </motion.button>
+              </motion.div>
+            )}
+          </motion.section>
 
           {/* Trust Market CTA */}
-          <motion.div variants={sectionVariants} className="mb-8">
-            <TrustMarketCTA
-              setActiveModal={setActiveModal}
-              setShowMessage={setShowMessage}
-            />
-          </motion.div>
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-primary">
+              <Users className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
+              Community Trading Hub
+            </h2>
+            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
+              <TrustMarketCTA setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
+            </Tilt>
+            <p className="text-center text-muted-foreground max-w-2xl mx-auto mt-6 font-inter">
+              Join the PETverse trading community to share strategies and dominate the market.
+            </p>
+          </motion.section>
 
-          {/* Share on X Button */}
-          <motion.div variants={sectionVariants} className="text-center py-8">
-            <motion.button
-              className="inline-flex items-center px-6 py-3 bg-rose-600 text-white hover:bg-cyan-500 rounded-full font-semibold font-poppins mr-4"
-              onClick={handleShareOnX}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Share Market on X"
-            >
-              <MessageCircleHeart className="w-5 h-5 mr-2" /> Share Market on X
-            </motion.button>
-          </motion.div>
+          {/* Footer Actions */}
+          <motion.section variants={sectionVariants} className="text-center py-8 border-t border-border/50">
+            <h2 className="text-4xl font-bold text-foreground font-russo mb-6 text-glow-accent">
+              <MessageCircleHeart className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
+              Spread the Word
+            </h2>
+            <div className="flex flex-wrap justify-center gap-6">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <motion.button
+                    className="btn-primary inline-flex items-center px-8 py-4 text-lg font-semibold group"
+                    onClick={handleShareOnX}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    aria-label="Share Market on X"
+                  >
+                    <MessageCircleHeart className="w-6 h-6 mr-2" /> Share Market on X
+                  </motion.button>
+                </DialogTrigger>
+                <DialogContent className="tooltip max-w-md p-6">
+                  <p className="text-sm text-muted-foreground">Share your market adventures on X and earn rewards!</p>
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Link
+                    to="/home"
+                    className="btn-primary inline-flex items-center px-8 py-4 text-lg font-semibold group"
+                    onClick={() => setShowMessage('🏠 Navigating to Home!')}
+                    role="button"
+                    aria-label="Navigate to Home Page"
+                  >
+                    <Link className="w-6 h-6 mr-2" to={''} /> Back to Home
+                  </Link>
+                </DialogTrigger>
+                <DialogContent className="tooltip max-w-md p-6">
+                  <p className="text-sm text-muted-foreground">Return to the PETverse home to continue your adventure!</p>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </motion.section>
         </motion.div>
       </motion.div>
     </SwytchErrorBoundary>

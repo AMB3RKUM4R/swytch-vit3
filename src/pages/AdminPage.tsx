@@ -1,33 +1,38 @@
-// src/pages/AdminPage.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Key, Banknote, CreditCard, Wallet, Link } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
+import Tilt from 'react-parallax-tilt';
+import { Settings, Banknote, Wallet, CreditCard, Key, Info, Database, Link } from 'lucide-react';
 import SwytchCard from '../components/SwytchCard';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { PageProps } from '../lib/types';
+import StarfieldBackground from '../components/StarfieldBackground';
 import { db } from '@/lib/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
+import { PageProps } from '../lib/types';
 
-// Define a simple interface for the AdminConfig data stored in Firestore
+// Define AdminConfig interface
 interface AdminConfig {
   upiId: string;
   metamaskWalletAddress: string;
   paypalMerchantId: string;
   paypalClientId: string;
-  // Note: clientSecret should NEVER be stored or handled client-side.
-  // It's included here only for UI representation of what an admin might configure.
-  // In a real app, it would be managed securely on the backend.
-  paypalClientSecret: string;
+  paypalClientSecret: string; // For UI demo only; not stored client-side in production
 }
 
+// Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.2 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.4 } },
 };
 
 const sectionVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 60 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.9, ease: 'easeOut' } },
+};
+
+const imageVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.9, ease: 'easeOut' } },
 };
 
 const AdminPage: FC<PageProps> = ({
@@ -37,19 +42,17 @@ const AdminPage: FC<PageProps> = ({
   isPending,
   authLoading,
 }) => {
-  const adminUID = '0CfobCbXnPZsJwT662H4OhDrXk33'; // Your designated admin UID
+  const adminUID = '0CfobCbXnPZsJwT662H4OhDrXk33';
   const isAdmin = userId === adminUID;
-
   const [upiId, setUpiId] = useState('');
   const [metamaskWalletAddress, setMetamaskWalletAddress] = useState('');
   const [paypalMerchantId, setPaypalMerchantId] = useState('');
   const [paypalClientId, setPaypalClientId] = useState('');
-  const [paypalClientSecret, setPaypalClientSecret] = useState(''); // Sensitive: for UI representation only
+  const [paypalClientSecret, setPaypalClientSecret] = useState('');
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch current configurations from Firestore on component mount
   useEffect(() => {
     const fetchConfig = async () => {
       if (!isAdmin) {
@@ -58,7 +61,6 @@ const AdminPage: FC<PageProps> = ({
       }
       setLoadingConfig(true);
       try {
-        // Assuming configurations are stored in a single document in a collection
         const configRef = doc(db, 'AdminConfig', 'globalConfig');
         const configSnap = await getDoc(configRef);
         if (configSnap.exists()) {
@@ -67,8 +69,6 @@ const AdminPage: FC<PageProps> = ({
           setMetamaskWalletAddress(configData.metamaskWalletAddress || '');
           setPaypalMerchantId(configData.paypalMerchantId || '');
           setPaypalClientId(configData.paypalClientId || '');
-          // clientSecret should NOT be fetched client-side in a real app.
-          // This is just for demonstration of the UI field.
           setPaypalClientSecret(configData.paypalClientSecret || '');
         } else {
           setShowMessage('ℹ️ Admin configuration document not found. Using defaults.');
@@ -81,7 +81,6 @@ const AdminPage: FC<PageProps> = ({
         setLoadingConfig(false);
       }
     };
-
     fetchConfig();
   }, [isAdmin, setShowMessage]);
 
@@ -90,36 +89,22 @@ const AdminPage: FC<PageProps> = ({
       setShowMessage('⚠️ Access Denied: You are not authorized to update configurations.');
       return;
     }
-
     setUpdateLoading(true);
     setError(null);
-
     const newConfig: AdminConfig = {
       upiId,
       metamaskWalletAddress,
       paypalMerchantId,
       paypalClientId,
-      paypalClientSecret, // Again, for UI demo; in production, this is handled securely.
+      paypalClientSecret,
     };
-
     try {
-      // --- IMPORTANT: This update MUST be handled by a Firebase Cloud Function ---
-      // Direct client-side writes to sensitive config documents will be denied by rules.
-      // A Cloud Function would receive this data securely and then update Firestore.
-      //
-      // For MVP, we will simulate the update and log a message.
-      // In a real app, you'd call a Callable Cloud Function here:
-      // await firebase.functions().httpsCallable('updateAdminConfig')(newConfig);
-
       setShowMessage('✅ Configuration update request submitted! (Requires backend processing)');
       console.log('Admin config update requested:', newConfig);
-
-      // Simulate a successful update for UI feedback
       setTimeout(() => {
         setShowMessage('✅ Configuration update simulated successfully!');
         setUpdateLoading(false);
       }, 1500);
-
     } catch (err) {
       console.error('Admin config update failed:', err);
       setError('Failed to update configuration. Check console for details.');
@@ -129,24 +114,43 @@ const AdminPage: FC<PageProps> = ({
   };
 
   if (authLoading || isPending || loadingConfig) {
-    return null; // LoadingSpinner is handled by App.tsx
+    return null;
   }
 
   if (!isAdmin) {
     return (
       <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
         <motion.div
-          className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
+          className="min-h-screen text-foreground font-orbitron bg-noise"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
-          <motion.div variants={sectionVariants} className="text-center">
-            <h1 className="text-4xl font-bold text-rose-400 mb-4">Access Denied</h1>
-            <p className="text-lg text-gray-300">You do not have administrative privileges to view this page.</p>
-            <Link to="/home" className="btn-primary mt-6 inline-block" onClick={() => setShowMessage('🏠 Redirecting to Home.')}>
-              Go to Home
-            </Link>
+          <StarfieldBackground />
+          <motion.div className="relative z-20 flex items-center justify-center min-h-screen">
+            <motion.div variants={sectionVariants} className="text-center">
+              <h1 className="text-5xl font-extrabold text-foreground font-russo mb-6 text-glow-primary">
+                <Settings className="inline-block w-12 h-12 text-[hsl(var(--secondary))] animate-neon-pulse mr-4" />
+                Access Denied
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 font-inter">
+                You do not have the cosmic clearance to access the Admin Command Center.
+              </p>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Link
+                    to="/home"
+                    className="btn-system-glow text-lg font-semibold group"
+                    onClick={() => setShowMessage('🏠 Redirecting to Home.')}
+                  >
+                    Return to Home <Link className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
+                  </Link>
+                </DialogTrigger>
+                <DialogContent className="tooltip max-w-md p-6">
+                  <p className="text-sm text-muted-foreground">Navigate back to the PETverse home to continue your journey!</p>
+                </DialogContent>
+              </Dialog>
+            </motion.div>
           </motion.div>
         </motion.div>
       </SwytchErrorBoundary>
@@ -156,112 +160,250 @@ const AdminPage: FC<PageProps> = ({
   return (
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
-        className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
+        className="min-h-screen text-foreground font-orbitron bg-noise"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <motion.div className="relative z-10 max-w-4xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          <h1 className="text-4xl font-bold text-rose-400 flex items-center justify-center gap-3 font-poppins mb-8">
-            <Settings className="w-8 h-8 text-cyan-400 animate-spin-slow" /> Admin Panel
-          </h1>
+        <StarfieldBackground />
+        <motion.div className="relative z-20 max-w-5xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
+          {/* Hero Section */}
+          <motion.section variants={sectionVariants} className="text-center mb-16">
+            <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
+              <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
+                <img
+                  src="https://via.placeholder.com/1000x500?text=Admin+Command+Center"
+                  alt="Admin Command Center"
+                  className="w-full h-80 object-cover rounded-lg"
+                />
+              </motion.div>
+            </Tilt>
+            <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-6 text-glow-primary">
+              <Settings className="inline-block w-12 h-12 text-[hsl(var(--secondary))] animate-neon-pulse mr-4" />
+              Admin Command Center
+            </h1>
+            <p className="text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto font-inter mb-8">
+              Configure the PETverse’s galactic economy with precision. Securely manage payment and wallet settings.
+            </p>
+          </motion.section>
 
-          <motion.div variants={sectionVariants} className="mb-8">
-            <SwytchCard gradient="from-gray-800/20 to-gray-700/20" className="p-6">
-              <h2 className="text-2xl font-bold text-white font-poppins mb-4">Payment & Wallet Configurations</h2>
-              <div className="space-y-4">
-                {/* UPI ID */}
-                <div className="flex items-center gap-2">
-                  <Banknote className="w-5 h-5 text-primary" />
-                  <input
-                    type="text"
-                    placeholder="UPI ID (e.g., yourname@bank)"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    className="input"
-                    aria-label="UPI ID"
-                  />
+          {/* Configuration Overview */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-secondary">
+              <Database className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
+              Configuration Overview
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {[
+                {
+                  title: 'UPI Payments',
+                  image: 'https://via.placeholder.com/300x200?text=UPI+Config',
+                  description: 'Set up UPI for seamless fiat transactions.',
+                  tooltip: 'Configure the UPI ID for player withdrawals and deposits.',
+                },
+                {
+                  title: 'MetaMask Wallet',
+                  image: 'https://via.placeholder.com/300x200?text=MetaMask+Config',
+                  description: 'Manage crypto payments with MetaMask.',
+                  tooltip: 'Set the wallet address for receiving NFT and crypto payments.',
+                },
+                {
+                  title: 'PayPal Merchant',
+                  image: 'https://via.placeholder.com/300x200?text=PayPal+Merchant',
+                  description: 'Configure PayPal for global transactions.',
+                  tooltip: 'Enter the PayPal Merchant ID for secure payouts.',
+                },
+                {
+                  title: 'PayPal API',
+                  image: 'https://via.placeholder.com/300x200?text=PayPal+API',
+                  description: 'Set up PayPal API credentials.',
+                  tooltip: 'Manage Client ID and Secret for PayPal integration (backend only).',
+                },
+              ].map((config, index) => (
+                <motion.div key={index} variants={sectionVariants}>
+                  <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
+                    <div className="holographic-card p-8 text-center animated-aura">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <div className="relative group">
+                            <img src={config.image} alt={config.title} className="w-full h-48 object-cover rounded-lg mb-6" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                              <Info className="w-8 h-8 text-[hsl(var(--secondary))] animate-neon-pulse" />
+                            </div>
+                          </div>
+                        </DialogTrigger>
+                        <DialogContent className="tooltip max-w-md p-6">
+                          <h3 className="text-lg font-bold text-foreground font-russo mb-2">{config.title}</h3>
+                          <p className="text-sm text-muted-foreground">{config.tooltip}</p>
+                        </DialogContent>
+                      </Dialog>
+                      <h3 className="text-2xl font-semibold text-foreground font-russo mt-4">{config.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-2">{config.description}</p>
+                    </div>
+                  </Tilt>
+                </motion.div>
+              ))}
+            </div>
+          </motion.section>
+
+          {/* Payment & Wallet Configurations */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
+              <Settings className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
+              Configure Settings
+            </h2>
+            <SwytchCard gradient="from-[hsl(var(--primary),0.2)] to-[hsl(var(--secondary),0.2)]" className="p-8 holographic-card">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <Banknote className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <input
+                        type="text"
+                        placeholder="UPI ID (e.g., yourname@bank)"
+                        value={upiId}
+                        onChange={(e) => setUpiId(e.target.value)}
+                        className="input-system w-full"
+                        aria-label="UPI ID"
+                      />
+                    </DialogTrigger>
+                    <DialogContent className="tooltip max-w-md p-6">
+                      <p className="text-sm text-muted-foreground">Enter the UPI ID for processing player fiat transactions.</p>
+                    </DialogContent>
+                  </Dialog>
                 </div>
-
-                {/* MetaMask Wallet Address (for receiving payments/NFTs) */}
-                <div className="flex items-center gap-2">
-                  <Wallet className="w-5 h-5 text-primary" />
-                  <input
-                    type="text"
-                    placeholder="MetaMask Wallet Address (0x...)"
-                    value={metamaskWalletAddress}
-                    onChange={(e) => setMetamaskWalletAddress(e.target.value)}
-                    className="input"
-                    aria-label="MetaMask Wallet Address"
-                  />
+                <div className="flex items-center gap-3">
+                  <Wallet className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <input
+                        type="text"
+                        placeholder="MetaMask Wallet Address (0x...)"
+                        value={metamaskWalletAddress}
+                        onChange={(e) => setMetamaskWalletAddress(e.target.value)}
+                        className="input-system w-full"
+                        aria-label="MetaMask Wallet Address"
+                      />
+                    </DialogTrigger>
+                    <DialogContent className="tooltip max-w-md p-6">
+                      <p className="text-sm text-muted-foreground">Set the MetaMask address for receiving crypto payments.</p>
+                    </DialogContent>
+                  </Dialog>
                 </div>
-
-                {/* PayPal Merchant ID */}
-                <div className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-primary" />
-                  <input
-                    type="text"
-                    placeholder="PayPal Merchant ID"
-                    value={paypalMerchantId}
-                    onChange={(e) => setPaypalMerchantId(e.target.value)}
-                    className="input"
-                    aria-label="PayPal Merchant ID"
-                  />
+                <div className="flex items-center gap-3">
+                  <CreditCard className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <input
+                        type="text"
+                        placeholder="PayPal Merchant ID"
+                        value={paypalMerchantId}
+                        onChange={(e) => setPaypalMerchantId(e.target.value)}
+                        className="input-system w-full"
+                        aria-label="PayPal Merchant ID"
+                      />
+                    </DialogTrigger>
+                    <DialogContent className="tooltip max-w-md p-6">
+                      <p className="text-sm text-muted-foreground">Configure the PayPal Merchant ID for global payouts.</p>
+                    </DialogContent>
+                  </Dialog>
                 </div>
-
-                {/* PayPal Client ID */}
-                <div className="flex items-center gap-2">
-                  <Key className="w-5 h-5 text-primary" />
-                  <input
-                    type="text"
-                    placeholder="PayPal Client ID"
-                    value={paypalClientId}
-                    onChange={(e) => setPaypalClientId(e.target.value)}
-                    className="input"
-                    aria-label="PayPal Client ID"
-                  />
+                <div className="flex items-center gap-3">
+                  <Key className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <input
+                        type="text"
+                        placeholder="PayPal Client ID"
+                        value={paypalClientId}
+                        onChange={(e) => setPaypalClientId(e.target.value)}
+                        className="input-system w-full"
+                        aria-label="PayPal Client ID"
+                      />
+                    </DialogTrigger>
+                    <DialogContent className="tooltip max-w-md p-6">
+                      <p className="text-sm text-muted-foreground">Enter the PayPal Client ID for API integration.</p>
+                    </DialogContent>
+                  </Dialog>
                 </div>
-
-                {/* PayPal Client Secret (Highly Sensitive - for UI demo only) */}
-                <div className="flex items-center gap-2">
-                  <Key className="w-5 h-5 text-primary" />
-                  <input
-                    type="password" // Use password type for sensitivity
-                    placeholder="PayPal Client Secret (NEVER EXPOSE IN PROD)"
-                    value={paypalClientSecret}
-                    onChange={(e) => setPaypalClientSecret(e.target.value)}
-                    className="input"
-                    aria-label="PayPal Client Secret"
-                  />
+                <div className="flex items-center gap-3">
+                  <Key className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <input
+                        type="password"
+                        placeholder="PayPal Client Secret (NEVER EXPOSE IN PROD)"
+                        value={paypalClientSecret}
+                        onChange={(e) => setPaypalClientSecret(e.target.value)}
+                        className="input-system w-full"
+                        aria-label="PayPal Client Secret"
+                      />
+                    </DialogTrigger>
+                    <DialogContent className="tooltip max-w-md p-6">
+                      <p className="text-sm text-muted-foreground">Set the PayPal Client Secret (handled securely on backend in production).</p>
+                    </DialogContent>
+                  </Dialog>
                 </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <motion.button
+                      className="btn-system-glow w-full flex items-center justify-center gap-3 text-lg"
+                      onClick={handleUpdateConfig}
+                      disabled={updateLoading}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      {updateLoading ? 'Updating...' : 'Update Configurations'} <Settings className="w-6 h-6" />
+                    </motion.button>
+                  </DialogTrigger>
+                  <DialogContent className="tooltip max-w-md p-6">
+                    <p className="text-sm text-muted-foreground">Submit updated configurations to the backend for processing.</p>
+                  </DialogContent>
+                </Dialog>
+                <AnimatePresence>
+                  {error && (
+                    <motion.p
+                      className="text-rose-400 text-sm text-center mt-4 font-inter system-message"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      {error}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+                <p className="text-xs text-muted-foreground mt-4 text-center font-inter">
+                  *Note: Sensitive keys like Client Secret are managed securely on the backend in production (e.g., Firebase Cloud Functions).
+                </p>
+              </div>
+            </SwytchCard>
+          </motion.section>
 
+          {/* Admin Actions */}
+          <motion.section variants={sectionVariants} className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo mb-8 text-glow-accent">
+              <Database className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
+              Admin Actions
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 font-inter">
+              Manage transaction logs, review player activities, or deploy new configurations across the PETverse.
+            </p>
+            <Dialog>
+              <DialogTrigger asChild>
                 <motion.button
-                  className="btn-primary w-full flex items-center justify-center gap-2"
-                  onClick={handleUpdateConfig}
-                  disabled={updateLoading}
+                  className="btn-accent text-lg font-semibold group"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  aria-label="View Transaction Logs"
                 >
-                  {updateLoading ? 'Updating...' : 'Update Configurations'}
+                  View Transaction Logs <Database className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
                 </motion.button>
-              </div>
-              <AnimatePresence>
-                {error && (
-                  <motion.p
-                    className="text-rose-400 text-sm text-center mt-4 font-inter"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    {error}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-              <p className="text-xs text-gray-500 mt-4 text-center">
-                *Note: In a production environment, sensitive keys like Client Secret should be managed securely on the backend (e.g., Firebase Remote Config, Cloud Functions, or Google Secret Manager) and never exposed client-side. Updates would be handled via secure Cloud Functions.
-              </p>
-            </SwytchCard>
-          </motion.div>
+              </DialogTrigger>
+              <DialogContent className="tooltip max-w-md p-6">
+                <p className="text-sm text-muted-foreground">Access transaction logs to monitor player activities (placeholder action).</p>
+              </DialogContent>
+            </Dialog>
+          </motion.section>
         </motion.div>
       </motion.div>
     </SwytchErrorBoundary>

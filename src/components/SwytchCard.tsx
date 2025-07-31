@@ -1,7 +1,7 @@
 // src/components/SwytchCard.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { SwytchCardProps } from '@/lib/types'; // Import the type from your types.ts
+import { SwytchCardProps } from '../lib/types'; // Import the type from your types.ts
 
 const SwytchCard: FC<SwytchCardProps> = ({ children, gradient, className = '', onClick }) => {
   return (

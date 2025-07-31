@@ -1,135 +1,313 @@
-// src/pages/LandingPage.tsx
-import { FC } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, Wallet, Gamepad2, Gem, Link } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebaseConfig';
+import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
+import Tilt from 'react-parallax-tilt';
+import { Swords, Users, Gem, Shield, Star, Sparkles, Trophy } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import SwytchCard from '../components/SwytchCard';
+import StarfieldBackground from '../components/StarfieldBackground';
+import { PageProps, PlayerData } from '../lib/types';
 
-// Import PageProps for consistency
-import { PageProps } from '../lib/types';
-
+// Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.2 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.4, delayChildren: 0.2 } },
 };
 
 const sectionVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 60 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.9, ease: 'easeOut' } },
 };
 
-const flareVariants = {
-  animate: { scale: [1, 1.3, 1], opacity: [0.5, 0.7, 0.5], transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' } },
+const imageVariants = {
+  hidden: { opacity: 0, scale: 0.8, rotate: 5 },
+  visible: { opacity: 1, scale: 1, rotate: 0, transition: { duration: 0.9, ease: 'easeOut' } },
 };
 
-const particleVariants = {
-  animate: { y: [0, -8, 0], opacity: [0.4, 1, 0.4], transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } },
+const buttonVariants = {
+  hover: { scale: 1.05, boxShadow: '0 0 15px hsl(var(--secondary),0.5)', transition: { duration: 0.3 } },
+  tap: { scale: 0.95 },
 };
 
-const LandingPage: FC<PageProps> = ({ setActiveModal, setShowMessage, userId }) => { // Added userId prop
+const LandingPage: FC<PageProps> = ({
+  userId,
+  setActiveModal,
+  setShowMessage,
+  setIsPETMember,
+  isPending,
+  authLoading,
+  initialAuthCheckComplete,
+}) => {
+  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
 
-  const handleGetStartedClick = () => {
-    if (!userId) { // Only show auth modal if not already logged in
-      setActiveModal('auth');
-      setShowMessage('👋 Welcome! Please sign in or connect your wallet to get started.');
+  useEffect(() => {
+    if (userId) {
+      const userRef = doc(db, 'Players', userId);
+      const unsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as PlayerData;
+          setPlayerData(data);
+          setIsPETMember(data.isPETMember || false);
+        } else {
+          setPlayerData(null);
+          setIsPETMember(false);
+          if (initialAuthCheckComplete) {
+            setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
+            setActiveModal('auth');
+          }
+        }
+      }, (err) => {
+        console.error('Failed to fetch user data for Landing page:', err);
+        setShowMessage('⚠️ Failed to load landing data. Please check your connection.');
+        setActiveModal('error');
+      });
+      return () => unsubscribe();
     } else {
-      setShowMessage('🎉 Welcome back! Navigating to Home.');
-      // Optionally navigate to /home if already logged in
-      // navigate('/home');
+      setPlayerData(null);
+      setIsPETMember(false);
+      if (initialAuthCheckComplete) {
+        setShowMessage('⚠️ Please sign in to explore the PETverse!');
+        setActiveModal('auth');
+      }
     }
-  };
+  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
+
+  if (authLoading || isPending) {
+    return null;
+  }
 
   return (
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
-        className="min-h-screen bg-gradient-to-br from-gray-950 via-rose-950/20 to-black text-white font-inter bg-noise"
+        className="min-h-screen text-foreground font-orbitron bg-noise bg-gray-950"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        {/* Background flares and particles */}
-        <motion.div
-          className="fixed inset-0 pointer-events-none z-10"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.div
-            className="absolute w-96 h-96 bg-gradient-to-br from-rose-400/50 via-cyan-500/40 to-rose-400/30 rounded-full opacity-30 blur-3xl"
-            variants={flareVariants}
-            animate="animate"
-            style={{ top: "15%", left: "20%" }}
-          />
-          <motion.div
-            className="absolute w-64 h-64 bg-gradient-to-br from-cyan-400/40 via-rose-500/30 to-cyan-400/20 rounded-full opacity-20 blur-2xl"
-            variants={flareVariants}
-            animate="animate"
-            style={{ bottom: "10%", right: "15%" }}
-          />
-          {[...Array(15)].map((_, i) => (
-            <motion.div
-              key={`particle-landing-${i}`}
-              className="absolute w-1.5 h-1.5 bg-cyan-400 rounded-full opacity-30"
-              style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%` }}
-              variants={particleVariants}
-              animate="animate"
-            />
-          ))}
-        </motion.div>
-
-        <motion.div className="relative z-20 max-w-6xl mx-auto py-16 px-6 sm:px-8 lg:px-16 flex flex-col items-center justify-center min-h-screen">
+        <StarfieldBackground />
+        <div className="relative z-20 max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           {/* Hero Section */}
-          <motion.div variants={sectionVariants} className="text-center mb-12">
-            <h1 className="text-5xl lg:text-7xl font-extrabold text-white leading-tight font-poppins mb-6">
-              <Sparkles className="inline-block w-12 h-12 text-cyan-400 animate-pulse mr-4" />
-              SWYTCH PETverse
+          <motion.section variants={sectionVariants} className="text-center mb-16">
+            <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
+              <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura border border-[hsl(var(--primary),0.2)]" variants={imageVariants}>
+                <img
+                  src="https://via.placeholder.com/1000x500?text=Hero+Rising"
+                  alt="Hero Rising in PETverse"
+                  className="w-full h-80 object-cover rounded-lg"
+                />
+              </motion.div>
+            </Tilt>
+            <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-6 text-glow-primary tracking-tight">
+              <Swords className="inline-block w-12 h-12 text-[hsl(var(--secondary))] animate-neon-pulse mr-4" />
+              Rise as a PETverse Hunter
             </h1>
-            <p className="text-xl lg:text-2xl text-gray-300 max-w-3xl mx-auto font-inter mb-8">
-              Re-innovate your favorite classic games with **real item ownership**, **crypto rewards**, and a **decentralized marketplace**.
+            <p className="text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto font-inter mb-8 leading-relaxed">
+              From an E-rank hunter to a cosmic legend, forge your path in the SWYTCH PETverse. Wield NFT weapons, earn JEWELS, and conquer decentralized dungeons in a blockchain-powered universe.
             </p>
-            <motion.button
-              className="btn-primary inline-flex items-center px-8 py-4 text-lg font-semibold group"
-              onClick={handleGetStartedClick}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Get Started"
-            >
-              Get Started <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-200" />
-            </motion.button>
-          </motion.div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <motion.button
+                  className="btn-system-glow text-lg font-russo mx-auto block w-fit px-6 py-3"
+                  onClick={() => userId ? setShowMessage('🌌 Begin your hunt!') : setActiveModal('auth')}
+                  variants={buttonVariants}
+                  whileHover="hover"
+                  whileTap="tap"
+                  aria-label="Join the PETverse"
+                >
+                  Forge Your Legend <Star className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
+                </motion.button>
+              </DialogTrigger>
+              <DialogContent className="tooltip max-w-md p-6 bg-[hsl(var(--background))] border border-[hsl(var(--primary),0.2)] rounded-lg">
+                <p className="text-sm text-muted-foreground font-inter">Step into the PETverse to battle, trade, and ascend to greatness!</p>
+              </DialogContent>
+            </Dialog>
+          </motion.section>
 
-          {/* Feature Highlights */}
-          <motion.div variants={sectionVariants} className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-12">
-            <SwytchCard gradient="from-rose-500/20 to-pink-700/20" className="p-6 text-center">
-              <Gem className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white font-poppins mb-2">True Ownership</h3>
-              <p className="text-gray-300 text-sm">Your in-game items become real, tradable assets.</p>
-            </SwytchCard>
-            <SwytchCard gradient="from-cyan-500/20 to-blue-700/20" className="p-6 text-center">
-              <Gamepad2 className="w-12 h-12 text-purple-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white font-poppins mb-2">Play & Earn</h3>
-              <p className="text-gray-300 text-sm">Earn crypto and valuable items by playing skill-based games.</p>
-            </SwytchCard>
-            <SwytchCard gradient="from-green-500/20 to-teal-700/20" className="p-6 text-center">
-              <Wallet className="w-12 h-12 text-green-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white font-poppins mb-2">Seamless Economy</h3>
-              <p className="text-gray-300 text-sm">Buy, sell, and swap items and currencies with ease.</p>
-            </SwytchCard>
-          </motion.div>
-
-          {/* Footer Navigation Links (Optional, can be removed if BottomNav is sufficient) */}
-          <motion.div variants={sectionVariants} className="text-center mt-auto pt-8">
-            <p className="text-gray-400 text-sm font-inter">
-              Learn more about Swytch PETverse:
-            </p>
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
-              <Link to="/dspet-disclosure" className="text-primary hover:underline font-inter" onClick={() => setShowMessage('📜 Navigating to Disclosure!')}>Disclosure</Link>
-              <Link to="/community" className="text-primary hover:underline font-inter" onClick={() => setShowMessage('👥 Navigating to Community!')}>Community</Link>
-              <Link to="/membership" className="text-primary hover:underline font-inter" onClick={() => setShowMessage('🌟 Navigating to Membership!')}>Membership</Link>
-              <Link to="/vault" className="text-primary hover:underline font-inter" onClick={() => setShowMessage('💰 Navigating to Vault!')}>Vault</Link>
+          {/* Core Features */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-secondary tracking-tight">
+              <Gem className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
+              Unleash Your Power
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                {
+                  icon: <Gem className="w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse" />,
+                  title: 'Epic NFT Arsenal',
+                  description: 'Craft and trade unique NFT weapons and artifacts on a secure blockchain, forging gear worthy of a legendary hunter.',
+                  image: 'https://via.placeholder.com/300x200?text=NFT+Weapon',
+                  tooltip: 'Forge rare NFTs to dominate the PETverse’s dungeons.',
+                },
+                {
+                  icon: <Sparkles className="w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse" />,
+                  title: 'JEWELS & Gold',
+                  description: 'Slay cosmic beasts in quests to earn JEWELS and Gold, convertible to crypto or fiat for real-world rewards.',
+                  image: 'https://via.placeholder.com/300x200?text=JEWELS+Vault',
+                  tooltip: 'Earn glowing rewards to fuel your ascent.',
+                },
+                {
+                  icon: <Shield className="w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse" />,
+                  title: 'Ironclad Blockchain',
+                  description: 'Engage in decentralized battles with transparent, secure transactions, protected by blockchain runes.',
+                  image: 'https://via.placeholder.com/300x200?text=Blockchain+Runes',
+                  tooltip: 'Trust in a secure, transparent cosmos.',
+                },
+              ].map((feature, index) => (
+                <motion.div key={index} variants={sectionVariants}>
+                  <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
+                    <div className="holographic-card p-6 text-center animated-aura border border-[hsl(var(--primary),0.2)]">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <div className="relative group">
+                            <img src={feature.image} alt={feature.title} className="w-full h-40 object-cover rounded-lg mb-4" />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                              <Sparkles className="w-8 h-8 text-[hsl(var(--secondary))] animate-neon-pulse" />
+                            </div>
+                          </div>
+                        </DialogTrigger>
+                        <DialogContent className="tooltip max-w-md p-6 bg-[hsl(var(--background))] border border-[hsl(var(--primary),0.2)] rounded-lg">
+                          <h3 className="text-lg font-bold text-foreground font-russo mb-2">{feature.title}</h3>
+                          <p className="text-sm text-muted-foreground font-inter">{feature.tooltip}</p>
+                        </DialogContent>
+                      </Dialog>
+                      {feature.icon}
+                      <h3 className="text-xl font-semibold text-foreground font-russo mt-4 text-glow-primary">{feature.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-2 font-inter leading-relaxed">{feature.description}</p>
+                    </div>
+                  </Tilt>
+                </motion.div>
+              ))}
             </div>
-          </motion.div>
-        </motion.div>
+          </motion.section>
+
+          {/* PET Membership Teaser */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-accent tracking-tight">
+              <Star className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
+              Ascend to PET Legend
+            </h2>
+            <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
+              <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura border border-[hsl(var(--primary),0.2)]" variants={imageVariants}>
+                <img
+                  src="https://via.placeholder.com/1000x500?text=PET+Legend"
+                  alt="PET Membership Showcase"
+                  className="w-full h-80 object-cover rounded-lg"
+                />
+              </motion.div>
+            </Tilt>
+            <p className="text-center text-muted-foreground max-w-2xl mx-auto mt-6 font-inter leading-relaxed">
+              Unlock exclusive PET Membership tiers to wield legendary powers, access rare NFTs, and dominate the cosmic battlefield.
+            </p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Link
+                  to="/membership"
+                  className="btn-system-glow text-lg font-russo mx-auto block w-fit px-6 py-3 mt-6"
+                  onClick={() => setShowMessage('🌟 Ascend to legendary status!')}
+                  aria-label="Unlock PET Membership"
+                >
+                  Become a Legend <Star className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
+                </Link>
+              </DialogTrigger>
+              <DialogContent className="tooltip max-w-md p-6 bg-[hsl(var(--background))] border border-[hsl(var(--primary),0.2)] rounded-lg">
+                <p className="text-sm text-muted-foreground font-inter">Join PET Membership to unlock epic perks and rise to glory!</p>
+              </DialogContent>
+            </Dialog>
+          </motion.section>
+
+          {/* Community Call-to-Action */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-primary tracking-tight">
+              <Users className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
+              Join the Cosmic Guild
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 font-inter leading-relaxed">
+              Unite with hunters on Discord and X. Share battle strategies, trade rare NFTs, and forge alliances to conquer the PETverse.
+            </p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <motion.button
+                  className="btn-system-glow text-lg font-russo mx-auto block w-fit px-6 py-3"
+                  onClick={() => setShowMessage('🤝 Join the cosmic guild!')}
+                  variants={buttonVariants}
+                  whileHover="hover"
+                  whileTap="tap"
+                  aria-label="Join Community"
+                >
+                  Join Now <Users className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
+                </motion.button>
+              </DialogTrigger>
+              <DialogContent className="tooltip max-w-md p-6 bg-[hsl(var(--background))] border border-[hsl(var(--primary),0.2)] rounded-lg">
+                <p className="text-sm text-muted-foreground font-inter">Connect with the PETverse community to share your epic journey!</p>
+              </DialogContent>
+            </Dialog>
+          </motion.section>
+
+          {/* Transparency Hub */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-accent tracking-tight">
+              <Shield className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
+              Trust the Cosmos
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 font-inter leading-relaxed">
+              Explore our Transparency Hub to master the rules and risks of the PETverse, secured by immutable blockchain runes.
+            </p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Link
+                  to="/dspet-disclosure"
+                  className="btn-system-glow text-lg font-russo mx-auto block w-fit px-6 py-3"
+                  onClick={() => setShowMessage('📜 Explore transparency!')}
+                  aria-label="Learn More About Transparency"
+                >
+                  Learn More <Shield className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
+                </Link>
+              </DialogTrigger>
+              <DialogContent className="tooltip max-w-md p-6 bg-[hsl(var(--background))] border border-[hsl(var(--primary),0.2)] rounded-lg">
+                <p className="text-sm text-muted-foreground font-inter">Visit the Transparency Hub to understand PETverse’s rules and risks.</p>
+              </DialogContent>
+            </Dialog>
+          </motion.section>
+
+          {/* Showcase Section */}
+          <motion.section variants={sectionVariants} className="mb-16">
+            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-primary tracking-tight">
+              <Trophy className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
+              Conquer the Cosmos
+            </h2>
+            <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
+              <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura border border-[hsl(var(--primary),0.2)]" variants={imageVariants}>
+                <img
+                  src="https://via.placeholder.com/1000x500?text=Cosmic+Conquest"
+                  alt="Cosmic Conquest Showcase"
+                  className="w-full h-80 object-cover rounded-lg"
+                />
+              </motion.div>
+            </Tilt>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mt-6 font-inter leading-relaxed">
+              Rise through the ranks, conquer cosmic dungeons, and etch your name among the stars in the SWYTCH PETverse.
+            </p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <motion.button
+                  className="btn-system-glow text-lg font-russo mx-auto block w-fit px-6 py-3 mt-6"
+                  onClick={() => userId ? setShowMessage('🏆 Start your conquest!') : setActiveModal('auth')}
+                  variants={buttonVariants}
+                  whileHover="hover"
+                  whileTap="tap"
+                  aria-label="Start Your Conquest"
+                >
+                  Start Conquest <Trophy className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
+                </motion.button>
+              </DialogTrigger>
+              <DialogContent className="tooltip max-w-md p-6 bg-[hsl(var(--background))] border border-[hsl(var(--primary),0.2)] rounded-lg">
+                <p className="text-sm text-muted-foreground font-inter">Begin your journey to conquer the PETverse!</p>
+              </DialogContent>
+            </Dialog>
+          </motion.section>
+        </div>
       </motion.div>
     </SwytchErrorBoundary>
   );

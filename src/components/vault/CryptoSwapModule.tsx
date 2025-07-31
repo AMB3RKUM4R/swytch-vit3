@@ -108,26 +108,35 @@ const CryptoSwapModule: FC<CryptoSwapModuleProps> = ({
     setError(null);
 
     try {
-      // For MVP, we'll simulate the swap on-chain and rely on Firestore updates.
-      // A real swap would involve interacting with a DEX aggregator smart contract (e.g., Uniswap, 1inch).
+      // Log transaction request to Firestore
+      const transactionId = `swap_request_${userId}_${Date.now()}`;
+      await addDoc(collection(db, 'Transactions'), {
+        transactionId,
+        userId,
+        amount: parseFloat(fromAmount),
+        currency: fromCurrency,
+        transactionType: 'crypto-swap' as TransactionType,
+        status: 'pending' as TransactionStatus,
+        timestamp: serverTimestamp(),
+        walletAddress: connectedAddress,
+        itemId: toCurrency, // To indicate what they want to receive
+        receivedAmount: parseFloat(toAmount), // Store the received amount here
+        game: 'vault-swap',
+      });
 
 
       if (fromCurrency === 'ETH') {
-        // Direct ETH transfer for simplicity (simulating a swap by sending ETH)
-        // In a real scenario, this ETH would go to a swap contract, not directly to a user.
         sendTransaction({
           to: '0xYourSwapContractAddress' as `0x${string}`, // Placeholder swap contract address
           value: parseEther(fromAmount),
         });
       } else if (fromCurrency === 'USDT') {
-        // ERC-20 token transfer (requires walletClient for contract write)
         if (!walletClient || !publicClient) {
           setError('Wallet client not ready for ERC-20 transfer.');
           setShowMessage('⚠️ Wallet client not ready.');
           setLoading(false);
           return;
         }
-
 
         setShowMessage('ℹ️ USDT swap initiated. Please confirm in your wallet.');
       } else {
@@ -137,8 +146,6 @@ const CryptoSwapModule: FC<CryptoSwapModuleProps> = ({
         return;
       }
 
-      // The rest of the logic (Firestore updates) will happen after transaction confirmation
-      // or as a pending state.
       setShowMessage(`Swap initiated. Waiting for transaction confirmation...`);
 
     } catch (err: any) {
@@ -153,9 +160,6 @@ const CryptoSwapModule: FC<CryptoSwapModuleProps> = ({
   useEffect(() => {
     if (isConfirmed && hash) {
       setShowMessage(`✅ Transaction confirmed: ${hash.slice(0, 6)}...${hash.slice(-4)}. Updating balances.`);
-      // After crypto transaction is confirmed on chain, update Firestore
-      // This part would ideally be handled by a backend webhook listening to chain events
-      // For MVP, we'll do it client-side optimistically.
       const finalizeSwapInFirestore = async () => {
         try {
           // Log transaction
@@ -169,17 +173,13 @@ const CryptoSwapModule: FC<CryptoSwapModuleProps> = ({
             timestamp: serverTimestamp(),
             walletAddress: connectedAddress,
             game: 'vault-swap',
-            // Add details about what was received
             itemId: toCurrency, // Use itemId to indicate received currency
-            screenshot: toAmount, // Use screenshot field to store received amount for simplicity
+            receivedAmount: parseFloat(toAmount), // Use a new field for the received amount
+            paypalOrderId: hash, // Using hash as order ID for crypto tx
+            paymentMethod: 'crypto',
           };
           await addDoc(collection(db, 'Transactions'), transaction);
-
-          // Update user's JEWELS balance (if relevant to your in-game economy)
-          // For a pure crypto swap, this might not directly affect JEWELS unless it's a bridge.
-          // If the swap results in JEWELS, update here. For now, assume it's just crypto.
-          // await updatePlayerFirestore({ jewels: newJewelsBalance }); // Example
-
+          
           setShowMessage(`✅ Crypto swap completed! Balances updated.`);
           setLoading(false);
           setFromAmount('');

@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&family=Russo+One&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,238 +7,341 @@
 
 @layer base {
   :root {
-    /* HSL values for Light Mode (Default) */
-    --background: 270 100% 10%; /* Dark purple for gradient start */
-    --foreground: 0 0% 100%; /* White font */
-    --card: 270 50% 15%; /* Slightly lighter purple for cards */
-    --card-foreground: 0 0% 100%; /* White font */
-    --popover: 270 50% 15%; /* Same as card for popovers */
-    --popover-foreground: 0 0% 100%; /* White font */
-    --primary: 340 75% 55%; /* Rose-400 for primary highlight */
-    --primary-foreground: 0 0% 100%; /* White font */
-    --secondary: 180 100% 50%; /* Cyan-500 for secondary highlight */
-    --secondary-foreground: 0 0% 100%; /* White font */
-    --muted: 270 30% 20%; /* Muted purple for subtle elements */
-    --muted-foreground: 270 10% 60%; /* Light purple-gray for muted text */
-    --accent: 340 75% 45%; /* Slightly darker rose for accents */
-    --accent-foreground: 0 0% 100%; /* White font */
-    --destructive: 0 84.2% 60.2%; /* Retain default destructive */
-    --destructive-foreground: 0 0% 100%; /* White font */
-    --border: 270 20% 25%; /* Darker purple for borders */
-    --input: 270 20% 25%; /* Same as border for inputs */
-    --ring: 340 75% 55%; /* Rose-400 for focus rings */
+    /* Advanced cosmic color palette with dark blue, pink, and purple */
+    --background: 220 60% 10%; /* Dark blue for Solo Leveling vibe */
+    --foreground: 220 50% 95%; /* Light gray for contrast */
+    --card: 220 50% 15%; /* Slightly lighter dark blue for cards */
+    --card-foreground: 220 50% 95%;
+    --popover: 220 50% 15%;
+    --popover-foreground: 220 50% 95%;
+    --primary: 270 80% 65%; /* Purple for highlights */
+    --primary-foreground: 220 50% 95%;
+    --secondary: 200 100% 55%; /* Cyan retained for continuity */
+    --secondary-foreground: 220 50% 95%;
+    --muted: 220 20% 15%; /* Muted dark blue */
+    --muted-foreground: 220 20% 50%;
+    --accent: 330 80% 60%; /* Pink replacing red */
+    --accent-foreground: 220 50% 95%;
+    --destructive: 330 80% 50%; /* Darker pink for errors */
+    --destructive-foreground: 220 50% 95%;
+    --border: 220 40% 20%; /* Subtle blue border */
+    --input: 220 40% 20%;
+    --ring: 270 80% 65%; /* Purple ring for focus */
 
-    /* Chart colors - make sure these HSL values are distinct */
-    --chart-1: 340 75% 55%; /* Rose-400 */
-    --chart-2: 180 100% 50%; /* Cyan-500 */
-    --chart-3: 30 80% 55%;  /* Orange-ish */
-    --chart-4: 280 65% 60%; /* Purple-ish */
-    --chart-5: 60 100% 50%; /* Yellow-ish, assuming this was intended instead of another rose */
+    /* HSL for hsla() usage */
+    --primary-hsl: 270, 80%, 65%;
+    --secondary-hsl: 200, 100%, 55%;
+    --accent-hsl: 330, 80%, 60%;
+    --destructive-hsl: 330, 80%, 50%;
 
-    --radius: 1rem; /* Larger for dock effect */
-    --glass-blur: 20px; /* Strong glass blur */
-    /* Base glass background colors for light/dark mode */
-    --glass-bg-light-value: 200, 200, 200, 0.2; /* rgba(200,200,200,0.2) */
-    --glass-bg-dark-value: 30, 30, 30, 0.4; /* rgba(30,30,30,0.4) */
+    /* Chart colors with pink and purple emphasis */
+    --chart-1: 270 80% 65%; /* Purple */
+    --chart-2: 200 100% 55%; /* Cyan */
+    --chart-3: 330 80% 60%; /* Pink */
+    --chart-4: 280 70% 50%; /* Darker purple */
+    --chart-5: 190 100% 50%; /* Light cyan */
+
+    --radius: 0.75rem;
+    --glass-blur: 14px; /* Increased for stronger glass effect */
+    --glass-bg-dark-value: 15, 15, 25, 0.7; /* Darker, more opaque glass */
   }
 
-  .dark {
-    /* HSL values for Dark Mode */
-    --background: 270 100% 5%; /* Darker purple to black gradient */
-    --foreground: 0 0% 100%; /* White font */
-    --card: 270 50% 10%; /* Darker purple for cards */
-    --card-foreground: 0 0% 100%; /* White font */
-    --popover: 270 50% 10%; /* Same as card */
-    --popover-foreground: 0 0% 100%; /* White font */
-    --primary: 340 75% 55%; /* Rose-400 */
-    --primary-foreground: 0 0% 100%; /* White font */
-    --secondary: 180 100% 50%; /* Cyan-500 */
-    --secondary-foreground: 0 0% 100%; /* White font */
-    --muted: 270 30% 15%; /* Darker muted purple */
-    --muted-foreground: 270 10% 55%; /* Slightly darker muted text */
-    --accent: 340 75% 45%; /* Slightly darker rose */
-    --accent-foreground: 0 0% 100%; /* White font */
-    --destructive: 0 62.8% 30.6%; /* Retain default destructive */
-    --destructive-foreground: 0 0% 100%; /* White font */
-    --border: 270 20% 20%; /* Darker purple for borders */
-    --input: 270 20% 20%; /* Same as border */
-    --ring: 340 75% 55%; /* Rose-400 */
-
-    /* Chart colors for dark mode, usually same as light or slightly adjusted */
-    --chart-1: 340 75% 55%; /* Rose-400 */
-    --chart-2: 180 100% 50%; /* Cyan-500 */
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 60 100% 50%;
-  }
-
-  /* Apply global styles */
   * {
-    border-color: hsl(var(--border)); /* Apply border color globally */
+    border-color: hsl(var(--border));
   }
+
   html, body {
-    @apply min-h-screen bg-gradient-to-br from-[hsl(var(--background))] to-black text-foreground font-inter;
-    overflow-x: hidden; /* Prevent horizontal scrolling */
+    @apply min-h-screen text-foreground font-orbitron;
+    background: hsl(var(--background));
+    background-image:
+      radial-gradient(circle at 50% 20%, hsla(var(--primary-hsl), 0.6) 0%, transparent 60%),
+      radial-gradient(circle at 80% 80%, hsla(var(--accent-hsl), 0.5) 0%, transparent 50%),
+      linear-gradient(135deg, hsla(var(--secondary-hsl), 0.4), hsla(var(--primary-hsl), 0.5));
+    background-size: cover, cover, cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed; /* Fixed for parallax effect */
+    animation: cosmic-drift 30s linear infinite;
+    overflow-x: hidden;
+    position: relative;
+    z-index: 1;
   }
-  
-  /* Base glass effect applied via classes based on isDarkMode in components */
-  .glass {
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border-radius: var(--radius);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
+
+  /* Dynamic particle effect for starry cosmos */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: transparent;
+    background-image: radial-gradient(
+      circle at top left,
+      hsla(var(--foreground), 0.3) 0.1%,
+      transparent 0.5%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      hsla(var(--primary-hsl), 0.4) 0.15%,
+      transparent 0.6%
+    ),
+    radial-gradient(
+      circle at center,
+      hsla(var(--accent-hsl), 0.3) 0.1%,
+      transparent 0.5%
+    );
+    background-size: 200% 200%;
+    animation: particle-flow 20s linear infinite;
   }
-  .glass-light {
-    background: rgba(var(--glass-bg-light-value)); /* Use rgba with direct values */
-  }
-  .glass-dark {
-    background: rgba(var(--glass-bg-dark-value)); /* Use rgba with direct values */
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: transparent;
+    box-shadow:
+      15vw 25vh 0 0.2rem hsla(var(--primary-hsl), 0.8),
+      25vw 45vh 0 0.15rem hsla(var(--accent-hsl), 0.7),
+      35vw 65vh 0 0.25rem hsla(var(--secondary-hsl), 0.6),
+      45vw 85vh 0 0.1rem hsla(var(--chart-4), 0.8),
+      55vw 105vh 0 0.3rem hsla(var(--chart-3), 0.7);
+    animation: starry-twinkle 15s ease-in-out infinite;
   }
 }
 
 @layer components {
-  /* Buttons */
   .btn-primary {
-    @apply bg-primary text-primary-foreground px-4 py-2 rounded-full font-poppins font-semibold 
-           hover:bg-secondary hover:text-secondary-foreground 
-           focus:outline-none focus:ring-2 focus:ring-ring 
-           transition-all duration-300 ease-in-out flex items-center justify-center gap-2; /* Added flex properties */
+    @apply bg-[hsla(var(--primary-hsl),0.9)] text-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
+           hover:bg-[hsla(var(--accent-hsl),0.9)] hover:text-foreground
+           focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
+           transition-all duration-300 ease-in-out flex items-center justify-center gap-2
+           shadow-[0_0_20px_hsla(var(--primary-hsl),0.8)];
+    animation: cosmic-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+
   .btn-secondary {
-    @apply bg-transparent text-foreground px-4 py-2 rounded-full font-poppins font-semibold 
-           border border-border hover:bg-secondary hover:text-secondary-foreground 
-           focus:outline-none focus:ring-2 focus:ring-ring 
-           transition-all duration-300 ease-in-out flex items-center justify-center gap-2; /* Added flex properties */
+    @apply bg-transparent text-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
+           border-2 border-[hsla(var(--primary-hsl),0.7)] hover:bg-[hsla(var(--accent-hsl),0.3)] hover:text-foreground
+           focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
+           transition-all duration-300 ease-in-out flex items-center justify-center gap-2
+           shadow-[0_0_15px_hsla(var(--primary-hsl),0.5)];
+    animation: rune-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+
   .btn-accent {
-    @apply bg-accent text-accent-foreground px-4 py-2 rounded-full font-poppins font-semibold 
-           hover:bg-primary hover:text-primary-foreground 
-           focus:outline-none focus:ring-2 focus:ring-ring 
-           transition-all duration-300 ease-in-out flex items-center justify-center gap-2; /* Added flex properties */
+    @apply bg-[hsla(var(--accent-hsl),0.9)] text-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
+           hover:bg-[hsla(var(--primary-hsl),0.9)] hover:text-foreground
+           focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
+           transition-all duration-300 ease-in-out flex items-center justify-center gap-2
+           shadow-[0_0_20px_hsla(var(--accent-hsl),0.8)];
+    animation: cosmic-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  /* Cards */
+  .btn-system-glow {
+    @apply relative overflow-hidden bg-[hsla(var(--primary-hsl),0.5)] text-foreground px-8 py-4 rounded-lg font-orbitron font-bold
+           border-2 border-[hsla(var(--primary-hsl),0.9)] shadow-[0_0_30px_hsla(var(--primary-hsl),0.9)] hover:bg-[hsla(var(--accent-hsl),0.7)]
+           transition-all duration-300 ease-in-out flex items-center justify-center gap-3;
+    animation: cosmic-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    position: relative;
+    z-index: 1;
+  }
+
+  .btn-system-glow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsla(var(--accent-hsl), 0.4),
+      transparent
+    );
+    animation: shine 3s infinite linear;
+    z-index: -1;
+  }
+
   .card {
-    @apply bg-card text-card-foreground p-6 rounded-lg shadow-lg 
-           transition-transform duration-300 hover:scale-[1.02] ease-in-out; /* Slightly reduced hover scale */
+    @apply bg-[hsla(var(--card),0.8)] text-foreground p-6 rounded-lg shadow-lg
+           transition-transform duration-300 hover:scale-[1.03] ease-in-out
+           border border-[hsla(var(--primary-hsl),0.5)];
+    backdrop-filter: blur(var(--glass-blur));
   }
 
-  /* Popovers (Dropdowns) */
-  .popover {
-    @apply bg-popover text-popover-foreground p-4 rounded-lg shadow-lg transition-opacity duration-300;
+  .holographic-card {
+    @apply relative p-6 rounded-lg overflow-hidden border-2 border-[hsla(var(--primary-hsl),0.9)];
+    background: linear-gradient(
+      135deg,
+      hsla(var(--card), 0.7),
+      hsla(var(--primary-hsl), 0.2),
+      hsla(var(--accent-hsl), 0.2)
+    );
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    box-shadow:
+      0 0 35px hsla(var(--primary-hsl), 0.7),
+      inset 0 0 15px hsla(var(--accent-hsl), 0.4);
+    animation: cosmic-glow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  /* Modals */
-  .modal {
-    @apply bg-card text-card-foreground p-6 rounded-lg shadow-lg max-w-md w-full mx-auto transition-transform duration-300;
+  .data-panel {
+    @apply p-6 rounded-lg border-2 border-[hsla(var(--primary-hsl),0.6)] bg-[hsla(var(--card),0.7)] backdrop-blur-lg
+           shadow-[0_0_20px_hsla(var(--primary-hsl),0.5)];
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
 
-  /* Inputs */
-  .input {
-    @apply bg-input text-foreground p-3 rounded-md border border-border 
-           focus:outline-none focus:ring-2 focus:ring-ring font-inter placeholder-muted-foreground 
-           transition-all duration-300;
+  .data-panel:hover {
+    @apply transform scale-105;
+    box-shadow: 0 0 30px hsla(var(--primary-hsl), 0.7);
   }
 
-  /* Top Navigation Bar (Full-width) */
+  .stat-bar {
+    @apply h-3 rounded-full overflow-hidden;
+    background: linear-gradient(
+      90deg,
+      hsla(var(--primary-hsl), 0.8),
+      hsla(var(--accent-hsl), 0.8),
+      hsla(var(--secondary-hsl), 0.8)
+    );
+    background-size: 300% 100%;
+    animation: cosmic-flow 5s linear infinite;
+  }
+
+  .input-system {
+    @apply bg-[hsla(var(--input),0.7)] text-foreground p-3 rounded-md border-2 border-[hsla(var(--primary-hsl),0.5)]
+           focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
+           font-orbitron placeholder-muted-foreground
+           transition-all duration-300 ease-in-out shadow-[0_0_15px_hsla(var(--primary-hsl),0.4)];
+    animation: rune-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .tooltip {
+    @apply bg-[hsla(var(--popover),0.9)] text-foreground p-5 rounded-lg border-2 border-[hsla(var(--primary-hsl),0.7)]
+           shadow-[0_0_20px_hsla(var(--primary-hsl),0.6)] backdrop-blur-lg
+           transition-opacity duration-300 max-w-md;
+  }
+
+  .progress-bar {
+    @apply relative h-4 rounded-full overflow-hidden bg-[hsla(var(--muted),0.5)];
+  }
+
+  .progress-bar-fill {
+    @apply h-full rounded-full;
+    background: linear-gradient(
+      90deg,
+      hsla(var(--primary-hsl), 1),
+      hsla(var(--accent-hsl), 1),
+      hsla(var(--secondary-hsl), 1)
+    );
+    background-size: 300% 100%;
+    animation: cosmic-flow 4s linear infinite;
+    transition: width 0.5s ease-in-out;
+  }
+
+  .overlay {
+    @apply fixed inset-0 bg-[hsla(var(--background),0.85)] backdrop-blur-md flex items-center justify-center z-50;
+  }
+
+  .system-message {
+    @apply bg-[hsla(var(--card),0.8)] border-2 border-[hsla(var(--primary-hsl),0.8)] text-foreground p-5 rounded-xl
+           shadow-[0_0_25px_hsla(var(--primary-hsl),0.7)] backdrop-blur-lg
+           font-orbitron animate-text-flicker;
+  }
+
   .nav-main {
-    @apply bg-background/80 shadow-md flex items-center justify-between px-4 py-3 md:px-8 
-           backdrop-filter backdrop-blur-lg; /* Ensure glass effect for the main nav */
-    /* Specific glass background is applied directly by components based on theme, e.g., glass-dark */
-  }
-
-  .nav-item {
-    @apply flex items-center gap-2 px-3 py-2 rounded-full text-foreground 
-           font-inter transition-all duration-200 ease-in-out;
-  }
-  .nav-item:hover {
-    @apply bg-muted text-secondary;
-  }
-  .nav-item-active {
-    @apply bg-primary/20 text-secondary font-semibold; /* Use primary/20 for light background */
-  }
-
-  /* Dropdown Nav Items (for Games menu) */
-  .nav-item-dropdown {
-    @apply flex items-center gap-2 py-2 px-3 rounded-md text-foreground 
-           font-inter transition-all duration-200 ease-in-out;
-  }
-  .nav-item-dropdown:hover {
-    @apply bg-muted text-secondary;
-  }
-  .nav-item-dropdown-active {
-    @apply bg-muted text-secondary font-semibold;
-  }
-
-  /* Theme Toggle Button */
-  .theme-toggle-btn {
-    @apply p-2 rounded-full text-foreground text-xl leading-none 
-           bg-transparent hover:bg-muted transition-all duration-200 ease-in-out;
-  }
-
-  /* Mobile Full-Screen Menu */
-  .mobile-menu {
-    @apply fixed top-0 left-0 w-full h-full bg-background/90 z-40 
-           flex flex-col items-center justify-start p-4 pt-16 
-           backdrop-filter backdrop-blur-lg overflow-y-auto; /* Apply glass effect here */
-  }
-  .nav-item-mobile {
-    @apply flex items-center justify-center gap-2 w-full max-w-[300px] 
-           px-4 py-3 rounded-full text-foreground font-inter 
-           transition-all duration-200 ease-in-out;
-  }
-  .nav-item-mobile:hover {
-    @apply bg-muted text-secondary;
+    @apply bg-[hsla(var(--background),0.9)] shadow-lg flex items-center justify-between px-6 py-4
+           backdrop-filter backdrop-blur-lg border-b border-[hsla(var(--primary-hsl),0.5)];
   }
 }
 
 @layer utilities {
-  /* Fonts directly applied */
-  .font-inter {
-    font-family: 'Inter', sans-serif;
-  }
-  .font-poppins {
-    font-family: 'Poppins', sans-serif;
+  .font-orbitron { font-family: 'Orbitron', sans-serif; }
+  .font-russo { font-family: 'Russo One', sans-serif; }
+  .font-inter { font-family: 'Inter', sans-serif; }
+
+  .text-glow-primary { text-shadow: 0 0 8px hsla(var(--primary-hsl), 0.9), 0 0 16px hsla(var(--primary-hsl), 0.6); }
+  .text-glow-secondary { text-shadow: 0 0 8px hsla(var(--secondary-hsl), 0.9), 0 0 16px hsla(var(--secondary-hsl), 0.6); }
+  .text-glow-accent { text-shadow: 0 0 8px hsla(var(--accent-hsl), 0.9), 0 0 16px hsla(var(--accent-hsl), 0.6); }
+
+  @keyframes cosmic-pulse {
+    0%, 100% { box-shadow: 0 0 15px hsla(var(--primary-hsl), 0.5); }
+    50% { box-shadow: 0 0 35px hsla(var(--primary-hsl), 0.8); }
   }
 
-  /* Custom Animations */
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; } /* Slightly reduced opacity change for subtler pulse */
-  }
-  .animate-pulse {
-    animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; /* Faster pulse */
+  @keyframes rune-glow {
+    0%, 100% { box-shadow: 0 0 10px hsla(var(--accent-hsl), 0.5); }
+    50% { box-shadow: 0 0 25px hsla(var(--accent-hsl), 0.8); }
   }
 
-  @keyframes pulse-slow { /* Re-added for explicit slow pulse if needed */
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-  .animate-pulse-slow {
-    animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  @keyframes cosmic-glow {
+    0%, 100% { box-shadow: 0 0 20px hsla(var(--primary-hsl), 0.5), inset 0 0 10px hsla(var(--accent-hsl), 0.4); }
+    50% { box-shadow: 0 0 40px hsla(var(--primary-hsl), 0.7), inset 0 0 15px hsla(var(--accent-hsl), 0.6); }
   }
 
-  @keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
-  }
-  .animate-bounce-slow {
-    animation: bounce 2s ease-in-out infinite;
+  @keyframes cosmic-drift {
+    0% { background-position: 0% 0%, 0% 0%, 0% 0%; }
+    100% { background-position: 100% 100%, 100% 100%, 200% 200%; }
   }
 
-  @keyframes glow {
-    0%, 100% { box-shadow: 0 0 5px hsla(var(--primary), 0.3); }
-    50% { box-shadow: 0 0 20px hsla(var(--primary), 0.5); }
-  }
-  .animate-glow {
-    animation: glow 2s ease-in-out infinite;
+  @keyframes particle-flow {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 200% 200%; }
   }
 
-  /* Noise Background Utility */
+  @keyframes starry-twinkle {
+    0%, 100% { opacity: 0.7; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(1.1); }
+  }
+
+  @keyframes shine {
+    0% { left: -100%; }
+    50% { left: 100%; }
+    100% { left: 100%; }
+  }
+
+  @keyframes text-flicker {
+    0%, 100% { opacity: 1; text-shadow: 0 0 8px hsla(var(--primary-hsl), 0.9); }
+    5% { opacity: 0.85; text-shadow: 0 0 4px hsla(var(--primary-hsl), 0.7); }
+    10% { opacity: 1; }
+    15% { opacity: 0.9; text-shadow: 0 0 6px hsla(var(--primary-hsl), 0.8); }
+    20% { opacity: 1; }
+    25% { opacity: 0.75; text-shadow: 0 0 3px hsla(var(--primary-hsl), 0.6); }
+    30% { opacity: 1; }
+  }
+
+  @keyframes shadow-pulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 0.4; }
+  }
+
+  @keyframes aura-flow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+  }
+
+  .animate-text-flicker {
+    animation: text-flicker 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-shadow-pulse {
+    animation: shadow-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animated-aura {
+    background: linear-gradient(
+      90deg,
+      hsla(var(--primary-hsl), 0.7),
+      hsla(var(--accent-hsl), 0.7),
+      hsla(var(--secondary-hsl), 0.7)
+    );
+    background-size: 300% 100%;
+    animation: aura-flow 6s linear infinite;
+  }
+
   .bg-noise {
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30v4h4v2h-4v4h-2v-4h4v-2h4v-4h2zM6 34v4h4v2H6v4H4v-4H0v-2h4v-4h2zm0-30v4h2v4H4v2H0v-2h4v-4H0V4h4V0h2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    background-size: 60px 60px;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M0 0h4v4H0zm10 10h4v4H10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm-60 10h4v4h-10zm60-60h4v4h-10zm-60 60h4v4h-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-size: 100px 100px;
     background-repeat: repeat;
   }
 }
