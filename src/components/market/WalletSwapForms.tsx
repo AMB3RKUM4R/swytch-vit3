@@ -31,7 +31,6 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({ hash });
 
   // Only ETH is supported for deposits/swaps in this decentralized model
-  const availableCurrencies: SupportedCurrency[] = ['ETH'];
 
   // Simulate exchange rate (for MVP, a fixed rate)
   const getExchangeRate = useCallback((_from: SupportedCurrency, _to: SupportedCurrency) => {

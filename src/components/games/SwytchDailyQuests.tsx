@@ -3,7 +3,7 @@ import { FC, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, CheckCircle, XCircle, Trophy } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { Quest, PlayerData, TransactionType, TransactionStatus } from '@/lib/types';
+import { Quest, PlayerData } from '@/lib/types';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 
@@ -21,8 +21,6 @@ const SwytchDailyQuests: FC<SwytchDailyQuestsProps> = ({
   userId,
   quests,
   setQuests,
-  jewelsBalance,
-  saveStateToFirestore,
   setActiveModal,
   setShowMessage,
 }) => {

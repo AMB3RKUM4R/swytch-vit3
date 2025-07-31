@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Package } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 import InventoryItemCard from './InventoryItemCard';
-import { InventoryItem, PlayerData, TransactionType, TransactionStatus } from '@/lib/types';
+import { InventoryItem, PlayerData } from '@/lib/types';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 
@@ -37,7 +37,6 @@ const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
   inventory,
   onListForSale,
   userId,
-  updatePlayerFirestore,
   setShowMessage,
   setActiveModal,
   playerData,

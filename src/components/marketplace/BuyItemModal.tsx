@@ -3,14 +3,12 @@ import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingCart } from 'lucide-react';
 import { useTheme } from '@/components/context/ThemeContext';
-import { SupportedCurrency, PlayerData, Transaction, TransactionType, TransactionStatus, MarketItem } from '@/lib/types';
+import { MarketItem } from '@/lib/types';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther } from 'viem';
 
 // Hardcoded MetaMask wallet address for deposits
-const DEPOSIT_WALLET_ADDRESS = '0x03d3c8065a4A936b856A39121a5F9e0A441dF4E8';
 
 interface BuyItemModalProps {
   item: MarketItem;
@@ -36,7 +34,7 @@ const BuyItemModal: FC<BuyItemModalProps> = ({
   const [purchaseMethod, setPurchaseMethod] = useState<'crypto' | 'jewels'>('crypto');
 
   // Wagmi hooks for sending transaction (for crypto payment)
-  const { data: hash, sendTransaction, isPending: isTxPending } = useSendTransaction();
+  const { data: hash, isPending: isTxPending } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({ hash });
 
   const handlePurchase = async () => {

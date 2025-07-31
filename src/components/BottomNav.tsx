@@ -1,5 +1,5 @@
 import { FC, useState, useEffect } from 'react';
-import { Home, Star, LogOut, User, Gamepad2, LandPlot, Users, ShoppingCart, Award, Package, Info, Link as LinkIcon } from 'lucide-react';
+import { Home, LogOut, User, LandPlot, ShoppingCart, Award, Package, Info } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '@/components/context/ThemeContext';
@@ -7,7 +7,6 @@ import { useModal } from '@/components/context/ModalContext';
 import { auth } from '@/lib/firebaseConfig';
 import { motion } from 'framer-motion';
 import Tilt from 'react-parallax-tilt';
-import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 
 interface BottomNavProps {
   userId: string | null;
@@ -90,7 +89,7 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage }) => {
     }
   };
 
-  const handleRestrictedNav = (path: string, label: string) => {
+  const handleRestrictedNav = (_path: string, label: string) => {
     if (!auth.currentUser) {
       setShowMessage(`⚠️ Sign in to access ${label}`);
       setActiveModal('auth');
@@ -104,7 +103,7 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage }) => {
       className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 rounded-2xl backdrop-blur-lg border border-[hsl(var(--primary),0.3)] shadow-2xl transition-all duration-300 ease-out max-w-lg w-[90vw] flex justify-between items-center gap-4 holographic-card animated-aura ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
       style={{ background: 'linear-gradient(145deg, rgba(0,0,0,0.8), rgba(50,50,100,0.5))' }}
     >
-      {navItems.map(({ path, label, icon, tooltip }, index) => (
+      {navItems.map(({ path, label, icon }, index) => (
         <Link
           key={path}
           to={path}

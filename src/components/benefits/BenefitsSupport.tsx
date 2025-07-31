@@ -1,7 +1,7 @@
 // src/components/benefits/BenefitsSupport.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { Headset, Mail, MessageSquare, Phone, ArrowRight } from 'lucide-react';
+import { Headset, Mail, MessageSquare, Phone } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 
 interface BenefitsSupportProps {
@@ -31,7 +31,7 @@ const supportOptions = [
   },
 ];
 
-const BenefitsSupport: FC<BenefitsSupportProps> = ({ userId }) => {
+const BenefitsSupport: FC<BenefitsSupportProps> = ({ }) => {
   const handleActionClick = (action: string, comingSoon: boolean = false) => {
     if (comingSoon) {
       alert('This feature is coming soon!');

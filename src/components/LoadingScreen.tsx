@@ -1,7 +1,7 @@
 // src/components/LoadingScreen.tsx
-import { FC, useRef, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Terminal } from 'lucide-react';
+import { Terminal } from 'lucide-react';
 // Conceptual placeholder for a dramatic Three.js scene
 // import { Canvas, useFrame } from '@react-three/fiber'; 
 

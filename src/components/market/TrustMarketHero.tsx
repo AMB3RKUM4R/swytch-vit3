@@ -1,7 +1,7 @@
 // src/components/market/TrustMarketHero.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, ShoppingCart, TrendingUp, ArrowRight, Zap } from 'lucide-react';
+import { Sparkles, TrendingUp, ArrowRight, Zap } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 
 interface TrustMarketHeroProps {
