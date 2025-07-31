@@ -17,7 +17,7 @@ const TrustMarketCTA: FC<TrustMarketCTAProps> = ({ setActiveModal, setShowMessag
 
   const handleBecomeMember = () => {
     setShowMessage('🌟 Explore membership benefits!');
-    setActiveModal('payment'); // Open payment modal for membership
+    setActiveModal('payment');
   };
 
   return (

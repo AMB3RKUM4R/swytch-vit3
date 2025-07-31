@@ -3,16 +3,16 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Shield, Sword, Eye, DollarSign, ShoppingCart, Sparkles } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { MarketItem } from '@/lib/types'; // FIX: Import MarketItem type
+import { MarketItem } from '@/lib/types';
 
 interface MarketItemCardProps {
-  item: MarketItem; // FIX: item prop now expects MarketItem
-  onBuyItem: (item: MarketItem) => void; // FIX: onBuyItem now expects MarketItem
-  isOwner: boolean; // True if the current logged-in user owns this item (cannot buy their own)
+  item: MarketItem;
+  onBuyItem: (item: MarketItem) => void;
+  isOwner: boolean;
 }
 
 const MarketItemCard: FC<MarketItemCardProps> = ({ item, onBuyItem, isOwner }) => {
-  const getRarityColor = (rarity: MarketItem['rarity']) => { // Use MarketItem['rarity'] for consistency
+  const getRarityColor = (rarity: MarketItem['rarity']) => {
     switch (rarity) {
       case 'common': return 'text-gray-400';
       case 'uncommon': return 'text-green-400';
@@ -31,7 +31,7 @@ const MarketItemCard: FC<MarketItemCardProps> = ({ item, onBuyItem, isOwner }) =
             src={item.imageUrl}
             alt={item.name}
             className="w-full h-full object-cover"
-            onError={(e) => e.currentTarget.src = `https://placehold.co/160x160/FF0000/FFFFFF?text=Item+Image`} // Fallback
+            onError={(e) => e.currentTarget.src = `https://placehold.co/160x160/FF0000/FFFFFF?text=Item+Image`}
           />
         ) : (
           <Eye className="w-16 h-16 text-gray-500" />
@@ -80,7 +80,7 @@ const MarketItemCard: FC<MarketItemCardProps> = ({ item, onBuyItem, isOwner }) =
 
         <motion.button
           onClick={() => onBuyItem(item)}
-          disabled={isOwner || !item.isListedForSale} // Disable if owner or not listed
+          disabled={isOwner || !item.isListedForSale}
           className={`btn-primary flex items-center justify-center gap-2 ${isOwner || !item.isListedForSale ? 'opacity-50 cursor-not-allowed' : ''}`}
           whileHover={isOwner || !item.isListedForSale ? {} : { scale: 1.03 }}
           whileTap={isOwner || !item.isListedForSale ? {} : { scale: 0.97 }}

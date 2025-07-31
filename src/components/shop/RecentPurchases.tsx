@@ -1,18 +1,15 @@
 // src/components/shop/RecentPurchases.tsx
-// This is a version specifically for the Shop page,
-// it might focus on item purchases rather than general market activity.
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { History, ShoppingBag } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { Purchase } from '@/lib/types'; // Import Purchase type
+import { Purchase } from '@/lib/types';
 
 interface RecentPurchasesProps {
-  recentPurchases: Purchase[]; // Array of recent purchase data
+  recentPurchases: Purchase[];
 }
 
 const RecentPurchases: FC<RecentPurchasesProps> = ({ recentPurchases }) => {
-  // Placeholder data for demonstration, focusing on shop-like purchases
   const dummyPurchases: Purchase[] = [
     { id: 'sp1', avatar: 'https://placehold.co/40x40/FF5733/FFFFFF?text=P1', address: '0xshop...abc', amount: '1 NFT', timestamp: new Date(Date.now() - 120000) },
     { id: 'sp2', avatar: 'https://placehold.co/40x40/33FF57/000000?text=P2', address: '0xshop...def', amount: 'Gold Membership', timestamp: new Date(Date.now() - 300000) },
@@ -32,7 +29,7 @@ const RecentPurchases: FC<RecentPurchasesProps> = ({ recentPurchases }) => {
         <div className="space-y-4">
           {displayPurchases.map((purchase, index) => (
             <motion.div
-              key={purchase.id || index} // Use ID if available, fallback to index
+              key={purchase.id || index}
               className="flex items-center bg-gray-800/50 p-3 rounded-lg border border-gray-700"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -42,7 +39,7 @@ const RecentPurchases: FC<RecentPurchasesProps> = ({ recentPurchases }) => {
                 src={purchase.avatar}
                 alt="User Avatar"
                 className="w-10 h-10 rounded-full mr-3 object-cover"
-                onError={(e) => e.currentTarget.src = `https://placehold.co/40x40/random/FFFFFF?text=User`} // Fallback
+                onError={(e) => e.currentTarget.src = `https://placehold.co/40x40/random/FFFFFF?text=User`}
               />
               <div className="flex-grow">
                 <p className="text-white font-semibold text-md truncate">{purchase.address.slice(0, 6)}...{purchase.address.slice(-4)}</p>

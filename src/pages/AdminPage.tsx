@@ -1,23 +1,15 @@
+// src/pages/AdminPage.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 import Tilt from 'react-parallax-tilt';
-import { Settings, Banknote, Wallet, CreditCard, Key, Info, Database, Link } from 'lucide-react';
+import { Settings, User, Database, Link, Key, Users } from 'lucide-react';
 import SwytchCard from '../components/SwytchCard';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import StarfieldBackground from '../components/StarfieldBackground';
 import { db } from '@/lib/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { PageProps } from '../lib/types';
-
-// Define AdminConfig interface
-interface AdminConfig {
-  upiId: string;
-  metamaskWalletAddress: string;
-  paypalMerchantId: string;
-  paypalClientId: string;
-  paypalClientSecret: string; // For UI demo only; not stored client-side in production
-}
 
 // Animation variants
 const containerVariants = {
@@ -44,71 +36,44 @@ const AdminPage: FC<PageProps> = ({
 }) => {
   const adminUID = '0CfobCbXnPZsJwT662H4OhDrXk33';
   const isAdmin = userId === adminUID;
-  const [upiId, setUpiId] = useState('');
-  const [metamaskWalletAddress, setMetamaskWalletAddress] = useState('');
-  const [paypalMerchantId, setPaypalMerchantId] = useState('');
-  const [paypalClientId, setPaypalClientId] = useState('');
-  const [paypalClientSecret, setPaypalClientSecret] = useState('');
+  const [newAdminId, setNewAdminId] = useState('');
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchConfig = async () => {
-      if (!isAdmin) {
-        setLoadingConfig(false);
-        return;
-      }
-      setLoadingConfig(true);
-      try {
-        const configRef = doc(db, 'AdminConfig', 'globalConfig');
-        const configSnap = await getDoc(configRef);
-        if (configSnap.exists()) {
-          const configData = configSnap.data() as AdminConfig;
-          setUpiId(configData.upiId || '');
-          setMetamaskWalletAddress(configData.metamaskWalletAddress || '');
-          setPaypalMerchantId(configData.paypalMerchantId || '');
-          setPaypalClientId(configData.paypalClientId || '');
-          setPaypalClientSecret(configData.paypalClientSecret || '');
-        } else {
-          setShowMessage('ℹ️ Admin configuration document not found. Using defaults.');
-        }
-      } catch (err) {
-        console.error('Failed to fetch admin config:', err);
-        setShowMessage('⚠️ Failed to load admin configurations.');
-        setError('Failed to load configurations.');
-      } finally {
-        setLoadingConfig(false);
-      }
-    };
-    fetchConfig();
-  }, [isAdmin, setShowMessage]);
+    // This hook simulates fetching a config, but for now we will just assume permissions are handled.
+    setLoadingConfig(false);
+  }, []);
 
-  const handleUpdateConfig = async () => {
+  const handleGrantAdmin = async () => {
     if (!isAdmin) {
-      setShowMessage('⚠️ Access Denied: You are not authorized to update configurations.');
+      setShowMessage('⚠️ Access Denied: You are not authorized to grant admin access.');
       return;
     }
+    if (!newAdminId.trim()) {
+      setShowMessage('⚠️ Please enter a valid User ID.');
+      return;
+    }
+
     setUpdateLoading(true);
     setError(null);
-    const newConfig: AdminConfig = {
-      upiId,
-      metamaskWalletAddress,
-      paypalMerchantId,
-      paypalClientId,
-      paypalClientSecret,
-    };
+
     try {
-      setShowMessage('✅ Configuration update request submitted! (Requires backend processing)');
-      console.log('Admin config update requested:', newConfig);
-      setTimeout(() => {
-        setShowMessage('✅ Configuration update simulated successfully!');
-        setUpdateLoading(false);
-      }, 1500);
+      // In a production environment, this would be a secure backend call (Cloud Function)
+      // For this implementation, we will log a request to a Firestore collection
+      const adminConfigRef = doc(db, 'AdminConfig', 'globalConfig');
+      await updateDoc(adminConfigRef, {
+        admins: arrayUnion(newAdminId.trim()),
+      });
+      
+      setShowMessage(`✅ Admin access granted to User ID: ${newAdminId}!`);
+      setNewAdminId('');
     } catch (err) {
-      console.error('Admin config update failed:', err);
-      setError('Failed to update configuration. Check console for details.');
-      setShowMessage('⚠️ Failed to update configuration.');
+      console.error('Failed to grant admin access:', err);
+      setError('Failed to grant admin access. Check console for details.');
+      setShowMessage('⚠️ Failed to grant admin access.');
+    } finally {
       setUpdateLoading(false);
     }
   };
@@ -167,7 +132,6 @@ const AdminPage: FC<PageProps> = ({
       >
         <StarfieldBackground />
         <motion.div className="relative z-20 max-w-5xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          {/* Hero Section */}
           <motion.section variants={sectionVariants} className="text-center mb-16">
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
@@ -183,164 +147,33 @@ const AdminPage: FC<PageProps> = ({
               Admin Command Center
             </h1>
             <p className="text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto font-inter mb-8">
-              Configure the PETverse’s galactic economy with precision. Securely manage payment and wallet settings.
+              Configure the PETverse’s galactic economy with precision. Securely manage platform settings and user permissions.
             </p>
           </motion.section>
 
-          {/* Configuration Overview */}
-          <motion.section variants={sectionVariants} className="mb-16">
-            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-secondary">
-              <Database className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
-              Configuration Overview
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {[
-                {
-                  title: 'UPI Payments',
-                  image: 'https://via.placeholder.com/300x200?text=UPI+Config',
-                  description: 'Set up UPI for seamless fiat transactions.',
-                  tooltip: 'Configure the UPI ID for player withdrawals and deposits.',
-                },
-                {
-                  title: 'MetaMask Wallet',
-                  image: 'https://via.placeholder.com/300x200?text=MetaMask+Config',
-                  description: 'Manage crypto payments with MetaMask.',
-                  tooltip: 'Set the wallet address for receiving NFT and crypto payments.',
-                },
-                {
-                  title: 'PayPal Merchant',
-                  image: 'https://via.placeholder.com/300x200?text=PayPal+Merchant',
-                  description: 'Configure PayPal for global transactions.',
-                  tooltip: 'Enter the PayPal Merchant ID for secure payouts.',
-                },
-                {
-                  title: 'PayPal API',
-                  image: 'https://via.placeholder.com/300x200?text=PayPal+API',
-                  description: 'Set up PayPal API credentials.',
-                  tooltip: 'Manage Client ID and Secret for PayPal integration (backend only).',
-                },
-              ].map((config, index) => (
-                <motion.div key={index} variants={sectionVariants}>
-                  <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
-                    <div className="holographic-card p-8 text-center animated-aura">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <div className="relative group">
-                            <img src={config.image} alt={config.title} className="w-full h-48 object-cover rounded-lg mb-6" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                              <Info className="w-8 h-8 text-[hsl(var(--secondary))] animate-neon-pulse" />
-                            </div>
-                          </div>
-                        </DialogTrigger>
-                        <DialogContent className="tooltip max-w-md p-6">
-                          <h3 className="text-lg font-bold text-foreground font-russo mb-2">{config.title}</h3>
-                          <p className="text-sm text-muted-foreground">{config.tooltip}</p>
-                        </DialogContent>
-                      </Dialog>
-                      <h3 className="text-2xl font-semibold text-foreground font-russo mt-4">{config.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-2">{config.description}</p>
-                    </div>
-                  </Tilt>
-                </motion.div>
-              ))}
-            </div>
-          </motion.section>
-
-          {/* Payment & Wallet Configurations */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
-              <Settings className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
-              Configure Settings
+              <Users className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
+              Manage Admin Access
             </h2>
-            <SwytchCard gradient="from-[hsl(var(--primary),0.2)] to-[hsl(var(--secondary),0.2)]" className="p-8 holographic-card">
+            <SwytchCard gradient="from-purple-700/20 to-pink-700/20" className="p-8 holographic-card">
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
-                  <Banknote className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
+                  <User className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
                   <Dialog>
                     <DialogTrigger asChild>
                       <input
                         type="text"
-                        placeholder="UPI ID (e.g., yourname@bank)"
-                        value={upiId}
-                        onChange={(e) => setUpiId(e.target.value)}
+                        placeholder="Enter User ID to promote"
+                        value={newAdminId}
+                        onChange={(e) => setNewAdminId(e.target.value)}
                         className="input-system w-full"
-                        aria-label="UPI ID"
+                        aria-label="User ID to Promote"
+                        disabled={updateLoading}
                       />
                     </DialogTrigger>
                     <DialogContent className="tooltip max-w-md p-6">
-                      <p className="text-sm text-muted-foreground">Enter the UPI ID for processing player fiat transactions.</p>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Wallet className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <input
-                        type="text"
-                        placeholder="MetaMask Wallet Address (0x...)"
-                        value={metamaskWalletAddress}
-                        onChange={(e) => setMetamaskWalletAddress(e.target.value)}
-                        className="input-system w-full"
-                        aria-label="MetaMask Wallet Address"
-                      />
-                    </DialogTrigger>
-                    <DialogContent className="tooltip max-w-md p-6">
-                      <p className="text-sm text-muted-foreground">Set the MetaMask address for receiving crypto payments.</p>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CreditCard className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <input
-                        type="text"
-                        placeholder="PayPal Merchant ID"
-                        value={paypalMerchantId}
-                        onChange={(e) => setPaypalMerchantId(e.target.value)}
-                        className="input-system w-full"
-                        aria-label="PayPal Merchant ID"
-                      />
-                    </DialogTrigger>
-                    <DialogContent className="tooltip max-w-md p-6">
-                      <p className="text-sm text-muted-foreground">Configure the PayPal Merchant ID for global payouts.</p>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Key className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <input
-                        type="text"
-                        placeholder="PayPal Client ID"
-                        value={paypalClientId}
-                        onChange={(e) => setPaypalClientId(e.target.value)}
-                        className="input-system w-full"
-                        aria-label="PayPal Client ID"
-                      />
-                    </DialogTrigger>
-                    <DialogContent className="tooltip max-w-md p-6">
-                      <p className="text-sm text-muted-foreground">Enter the PayPal Client ID for API integration.</p>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Key className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <input
-                        type="password"
-                        placeholder="PayPal Client Secret (NEVER EXPOSE IN PROD)"
-                        value={paypalClientSecret}
-                        onChange={(e) => setPaypalClientSecret(e.target.value)}
-                        className="input-system w-full"
-                        aria-label="PayPal Client Secret"
-                      />
-                    </DialogTrigger>
-                    <DialogContent className="tooltip max-w-md p-6">
-                      <p className="text-sm text-muted-foreground">Set the PayPal Client Secret (handled securely on backend in production).</p>
+                      <p className="text-sm text-muted-foreground">Enter the unique User ID of the player you wish to grant admin access to.</p>
                     </DialogContent>
                   </Dialog>
                 </div>
@@ -348,16 +181,16 @@ const AdminPage: FC<PageProps> = ({
                   <DialogTrigger asChild>
                     <motion.button
                       className="btn-system-glow w-full flex items-center justify-center gap-3 text-lg"
-                      onClick={handleUpdateConfig}
-                      disabled={updateLoading}
+                      onClick={handleGrantAdmin}
+                      disabled={updateLoading || !newAdminId.trim()}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      {updateLoading ? 'Updating...' : 'Update Configurations'} <Settings className="w-6 h-6" />
+                      {updateLoading ? 'Granting Access...' : 'Grant Admin Access'} <Key className="w-6 h-6" />
                     </motion.button>
                   </DialogTrigger>
                   <DialogContent className="tooltip max-w-md p-6">
-                    <p className="text-sm text-muted-foreground">Submit updated configurations to the backend for processing.</p>
+                    <p className="text-sm text-muted-foreground">Submit a request to grant admin privileges. This action is irreversible.</p>
                   </DialogContent>
                 </Dialog>
                 <AnimatePresence>
@@ -373,20 +206,21 @@ const AdminPage: FC<PageProps> = ({
                   )}
                 </AnimatePresence>
                 <p className="text-xs text-muted-foreground mt-4 text-center font-inter">
-                  *Note: Sensitive keys like Client Secret are managed securely on the backend in production (e.g., Firebase Cloud Functions).
+                  *This action requires the primary admin's clearance. The updated list of admins will be reflected across the platform.
                 </p>
               </div>
             </SwytchCard>
           </motion.section>
 
-          {/* Admin Actions */}
           <motion.section variants={sectionVariants} className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo mb-8 text-glow-accent">
               <Database className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
               Admin Actions
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 font-inter">
-              Manage transaction logs, review player activities, or deploy new configurations across the PETverse.
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-inter mb-8">
+              Manage transaction logs, review player activities, and more.
+              <br/>
+              <span className="text-sm text-gray-500 italic">Withdrawal management will be available in the upcoming alpha launch.</span>
             </p>
             <Dialog>
               <DialogTrigger asChild>

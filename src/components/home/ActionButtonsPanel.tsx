@@ -35,7 +35,7 @@ const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({
           className="btn-primary flex items-center justify-center gap-2"
           onClick={() => {
             if (handleRestrictedAction('deposit')) {
-              setShowMessage('💰 Opening deposit options...');
+              setShowMessage('💰 Opening crypto deposit options...');
               setActiveModal('payment');
             }
           }}
@@ -50,7 +50,7 @@ const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({
           className="btn-primary flex items-center justify-center gap-2"
           onClick={() => {
             if (handleRestrictedAction('withdraw')) {
-              setShowMessage('💸 Opening withdrawal options...');
+              setShowMessage('💸 Opening crypto withdrawal options...');
               setActiveModal('payment'); // Assuming payment modal handles withdrawals too
             }
           }}

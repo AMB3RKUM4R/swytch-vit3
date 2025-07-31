@@ -24,12 +24,10 @@ const SendCryptoModal: FC<SendCryptoModalProps> = ({ onClose, setShowMessage, us
 
   const { data: ethBalance } = useBalance({ address: connectedAddress, unit: 'ether' });
 
-  // Wagmi hooks for sending transaction
   const { data: hash, sendTransaction, isPending: isTxPending } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({ hash });
 
   useEffect(() => {
-    // Reset state when hash or txError changes
     if (isConfirmed || txError) {
       setLoading(false);
       if (isConfirmed) {

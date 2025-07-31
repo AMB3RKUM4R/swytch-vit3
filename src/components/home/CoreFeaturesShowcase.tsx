@@ -18,8 +18,8 @@ const features = [
   },
   {
     icon: <DollarSign className="w-8 h-8 text-green-400" />,
-    title: 'Crypto & Fiat Withdrawals',
-    description: 'Convert your in-game earnings to crypto or fiat (UPI/PayPal).',
+    title: 'Crypto Withdrawals',
+    description: 'Convert your in-game earnings to crypto.',
     gradient: 'from-green-700/20 to-teal-700/20',
   },
   {

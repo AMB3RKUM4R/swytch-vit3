@@ -3,18 +3,27 @@ import { FC, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Gem, BarChart } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { LeaderboardEntry } from '@/lib/types';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore'; // Import DocumentData
+import { PlayerData } from '@/lib/types';
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
+
+// Define the LeaderboardEntry interface with corrected types
+interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  level: number; // Corrected type to number
+  jewels: number;
+  avatar: string; // Added avatar property
+}
 
 interface CommunityRankingsProps {
   userId: string | null;
   setActiveModal: (modalName: string | null) => void;
   setShowMessage: (message: string) => void;
-  leaderboard: LeaderboardEntry[]; // Initial or placeholder leaderboard data
+  leaderboard: LeaderboardEntry[];
 }
 
-const CommunityRankings: FC<CommunityRankingsProps> = ({ /* userId, setActiveModal, setShowMessage */ }) => { // FIX: Removed unused props from destructuring
+const CommunityRankings: FC<CommunityRankingsProps> = ({ /* userId, setActiveModal, setShowMessage */ }) => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,16 +31,25 @@ const CommunityRankings: FC<CommunityRankingsProps> = ({ /* userId, setActiveMod
   useEffect(() => {
     setLoading(true);
     setError(null);
-    // Query the 'Players' collection to create a leaderboard based on 'jewels'
     const q = query(
       collection(db, 'Players'),
-      orderBy('jewels', 'desc'), // Order by jewels in descending order
-      limit(10) // Get top 10 players
+      orderBy('jewels', 'desc'),
+      limit(10)
     );
 
-    const unsubscribe = onSnapshot(q, (_snapshot) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedLeaderboard: LeaderboardEntry[] = [];
-    
+      let rank = 1;
+      snapshot.forEach(doc => {
+        const data = doc.data() as PlayerData;
+        fetchedLeaderboard.push({
+          rank: rank++,
+          name: data.username,
+          level: data.level,
+          jewels: data.jewels,
+          avatar: "https://placehold.co/40x40/random/FFFFFF?text=U", // Placeholder or fetch from PlayerData
+        });
+      });
       setLeaderboardData(fetchedLeaderboard);
       setLoading(false);
     }, (err) => {
@@ -41,8 +59,7 @@ const CommunityRankings: FC<CommunityRankingsProps> = ({ /* userId, setActiveMod
     });
 
     return () => unsubscribe();
-  }, []); // Empty dependency array means this runs once on mount
-
+  }, []);
 
   return (
     <SwytchCard gradient="from-orange-700/20 to-red-700/20" className="p-6">

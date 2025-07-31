@@ -1,26 +1,24 @@
 // src/components/marketplace/BuyItemModal.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShoppingCart } from 'lucide-react'; // Added Eye
+import { X, ShoppingCart } from 'lucide-react';
 import { useTheme } from '@/components/context/ThemeContext';
-import { SupportedCurrency, PlayerData, Transaction, TransactionType, TransactionStatus, MarketItem } from '@/lib/types'; // Import MarketItem
-import { doc, setDoc, collection, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { SupportedCurrency, PlayerData, Transaction, TransactionType, TransactionStatus, MarketItem } from '@/lib/types';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
-import { useAccount, useSendTransaction, useWaitForTransactionReceipt, usePublicClient, useWalletClient } from 'wagmi';
-import { parseEther } from 'viem'; // For ETH conversion
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther } from 'viem';
 
-// Placeholder ABI for a generic ERC20 token (like USDT)
-
+// Hardcoded MetaMask wallet address for deposits
+const DEPOSIT_WALLET_ADDRESS = '0x03d3c8065a4A936b856A39121a5F9e0A441dF4E8';
 
 interface BuyItemModalProps {
-  item: MarketItem; // Using MarketItem type
+  item: MarketItem;
   userId: string | null;
   onClose: () => void;
-  onSuccess: (item: MarketItem) => void; // onSuccess now takes MarketItem
+  onSuccess: (item: MarketItem) => void;
   setShowMessage: (message: string) => void;
   setActiveModal: (modalName: string | null) => void;
-  updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
-  jewelsBalance: number; // Current user's jewels balance for in-app currency check
 }
 
 const BuyItemModal: FC<BuyItemModalProps> = ({
@@ -30,22 +28,16 @@ const BuyItemModal: FC<BuyItemModalProps> = ({
   onSuccess,
   setShowMessage,
   setActiveModal,
-  updatePlayerFirestore,
-  jewelsBalance,
 }) => {
   const { isDarkMode } = useTheme();
   const { address: connectedAddress, isConnected } = useAccount(); 
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [purchaseMethod, setPurchaseMethod] = useState<'crypto' | 'jewels'>('crypto'); // Default to crypto purchase
+  const [purchaseMethod, setPurchaseMethod] = useState<'crypto' | 'jewels'>('crypto');
 
   // Wagmi hooks for sending transaction (for crypto payment)
   const { data: hash, sendTransaction, isPending: isTxPending } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({ hash });
-
-  const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
 
   const handlePurchase = async () => {
     if (!userId) {
@@ -69,224 +61,49 @@ const BuyItemModal: FC<BuyItemModalProps> = ({
     setError(null);
 
     try {
-      if (purchaseMethod === 'crypto') {
-        if (!isConnected || !connectedAddress) {
-          setError('No crypto wallet connected. Please connect your wallet.');
-          setShowMessage('⚠️ No crypto wallet connected. Please connect your wallet.');
-          setActiveModal('auth');
-          setLoading(false);
-          return;
-        }
+      // --- SUBMIT PURCHASE REQUEST TO BACKEND (Firestore) ---
+      // This is the secure approach. The client sends a request, and a server-side
+      // Cloud Function will handle the actual state changes (deducting currency,
+      // updating inventories, etc.) in a secure transaction.
+      // This prevents a malicious user from manipulating their balance or inventory.
 
-        // --- Crypto Purchase Logic ---
-        // This part would ideally interact with a deployed marketplace smart contract
-        // For MVP, we'll simulate the transfer and rely on Firestore updates after confirmation.
-        // If ETH, use sendTransaction. If ERC-20 (like USDT), use contract.write.transfer.
-
-        if (item.listingCurrency === 'ETH') {
-          sendTransaction({
-            to: item.ownerId as `0x${string}`, // Seller's wallet address (assuming ownerId is wallet address)
-            value: parseEther(item.listingPriceCrypto.toString()),
-          });
-        } else if (item.listingCurrency === 'USDT') {
-          if (!walletClient || !publicClient) {
-            setError('Wallet client not ready for ERC-20 transfer.');
-            setShowMessage('⚠️ Wallet client not ready.');
-            setLoading(false);
-            return;
-          }
-
-          // Replace with actual USDT contract address for the chain you are on (e.g., Avalanche C-Chain)
-          // This is a placeholder for Mainnet USDT:
-
-          // Set hash to trigger useWaitForTransactionReceipt
-          // For ERC20, use effect hook to listen for `isConfirmed`
-          setShowMessage('ℹ️ USDT transfer initiated. Please confirm in your wallet.');
-          // Manually trigger confirmation logic if not using useSendTransaction for ERC20
-          // For now, let `isConfirmed` from useWaitForTransactionReceipt (which listens to `hash`) handle it.
-          // If you need to explicitly set hash here: setHash(txHash);
-        } else {
-          setError(`Unsupported crypto currency: ${item.listingCurrency}`);
-          setShowMessage(`⚠️ Unsupported crypto currency: ${item.listingCurrency}`);
-          setLoading(false);
-          return;
-        }
-        setShowMessage(`Crypto purchase initiated. Waiting for transaction confirmation...`);
-
-      } else if (purchaseMethod === 'jewels') {
-        // --- JEWELS Purchase Logic ---
-        if (jewelsBalance < item.listingPriceCrypto) {
-          setError('Insufficient JEWELS balance.');
-          setShowMessage('⚠️ Insufficient JEWELS balance.');
-          setLoading(false);
-          return;
-        }
-
-        // 1. Deduct JEWELS from buyer's balance
-        await updatePlayerFirestore({ jewels: jewelsBalance - item.listingPriceCrypto });
-
-        // 2. Add item to buyer's inventory and remove listing status
-        const buyerRef = doc(db, 'Players', userId);
-        const buyerSnap = await getDoc(buyerRef);
-        const buyerData = buyerSnap.data() as PlayerData;
-        const buyerInventoryItems = buyerData.inventory?.items || {};
-        const updatedBuyerInventoryItems = {
-          ...buyerInventoryItems,
-          [item.id]: {
-            ...item,
-            isListedForSale: false,
-            listingPriceCrypto: null,
-            listingCurrency: null,
-            ownerId: userId, // New owner is the buyer
-          },
-        };
-        await updatePlayerFirestore({
-          inventory: {
-            equipped: buyerData.inventory?.equipped || { armor: '', weapon: '' }, // Ensure equipped is always present
-            items: updatedBuyerInventoryItems,
-          },
-        });
-
-        // 3. Remove item from seller's inventory and credit seller with JEWELS
-        const sellerRef = doc(db, 'Players', item.ownerId);
-        const sellerSnap = await getDoc(sellerRef);
-        const sellerData = sellerSnap.data() as PlayerData;
-        const sellerInventoryItems = sellerData.inventory?.items || {};
-        const updatedSellerInventoryItems = { ...sellerInventoryItems };
-        delete updatedSellerInventoryItems[item.id]; // Remove item from seller's inventory
-
-        await setDoc(sellerRef, {
-          inventory: {
-            equipped: sellerData.inventory?.equipped || { armor: '', weapon: '' }, // Ensure equipped is always present
-            items: updatedSellerInventoryItems,
-          },
-          jewels: (sellerData.jewels || 0) + item.listingPriceCrypto, // Credit seller with JEWELS
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-
-        // 4. Remove item from MarketItems collection (or mark as sold)
-        await setDoc(doc(db, 'MarketItems', item.id), {
-          isListedForSale: false,
-          buyerId: userId,
-          soldAt: serverTimestamp(),
-        }, { merge: true });
-
-        // 5. Log transaction for purchase
-        const transaction: Transaction = {
-          transactionId: `buy_jewels_${item.id}_${Date.now()}`,
-          userId: userId,
-          amount: item.listingPriceCrypto,
-          currency: 'JEWELS' as SupportedCurrency,
-          transactionType: 'item-purchase' as TransactionType,
-          status: 'success' as TransactionStatus,
-          timestamp: serverTimestamp(),
-          itemId: item.id,
-          game: 'marketplace',
-          paymentMethod: 'jewels',
-        };
-        await addDoc(collection(db, 'Transactions'), transaction);
-
-        onSuccess(item); // Notify parent of success
-        setShowMessage(`✅ You successfully purchased ${item.name} with JEWELS!`);
-        setLoading(false); // End loading for JEWELS purchase
-        onClose(); // Close modal
-      }
+      await addDoc(collection(db, 'purchase_requests'), {
+        userId,
+        itemId: item.id,
+        purchaseMethod,
+        price: item.listingPriceCrypto,
+        currency: item.listingCurrency,
+        sellerId: item.ownerId,
+        requestedAt: serverTimestamp(),
+      });
+      
+      setShowMessage(`Purchase request submitted for "${item.name}". Pending verification.`);
+      setLoading(false);
+      onClose(); // Close the modal as the request has been submitted
     } catch (err: any) {
-      console.error('Failed to purchase item:', err);
-      setError(err.message || 'Failed to purchase item. Please try again.');
-      setShowMessage('⚠️ Purchase failed. Please try again.');
+      console.error('Failed to submit purchase request:', err);
+      setError(err.message || 'Failed to submit purchase request. Please try again.');
+      setShowMessage('⚠️ Purchase request failed. Please try again.');
       setLoading(false);
     }
   };
 
-  // Handle Wagmi transaction confirmation for crypto purchases
+
+  // Handle Wagmi transaction confirmation for crypto payments (from a previous action)
   useEffect(() => {
     if (isConfirmed && hash) {
-      setShowMessage(`✅ Crypto transaction confirmed! Item purchase being finalized.`);
-      // After crypto transaction is confirmed on chain, update Firestore
-      // This part would ideally be handled by a backend webhook listening to chain events
-      // For MVP, we'll do it client-side optimistically.
-      const finalizeCryptoPurchaseInFirestore = async () => {
-        try {
-          // 1. Remove item from seller's inventory (seller already received crypto on-chain)
-          const sellerRef = doc(db, 'Players', item.ownerId);
-          const sellerSnap = await getDoc(sellerRef);
-          if (sellerSnap.exists()) {
-            const sellerData = sellerSnap.data() as PlayerData;
-            const sellerInventoryItems = sellerData.inventory?.items || {};
-            const updatedSellerInventoryItems = { ...sellerInventoryItems };
-            delete updatedSellerInventoryItems[item.id]; // Remove item from seller's inventory
-
-            await setDoc(sellerRef, {
-              inventory: {
-                equipped: sellerData.inventory?.equipped || { armor: '', weapon: '' },
-                items: updatedSellerInventoryItems,
-              },
-              updatedAt: serverTimestamp(),
-            }, { merge: true });
-          }
-
-
-          // 2. Add item to buyer's inventory
-          const buyerRef = doc(db, 'Players', userId!); // userId is guaranteed here
-          const buyerSnap = await getDoc(buyerRef);
-          const buyerData = buyerSnap.data() as PlayerData;
-          const buyerInventoryItems = buyerData.inventory?.items || {};
-          const updatedBuyerInventoryItems = {
-            ...buyerInventoryItems,
-            [item.id]: {
-              ...item,
-              isListedForSale: false,
-              listingPriceCrypto: null,
-              listingCurrency: null,
-              ownerId: userId!, // New owner is the buyer
-            },
-          };
-          await updatePlayerFirestore({
-            inventory: {
-              equipped: buyerData.inventory?.equipped || { armor: '', weapon: '' },
-              items: updatedBuyerInventoryItems,
-            },
-          });
-
-          // 3. Remove item from MarketItems collection (or mark as sold)
-          await setDoc(doc(db, 'MarketItems', item.id), {
-            isListedForSale: false,
-            buyerId: userId,
-            soldAt: serverTimestamp(),
-          }, { merge: true });
-
-          // 4. Log transaction for purchase
-          const transaction: Transaction = {
-            transactionId: `buy_crypto_${item.id}_${hash}`,
-            userId: userId!,
-            amount: item.listingPriceCrypto!,
-            currency: item.listingCurrency!,
-            transactionType: 'item-purchase' as TransactionType,
-            status: 'success' as TransactionStatus,
-            timestamp: serverTimestamp(),
-            itemId: item.id,
-            game: 'marketplace',
-            walletAddress: connectedAddress,
-            paypalOrderId: hash, // Using hash as order ID for crypto tx
-            paymentMethod: 'crypto',
-          };
-          await addDoc(collection(db, 'Transactions'), transaction);
-
-          onSuccess(item);
-          setShowMessage(`✅ ${item.name} purchased with crypto!`);
-          setLoading(false); // End loading
-          onClose(); // Close modal
-        } catch (err: any) {
-          console.error('Failed to finalize crypto purchase in Firestore:', err);
-          setError(err.message || 'Failed to finalize purchase after crypto transaction. Contact support.');
-          setShowMessage('⚠️ Purchase failed after crypto transaction. Contact support.');
-          setLoading(false);
-        }
-      };
-      finalizeCryptoPurchaseInFirestore();
+      setShowMessage(`✅ Crypto transaction confirmed! Purchase is being finalized by the backend.`);
+      // The backend (Cloud Function) would detect this confirmed transaction and
+      // update the player's state and item ownership in a secure manner.
+      onSuccess(item); // Optimistically update the UI to reflect a successful purchase
+      setLoading(false);
+      onClose();
+    } else if (txError) {
+      setError(`Transaction failed: ${txError.message}`);
+      setShowMessage(`⚠️ Transaction failed: ${txError.message}`);
+      setLoading(false);
     }
-  }, [isConfirmed, hash, txError, item, userId, connectedAddress, updatePlayerFirestore, setShowMessage, onSuccess, onClose]);
+  }, [isConfirmed, hash, txError, item, connectedAddress, setShowMessage, onSuccess, onClose]);
 
 
   return (
@@ -336,6 +153,7 @@ const BuyItemModal: FC<BuyItemModalProps> = ({
           </div>
 
           <div className="space-y-4">
+            {/* Purchase method selection (for UI/UX, backend will validate) */}
             <div className="flex flex-col gap-2">
               <label className="text-white text-sm font-semibold">Choose Payment Method:</label>
               <div className="flex flex-wrap gap-4">
@@ -357,7 +175,7 @@ const BuyItemModal: FC<BuyItemModalProps> = ({
                     onChange={() => setPurchaseMethod('jewels')}
                     className="form-radio text-primary"
                   />
-                  <span className="ml-2 text-white">JEWELS (Your Balance: {jewelsBalance.toFixed(0)})</span>
+                  <span className="ml-2 text-white">JEWELS</span>
                 </label>
               </div>
             </div>
@@ -365,14 +183,14 @@ const BuyItemModal: FC<BuyItemModalProps> = ({
             <motion.button
               className="btn-primary"
               onClick={handlePurchase}
-              disabled={loading || isTxPending || isConfirming || (purchaseMethod === 'jewels' && jewelsBalance < (item.listingPriceCrypto || 0)) || !isConnected} // Disable if not connected for crypto
+              disabled={loading || isTxPending || isConfirming || !isConnected}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
               {loading || isTxPending || isConfirming ? (
                 isTxPending ? 'Confirming in Wallet...' : isConfirming ? 'Processing Transaction...' : 'Purchasing...'
               ) : (
-                `Buy Now with ${purchaseMethod === 'crypto' ? item.listingCurrency : 'JEWELS'}`
+                `Buy Now`
               )}
             </motion.button>
           </div>

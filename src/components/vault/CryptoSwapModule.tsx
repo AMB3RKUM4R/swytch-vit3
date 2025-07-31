@@ -1,17 +1,16 @@
 // src/components/vault/CryptoSwapModule.tsx
 import { FC, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, ArrowRight } from 'lucide-react';
+import { ArrowRight, Wallet } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { SupportedCurrency, PlayerData, Transaction, TransactionType, TransactionStatus } from '@/lib/types';
+import { PlayerData } from '@/lib/types';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
-import { useAccount, useBalance, useSendTransaction, useWaitForTransactionReceipt, usePublicClient, useWalletClient } from 'wagmi';
+import { useAccount, useBalance, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 
-// Placeholder ABI for a generic ERC20 token (like USDT)
-// In a real app, you'd import the specific ABI for each token.
-
+// Hardcoded MetaMask wallet address for deposits
+const DEPOSIT_WALLET_ADDRESS = '0x03d3c8065a4A936b856A39121a5F9e0A441dF4E8';
 
 interface CryptoSwapModuleProps {
   userId: string | null;
@@ -22,57 +21,33 @@ interface CryptoSwapModuleProps {
   walletAddress: string | null;
 }
 
-const CryptoSwapModule: FC<CryptoSwapModuleProps> = ({
-  userId,
-  setShowMessage,
-  setActiveModal,
-  updatePlayerFirestore,
-  isConnected,
-}) => {
+const CryptoSwapModule: FC<CryptoSwapModuleProps> = ({ userId, setShowMessage, setActiveModal, isConnected }) => {
   const [fromAmount, setFromAmount] = useState<string>('');
   const [toAmount, setToAmount] = useState<string>('');
-  const [fromCurrency, setFromCurrency] = useState<SupportedCurrency>('ETH');
-  const [toCurrency, setToCurrency] = useState<SupportedCurrency>('USDT');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { address: connectedAddress } = useAccount();
   const { data: ethBalance } = useBalance({ address: connectedAddress, unit: 'ether' });
-  const { data: usdtBalance } = useBalance({ address: connectedAddress, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' }); // Example USDT on Mainnet
-  // You'd need to add more balance hooks for other tokens/chains as needed
 
-  const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
-
-  // Wagmi hooks for sending transaction
   const { data: hash, sendTransaction, isPending: isTxPending } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({ hash });
 
-  const availableCurrencies: SupportedCurrency[] = ['ETH', 'USDT']; // Add more as supported
-
-  // Simulate exchange rate (for MVP, a fixed rate)
-  const getExchangeRate = useCallback((from: SupportedCurrency, to: SupportedCurrency) => {
-    if (from === 'ETH' && to === 'USDT') return 3000; // 1 ETH = 3000 USDT (example)
-    if (from === 'USDT' && to === 'ETH') return 1 / 3000; // 1 USDT = 0.00033 ETH (example)
-    return 1; // For same currency or unsupported pairs
+  const getExchangeRate = useCallback(() => {
+    const ethToJewelsRate = 5000;
+    return ethToJewelsRate;
   }, []);
 
   useEffect(() => {
     if (fromAmount) {
-      const rate = getExchangeRate(fromCurrency, toCurrency);
-      setToAmount((parseFloat(fromAmount) * rate).toFixed(4));
+      const rate = getExchangeRate();
+      setToAmount((parseFloat(fromAmount) * rate).toFixed(0));
     } else {
       setToAmount('');
     }
-  }, [fromAmount, fromCurrency, toCurrency, getExchangeRate]);
+  }, [fromAmount, getExchangeRate]);
 
-  const handleSwapCurrencies = () => {
-    setFromCurrency(toCurrency);
-    setToCurrency(fromCurrency);
-    setFromAmount(toAmount); // Swap amounts too for better UX
-  };
-
-  const handleInitiateSwap = async () => {
+  const handleInitiateDeposit = async () => {
     if (!userId) {
       setError('User not authenticated. Please sign in.');
       setShowMessage('⚠️ User not authenticated. Please sign in.');
@@ -86,131 +61,96 @@ const CryptoSwapModule: FC<CryptoSwapModuleProps> = ({
       return;
     }
     if (isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
-      setError('Please enter a valid amount to swap.');
-      setShowMessage('⚠️ Please enter a valid amount to swap.');
+      setError('Please enter a valid amount to deposit.');
+      setShowMessage('⚠️ Please enter a valid amount to deposit.');
       return;
     }
 
-    // Basic balance check
-    if (fromCurrency === 'ETH' && ethBalance && parseFloat(fromAmount) > parseFloat(ethBalance.formatted)) {
+    if (ethBalance && parseFloat(fromAmount) > parseFloat(ethBalance.formatted)) {
       setError('Insufficient ETH balance.');
       setShowMessage('⚠️ Insufficient ETH balance.');
       return;
     }
-    if (fromCurrency === 'USDT' && usdtBalance && parseFloat(fromAmount) > parseFloat(usdtBalance.formatted)) {
-      setError('Insufficient USDT balance.');
-      setShowMessage('⚠️ Insufficient USDT balance.');
-      return;
-    }
-    // Add checks for other token balances
 
     setLoading(true);
     setError(null);
 
     try {
-      // Log transaction request to Firestore
-      const transactionId = `swap_request_${userId}_${Date.now()}`;
+      const transactionId = `deposit_request_${userId}_${Date.now()}`;
       await addDoc(collection(db, 'Transactions'), {
         transactionId,
         userId,
         amount: parseFloat(fromAmount),
-        currency: fromCurrency,
-        transactionType: 'crypto-swap' as TransactionType,
-        status: 'pending' as TransactionStatus,
+        currency: 'ETH',
+        transactionType: 'deposit',
+        status: 'pending',
         timestamp: serverTimestamp(),
         walletAddress: connectedAddress,
-        itemId: toCurrency, // To indicate what they want to receive
-        receivedAmount: parseFloat(toAmount), // Store the received amount here
-        game: 'vault-swap',
+        game: 'vault-deposit',
       });
 
+      sendTransaction({
+        to: DEPOSIT_WALLET_ADDRESS as `0x${string}`,
+        value: parseEther(fromAmount),
+      });
 
-      if (fromCurrency === 'ETH') {
-        sendTransaction({
-          to: '0xYourSwapContractAddress' as `0x${string}`, // Placeholder swap contract address
-          value: parseEther(fromAmount),
-        });
-      } else if (fromCurrency === 'USDT') {
-        if (!walletClient || !publicClient) {
-          setError('Wallet client not ready for ERC-20 transfer.');
-          setShowMessage('⚠️ Wallet client not ready.');
-          setLoading(false);
-          return;
-        }
-
-        setShowMessage('ℹ️ USDT swap initiated. Please confirm in your wallet.');
-      } else {
-        setError('Unsupported swap currency.');
-        setShowMessage('⚠️ Unsupported swap currency.');
-        setLoading(false);
-        return;
-      }
-
-      setShowMessage(`Swap initiated. Waiting for transaction confirmation...`);
-
+      setShowMessage(`Deposit initiated. Please confirm in your wallet.`);
     } catch (err: any) {
-      console.error('Swap initiation error:', err);
-      setError(err.message || 'Failed to initiate swap. Please try again.');
-      setShowMessage('⚠️ Failed to initiate swap.');
+      console.error('Deposit initiation error:', err);
+      setError(err.message || 'Failed to initiate deposit. Please try again.');
+      setShowMessage('⚠️ Failed to initiate deposit.');
       setLoading(false);
     }
   };
 
-  // Handle Wagmi transaction confirmation
   useEffect(() => {
     if (isConfirmed && hash) {
-      setShowMessage(`✅ Transaction confirmed: ${hash.slice(0, 6)}...${hash.slice(-4)}. Updating balances.`);
-      const finalizeSwapInFirestore = async () => {
+      setShowMessage(`✅ Deposit confirmed: ${hash.slice(0, 6)}...${hash.slice(-4)}. Updating JEWELS balance.`);
+      const finalizeDepositInFirestore = async () => {
+        if (!userId) return;
         try {
-          // Log transaction
-          const transaction: Transaction = {
-            transactionId: `swap_${hash}`,
-            userId: userId!,
+          await addDoc(collection(db, 'Transactions'), {
+            transactionId: `deposit_${hash}`,
+            userId,
             amount: parseFloat(fromAmount),
-            currency: fromCurrency,
-            transactionType: 'crypto-swap' as TransactionType,
-            status: 'success' as TransactionStatus,
+            currency: 'ETH',
+            transactionType: 'deposit',
+            status: 'success',
             timestamp: serverTimestamp(),
             walletAddress: connectedAddress,
-            game: 'vault-swap',
-            itemId: toCurrency, // Use itemId to indicate received currency
-            receivedAmount: parseFloat(toAmount), // Use a new field for the received amount
-            paypalOrderId: hash, // Using hash as order ID for crypto tx
+            game: 'vault-deposit',
             paymentMethod: 'crypto',
-          };
-          await addDoc(collection(db, 'Transactions'), transaction);
-          
-          setShowMessage(`✅ Crypto swap completed! Balances updated.`);
+          });
+          setShowMessage(`✅ Crypto deposit completed! Your JEWELS balance will be updated shortly.`);
           setLoading(false);
           setFromAmount('');
           setToAmount('');
         } catch (err: any) {
-          console.error('Failed to finalize swap in Firestore:', err);
-          setError(err.message || 'Failed to update balance after swap. Contact support.');
-          setShowMessage('⚠️ Swap failed to finalize in app. Contact support.');
+          console.error('Failed to finalize deposit in Firestore:', err);
+          setError(err.message || 'Failed to update balance after deposit. Contact support.');
+          setShowMessage('⚠️ Deposit failed to finalize in app. Contact support.');
           setLoading(false);
         }
       };
-      finalizeSwapInFirestore();
+      finalizeDepositInFirestore();
     } else if (txError) {
       setError(`Transaction failed: ${txError.message}`);
       setShowMessage(`⚠️ Transaction failed: ${txError.message}`);
       setLoading(false);
     }
-  }, [isConfirmed, hash, txError, userId, fromAmount, fromCurrency, toAmount, toCurrency, connectedAddress, setShowMessage, updatePlayerFirestore]);
-
+  }, [isConfirmed, hash, txError, userId, fromAmount, connectedAddress, setShowMessage]);
 
   return (
     <SwytchCard gradient="from-teal-700/20 to-cyan-700/20" className="p-6">
-      <h2 className="text-2xl font-bold text-white font-poppins mb-4 text-center">
-        <RefreshCw className="inline-block w-7 h-7 mr-2 text-primary" /> Crypto Swap
+      <h2 className="text-2xl font-bold text-white font-poppins mb-4 text-center flex items-center justify-center gap-2">
+        <Wallet className="w-7 h-7 text-primary" /> Deposit ETH
       </h2>
       {!isConnected ? (
-        <p className="text-center text-gray-400">Connect your wallet to enable crypto swaps.</p>
+        <p className="text-center text-gray-400">Connect your wallet to deposit ETH.</p>
       ) : (
         <div className="space-y-4">
           <div className="flex flex-col gap-2">
-            <label htmlFor="fromAmount" className="text-gray-300 text-sm">Amount to swap:</label>
+            <label htmlFor="fromAmount" className="text-gray-300 text-sm">Amount to deposit:</label>
             <input
               id="fromAmount"
               type="number"
@@ -222,33 +162,21 @@ const CryptoSwapModule: FC<CryptoSwapModuleProps> = ({
               disabled={loading || isTxPending || isConfirming}
             />
             <select
-              value={fromCurrency}
-              onChange={(e) => setFromCurrency(e.target.value as SupportedCurrency)}
-              className="input mt-2"
-              disabled={loading || isTxPending || isConfirming}
+              value="ETH"
+              className="input mt-2 opacity-70 cursor-not-allowed"
+              disabled
             >
-              {availableCurrencies.map(curr => (
-                <option key={curr} value={curr}>{curr}</option>
-              ))}
+              <option value="ETH">ETH</option>
             </select>
-            {fromCurrency === 'ETH' && ethBalance && <p className="text-xs text-gray-400">Balance: {parseFloat(ethBalance.formatted).toFixed(4)} ETH</p>}
-            {fromCurrency === 'USDT' && usdtBalance && <p className="text-xs text-gray-400">Balance: {parseFloat(usdtBalance.formatted).toFixed(2)} USDT</p>}
+            {ethBalance && <p className="text-xs text-gray-400">Balance: {parseFloat(ethBalance.formatted).toFixed(4)} ETH</p>}
           </div>
 
           <div className="flex justify-center my-2">
-            <motion.button
-              onClick={handleSwapCurrencies}
-              className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
-              whileHover={{ rotate: 180 }}
-              whileTap={{ scale: 0.9 }}
-              disabled={loading || isTxPending || isConfirming}
-            >
-              <ArrowRight className="w-5 h-5 text-white" />
-            </motion.button>
+            <ArrowRight className="w-8 h-8 text-white" />
           </div>
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="toAmount" className="text-gray-300 text-sm">You will receive (estimated):</label>
+            <label htmlFor="toAmount" className="text-gray-300 text-sm">You will receive (estimated JEWELS):</label>
             <input
               id="toAmount"
               type="number"
@@ -258,28 +186,25 @@ const CryptoSwapModule: FC<CryptoSwapModuleProps> = ({
               disabled
             />
             <select
-              value={toCurrency}
-              onChange={(e) => setToCurrency(e.target.value as SupportedCurrency)}
-              className="input mt-2"
-              disabled={loading || isTxPending || isConfirming}
+              value="JEWELS"
+              className="input mt-2 opacity-70 cursor-not-allowed"
+              disabled
             >
-              {availableCurrencies.map(curr => (
-                <option key={curr} value={curr}>{curr}</option>
-              ))}
+              <option value="JEWELS">JEWELS</option>
             </select>
           </div>
 
           <motion.button
             className="btn-primary w-full"
-            onClick={handleInitiateSwap}
+            onClick={handleInitiateDeposit}
             disabled={loading || isTxPending || isConfirming || !fromAmount || parseFloat(fromAmount) <= 0}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             {loading || isTxPending || isConfirming ? (
-              isTxPending ? 'Confirming in Wallet...' : isConfirming ? 'Swapping...' : 'Processing...'
+              isTxPending ? 'Confirming in Wallet...' : isConfirming ? 'Depositing...' : 'Processing...'
             ) : (
-              'Initiate Swap'
+              'Initiate Deposit'
             )}
           </motion.button>
 

@@ -1,13 +1,13 @@
 import { FC, useState, useEffect } from 'react';
-import { Home, Star, LogOut, User, Gamepad2, LandPlot, Users } from 'lucide-react';
+import { Home, Star, LogOut, User, Gamepad2, LandPlot, Users, ShoppingCart, Award, Package, Info, Link as LinkIcon } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '@/components/context/ThemeContext';
 import { useModal } from '@/components/context/ModalContext';
 import { auth } from '@/lib/firebaseConfig';
 import { motion } from 'framer-motion';
-import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 import Tilt from 'react-parallax-tilt';
+import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 
 interface BottomNavProps {
   userId: string | null;
@@ -18,38 +18,43 @@ interface BottomNavProps {
 
 const navItems = [
   {
-    path: '/home',
-    label: 'Home',
-    icon: <Home className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />,
-    tooltip: 'Return to your cosmic command center.'
+    path: '/benefits',
+    label: 'Benefits',
+    icon: <Award className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />,
+    tooltip: 'Explore exclusive rewards and perks.'
   },
   {
-    path: '/membership',
-    label: 'Membership',
-    icon: <Star className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />,
-    tooltip: 'Upgrade your rank to unlock stellar perks.'
+    path: '/shop',
+    label: 'Shop',
+    icon: <ShoppingCart className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />,
+    tooltip: 'Buy in-game items and memberships.'
   },
   {
-    path: '/vault',
-    label: 'Vault',
+    path: '/marketplace',
+    label: 'Marketplace',
     icon: <LandPlot className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />,
-    tooltip: 'Manage your crypto and fiat assets.'
+    tooltip: 'Trade your items with other players.'
   },
   {
-    path: '/community',
-    label: 'Community',
-    icon: <Users className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />,
-    tooltip: 'Connect with players across the galaxy.'
+    path: '/inventory',
+    label: 'Inventory',
+    icon: <Package className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />,
+    tooltip: 'View your owned items and NFTs.'
   },
   {
-    path: '/games',
-    label: 'Games',
-    icon: <Gamepad2 className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />,
-    tooltip: 'Dive into epic PETverse battles.'
+    path: '/dspet-disclosure',
+    label: 'Disclosure',
+    icon: <Info className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />,
+    tooltip: 'Important information about the platform.'
   },
+  {
+    path: '/',
+    label: 'Landing',
+    icon: <Home className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />,
+    tooltip: 'Return to the landing page.'
+  }
 ];
 
-// Animation variants for dock magnification effect
 const iconVariants = {
   rest: { scale: 1, y: 0 },
   hover: { scale: 1.5, y: -10, transition: { duration: 0.3, ease: 'easeOut' } },
@@ -86,7 +91,7 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage }) => {
   };
 
   const handleRestrictedNav = (path: string, label: string) => {
-    if (!auth.currentUser && (path === '/vault' || path === '/membership')) {
+    if (!auth.currentUser) {
       setShowMessage(`⚠️ Sign in to access ${label}`);
       setActiveModal('auth');
       return false;
@@ -100,86 +105,66 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage }) => {
       style={{ background: 'linear-gradient(145deg, rgba(0,0,0,0.8), rgba(50,50,100,0.5))' }}
     >
       {navItems.map(({ path, label, icon, tooltip }, index) => (
-        <Dialog key={path}>
-          <DialogTrigger asChild>
-            <Link
-              to={path}
-              onClick={(e) => {
-                if (!handleRestrictedNav(path, label)) e.preventDefault();
-                setShowMessage(`➡️ Navigating to ${label}!`);
-              }}
-              className="flex flex-col items-center text-sm group"
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(null)}
+        <Link
+          key={path}
+          to={path}
+          onClick={(e) => {
+            if (!handleRestrictedNav(path, label)) e.preventDefault();
+            setShowMessage(`➡️ Navigating to ${label}!`);
+          }}
+          className="flex flex-col items-center text-sm group"
+          onMouseEnter={() => setHoveredIndex(index)}
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
+          <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
+            <motion.div
+              className="relative flex flex-col items-center"
+              variants={iconVariants}
+              animate={hoveredIndex === index ? 'hover' : hoveredIndex !== null && Math.abs(hoveredIndex - index) === 1 ? 'neighbor' : 'rest'}
             >
-              <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
-                <motion.div
-                  className="relative flex flex-col items-center"
-                  variants={iconVariants}
-                  animate={hoveredIndex === index ? 'hover' : hoveredIndex !== null && Math.abs(hoveredIndex - index) === 1 ? 'neighbor' : 'rest'}
-                >
-                  {icon}
-                  <span className="text-xs mt-1 font-inter text-muted-foreground text-glow-primary">{label}</span>
-                </motion.div>
-              </Tilt>
-            </Link>
-          </DialogTrigger>
-          <DialogContent className="tooltip max-w-md p-6">
-            <p className="text-sm text-muted-foreground">{tooltip}</p>
-          </DialogContent>
-        </Dialog>
+              {icon}
+              <span className="text-xs mt-1 font-inter text-muted-foreground text-glow-primary">{label}</span>
+            </motion.div>
+          </Tilt>
+        </Link>
       ))}
       {userId ? (
-        <Dialog>
-          <DialogTrigger asChild>
-            <button
-              onClick={handleSignOut}
-              className="flex flex-col items-center group"
-              onMouseEnter={() => setHoveredIndex(navItems.length)}
-              onMouseLeave={() => setHoveredIndex(null)}
+        <button
+          onClick={handleSignOut}
+          className="flex flex-col items-center group"
+          onMouseEnter={() => setHoveredIndex(navItems.length)}
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
+          <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
+            <motion.div
+              className="relative flex flex-col items-center"
+              variants={iconVariants}
+              animate={hoveredIndex === navItems.length ? 'hover' : 'rest'}
             >
-              <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
-                <motion.div
-                  className="relative flex flex-col items-center"
-                  variants={iconVariants}
-                  animate={hoveredIndex === navItems.length ? 'hover' : 'rest'}
-                >
-                  <LogOut className="w-9 h-9 text-destructive group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />
-                  <span className="text-xs mt-1 font-inter text-muted-foreground text-glow-primary">Sign Out</span>
-                </motion.div>
-              </Tilt>
-            </button>
-          </DialogTrigger>
-          <DialogContent className="tooltip max-w-md p-6">
-            <p className="text-sm text-muted-foreground">Sign out to end your cosmic session securely.</p>
-          </DialogContent>
-        </Dialog>
+              <LogOut className="w-9 h-9 text-destructive group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />
+              <span className="text-xs mt-1 font-inter text-muted-foreground text-glow-primary">Sign Out</span>
+            </motion.div>
+          </Tilt>
+        </button>
       ) : (
-        <Dialog>
-          <DialogTrigger asChild>
-            <Link
-              to="/auth"
-              onClick={() => setActiveModal('auth')}
-              className="flex flex-col items-center group"
-              onMouseEnter={() => setHoveredIndex(navItems.length)}
-              onMouseLeave={() => setHoveredIndex(null)}
+        <Link
+          to="/auth"
+          onClick={() => setActiveModal('auth')}
+          className="flex flex-col items-center group"
+          onMouseEnter={() => setHoveredIndex(navItems.length)}
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
+          <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
+            <motion.div
+              className="relative flex flex-col items-center"
+              variants={iconVariants}
+              animate={hoveredIndex === navItems.length ? 'hover' : 'rest'}
             >
-              <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
-                <motion.div
-                  className="relative flex flex-col items-center"
-                  variants={iconVariants}
-                  animate={hoveredIndex === navItems.length ? 'hover' : 'rest'}
-                >
-                  <User className="w-9 h-9 text-foreground group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />
-                  <span className="text-xs mt-1 font-inter text-muted-foreground text-glow-primary">Sign In</span>
-                </motion.div>
-              </Tilt>
-            </Link>
-          </DialogTrigger>
-          <DialogContent className="tooltip max-w-md p-6">
-            <p className="text-sm text-muted-foreground">Sign in to access your PETverse account and begin your journey.</p>
-          </DialogContent>
-        </Dialog>
+              <User className="w-9 h-9 text-foreground group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />
+              <span className="text-xs mt-1 font-inter text-muted-foreground text-glow-primary">Sign In</span>
+            </motion.div>
+          </Tilt>
+        </Link>
       )}
     </nav>
   );

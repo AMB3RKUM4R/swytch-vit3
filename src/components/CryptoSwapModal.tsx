@@ -1,14 +1,10 @@
 // src/components/CryptoSwapModal.tsx
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight } from 'lucide-react';
 import Tilt from 'react-parallax-tilt';
-import { useAccount, useBalance, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useSendTransaction } from 'wagmi';
+import { useAccount, useBalance, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
-import { SupportedCurrency } from '@/lib/types';
-// This is a conceptual ABI for a DEX router, like Uniswap V2/V3
-// In a real project, you would import this from a library or your own ABI files
-const DEX_ROUTER_ABI = [{"inputs":[{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForTokens","outputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"}],"stateMutability":"nonpayable","type":"function"}];
 
 interface CryptoSwapModalProps {
   onClose: () => void;
@@ -21,57 +17,37 @@ const CryptoSwapModal: FC<CryptoSwapModalProps> = ({ onClose, setShowMessage, us
 
   const [fromAmount, setFromAmount] = useState<string>('');
   const [toAmount, setToAmount] = useState<string>('');
-  const [fromCurrency, setFromCurrency] = useState<SupportedCurrency>('ETH');
-  const [toCurrency, setToCurrency] = useState<SupportedCurrency>('USDT');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { data: ethBalance } = useBalance({ address: connectedAddress, unit: 'ether' });
-  const { data: usdtBalance } = useBalance({ address: connectedAddress, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' });
-
-  // Wagmi hooks for sending transaction
-  const { data: hash, isPending: isTxPending } = useSendTransaction();
+  
+  const { data: hash, sendTransaction, isPending: isTxPending } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({ hash });
 
-  const { data: swapConfig } = useSimulateContract({
-    address: '0xYourDEXRouterAddress' as `0x${string}`, // Replace with a real DEX router address
-    abi: DEX_ROUTER_ABI,
-    functionName: 'swapExactTokensForTokens',
-    args: [
-      connectedAddress,
-      fromCurrency === 'ETH' ? parseEther(fromAmount) : BigInt(0),
-      BigInt(0), // amountOutMin
-      ['0xFromTokenAddress', '0xToTokenAddress'],
-      BigInt(Math.floor(Date.now() / 1000) + 60 * 20), // deadline 20 minutes from now
-    ],
-  });
-
-  const { writeContract } = useWriteContract();
+  const getExchangeRate = useCallback(() => {
+    const ethToJewelsRate = 5000;
+    return ethToJewelsRate;
+  }, []);
 
   useEffect(() => {
     if (fromAmount) {
-      const rate = fromCurrency === 'ETH' && toCurrency === 'USDT' ? 3000 : 1 / 3000;
-      setToAmount((parseFloat(fromAmount) * rate).toFixed(4));
+      const rate = getExchangeRate();
+      setToAmount((parseFloat(fromAmount) * rate).toFixed(0));
     } else {
       setToAmount('');
     }
-  }, [fromAmount, fromCurrency, toCurrency]);
+  }, [fromAmount, getExchangeRate]);
 
   useEffect(() => {
     if (isConfirmed) {
-      setShowMessage(`✅ Swap successful: ${hash}`);
+      setShowMessage(`✅ Swap successful: ${hash}. Your JEWELS balance will be updated shortly.`);
       onClose();
     } else if (txError) {
       setError(`Swap failed: ${txError?.message}`);
       setShowMessage(`⚠️ Swap failed: ${txError?.message}`);
     }
   }, [isConfirmed, txError, hash, setShowMessage, onClose]);
-
-  const handleSwapCurrencies = () => {
-    setFromCurrency(toCurrency);
-    setToCurrency(fromCurrency);
-    setFromAmount(toAmount);
-  };
 
   const handleInitiateSwap = async () => {
     setError(null);
@@ -81,27 +57,22 @@ const CryptoSwapModal: FC<CryptoSwapModalProps> = ({ onClose, setShowMessage, us
       return;
     }
     
-    // Check balance
-    if (fromCurrency === 'ETH' && ethBalance && parseFloat(fromAmount) > parseFloat(ethBalance.formatted)) {
+    if (ethBalance && parseFloat(fromAmount) > parseFloat(ethBalance.formatted)) {
       setError('Insufficient ETH balance.');
       setShowMessage('⚠️ Insufficient ETH balance.');
       return;
     }
-    if (fromCurrency === 'USDT' && usdtBalance && parseFloat(fromAmount) > parseFloat(usdtBalance.formatted)) {
-      setError('Insufficient USDT balance.');
-      setShowMessage('⚠️ Insufficient USDT balance.');
-      return;
-    }
-    
+
     setLoading(true);
     try {
-      if (swapConfig) {
-        writeContract(swapConfig.request);
-        setShowMessage(`Swap transaction initiated. Confirming in wallet...`);
-      } else {
-        setError('Failed to simulate transaction. Check inputs and network.');
-        setShowMessage('⚠️ Failed to simulate transaction.');
-      }
+      const depositAddress = '0xYourDepositAddress' as `0x${string}`;
+      
+      sendTransaction({
+        to: depositAddress,
+        value: parseEther(fromAmount),
+      });
+
+      setShowMessage(`Swap transaction initiated. Confirming in wallet...`);
     } catch (err: any) {
       setError(err.message || 'Failed to initiate swap.');
       setShowMessage(`⚠️ Failed to initiate swap: ${err.message}`);
@@ -151,29 +122,19 @@ const CryptoSwapModal: FC<CryptoSwapModalProps> = ({ onClose, setShowMessage, us
                 disabled={loading || isTxPending || isConfirming}
               />
               <select
-                value={fromCurrency}
-                onChange={(e) => setFromCurrency(e.target.value as SupportedCurrency)}
+                value="ETH"
                 className="input-system mt-2 p-3 rounded-md border border-[hsl(var(--primary-hsl),0.2)] w-full"
-                disabled={loading || isTxPending || isConfirming}
+                disabled
               >
-                {['ETH', 'USDT'].map(curr => (
-                  <option key={curr} value={curr}>{curr}</option>
-                ))}
+                <option value="ETH">ETH</option>
               </select>
-              {fromCurrency === 'ETH' && ethBalance && <p className="text-xs text-gray-400">Balance: {parseFloat(ethBalance.formatted).toFixed(4)} ETH</p>}
-              {fromCurrency === 'USDT' && usdtBalance && <p className="text-xs text-gray-400">Balance: {parseFloat(usdtBalance.formatted).toFixed(2)} USDT</p>}
+              {ethBalance && <p className="text-xs text-gray-400">Balance: {parseFloat(ethBalance.formatted).toFixed(4)} ETH</p>}
             </div>
 
             <div className="flex justify-center my-2">
-              <motion.button
-                onClick={handleSwapCurrencies}
-                className="p-2 rounded-full bg-gray-700/50 hover:bg-gray-600/50 transition-colors"
-                whileHover={{ rotate: 180 }}
-                whileTap={{ scale: 0.9 }}
-                disabled={loading || isTxPending || isConfirming}
-              >
+              <div className="p-2 rounded-full bg-gray-700/50 transition-colors">
                 <ArrowRight className="w-5 h-5 text-white" />
-              </motion.button>
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -187,14 +148,11 @@ const CryptoSwapModal: FC<CryptoSwapModalProps> = ({ onClose, setShowMessage, us
                 disabled
               />
               <select
-                value={toCurrency}
-                onChange={(e) => setToCurrency(e.target.value as SupportedCurrency)}
+                value="JEWELS"
                 className="input-system mt-2 p-3 rounded-md border border-[hsl(var(--primary-hsl),0.2)] w-full"
-                disabled={loading || isTxPending || isConfirming}
+                disabled
               >
-                {['ETH', 'USDT'].map(curr => (
-                  <option key={curr} value={curr}>{curr}</option>
-                ))}
+                <option value="JEWELS">JEWELS</option>
               </select>
             </div>
 

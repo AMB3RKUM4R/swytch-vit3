@@ -1,7 +1,7 @@
 // src/components/benefits/BenefitsWallets.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, CreditCard, Banknote, ShieldCheck } from 'lucide-react';
+import { Wallet, ShieldCheck } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 
 interface BenefitsWalletsProps {
@@ -17,12 +17,7 @@ const walletFeatures = [
     description: 'Seamlessly connect and manage your crypto assets directly within the platform.',
   },
   {
-    icon: Banknote,
-    title: 'UPI & Fiat Support',
-    description: 'Easy deposits and withdrawals using traditional payment methods like UPI and PayPal.',
-  },
-  {
-    icon: CreditCard,
+    icon: ShieldCheck,
     title: 'Secure Transactions',
     description: 'All your financial interactions are protected with advanced security protocols.',
   },
@@ -40,10 +35,10 @@ const BenefitsWallets: FC<BenefitsWalletsProps> = ({ userId, setActiveModal, set
         <ShieldCheck className="w-7 h-7 text-primary" /> Wallet & Payment Features
       </h2>
       <p className="text-lg text-gray-300 text-center mb-6">
-        Manage your digital and traditional currencies with ease and security.
+        Manage your digital currencies with ease and security.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {walletFeatures.map((feature, index) => (
           <motion.div key={index} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
             <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 text-center h-full flex flex-col items-center justify-center">

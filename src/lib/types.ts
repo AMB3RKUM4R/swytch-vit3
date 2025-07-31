@@ -2,24 +2,37 @@
 import { Dispatch, SetStateAction, ReactNode, FormEvent } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Address } from 'viem/accounts';
-// import { Chain } from 'viem/chains'; // Removed Chain import as it's not directly used in types.ts interfaces
 
 // ==========================================================
 // Core Application & Global Data Types
 // ==========================================================
 
 // Membership Tiers
-export type MembershipTier = 'ecosystem' | 'gamers' | 'gold' | 'none'; // Added 'none' based on Firestore rules
+export type MembershipTier = 'ecosystem' | 'gamers' | 'gold' | 'none';
 
-// Corrected: Use Exclude to get the union of string literals that are valid keys.
-export const MEMBERSHIP_TIERS: Record<Exclude<MembershipTier, 'none'>, { name: string; amount: number; usdAmount: number; contentRoute: string }> = {
-  ecosystem: { name: 'Ecosystem Membership', amount: 99, usdAmount: 10, contentRoute: '/ecosystem-content' },
-  gamers: { name: 'Gamers Membership', amount: 199, usdAmount: 49, contentRoute: '/gamers-content' },
-  gold: { name: 'Gold Membership', amount: 499, usdAmount: 199, contentRoute: '/gold-content' }, // FIX: name should be a string
-};
+export const MEMBERSHIP_TIERS = {
+  ecosystem: {
+    level: 1,
+    name: 'Ecosystem Explorer',
+    usdAmount: 5,
+    contentRoute: '/ecosystem-content'
+  },
+  gamers: {
+    level: 2,
+    name: 'Gamer Elite',
+    usdAmount: 15,
+    contentRoute: '/gamers-content'
+  },
+  gold: {
+    level: 3,
+    name: 'Gold Sovereign',
+    usdAmount: 50,
+    contentRoute: '/gold-content'
+  },
+} as const;
 
 // Currencies
-export type SupportedCurrency = 'INR' | 'USD' | 'ETH' | 'JEWELS' | 'USDT';
+export type SupportedCurrency = 'ETH' | 'JEWELS' | 'USDT';
 
 // Transaction Types
 export type TransactionType = 'membership' | 'deposit' | 'withdraw' | 'level-purchase' | 'quest-reward' | 'payout' | 'connect' | 'disconnect' | 'item-purchase' | 'item-sale' | 'crypto-swap';
@@ -29,9 +42,9 @@ export type TransactionStatus = 'success' | 'pending' | 'failed' | 'approved' | 
 // Firestore Document Interfaces (derived from security rules)
 // ==========================================================
 
-// Inventory Item structure (for PlayerData.inventory.items and MarketItems)
+// Inventory Item structure
 export interface InventoryItem {
-  id: string; // Unique ID for the item
+  id: string;
   name: string;
   description: string;
   imageUrl: string;
@@ -43,17 +56,17 @@ export interface InventoryItem {
     energyBoost?: number;
     manaBoost?: number;
   };
-  isEquipped?: boolean; // For items in a player's inventory
-  ownerId: string; // userId of the current owner
+  isEquipped?: boolean;
+  ownerId: string;
   isListedForSale: boolean;
-  listingPriceCrypto?: number | null; // Price if listed on marketplace
-  listingCurrency?: SupportedCurrency | null; // Currency if listed (e.g., 'ETH', 'USDT')
-  tokenId?: string | null; // Blockchain token ID if minted as NFT
-  contractAddress?: string | null; // Smart contract address if minted as NFT
-  mintedAt?: any | null; // Firestore Timestamp if minted
+  listingPriceCrypto?: number | null;
+  listingCurrency?: SupportedCurrency | null;
+  tokenId?: string | null;
+  contractAddress?: string | null;
+  mintedAt?: any | null;
 }
 
-// Player Data (from /Players/{userId} collection)
+// Player Data
 export interface PlayerData {
   userId: string;
   username: string;
@@ -65,8 +78,8 @@ export interface PlayerData {
   isPETMember: boolean;
   membership: MembershipTier;
   walletAddress: string | null;
-  createdAt: any; // Firestore Timestamp
-  updatedAt: any; // Firestore Timestamp
+  createdAt: any;
+  updatedAt: any;
   character: {
     selectedID: string;
     skin: string;
@@ -78,16 +91,16 @@ export interface PlayerData {
   key: string | null;
   inventory: {
     equipped: {
-      armor: string; // Item ID of equipped armor
-      weapon: string; // Item ID of equipped weapon
+      armor: string;
+      weapon: string;
     };
-    items: Record<string, InventoryItem>; // Map of item IDs to InventoryItem objects
+    items: Record<string, InventoryItem>;
   } | null;
-  lastBonusTime: any | null; // Firestore Timestamp
-  quests?: Quest[]; // Array of quests
+  lastBonusTime: any | null;
+  quests?: Quest[];
 }
 
-// Transaction Data (from /Transactions/{transactionId} collection)
+// Transaction Data
 export interface Transaction {
   transactionId: string;
   userId: string;
@@ -95,55 +108,43 @@ export interface Transaction {
   currency: SupportedCurrency;
   transactionType: TransactionType;
   status: TransactionStatus;
-  timestamp: any; // Firestore Timestamp
-  itemId?: string | null; // Can be membership_basic, ecosystem, etc., or an item ID
-  game?: string | null; // Which game/section the transaction originated from
+  timestamp: any;
+  itemId?: string | null;
+  game?: string | null;
   adminId?: string | null;
-  paypalOrderId?: string | null; // For PayPal transactions, or crypto hash
-  paymentMethod?: string | null; // 'upi', 'paypal', 'crypto'
-  paymentUrl?: string | null; // For UPI intent URLs
-  walletAddress?: string | null; // User's crypto wallet address
-  updatedAt?: any | null; // Firestore Timestamp
-  paypalEmail?: string | null; // For PayPal withdrawals
+  walletAddress?: string | null;
+  updatedAt?: any | null;
+  receivedAmount?: number;
 }
 
-// Wallet Data (from /wallets/{userId} collection - if used for a separate balance)
-export interface WalletData {
-  balance: number;
-  createdAt: any | null; // Firestore Timestamp
-  updatedAt: any | null; // Firestore Timestamp
+// Market Item
+export interface MarketItem extends InventoryItem {
+  sellerId: string;
+  listedAt: any;
+  buyerId?: string | null;
+  soldAt?: any | null;
 }
 
-// Withdraw Request (from /withdraw_requests/{requestId} collection)
+// Withdraw Request (now for crypto only)
 export interface WithdrawRequest {
   uid: string;
   amount: number;
-  upiRef: string; // UPI Reference ID or similar for fiat withdrawals
+  cryptoAddress: string;
   status: TransactionStatus;
-  createdAt: any | null; // Firestore Timestamp
-  razorpayPaymentId: string | null;
-  paymentConfirmed: boolean | null;
-  screenshot: string | null; // Screenshot of payment confirmation
+  createdAt: any | null;
 }
 
-// User Metadata (from /users/{userId} collection - if distinct from Players)
-export interface UserMetadata {
-  referralCode: string | null;
-  membership: MembershipTier | null;
-  chips: number | null; // Assuming 'chips' is another in-game currency
-}
-
-// Market Item (for /MarketItems/{itemId} collection)
-export interface MarketItem extends InventoryItem {
-  sellerId: string; // userId of the seller
-  listedAt: any; // Firestore Timestamp
-  buyerId?: string | null; // userId of the buyer if sold
-  soldAt?: any | null; // Firestore Timestamp if sold
+// Wallet Data
+export interface WalletData {
+  balance: number;
+  createdAt: any | null;
+  updatedAt: any | null;
 }
 
 // ==========================================================
 // App & Page Props
 // ==========================================================
+
 export interface AppProps {
   userId: string | null;
   activeModal: string | null;
@@ -158,13 +159,15 @@ export interface AppProps {
   authLoading: boolean;
   mousePosition: { x: number; y: number };
   initialAuthCheckComplete: boolean;
-  isPETMember: boolean; // <-- ADD THIS LINE
-  logTransaction: (txData: Omit<Transaction, 'transactionId' | 'timestamp'>) => Promise<void>; // <-- AND ADD THIS LINE
+  isPETMember: boolean;
+  logTransaction: (txData: Omit<Transaction, 'transactionId' | 'timestamp'>) => Promise<void>;
+  // Added playerData directly to AppProps so it's available in PageProps
+  playerData: PlayerData | null;
 }
 
 export interface PageProps extends AppProps {}
 
-// Game-specific props (for individual game components if they were still routed)
+// Game-specific props
 export interface GameProps {
   userId: string | null;
   setIsPETMember: Dispatch<SetStateAction<boolean>>;
@@ -176,10 +179,9 @@ export interface GameProps {
 }
 
 // ==========================================================
-// Component Props (from all components provided)
+// Component Props
 // ==========================================================
 
-// Global Components
 export interface TopNavProps {
   userId: string | null;
   jewelsBalance: number;
@@ -204,19 +206,7 @@ export interface AuthModalProps {
 export interface PaymentModalProps {
   userId: string | null;
   setShowMessage: Dispatch<SetStateAction<string>>;
-  setIsPETMember: Dispatch<SetStateAction<boolean>>;
-  updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
-}
-
-export interface RazorTransactionProps {
-  amount: number;
-  currency: SupportedCurrency;
-  itemId: string | null;
-  transactionType: TransactionType;
-  userId: string | null;
-  onSuccess: (submittedItemId: string | null) => void;
-  setShowMessage: Dispatch<SetStateAction<string>>;
-  paymentMethod?: 'upi' | 'paypal';
+  setActiveModal: Dispatch<SetStateAction<string | null>>;
 }
 
 export interface SwytchCardProps {
@@ -333,8 +323,6 @@ export interface BuyItemModalProps {
   onSuccess: (item: MarketItem) => void;
   setShowMessage: (message: string) => void;
   setActiveModal: (modalName: string | null) => void;
-  updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
-  jewelsBalance: number;
 }
 
 // Vault Page Components
@@ -344,7 +332,7 @@ export interface VaultWalletInfoProps {
   chainId: number | undefined;
   ensName: string | null | undefined;
   blockNumber: bigint | null | undefined;
-  feeData: any;
+  gasPrice: bigint | undefined;
   usdtBalance: any;
 }
 
@@ -357,21 +345,7 @@ export interface CryptoSwapModuleProps {
   walletAddress: string | null;
 }
 
-export interface FiatWithdrawalFormProps {
-  userId: string | null;
-  setShowMessage: (message: string) => void;
-  setActiveModal: (modalName: string | null) => void;
-  handleWithdrawal: () => Promise<void>;
-  handlePayPalWithdrawal: () => Promise<void>;
-  withdrawalAmount: string;
-  setWithdrawalAmount: React.Dispatch<SetStateAction<string>>;
-  paypalEmail: string;
-  setPaypalEmail: React.Dispatch<SetStateAction<string>>;
-}
-
-export interface VaultMembershipBenefitsProps {
-  // Purely presentational
-}
+export interface VaultMembershipBenefitsProps {}
 
 export interface VaultMembershipPackagesProps {
   isMember: boolean;
@@ -380,9 +354,7 @@ export interface VaultMembershipPackagesProps {
   setShowMessage: Dispatch<SetStateAction<string>>;
 }
 
-export interface VaultRulesProps {
-  // Purely presentational
-}
+export interface VaultRulesProps {}
 
 export interface YieldCalculatorProps {
   userId: string | null;
@@ -464,9 +436,7 @@ export interface SwytchDailyQuestsProps {
 }
 
 // Membership Page Components
-export interface MembershipBenefitsProps {
-  // Purely presentational
-}
+export interface MembershipBenefitsProps {}
 
 export interface MembershipUpgradeProps {
   userId: string | null;
@@ -476,26 +446,13 @@ export interface MembershipUpgradeProps {
   setShowMessage: Dispatch<SetStateAction<string>>;
 }
 
-export interface Level {
-  id: Exclude<MembershipTier, 'none'>;
-  title: string;
-  cost: number;
-  contentRoute: string;
-  level: number;
-  reward: string;
-  energyRequired: string;
-  perks: string[];
-  icon: LucideIcon;
-  image: string;
-}
-
 export interface SwytchLevelsGridProps {
   userId: string | null;
   currentLevel: number;
   isPending: boolean;
   authLoading: boolean;
   updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
-  handlePurchaseLevel: (level: { id: string; name: string; cost: number; contentRoute: string }) => Promise<void>;
+  handlePurchaseLevel: (level: { id: string; name: string; cost: number; contentRoute: string, level: number; }) => Promise<void>;
   setActiveModal: Dispatch<SetStateAction<string | null>>;
   setShowMessage: Dispatch<SetStateAction<string>>;
 }
@@ -534,18 +491,13 @@ export interface Dont {
   icon?: LucideIcon;
 }
 
-export interface DisclosureHeaderProps {
-  // Purely presentational
-}
+export interface DisclosureHeaderProps {}
 
-export interface DisclosureContentProps {
-  // Purely presentational
-}
+export interface DisclosureContentProps {}
 
 // ==========================================================
-// Game-specific Interfaces (from existing game files)
+// Game-specific Interfaces
 // ==========================================================
-// Poker/Card Game related
 export interface Card {
   suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
   value: '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | 'A';
@@ -564,7 +516,6 @@ export interface GameRoom {
   roomId: string;
 }
 
-// Bingo related
 export interface BingoCell {
   number: number;
   marked: boolean;
@@ -598,7 +549,6 @@ export interface GameConfig {
   useJewels: boolean;
 }
 
-// Generic Stats and Reward (if not part of PlayerData directly)
 export interface Stats {
   plays: number;
   wins: number;

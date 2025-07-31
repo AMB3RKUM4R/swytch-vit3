@@ -1,8 +1,22 @@
-// src/components/vault/VaultWalletInfo.tsx
 import { FC } from 'react';
-import { Wallet, Link, DollarSign, Activity, HardHat, User, Zap } from 'lucide-react'; // Added HardHat for block number
+import { Wallet, Link, DollarSign, Activity, HardHat, User, Zap } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { VaultWalletInfoProps } from '@/lib/types'; // Import the type
+
+// Updated interface to accept gasPrice
+interface VaultWalletInfoProps {
+  isConnected: boolean;
+  address: `0x${string}` | undefined;
+  chainId: number | undefined;
+  ensName: string | null;
+  blockNumber: bigint | null;
+  gasPrice: bigint | undefined;
+  usdtBalance: {
+    formatted: string;
+    value: bigint;
+    symbol: string;
+    decimals: number;
+  } | undefined;
+}
 
 const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
   isConnected,
@@ -10,7 +24,7 @@ const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
   chainId,
   ensName,
   blockNumber,
-  feeData,
+  gasPrice,
   usdtBalance,
 }) => {
   return (
@@ -41,16 +55,16 @@ const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
             <p>Chain ID: <span className="font-semibold">{chainId}</span></p>
           </div>
         )}
-        {blockNumber !== null && blockNumber !== undefined && ( // Check for null/undefined
+        {blockNumber !== null && blockNumber !== undefined && (
           <div className="flex items-center gap-2">
-            <HardHat className="w-5 h-5 text-orange-400" /> {/* Using HardHat for block number */}
+            <HardHat className="w-5 h-5 text-orange-400" />
             <p>Current Block: <span className="font-semibold">{blockNumber.toString()}</span></p>
           </div>
         )}
-        {feeData?.gasPrice && (
+        {gasPrice !== undefined && gasPrice !== null && (
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-red-400" />
-            <p>Gas Price: <span className="font-semibold">{(Number(feeData.gasPrice) / 1e9).toFixed(2)} Gwei</span></p>
+            <p>Gas Price: <span className="font-semibold">{(Number(gasPrice) / 1e9).toFixed(2)} Gwei</span></p>
           </div>
         )}
         {usdtBalance && (

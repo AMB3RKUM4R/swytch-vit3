@@ -1,17 +1,12 @@
 // src/App.tsx
 import { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { User } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, updateDoc, collection, addDoc, onSnapshot } from 'firebase/firestore';
-
-// Import Firebase config and functions
 import { db, performInitialSignIn, listenForAuthChanges } from './lib/firebaseConfig';
-
-// Import Contexts
 import { useModal } from './components/context/ModalContext';
 import { useTheme } from './components/context/ThemeContext';
-
-// Import Components
 import SwytchErrorBoundary from './components/ErrorBoundaryComponent';
 import AuthModal from './components/AuthModal';
 import PaymentModal from './components/PaymentModal';
@@ -19,8 +14,6 @@ import TopNav from './components/TopNav';
 import BottomNav from './components/BottomNav';
 import LoadingScreen from './components/LoadingScreen';
 import StarfieldBackground from './components/StarfieldBackground';
-
-// Import Pages
 import Home from './pages/Home';
 import { Vault } from './pages/Vault';
 import Market from './pages/Market';
@@ -34,8 +27,6 @@ import DSPETDisclosure from './pages/DSPETDisclosure';
 import LandingPage from './pages/LandingPage';
 import AdminPage from './pages/AdminPage';
 import Benefits from './pages/Benefits';
-
-// Import Types
 import { PlayerData, Transaction } from './lib/types';
 import { useCharacter } from './hooks/useCharacter';
 
@@ -46,9 +37,7 @@ const App: FC = () => {
     const [isPending, setIsPending] = useState(false);
     const [initialAuthCheckComplete, setInitialAuthCheckComplete] = useState(false);
     const [isPETMember, setIsPETMember] = useState(false);
-    // Removed mousePosition state and its useEffect to stop continuous re-renders
-    // const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
+    const mousePosition = { x: 0, y: 0 };
     const { characterModel, updateCharacter } = useCharacter();
     const { activeModal, setActiveModal, showMessage, setShowMessage } = useModal();
     useTheme();
@@ -102,13 +91,6 @@ const App: FC = () => {
         return () => unsubscribe();
     }, [user]);
 
-    // This useEffect is now removed as it was the source of the continuous re-renders.
-    // useEffect(() => {
-    //     const handleMouseMove = (event: MouseEvent) => setMousePosition({ x: event.clientX, y: event.clientY });
-    //     window.addEventListener('mousemove', handleMouseMove);
-    //     return () => window.removeEventListener('mousemove', handleMouseMove);
-    // }, []);
-
     const updatePlayerFirestore = useCallback(async (updates: Partial<PlayerData>) => {
         if (!user) return;
         await updateDoc(doc(db, 'Players', user.uid), { ...updates, updatedAt: serverTimestamp() });
@@ -128,12 +110,13 @@ const App: FC = () => {
         goldBalance: playerData?.gold ?? 0,
         currentLevel: playerData?.level ?? 0,
         isPending, authLoading,
-        // mousePosition is no longer passed as a prop
+        mousePosition,
         initialAuthCheckComplete,
         isPETMember,
         characterModel,
         updateCharacter,
-    }), [user, playerData, isPending, authLoading, initialAuthCheckComplete, isPETMember, activeModal, setActiveModal, setShowMessage, setIsPETMember, updatePlayerFirestore, logTransaction, characterModel, updateCharacter]);
+        playerData, // <-- Correctly added playerData to the pageProps object
+    }), [user, playerData, isPending, authLoading, mousePosition, initialAuthCheckComplete, isPETMember, activeModal, setActiveModal, setShowMessage, setIsPETMember, updatePlayerFirestore, logTransaction, characterModel, updateCharacter]);
 
     const topNavProps = useMemo(() => ({
         userId: user?.uid || null,
@@ -158,84 +141,42 @@ const App: FC = () => {
 
     return (
         <div className={`min-h-screen flex flex-col font-inter bg-noise`}>
-            {/* The fixed background component */}
             <StarfieldBackground />
-
-            {/* The scrollable content container */}
             <div className="relative z-10 flex flex-col min-h-screen overflow-y-auto">
               <TopNav {...topNavProps} />
               <main className="flex-grow">
                   <Routes>
-                      <Route path="/" element={<SwytchErrorBoundary {...pageProps}><LandingPage mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/home" element={<SwytchErrorBoundary {...pageProps}><Home mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/vault" element={<SwytchErrorBoundary {...pageProps}><Vault mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/benefits" element={<SwytchErrorBoundary {...pageProps}><Benefits mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/market" element={<SwytchErrorBoundary {...pageProps}><Market mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/shop" element={<SwytchErrorBoundary {...pageProps}><Shop mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/community" element={<SwytchErrorBoundary {...pageProps}><Community mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/membership" element={<SwytchErrorBoundary {...pageProps}><Membership mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/games" element={<SwytchErrorBoundary {...pageProps}><GamesPage mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/dspet-disclosure" element={<SwytchErrorBoundary {...pageProps}><DSPETDisclosure mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/inventory" element={<SwytchErrorBoundary {...pageProps}><Inventory mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/marketplace" element={<SwytchErrorBoundary {...pageProps}><Marketplace mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
-                      <Route path="/admin" element={<SwytchErrorBoundary {...pageProps}><AdminPage mousePosition={{
-                            x: 0,
-                            y: 0
-                        }} {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/" element={<SwytchErrorBoundary {...pageProps}><LandingPage {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/home" element={<SwytchErrorBoundary {...pageProps}><Home {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/vault" element={<SwytchErrorBoundary {...pageProps}><Vault {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/benefits" element={<SwytchErrorBoundary {...pageProps}><Benefits {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/market" element={<SwytchErrorBoundary {...pageProps}><Market {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/shop" element={<SwytchErrorBoundary {...pageProps}><Shop {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/community" element={<SwytchErrorBoundary {...pageProps}><Community {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/membership" element={<SwytchErrorBoundary {...pageProps}><Membership {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/games" element={<SwytchErrorBoundary {...pageProps}><GamesPage {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/dspet-disclosure" element={<SwytchErrorBoundary {...pageProps}><DSPETDisclosure {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/inventory" element={<SwytchErrorBoundary {...pageProps}><Inventory {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/marketplace" element={<SwytchErrorBoundary {...pageProps}><Marketplace {...pageProps} /></SwytchErrorBoundary>} />
+                      <Route path="/admin" element={<SwytchErrorBoundary {...pageProps}><AdminPage {...pageProps} /></SwytchErrorBoundary>} />
                   </Routes>
               </main>
               <BottomNav {...bottomNavProps} />
             </div>
 
-            <>
+            <AnimatePresence>
                 {activeModal === 'auth' && <AuthModal setShowMessage={setShowMessage} />}
                 {activeModal === 'payment' && <PaymentModal {...pageProps} />}
                 {activeModal === 'error' && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md">
-                        <div className="relative modal bg-red-900/80 text-white p-6 rounded-lg max-w-sm w-full mx-4 border border-red-500">
+                    <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <motion.div className="relative modal bg-red-900/80 text-white p-6 rounded-lg max-w-sm w-full mx-4 border border-red-500" initial={{ scale: 0.8, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.8, y: 50 }}>
                             <h2 className="text-2xl font-bold font-poppins mb-4">Error!</h2>
                             <p className="font-inter">An unexpected error occurred. Please try again.</p>
                             <button onClick={() => setActiveModal(null)} className="mt-4 btn-primary">Close</button>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
-            </>
+            </AnimatePresence>
         </div>
     );
 };

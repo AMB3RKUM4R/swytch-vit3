@@ -1,192 +1,151 @@
 // src/components/PaymentModal.tsx
-import { FC, useState, useEffect } from 'react';
+import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, DollarSign, ArrowUpCircle, ArrowDownCircle, Star } from 'lucide-react';
-import { useModal } from '../components/context/ModalContext';
-import { useTheme } from '../components/context/ThemeContext';
-import { DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
+import { X, HandCoins } from 'lucide-react';
+import { useTheme } from '@/components/context/ThemeContext';
+import { PaymentModalProps, SupportedCurrency } from '@/lib/types';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
+import { useAccount } from 'wagmi';
 
-import RazorTransaction from '../RazorWithdraw';
-import { MEMBERSHIP_TIERS, SupportedCurrency, TransactionType, PaymentModalProps } from '@/lib/types';
+const PaymentModal: FC<PaymentModalProps> = ({
+  userId,
+  setShowMessage,
+  setActiveModal,
+}) => {
+  const { isDarkMode } = useTheme();
+  const { address, isConnected } = useAccount();
 
-type PaymentView = 'selection' | 'transaction';
+  const [paymentMethod] = useState<'crypto'>('crypto');
+  const [amount, setAmount] = useState<string>('');
+  const [currency, setCurrency] = useState<SupportedCurrency>('USDT');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
-  useTheme();
-  const { activeModal, setActiveModal } = useModal();
-
-  const [currentView, setCurrentView] = useState<PaymentView>('selection');
-  const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
-  const [amount, setAmount] = useState<number>(0);
-  const [, setCurrency] = useState<SupportedCurrency>('USD');
-  const [itemId, setItemId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (activeModal === 'payment') {
-      setCurrentView('selection');
-      setTransactionType(null);
-      setAmount(0);
-      setCurrency('USD');
-      setItemId(null);
+  const handlePaymentInitiate = async () => {
+    setError(null);
+    if (!userId) {
+      setError('User not authenticated.');
+      setShowMessage('⚠️ Please sign in to make a payment.');
+      return;
     }
-  }, [activeModal]);
+    if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount.');
+      setShowMessage('⚠️ Please enter a valid amount.');
+      return;
+    }
+    if (!isConnected || !address) {
+      setError('No wallet connected. Please connect your wallet to make a crypto payment.');
+      setShowMessage('⚠️ No wallet connected.');
+      return;
+    }
 
-  const handleTransactionSuccess = (submittedItemId: string | null) => {
-    setShowMessage(`🎉 Your ${submittedItemId ? 'membership' : transactionType} transaction is submitted! Awaiting verification.`);
-    setActiveModal(null);
+    setLoading(true);
+    setShowMessage(`Initiating payment for ${amount} ${currency}...`);
+
+    try {
+      // This is a secure payment request. A Cloud Function would handle the actual transaction.
+      const paymentRequestId = `${userId}_payment_${Date.now()}`;
+      await addDoc(collection(db, 'payment_requests'), {
+        paymentRequestId,
+        userId,
+        amount: parseFloat(amount),
+        currency,
+        paymentMethod,
+        walletAddress: address,
+        status: 'pending',
+        timestamp: serverTimestamp(),
+      });
+
+      setShowMessage(`✅ Payment request submitted. Please complete the transaction in your wallet.`);
+      // The payment provider's modal or wallet transaction would be initiated here.
+    } catch (err: any) {
+      console.error('Payment initiation error:', err);
+      setError(err.message || 'Failed to initiate payment. Please try again.');
+      setShowMessage('⚠️ Failed to initiate payment.');
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const handleCloseModal = () => {
-    setActiveModal(null);
-    setCurrentView('selection');
-    setTransactionType(null);
-    setAmount(0);
-    setCurrency('USD');
-    setItemId(null);
-  };
-
-  const renderSelectionView = () => (
-    <>
-      <DialogTitle className="text-2xl font-bold font-poppins text-primary mb-4 text-glow-primary text-center">Select Transaction</DialogTitle>
-      <DialogDescription className="text-sm text-muted-foreground text-center mb-6">Choose how you want to interact with the PETverse economy.</DialogDescription>
-      <div className="space-y-4">
-        <motion.button
-          className="btn-primary w-full flex items-center justify-center gap-2"
-          onClick={() => {
-            setTransactionType('deposit');
-            setAmount(0);
-            setCurrency('USD');
-            setCurrentView('transaction');
-          }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <ArrowUpCircle className="w-5 h-5" /> Deposit Funds
-        </motion.button>
-
-        <motion.button
-          className="btn-primary w-full flex items-center justify-center gap-2"
-          onClick={() => {
-            setTransactionType('withdraw');
-            setAmount(0);
-            setCurrency('USD');
-            setCurrentView('transaction');
-          }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <ArrowDownCircle className="w-5 h-5" /> Withdraw Funds
-        </motion.button>
-
-        <div className="text-lg font-bold text-foreground text-center mt-4 text-glow-primary">Membership Tiers:</div>
-        {Object.entries(MEMBERSHIP_TIERS).map(([key, tier]) => (
-          <motion.button
-            key={key}
-            className="btn-secondary w-full flex flex-col items-center justify-center gap-1 p-2 text-center"
-            onClick={() => {
-              setTransactionType('membership');
-              setAmount(tier.usdAmount);
-              setItemId(key);
-              setCurrency('USD');
-              setCurrentView('transaction');
-            }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Star className="w-5 h-5" />
-            <span className="font-bold">{tier.name}</span>
-            <span className="text-sm">{tier.usdAmount} USD</span>
-          </motion.button>
-        ))}
-      </div>
-    </>
-  );
 
   return (
     <AnimatePresence>
-      {activeModal === 'payment' && (
+      <motion.div
+        className={`fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md bg-noise`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md bg-noise"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          className={`relative modal ${isDarkMode ? 'glass-dark' : 'glass-light'} p-6 rounded-lg max-w-sm w-full mx-4 border border-cyan-400/20`}
+          initial={{ scale: 0.8, y: 50 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.8, y: 50 }}
         >
-          <motion.div
-            className={`relative modal holographic-card p-6 rounded-lg max-w-sm w-full mx-4 border border-[hsl(var(--primary-hsl),0.2)]`}
-            initial={{ scale: 0.8, y: 50 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.8, y: 50 }}
+          <motion.button
+            className={`absolute top-4 right-4 text-foreground`}
+            onClick={() => setActiveModal(null)}
+            whileHover={{ scale: 1.1 }}
+            aria-label="Close Modal"
           >
+            <X className="w-6 h-6" />
+          </motion.button>
+
+          <h2 className="text-2xl font-bold font-poppins text-primary mb-4 flex items-center justify-center gap-2">
+            <HandCoins className="w-7 h-7" /> Make a Payment
+          </h2>
+
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="paymentAmount" className="text-gray-300 text-sm">Amount:</label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="paymentAmount"
+                  type="number"
+                  step="any"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  className="input flex-grow"
+                  disabled={loading}
+                />
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value as SupportedCurrency)}
+                  className="input w-24"
+                  disabled={loading}
+                >
+                  <option value="USDT">USDT</option>
+                  <option value="ETH">ETH</option>
+                </select>
+              </div>
+            </div>
+
             <motion.button
-              className="absolute top-4 right-4 text-foreground"
-              onClick={handleCloseModal}
-              whileHover={{ scale: 1.1 }}
-              aria-label="Close Modal"
+              className="btn-primary w-full"
+              onClick={handlePaymentInitiate}
+              disabled={loading || !amount || parseFloat(amount) <= 0 || !address}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <X className="w-6 h-6 text-[hsl(var(--secondary-hsl))] animate-neon-pulse" />
+              {loading ? 'Initiating Payment...' : `Pay with ${currency}`}
             </motion.button>
-            <DialogTitle className="hidden">Payment Portal</DialogTitle>
-            <DialogDescription className="hidden">This is where you can manage deposits, withdrawals, and memberships.</DialogDescription>
+          </div>
 
-            {currentView === 'selection' ? (
-              renderSelectionView()
-            ) : (
-              transactionType && (
-                <>
-                  <h2 className="text-2xl font-bold font-poppins text-primary mb-4 text-glow-primary text-center">
-                    {transactionType === 'deposit' ? 'Deposit Funds' :
-                     transactionType === 'withdraw' ? 'Withdraw Funds' :
-                     `Purchase ${MEMBERSHIP_TIERS[itemId as keyof typeof MEMBERSHIP_TIERS]?.name || 'Membership'}`}
-                  </h2>
-                  {(transactionType === 'deposit' || transactionType === 'withdraw' || transactionType === 'membership') && (
-                      <div className="flex items-center gap-2 mb-4">
-                          <DollarSign className="w-5 h-5 text-primary" />
-                          <input
-                              type="number"
-                              value={amount === 0 ? '' : amount}
-                              onChange={(e) => setAmount(Number(e.target.value))}
-                              placeholder="Enter amount (USD)"
-                              className={`input-system p-3 rounded-md border border-[hsl(var(--primary-hsl),0.2)] w-full text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-inter`}
-                              aria-label="Amount"
-                              min={1}
-                          />
-                      </div>
-                  )}
-
-                  {userId ? (
-                        <RazorTransaction
-                            amount={amount}
-                            currency="USD"
-                            itemId={itemId}
-                            transactionType={transactionType}
-                            userId={userId}
-                            onSuccess={handleTransactionSuccess}
-                            setShowMessage={setShowMessage}
-                        />
-                    ) : (
-                        <p className="text-rose-400 text-center">Please sign in to make payments.</p>
-                    )}
-
-                  <div className="text-center mt-4">
-                    <motion.button
-                      className="text-foreground hover:text-secondary font-inter text-sm"
-                      onClick={() => {
-                          setCurrentView('selection');
-                          setTransactionType(null);
-                          setAmount(0);
-                          setItemId(null);
-                      }}
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      Back to Payment Options
-                    </motion.button>
-                  </div>
-                </>
-              )
+          <AnimatePresence>
+            {error && (
+              <motion.p
+                className="text-rose-400 text-sm text-center mt-4 font-inter"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                {error}
+              </motion.p>
             )}
-          </motion.div>
+          </AnimatePresence>
         </motion.div>
-      )}
+      </motion.div>
     </AnimatePresence>
   );
 };

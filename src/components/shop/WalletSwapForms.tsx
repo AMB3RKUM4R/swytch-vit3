@@ -1,6 +1,4 @@
 // src/components/shop/WalletSwapForms.tsx
-// This is a version specifically for the Shop page,
-// it might have slightly different context or default behaviors than the Vault/Market one.
 import { FC, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ShoppingCart } from 'lucide-react';
@@ -8,10 +6,11 @@ import SwytchCard from '../SwytchCard';
 import { SupportedCurrency, PlayerData, TransactionType, TransactionStatus } from '@/lib/types';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
-import { useAccount, useBalance, useSendTransaction, useWaitForTransactionReceipt, usePublicClient, useWalletClient } from 'wagmi';
+import { useAccount, useBalance, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 
-// Placeholder ABI for a generic ERC20 token (like USDT)
+// Hardcoded MetaMask wallet address for deposits, representing a contract
+const DEPOSIT_WALLET_ADDRESS = '0x03d3c8065a4A936b856A39121a5F9e0A441dF4E8';
 
 interface WalletSwapFormsProps {
   userId: string | null;
@@ -23,37 +22,31 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
   const [fromAmount, setFromAmount] = useState<string>('');
   const [toAmount, setToAmount] = useState<string>('');
   const [fromCurrency, setFromCurrency] = useState<SupportedCurrency>('ETH');
-  const [toCurrency, setToCurrency] = useState<SupportedCurrency>('USDT');
+  const [toCurrency, setToCurrency] = useState<SupportedCurrency>('JEWELS');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { address: connectedAddress, isConnected } = useAccount();
   const { data: ethBalance } = useBalance({ address: connectedAddress, unit: 'ether' });
-  const { data: usdtBalance } = useBalance({ address: connectedAddress, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' }); // Example USDT on Mainnet
-
-  const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
 
   const { data: hash, sendTransaction, isPending: isTxPending } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({ hash });
 
-  const availableCurrencies: SupportedCurrency[] = ['ETH', 'USDT']; // Add more as supported
+  const availableCurrencies: SupportedCurrency[] = ['ETH'];
 
-  // Simulate exchange rate (for MVP, a fixed rate)
-  const getExchangeRate = useCallback((from: SupportedCurrency, to: SupportedCurrency) => {
-    if (from === 'ETH' && to === 'USDT') return 3000; // 1 ETH = 3000 USDT (example)
-    if (from === 'USDT' && to === 'ETH') return 1 / 3000; // 1 USDT = 0.00033 ETH (example)
-    return 1; // For same currency or unsupported pairs
+  const getExchangeRate = useCallback(() => {
+    const ethToJewelsRate = 5000;
+    return ethToJewelsRate;
   }, []);
 
   useEffect(() => {
     if (fromAmount) {
-      const rate = getExchangeRate(fromCurrency, toCurrency);
-      setToAmount((parseFloat(fromAmount) * rate).toFixed(4));
+      const rate = getExchangeRate();
+      setToAmount((parseFloat(fromAmount) * rate).toFixed(0));
     } else {
       setToAmount('');
     }
-  }, [fromAmount, fromCurrency, toCurrency, getExchangeRate]);
+  }, [fromAmount, getExchangeRate]);
 
   useEffect(() => {
     if (isConfirmed && hash) {
@@ -61,7 +54,6 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
       setLoading(false);
       setFromAmount('');
       setToAmount('');
-      // Log transaction to Firestore as success after on-chain confirmation
       const logConfirmedTransaction = async () => {
         if (!userId) return;
         try {
@@ -74,10 +66,9 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
             status: 'success' as TransactionStatus,
             timestamp: serverTimestamp(),
             walletAddress: connectedAddress,
-            itemId: toCurrency, // What was received
-            screenshot: toAmount, // How much was received
+            itemId: toCurrency,
+            receivedAmount: parseFloat(toAmount),
             game: 'shop-swap',
-            paypalOrderId: hash, // Using this field to store tx hash
           });
         } catch (logError) {
           console.error("Failed to log confirmed transaction:", logError);
@@ -92,22 +83,19 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
   }, [isConfirmed, hash, txError, userId, fromAmount, fromCurrency, toAmount, toCurrency, connectedAddress, setShowMessage]);
 
   const handleSwapCurrencies = () => {
-    setFromCurrency(toCurrency);
-    setToCurrency(fromCurrency);
-    setFromAmount(toAmount); // Swap amounts too for better UX
+    // This function is no longer needed since we are only swapping ETH to JEWELS
+    setShowMessage('ℹ️ You can only swap ETH for JEWELS in the shop.');
   };
 
   const handleInitiateSwap = async () => {
     if (!userId) {
       setError('User not authenticated. Please sign in.');
       setShowMessage('⚠️ User not authenticated. Please sign in.');
-      // setActiveModal('auth'); // Assuming parent handles auth modal
       return;
     }
     if (!isConnected || !connectedAddress) {
       setError('No crypto wallet connected. Please connect your wallet.');
       setShowMessage('⚠️ No crypto wallet connected. Please connect your wallet.');
-      // setActiveModal('auth');
       return;
     }
     if (isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
@@ -116,24 +104,16 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
       return;
     }
 
-    // Basic balance check
     if (fromCurrency === 'ETH' && ethBalance && parseFloat(fromAmount) > parseFloat(ethBalance.formatted)) {
       setError('Insufficient ETH balance.');
       setShowMessage('⚠️ Insufficient ETH balance.');
       return;
     }
-    if (fromCurrency === 'USDT' && usdtBalance && parseFloat(fromAmount) > parseFloat(usdtBalance.formatted)) {
-      setError('Insufficient USDT balance.');
-      setShowMessage('⚠️ Insufficient USDT balance.');
-      return;
-    }
-    // Add checks for other token balances
 
     setLoading(true);
     setError(null);
 
     try {
-      // Log transaction request to Firestore
       const transactionId = `swap_request_${userId}_${Date.now()}`;
       await addDoc(collection(db, 'Transactions'), {
         transactionId,
@@ -144,35 +124,18 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
         status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         walletAddress: connectedAddress,
-        itemId: toCurrency, // To indicate what they want to receive
-        screenshot: toAmount, // To indicate how much they expect to receive
+        itemId: toCurrency,
+        receivedAmount: parseFloat(toAmount),
         game: 'shop-swap',
       });
 
-      // --- Initiate On-chain Transaction ---
       if (fromCurrency === 'ETH') {
         sendTransaction({
-          to: '0xYourShopSwapContractAddress' as `0x${string}`, // Placeholder swap contract address for Shop
+          to: DEPOSIT_WALLET_ADDRESS as `0x${string}`,
           value: parseEther(fromAmount),
         });
-      } else if (fromCurrency === 'USDT') {
-        if (!walletClient || !publicClient) {
-          setError('Wallet client not ready for ERC-20 transfer.');
-          setShowMessage('⚠️ Wallet client not ready.');
-          setLoading(false);
-          return;
-        }
-
-        setShowMessage('ℹ️ USDT swap initiated. Please confirm in your wallet.');
-        // No explicit setHash here, use useSendTransaction's hash or manage separately if needed.
-      } else {
-        setError('Unsupported swap currency.');
-        setShowMessage('⚠️ Unsupported swap currency.');
-        setLoading(false);
-        return;
       }
       setShowMessage(`Swap initiated. Waiting for transaction confirmation...`);
-
     } catch (err: any) {
       console.error('Swap initiation error:', err);
       setError(err.message || 'Failed to initiate swap. Please try again.');
@@ -180,7 +143,6 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
       setLoading(false);
     }
   };
-
 
   return (
     <SwytchCard gradient="from-purple-700/20 to-pink-700/20" className="p-6">
@@ -206,15 +168,14 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
             <select
               value={fromCurrency}
               onChange={(e) => setFromCurrency(e.target.value as SupportedCurrency)}
-              className="input mt-2"
-              disabled={loading || isTxPending || isConfirming}
+              className="input mt-2 opacity-70 cursor-not-allowed"
+              disabled
             >
               {availableCurrencies.map(curr => (
                 <option key={curr} value={curr}>{curr}</option>
               ))}
             </select>
             {fromCurrency === 'ETH' && ethBalance && <p className="text-xs text-gray-400">Balance: {parseFloat(ethBalance.formatted).toFixed(4)} ETH</p>}
-            {fromCurrency === 'USDT' && usdtBalance && <p className="text-xs text-gray-400">Balance: {parseFloat(usdtBalance.formatted).toFixed(2)} USDT</p>}
           </div>
 
           <div className="flex justify-center my-2">
@@ -223,7 +184,7 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
               className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
               whileHover={{ rotate: 180 }}
               whileTap={{ scale: 0.9 }}
-              disabled={loading || isTxPending || isConfirming}
+              disabled
             >
               <ArrowRight className="w-5 h-5 text-white" />
             </motion.button>
@@ -242,12 +203,10 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
             <select
               value={toCurrency}
               onChange={(e) => setToCurrency(e.target.value as SupportedCurrency)}
-              className="input mt-2"
-              disabled={loading || isTxPending || isConfirming}
+              className="input mt-2 opacity-70 cursor-not-allowed"
+              disabled
             >
-              {availableCurrencies.map(curr => (
-                <option key={curr} value={curr}>{curr}</option>
-              ))}
+              <option value="JEWELS">JEWELS</option>
             </select>
           </div>
 

@@ -2,11 +2,11 @@
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, DollarSign, Tag } from 'lucide-react';
-import { useTheme } from '@/components/context/ThemeContext'; // FIX: Added missing import
+import { useTheme } from '@/components/context/ThemeContext';
 import { InventoryItem, SupportedCurrency, PlayerData, Transaction, TransactionType, TransactionStatus } from '@/lib/types';
 import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
-import { useAccount } from 'wagmi'; // To check connected wallet
+import { useAccount } from 'wagmi';
 
 interface ListForSaleModalProps {
   item: InventoryItem;
@@ -16,8 +16,8 @@ interface ListForSaleModalProps {
   setShowMessage: (message: string) => void;
   setActiveModal: (modalName: string | null) => void;
   updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
-  playerInventoryItems: Record<string, InventoryItem>; // FIX: Pass the full player's items map
-  playerEquipped: { armor: string; weapon: string; } | null; // FIX: Pass equipped items directly, can be null
+  playerInventoryItems: Record<string, InventoryItem>;
+  playerEquipped: { armor: string; weapon: string; } | null;
 }
 
 const ListForSaleModal: FC<ListForSaleModalProps> = ({
@@ -28,13 +28,13 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
   setShowMessage,
   setActiveModal,
   updatePlayerFirestore,
-  playerInventoryItems, // Receive playerInventoryItems
-  playerEquipped, // Receive playerEquipped
+  playerInventoryItems,
+  playerEquipped,
 }) => {
-  const { isDarkMode } = useTheme(); // FIX: Use useTheme hook
-  const { isConnected, address } = useAccount(); // Check for connected wallet
+  const { isDarkMode } = useTheme();
+  const { isConnected, address } = useAccount();
   const [price, setPrice] = useState<string>('');
-  const [currency, setCurrency] = useState<SupportedCurrency>('ETH'); // Default crypto currency
+  const [currency, setCurrency] = useState<SupportedCurrency>('ETH');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,7 +48,7 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
     if (!isConnected || !address) {
       setError('No crypto wallet connected. Please connect your wallet.');
       setShowMessage('⚠️ No crypto wallet connected. Please connect your wallet.');
-      setActiveModal('auth'); // Or a specific wallet connect modal
+      setActiveModal('auth');
       return;
     }
     if (isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
@@ -63,22 +63,16 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
     try {
       // 1. Update the item in the user's inventory to mark it as listed for sale
       // This is an optimistic update.
-      const updatedInventoryItems = { ...playerInventoryItems }; // Start with current inventory items
+      const updatedInventoryItems = { ...playerInventoryItems };
       const updatedItem: InventoryItem = {
         ...item,
         isListedForSale: true,
         listingPriceCrypto: parseFloat(price),
         listingCurrency: currency,
-        // For alpha, you (Izno CEO) would manually mint this as an NFT and update tokenId/contractAddress
-        // For a full system, a backend service would handle this.
-        // tokenId: '...',
-        // contractAddress: '...',
-        // mintedAt: serverTimestamp(),
       };
       updatedInventoryItems[item.id] = updatedItem;
 
-      // Ensure equipped status is handled: if an equipped item is listed, it should be unequipped
-      let currentEquipped = playerEquipped ? { ...playerEquipped } : { armor: '', weapon: '' }; // FIX: Handle null playerEquipped
+      let currentEquipped = playerEquipped ? { ...playerEquipped } : { armor: '', weapon: '' };
       if (currentEquipped.armor === item.id) currentEquipped.armor = '';
       if (currentEquipped.weapon === item.id) currentEquipped.weapon = '';
 
@@ -86,7 +80,7 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
       // Update the player's inventory in Firestore
       await updatePlayerFirestore({
         inventory: {
-          equipped: currentEquipped, // Use the potentially updated equipped status
+          equipped: currentEquipped,
           items: updatedInventoryItems,
         },
       });
@@ -94,7 +88,7 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
       // 2. Add an entry to a 'MarketItems' collection for the marketplace display
       await setDoc(doc(db, 'MarketItems', item.id), {
         ...updatedItem,
-        sellerId: userId, // Record the seller
+        sellerId: userId,
         listedAt: serverTimestamp(),
       });
 
@@ -105,15 +99,15 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
         amount: parseFloat(price),
         currency: currency,
         transactionType: 'item-sale' as TransactionType,
-        status: 'pending' as TransactionStatus, // Status pending actual sale
+        status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         itemId: item.id,
-        game: 'marketplace', // Or the name of the game the item came from
+        game: 'marketplace',
         walletAddress: address,
       };
       await addDoc(collection(db, 'Transactions'), transaction);
 
-      onSuccess(updatedItem); // Notify parent of success
+      onSuccess(updatedItem);
     } catch (err: any) {
       console.error('Failed to list item for sale:', err);
       setError(err.message || 'Failed to list item for sale. Please try again.');
@@ -154,7 +148,7 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
                 src={item.imageUrl}
                 alt={item.name}
                 className="w-24 h-24 object-cover rounded-md mx-auto border border-gray-700"
-                onError={(e) => e.currentTarget.src = `https://placehold.co/96x96/FF0000/FFFFFF?text=Item+Image`} // Fallback
+                onError={(e) => e.currentTarget.src = `https://placehold.co/96x96/FF0000/FFFFFF?text=Item+Image`}
               />
             ) : (
               <Tag className="w-16 h-16 text-gray-500 mx-auto" />
@@ -187,7 +181,6 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
               >
                 <option value="ETH">ETH</option>
                 <option value="USDT">USDT</option>
-                {/* Add other crypto currencies supported by your marketplace */}
               </select>
             </div>
 

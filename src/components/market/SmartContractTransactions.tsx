@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 import { Layers, ExternalLink, Hash } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 import { db } from '@/lib/firebaseConfig';
-import { collection, query, orderBy, limit, onSnapshot, QueryDocumentSnapshot } from 'firebase/firestore'; // Import QueryDocumentSnapshot
-import { Transaction } from '@/lib/types'; // Import Transaction type
+import { collection, query, orderBy, limit, onSnapshot, QueryDocumentSnapshot } from 'firebase/firestore';
+import { Transaction } from '@/lib/types';
 
 interface SmartContractTransactionsProps {
   // No direct props, fetches data internally
@@ -19,16 +19,15 @@ const SmartContractTransactions: FC<SmartContractTransactionsProps> = () => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    // Query the 'Transactions' collection to display recent activity
     const q = query(
       collection(db, 'Transactions'),
-      orderBy('timestamp', 'desc'), // Order by latest
-      limit(5) // Show only the 5 most recent
+      orderBy('timestamp', 'desc'),
+      limit(5)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedTransactions: Transaction[] = [];
-      snapshot.forEach((docSnap: QueryDocumentSnapshot) => { // Explicitly type docSnap
+      snapshot.forEach((docSnap: QueryDocumentSnapshot) => {
         fetchedTransactions.push(docSnap.data() as Transaction);
       });
       setTransactions(fetchedTransactions);
@@ -62,11 +61,11 @@ const SmartContractTransactions: FC<SmartContractTransactionsProps> = () => {
 
   const getStatusColor = (status: Transaction['status']) => {
     switch (status) {
-      case 'success': return 'text-green-500';
-      case 'pending': return 'text-yellow-500';
-      case 'failed': return 'text-red-500';
-      case 'approved': return 'text-blue-500';
+      case 'success':
       case 'completed': return 'text-green-500';
+      case 'pending':
+      case 'approved': return 'text-yellow-500';
+      case 'failed':
       case 'rejected': return 'text-red-500';
       default: return 'text-gray-400';
     }
@@ -108,10 +107,9 @@ const SmartContractTransactions: FC<SmartContractTransactionsProps> = () => {
               <div className="text-right">
                 <p className="text-primary font-bold">{tx.amount} {tx.currency}</p>
                 <p className={`text-sm ${getStatusColor(tx.status)}`}>{tx.status.toUpperCase()}</p>
-                {/* Display transaction hash if available, linking to explorer */}
-                {tx.paypalOrderId && ( // Using paypalOrderId to store crypto transaction hash
+                {tx.walletAddress && (
                   <a
-                    href={`https://snowtrace.io/tx/${tx.paypalOrderId}`} // Example for Avalanche C-Chain explorer
+                    href={`https://snowtrace.io/tx/${tx.walletAddress}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-blue-400 hover:underline flex items-center gap-1 justify-end"

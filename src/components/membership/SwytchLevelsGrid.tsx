@@ -1,60 +1,32 @@
 // src/components/membership/SwytchLevelsGrid.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Gem, ArrowRight } from 'lucide-react';
+import { Sparkles, ArrowRight } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { Level, MEMBERSHIP_TIERS } from '@/lib/types'; // Import Level and MEMBERSHIP_TIERS
+import { MEMBERSHIP_TIERS } from '@/lib/types';
 
 interface SwytchLevelsGridProps {
   userId: string | null;
-  currentLevel: number; // Current player's level
+  currentLevel: number;
   isPending: boolean;
   authLoading: boolean;
   updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-  handlePurchaseLevel: (level: { id: string; name: string; cost: number; contentRoute: string }) => Promise<void>;
+  handlePurchaseLevel: (level: { id: string; name: string; cost: number; contentRoute: string; level: number; }) => Promise<void>;
   setActiveModal: (modalName: string | null) => void;
   setShowMessage: (message: string) => void;
 }
 
-// Define the levels based on MEMBERSHIP_TIERS for consistency
-const levels: Level[] = [
-  {
-    level: 1,
-    id: 'ecosystem',
-    title: 'Tier 1: Ecosystem Explorer',
-    cost: MEMBERSHIP_TIERS.ecosystem.amount,
-    contentRoute: MEMBERSHIP_TIERS.ecosystem.contentRoute,
-    reward: '500 JEWELS + Basic Access',
-    energyRequired: '0 Energy',
-    perks: ['Access to basic features', 'Community access', 'Daily JEWELS bonus'],
-    icon: Sparkles,
-    image: 'https://placehold.co/150x100/A020F0/FFFFFF?text=Tier+1' // Placeholder image
-  },
-  {
-    level: 2,
-    id: 'gamers',
-    title: 'Tier 2: Gamer Elite',
-    cost: MEMBERSHIP_TIERS.gamers.amount,
-    contentRoute: MEMBERSHIP_TIERS.gamers.contentRoute,
-    reward: '1500 JEWELS + Enhanced Access',
-    energyRequired: '50 Energy',
-    perks: ['All Tier 1 perks', 'Reduced marketplace fees', 'Exclusive quests'],
-    icon: Gem,
-    image: 'https://placehold.co/150x100/FF00FF/FFFFFF?text=Tier+2' // Placeholder image
-  },
-  {
-    level: 3,
-    id: 'gold',
-    title: 'Tier 3: Gold Sovereign',
-    cost: MEMBERSHIP_TIERS.gold.amount,
-    contentRoute: MEMBERSHIP_TIERS.gold.contentRoute,
-    reward: '5000 JEWELS + VIP Access',
-    energyRequired: '100 Energy',
-    perks: ['All Tier 2 perks', 'Priority support', 'VIP item drops', 'Governance voting rights'],
-    icon: Gem,
-    image: 'https://placehold.co/150x100/FFD700/000000?text=Tier+3' // Placeholder image
-  },
-];
+const levels = Object.entries(MEMBERSHIP_TIERS).map(([key, tier]) => ({
+  ...tier,
+  id: key,
+  title: tier.name,
+  cost: tier.usdAmount,
+  reward: 'Exclusive Rewards',
+  energyRequired: 'Varies',
+  perks: ['Access to exclusive features', 'Priority support'],
+  icon: Sparkles,
+  image: `https://placehold.co/150x100/FFD700/000000?text=${tier.name.replace(/\s/g, '+')}`,
+}));
 
 const SwytchLevelsGrid: FC<SwytchLevelsGridProps> = ({
   userId,
@@ -65,8 +37,7 @@ const SwytchLevelsGrid: FC<SwytchLevelsGridProps> = ({
   setActiveModal,
   setShowMessage,
 }) => {
-
-  const handleLevelPurchase = (level: Level) => {
+  const handleLevelPurchase = (level: { id: string; title: string; cost: number; contentRoute: string; level: number; }) => {
     if (!userId) {
       setShowMessage('⚠️ Please sign in to purchase levels.');
       setActiveModal('auth');
@@ -81,6 +52,7 @@ const SwytchLevelsGrid: FC<SwytchLevelsGridProps> = ({
       name: level.title,
       cost: level.cost,
       contentRoute: level.contentRoute,
+      level: level.level,
     });
   };
 
@@ -113,7 +85,7 @@ const SwytchLevelsGrid: FC<SwytchLevelsGridProps> = ({
                   src={levelItem.image}
                   alt={levelItem.title}
                   className="w-full h-full object-cover"
-                  onError={(e) => e.currentTarget.src = `https://placehold.co/150x100/FF0000/FFFFFF?text=Level+${levelItem.level}`} // Fallback
+                  onError={(e) => e.currentTarget.src = `https://placehold.co/150x100/FF0000/FFFFFF?text=Level+${levelItem.level}`}
                 />
                 {levelItem.level <= currentLevel && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -124,7 +96,7 @@ const SwytchLevelsGrid: FC<SwytchLevelsGridProps> = ({
 
               <h3 className="text-xl font-bold text-white font-poppins mb-2">{levelItem.title}</h3>
               <p className="text-sm text-gray-300 flex-grow mb-3">{levelItem.reward}</p>
-              <p className="text-sm font-semibold text-primary mb-2">Cost: {levelItem.cost} INR</p>
+              <p className="text-sm font-semibold text-primary mb-2">Cost: {levelItem.cost} USD</p>
               <ul className="list-disc list-inside text-xs text-gray-200 space-y-1 mb-4">
                 {levelItem.perks.map((perk, i) => (
                   <li key={i}>{perk}</li>

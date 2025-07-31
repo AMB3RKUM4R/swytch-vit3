@@ -1,17 +1,16 @@
 // src/components/benefits/BenefitsQuests.tsx
 import { FC, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle, Trophy, Sparkles } from 'lucide-react'; // Changed Gem to Sparkles for consistency
+import { CheckCircle, XCircle, Trophy, Sparkles } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { Quest, PlayerData } from '@/lib/types'; // Import Quest and PlayerData types
+import { Quest, PlayerData } from '@/lib/types';
 
 interface BenefitsQuestsProps {
   userId: string | null;
   quests: Quest[];
   setQuests: React.Dispatch<React.SetStateAction<Quest[]>>;
   jewelsBalance: number;
-  // Removed: setJewelsBalance: React.Dispatch<React.SetStateAction<number>>; // Removed as per strict rules
-  saveStateToFirestore: (updates: Partial<PlayerData>) => Promise<void>; // Type correctly
+  saveStateToFirestore: (updates: Partial<PlayerData>) => Promise<void>;
   setActiveModal: (modalName: string | null) => void;
   setShowMessage: (message: string) => void;
 }
@@ -64,8 +63,7 @@ const BenefitsQuests: FC<BenefitsQuestsProps> = ({
         // This object would typically contain data for the backend to process the claim
         // e.g., { questId: questToClaim.id, action: 'claim_reward' }
         // The backend would then update jewels and mark quest as truly completed/rewarded
-        quests: updatedQuests, // Pass updated quests for backend to process
-        // jewels: newJewelsBalance, // This line is removed as direct update is not allowed
+        quests: updatedQuests,
       });
 
       setShowMessage(`🎉 Claimed ${questToClaim.rewardJEWELS} JEWELS and ${questToClaim.rewardXP} XP from "${questToClaim.title}"! Reward pending backend verification.`);
@@ -74,7 +72,6 @@ const BenefitsQuests: FC<BenefitsQuestsProps> = ({
       setShowMessage('⚠️ Failed to claim reward. Please try again.');
     }
   }, [userId, quests, jewelsBalance, setQuests, saveStateToFirestore, setActiveModal, setShowMessage]);
-
 
   return (
     <SwytchCard gradient="from-yellow-700/20 to-orange-700/20" className="p-6">

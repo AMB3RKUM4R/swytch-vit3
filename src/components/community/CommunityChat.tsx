@@ -1,4 +1,3 @@
-
 // src/components/community/CommunityChat.tsx
 import { FC, useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';

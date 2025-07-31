@@ -9,7 +9,6 @@ interface BenefitsCTAProps {
   userId: string | null;
   setActiveModal: (modalName: string | null) => void;
   setShowMessage: (message: string) => void;
-  logUpiIntent: (amount: number) => Promise<void>; // Assuming this is for a quick deposit CTA
 }
 
 const BenefitsCTA: FC<BenefitsCTAProps> = ({ userId, setActiveModal, setShowMessage }) => {
@@ -24,7 +23,7 @@ const BenefitsCTA: FC<BenefitsCTAProps> = ({ userId, setActiveModal, setShowMess
       return;
     }
     setShowMessage('💰 Opening deposit options...');
-    setActiveModal('payment'); // Open the payment modal
+    setActiveModal('payment');
   };
 
   return (

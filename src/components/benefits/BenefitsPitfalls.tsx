@@ -3,10 +3,10 @@ import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Info, ArrowLeft, ArrowRight } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { Dont } from '@/lib/types'; // FIX: Import Dont type
+import { Dont } from '@/lib/types';
 
 interface BenefitsPitfallsProps {
-  handlePitfallsView: () => void; // Function to toggle pitfalls view (if used as a sub-section)
+  handlePitfallsView: () => void;
   userId: string | null;
   setActiveModal: (modalName: string | null) => void;
   setShowMessage: (message: string) => void;
@@ -38,7 +38,7 @@ const pitfalls: Dont[] = [
 const BenefitsPitfalls: FC<BenefitsPitfallsProps> = ({
   setShowMessage,
 }) => {
-  const [showDetails, setShowDetails] = useState(false); // Internal state to show/hide details
+  const [showDetails, setShowDetails] = useState(false);
 
   const handleLearnMoreClick = () => {
     setShowDetails(!showDetails);
@@ -57,7 +57,7 @@ const BenefitsPitfalls: FC<BenefitsPitfallsProps> = ({
       <div className="space-y-4">
         {pitfalls.map((pitfall, index) => (
           <motion.div key={index} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.99 }}>
-            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 cursor-pointer" onClick={() => handleLearnMoreClick()}> {/* Call handleLearnMoreClick */}
+            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 cursor-pointer" onClick={() => handleLearnMoreClick()}>
               <h3 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
                 <Info className="w-5 h-5 text-blue-400" /> {pitfall.title}
               </h3>
@@ -77,7 +77,7 @@ const BenefitsPitfalls: FC<BenefitsPitfallsProps> = ({
               </AnimatePresence>
               <motion.button
                 className="mt-3 text-primary text-sm font-semibold flex items-center gap-1"
-                onClick={(e) => { e.stopPropagation(); handleLearnMoreClick(); }} // Prevent parent click, call handler
+                onClick={(e) => { e.stopPropagation(); handleLearnMoreClick(); }}
                 whileHover={{ x: 5 }}
               >
                 {showDetails ? 'Show Less' : 'Read More'} <ArrowRight className="w-4 h-4" />
@@ -90,7 +90,7 @@ const BenefitsPitfalls: FC<BenefitsPitfallsProps> = ({
       <div className="text-center mt-6">
         <motion.button
           className="btn-secondary flex items-center justify-center mx-auto"
-          onClick={handleLearnMoreClick} // Use the same handler to toggle visibility
+          onClick={handleLearnMoreClick}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-label={showDetails ? "Hide Pitfalls Details" : "Learn More About Pitfalls"}

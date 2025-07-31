@@ -22,9 +22,9 @@ const benefits: Benefit[] = [
   },
   {
     icon: DollarSign,
-    title: 'Crypto & Fiat Withdrawals',
-    description: 'Convert your in-game earnings (JEWELS) into real crypto or fiat currency.',
-    details: 'Seamlessly withdraw your hard-earned JEWELS to your crypto wallet (ETH, USDT on Avalanche) or convert them to fiat currency via UPI or PayPal. Our integrated payment solutions make cashing out your rewards simple and secure, bridging the gap between your gaming success and real-world financial benefits.',
+    title: 'Crypto Withdrawals',
+    description: 'Convert your in-game earnings (JEWELS) into real crypto currency.',
+    details: 'Seamlessly withdraw your hard-earned JEWELS to your crypto wallet. Our integrated blockchain solutions make cashing out your rewards simple and secure, bridging the gap between your gaming success and real-world financial benefits.',
   },
   {
     icon: Zap,
@@ -78,7 +78,6 @@ const BenefitsGrid: FC<BenefitsGridProps> = ({
             onClick={() => handleBenefitClick(benefit.title)}
           >
             <div className="flex items-center gap-4 mb-4">
-              {/* Ensure benefit.icon is a React component */}
               {benefit.icon && <benefit.icon className="w-8 h-8 text-primary flex-shrink-0" />}
               <h3 className="text-xl font-bold text-white font-poppins">{benefit.title}</h3>
             </div>
@@ -98,7 +97,7 @@ const BenefitsGrid: FC<BenefitsGridProps> = ({
             </AnimatePresence>
             <motion.button
               className="mt-4 text-primary text-sm font-semibold flex items-center gap-1"
-              onClick={(e) => { e.stopPropagation(); handleBenefitClick(benefit.title); }} // Prevent parent click
+              onClick={(e) => { e.stopPropagation(); handleBenefitClick(benefit.title); }}
               whileHover={{ x: 5 }}
             >
               {expandedBenefit === benefit.title ? 'Show Less' : 'Learn More'} <ArrowRight className="w-4 h-4" />

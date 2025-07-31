@@ -6,26 +6,27 @@
 
 @layer base {
   :root {
-    /* Advanced cosmic color palette with dark blue, pink, and purple */
-    --background: 220 60% 10%; /* Dark blue for Solo Leveling vibe */
-    --foreground: 220 50% 95%; /* Light gray for contrast */
+    /* Refined cosmic color palette with improved contrast */
+    --background: 220 60% 10%; /* Dark blue background */
+    --foreground: 220 10% 90%; /* Light gray for text, high contrast */
     --card: 220 50% 15%; /* Slightly lighter dark blue for cards */
-    --card-foreground: 220 50% 95%;
+    --card-foreground: 220 10% 90%; /* Light gray for card text */
     --popover: 220 50% 15%;
-    --popover-foreground: 220 50% 95%;
+    --popover-foreground: 220 10% 90%;
     --primary: 270 80% 65%; /* Purple for highlights */
-    --primary-foreground: 220 50% 95%;
-    --secondary: 200 100% 55%; /* Cyan retained for continuity */
-    --secondary-foreground: 220 50% 95%;
-    --muted: 220 20% 15%; /* Muted dark blue */
-    --muted-foreground: 220 20% 50%;
-    --accent: 330 80% 60%; /* Pink replacing red */
-    --accent-foreground: 220 50% 95%;
+    --primary-foreground: 220 10% 95%; /* Near-white for primary text */
+    --secondary: 200 100% 55%; /* Cyan for secondary elements */
+    --secondary-foreground: 220 10% 95%;
+    --muted: 220 20% 20%; /* Slightly lighter muted blue */
+    --muted-foreground: 220 20% 60%; /* Lighter gray for muted text */
+    --accent: 330 80% 60%; /* Pink for accents */
+    --accent-foreground: 220 10% 95%;
     --destructive: 330 80% 50%; /* Darker pink for errors */
-    --destructive-foreground: 220 50% 95%;
-    --border: 220 40% 20%; /* Subtle blue border */
-    --input: 220 40% 20%;
-    --ring: 270 80% 65%; /* Purple ring for focus */
+    --destructive-foreground: 220 10% 95%;
+    --border: 220 40% 25%; /* Brighter blue border for visibility */
+    --input: 220 50% 20%; /* Darker blue for input fields */
+    --input-foreground: 220 10% 90%; /* Light gray for input text */
+    --ring: 270 80% 65%; /* Purple for focus rings */
 
     /* HSL for hsla() usage */
     --primary-hsl: 270, 80%, 65%;
@@ -33,7 +34,7 @@
     --accent-hsl: 330, 80%, 60%;
     --destructive-hsl: 330, 80%, 50%;
 
-    /* Chart colors with pink and purple emphasis */
+    /* Chart colors */
     --chart-1: 270 80% 65%; /* Purple */
     --chart-2: 200 100% 55%; /* Cyan */
     --chart-3: 330 80% 60%; /* Pink */
@@ -41,8 +42,8 @@
     --chart-5: 190 100% 50%; /* Light cyan */
 
     --radius: 0.75rem;
-    --glass-blur: 14px; /* Increased for stronger glass effect */
-    --glass-bg-dark-value: 15, 15, 25, 0.7; /* Darker, more opaque glass */
+    --glass-blur: 14px;
+    --glass-bg-dark-value: 15, 15, 25, 0.7;
   }
 
   * {
@@ -50,18 +51,22 @@
   }
 
   html, body {
-    @apply min-h-screen text-foreground font-orbitron;
+    @apply min-h-screen font-inter text-foreground; /* Default to Inter for body text */
     background: hsl(var(--background));
-    background-size: cover;
+    background-image:
+      radial-gradient(circle at 50% 20%, hsla(var(--primary-hsl), 0.6) 0%, transparent 60%),
+      radial-gradient(circle at 80% 80%, hsla(var(--accent-hsl), 0.5) 0%, transparent 50%),
+      linear-gradient(135deg, hsla(var(--secondary-hsl), 0.4), hsla(var(--primary-hsl), 0.5));
+    background-size: cover, cover, cover;
     background-repeat: no-repeat;
-    background-attachment: fixed; /* Fixed for parallax effect */
+    background-attachment: fixed;
     animation: cosmic-drift 30s linear infinite;
     overflow-x: hidden;
     position: relative;
     z-index: 1;
   }
 
-  /* Dynamic particle effect for starry cosmos */
+  /* Particle effect for starry cosmos */
   body::before {
     content: "";
     position: fixed;
@@ -101,12 +106,24 @@
       55vw 105vh 0 0.3rem hsla(var(--chart-3), 0.7);
     animation: starry-twinkle 15s ease-in-out infinite;
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-orbitron text-foreground; /* Headers use Orbitron */
+  }
+
+  button, .btn {
+    @apply font-orbitron; /* Buttons use Orbitron */
+  }
+
+  strong, b {
+    @apply font-russo; /* Emphasis uses Russo One */
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-[hsla(var(--primary-hsl),0.9)] text-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
-           hover:bg-[hsla(var(--accent-hsl),0.9)] hover:text-foreground
+    @apply bg-[hsla(var(--primary-hsl),0.9)] text-primary-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
+           hover:bg-[hsla(var(--accent-hsl),0.9)] hover:text-primary-foreground
            focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
            transition-all duration-300 ease-in-out flex items-center justify-center gap-2
            shadow-[0_0_20px_hsla(var(--primary-hsl),0.8)];
@@ -114,8 +131,8 @@
   }
 
   .btn-secondary {
-    @apply bg-transparent text-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
-           border-2 border-[hsla(var(--primary-hsl),0.7)] hover:bg-[hsla(var(--accent-hsl),0.3)] hover:text-foreground
+    @apply bg-transparent text-primary-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
+           border-2 border-[hsla(var(--primary-hsl),0.7)] hover:bg-[hsla(var(--accent-hsl),0.3)] hover:text-primary-foreground
            focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
            transition-all duration-300 ease-in-out flex items-center justify-center gap-2
            shadow-[0_0_15px_hsla(var(--primary-hsl),0.5)];
@@ -123,8 +140,8 @@
   }
 
   .btn-accent {
-    @apply bg-[hsla(var(--accent-hsl),0.9)] text-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
-           hover:bg-[hsla(var(--primary-hsl),0.9)] hover:text-foreground
+    @apply bg-[hsla(var(--accent-hsl),0.9)] text-accent-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
+           hover:bg-[hsla(var(--primary-hsl),0.9)] hover:text-accent-foreground
            focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
            transition-all duration-300 ease-in-out flex items-center justify-center gap-2
            shadow-[0_0_20px_hsla(var(--accent-hsl),0.8)];
@@ -132,7 +149,7 @@
   }
 
   .btn-system-glow {
-    @apply relative overflow-hidden bg-[hsla(var(--primary-hsl),0.5)] text-foreground px-8 py-4 rounded-lg font-orbitron font-bold
+    @apply relative overflow-hidden bg-[hsla(var(--primary-hsl),0.5)] text-primary-foreground px-8 py-4 rounded-lg font-orbitron font-bold
            border-2 border-[hsla(var(--primary-hsl),0.9)] shadow-[0_0_30px_hsla(var(--primary-hsl),0.9)] hover:bg-[hsla(var(--accent-hsl),0.7)]
            transition-all duration-300 ease-in-out flex items-center justify-center gap-3;
     animation: cosmic-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -158,7 +175,7 @@
   }
 
   .card {
-    @apply bg-[hsla(var(--card),0.8)] text-foreground p-6 rounded-lg shadow-lg
+    @apply bg-[hsla(var(--card),0.8)] text-card-foreground p-6 rounded-lg shadow-lg
            transition-transform duration-300 hover:scale-[1.03] ease-in-out
            border border-[hsla(var(--primary-hsl),0.5)];
     backdrop-filter: blur(var(--glass-blur));
@@ -204,17 +221,18 @@
   }
 
   .input-system {
-    @apply bg-[hsla(var(--input),0.7)] text-foreground p-3 rounded-md border-2 border-[hsla(var(--primary-hsl),0.5)]
+    @apply bg-[hsla(var(--input),0.8)] p-3 rounded-md border-2 border-[hsla(var(--primary-hsl),0.7)]
            focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
-           font-orbitron placeholder-muted-foreground
+           font-inter placeholder-muted-foreground
            transition-all duration-300 ease-in-out shadow-[0_0_15px_hsla(var(--primary-hsl),0.4)];
+    color: hsl(var(--input-foreground)); /* Use CSS variable directly */
     animation: rune-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   .tooltip {
-    @apply bg-[hsla(var(--popover),0.9)] text-foreground p-5 rounded-lg border-2 border-[hsla(var(--primary-hsl),0.7)]
+    @apply bg-[hsla(var(--popover),0.9)] text-popover-foreground p-5 rounded-lg border-2 border-[hsla(var(--primary-hsl),0.7)]
            shadow-[0_0_20px_hsla(var(--primary-hsl),0.6)] backdrop-blur-lg
-           transition-opacity duration-300 max-w-md;
+           transition-opacity duration-300 max-w-md font-inter;
   }
 
   .progress-bar {
@@ -239,9 +257,9 @@
   }
 
   .system-message {
-    @apply bg-[hsla(var(--card),0.8)] border-2 border-[hsla(var(--primary-hsl),0.8)] text-foreground p-5 rounded-xl
+    @apply bg-[hsla(var(--card),0.8)] border-2 border-[hsla(var(--primary-hsl),0.8)] text-card-foreground p-5 rounded-xl
            shadow-[0_0_25px_hsla(var(--primary-hsl),0.7)] backdrop-blur-lg
-           font-orbitron animate-text-flicker;
+           font-inter animate-text-flicker;
   }
 
   .nav-main {
@@ -335,6 +353,8 @@
   }
 
   .bg-noise {
-    background-image: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M0 0h4v4H0zm10 10h4v4H10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm-60 10h4v4h-10zm60-60h4v4h-10zm-60 60h4v4h-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-size: 100px 100px;
+    background-repeat: repeat;
   }
 }

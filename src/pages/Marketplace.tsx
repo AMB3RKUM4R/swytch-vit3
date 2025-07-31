@@ -33,8 +33,6 @@ const Marketplace: FC<PageProps> = ({
   setShowMessage,
   isPending,
   authLoading,
-  updatePlayerFirestore,
-  jewelsBalance,
   initialAuthCheckComplete,
 }) => {
   const [listedItems, setListedItems] = useState<MarketItem[]>([]);
@@ -250,15 +248,13 @@ const Marketplace: FC<PageProps> = ({
               exit={{ opacity: 0 }}
             >
               <BuyItemModal
-                item={selectedItem}
-                userId={userId}
-                onClose={handleCloseBuyItemModal}
-                onSuccess={onPurchaseSuccess}
-                setShowMessage={setShowMessage}
-                setActiveModal={setActiveModal}
-                updatePlayerFirestore={updatePlayerFirestore}
-                jewelsBalance={jewelsBalance}
-              />
+  item={selectedItem}
+  userId={userId}
+  onClose={handleCloseBuyItemModal}
+  onSuccess={onPurchaseSuccess}
+  setShowMessage={setShowMessage}
+  setActiveModal={setActiveModal}
+/>
             </motion.div>
           )}
         </AnimatePresence>

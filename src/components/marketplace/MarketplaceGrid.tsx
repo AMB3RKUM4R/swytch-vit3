@@ -2,16 +2,16 @@
 import { FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package } from 'lucide-react';
-import SwytchCard from '../SwytchCard'; // Re-use SwytchCard for consistent styling
-import MarketItemCard from './MarketItemCard'; // Import the individual item card
-import { MarketItem } from '@/lib/types'; // FIX: Import MarketItem type instead of InventoryItem
+import SwytchCard from '../SwytchCard';
+import MarketItemCard from './MarketItemCard';
+import { MarketItem } from '@/lib/types';
 
 interface MarketplaceGridProps {
-  items: MarketItem[]; // Array of items listed for sale
-  onBuyItem: (item: MarketItem) => void; // FIX: onBuyItem now expects MarketItem
+  items: MarketItem[];
+  onBuyItem: (item: MarketItem) => void;
   userId: string | null;
-  setShowMessage: (message: string) => void; // Keep setShowMessage for potential internal use
-  setActiveModal: (modalName: string | null) => void; // Keep setActiveModal for potential internal use
+  setShowMessage: (message: string) => void;
+  setActiveModal: (modalName: string | null) => void;
 }
 
 const itemGridVariants = {
@@ -33,8 +33,6 @@ const MarketplaceGrid: FC<MarketplaceGridProps> = ({
   items,
   onBuyItem,
   userId,
-  // setShowMessage, // Removed from destructuring if not directly used in this component's JSX
-  // setActiveModal, // Removed from destructuring if not directly used in this component's JSX
 }) => {
   return (
     <SwytchCard gradient="from-cyan-700/20 to-blue-700/20" className="p-6">
@@ -57,7 +55,7 @@ const MarketplaceGrid: FC<MarketplaceGridProps> = ({
                 <MarketItemCard
                   item={item}
                   onBuyItem={onBuyItem}
-                  isOwner={userId === item.ownerId} // Pass if the current user is the owner
+                  isOwner={userId === item.ownerId}
                 />
               </motion.div>
             ))}

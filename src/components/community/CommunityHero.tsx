@@ -1,4 +1,3 @@
-
 // src/components/community/CommunityHero.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';

@@ -1,11 +1,12 @@
+// src/pages/Market.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { onSnapshot, collection, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 import Tilt from 'react-parallax-tilt';
-import { Sparkles, MessageCircleHeart, Package, Store, Info, TrendingUp, PlayCircle, Users } from 'lucide-react';
+import { Sparkles, MessageCircleHeart, Package, Store, Info, TrendingUp, PlayCircle, Users, Home } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import StarfieldBackground from '../components/StarfieldBackground';
 import TrustMarketHero from '../components/market/TrustMarketHero';
@@ -16,7 +17,7 @@ import WalletSwapForms from '../components/market/WalletSwapForms';
 import SmartContractTransactions from '../components/market/SmartContractTransactions';
 import TrustMarketCTA from '../components/market/TrustMarketCTA';
 import SwytchCard from '../components/SwytchCard';
-import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
+import { PageProps, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
 
 // Animation variants
 const containerVariants = {
@@ -44,48 +45,27 @@ const Market: FC<PageProps> = ({
   userId,
   setActiveModal,
   setShowMessage,
-  setIsPETMember,
-  updatePlayerFirestore,
   isPending,
   authLoading,
-  initialAuthCheckComplete,
+  playerData,
+  logTransaction,
+  updatePlayerFirestore,
 }) => {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [visibleGameFeatures, setVisibleGameFeatures] = useState(gameFeatures.slice(0, 3));
   const [, setIsModalLoading] = useState<boolean>(false);
   const [hasMore, setHasMore] = useState<boolean>(true);
 
+  // The onSnapshot listener for market items should remain here.
   useEffect(() => {
-    if (userId) {
-      const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data() as PlayerData;
-          setPlayerData(data);
-          setIsPETMember(data.isPETMember || false);
-        } else {
-          setPlayerData(null);
-          setIsPETMember(false);
-          if (initialAuthCheckComplete) {
-            setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
-            setActiveModal('auth');
-          }
-        }
-      }, (err) => {
-        console.error('Failed to fetch user data for Market page:', err);
-        setShowMessage('⚠️ Failed to load market data. Please check your connection.');
-        setActiveModal('error');
-      });
-      return () => unsubscribe();
-    } else {
-      setPlayerData(null);
-      setIsPETMember(false);
-      if (initialAuthCheckComplete) {
-        setShowMessage('⚠️ Please sign in to explore the market!');
-        setActiveModal('auth');
-      }
-    }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
+    const q = query(collection(db, 'MarketItems'), where('isListedForSale', '==', true));
+    const unsubscribe = onSnapshot(q, () => {
+      // Logic to set market items
+    }, (err) => {
+      console.error('Failed to fetch market items:', err);
+      setShowMessage('⚠️ Failed to load marketplace items.');
+    });
+    return () => unsubscribe();
+  }, [setShowMessage]);
 
   const handleShareOnX = useCallback(async () => {
     if (!userId) {
@@ -97,25 +77,26 @@ const Market: FC<PageProps> = ({
     try {
       const shareText = encodeURIComponent("Trading NFTs in the Swytch PETverse Market! 🛒 Join at swytch.io! #SwytchPETverse");
       window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      await addDoc(collection(db, 'Transactions'), {
-        transactionId: `${userId}_share_market_${Date.now()}`,
+      
+      // Use logTransaction for this action
+      await logTransaction({
         userId,
         amount: 5,
         currency: 'JEWELS' as SupportedCurrency,
         transactionType: 'quest-reward' as TransactionType,
         status: 'pending' as TransactionStatus,
-        timestamp: serverTimestamp(),
         game: 'market',
       });
+
       setShowMessage('🎉 Shared Market on X! Reward pending verification.');
     } catch (err) {
-      console.error('Failed to share on X:', err);
+      console.error('Failed to log transaction:', err);
       setShowMessage('⚠️ Failed to share on X. Try again.');
       setActiveModal('error');
     } finally {
       setIsModalLoading(false);
     }
-  }, [userId, setShowMessage, setActiveModal]);
+  }, [userId, setShowMessage, setActiveModal, logTransaction]);
 
   const loadMoreGameFeatures = useCallback(() => {
     if (visibleGameFeatures.length >= gameFeatures.length) {
@@ -158,7 +139,6 @@ const Market: FC<PageProps> = ({
       >
         <StarfieldBackground />
         <motion.div className="relative z-20 max-w-7xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          {/* Hero Section */}
           <motion.section variants={sectionVariants} className="text-center mb-16">
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
@@ -194,7 +174,6 @@ const Market: FC<PageProps> = ({
             </Dialog>
           </motion.section>
 
-          {/* Market Highlights */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-secondary">
               <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
@@ -226,12 +205,12 @@ const Market: FC<PageProps> = ({
                     <div className="holographic-card p-8 text-center animated-aura">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <div className="relative group">
+                          <button className="relative group">
                             <img src={item.image} alt={item.name} className="w-full h-48 object-cover rounded-lg mb-6" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                               <Info className="w-8 h-8 text-[hsl(var(--secondary))] animate-neon-pulse" />
                             </div>
-                          </div>
+                          </button>
                         </DialogTrigger>
                         <DialogContent className="tooltip max-w-md p-6">
                           <h3 className="text-lg font-bold text-foreground font-russo mb-2">{item.name}</h3>
@@ -255,84 +234,64 @@ const Market: FC<PageProps> = ({
             </div>
           </motion.section>
 
-          {/* Trust Market Hero */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
               <Store className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
               Market Hero
             </h2>
-            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
-              <TrustMarketHero
-                setActiveModal={setActiveModal}
-                userId={userId}
-                goldBalance={playerData?.gold || 0}
-                energyBalance={playerData?.energy || 0}
-                mousePosition={{ x: 0, y: 0 }}
-                setShowMessage={setShowMessage}
-              />
-            </Tilt>
+            <TrustMarketHero
+              setActiveModal={setActiveModal}
+              userId={userId}
+              goldBalance={playerData?.gold || 0}
+              energyBalance={playerData?.energy || 0}
+              setShowMessage={setShowMessage}
+            />
           </motion.section>
 
-          {/* Recent Purchases */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-primary">
               <TrendingUp className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
               Recent Purchases
             </h2>
-            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
-              <RecentPurchases recentPurchases={[]} />
-            </Tilt>
+            <RecentPurchases recentPurchases={[]} />
           </motion.section>
 
-          {/* Trust Progression */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
               <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
               Trust Progression
             </h2>
-            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
-              <TrustProgression />
-            </Tilt>
+            <TrustProgression />
           </motion.section>
 
-          {/* Trust Reward Tiers */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-secondary">
               <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
               Reward Tiers
             </h2>
-            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
-              <TrustRewardTiers />
-            </Tilt>
+            <TrustRewardTiers />
           </motion.section>
 
-          {/* Wallet Swap Forms */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-primary">
               <Store className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
               Wallet Swaps
             </h2>
-            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
-              <WalletSwapForms
-                userId={userId}
-                setShowMessage={setShowMessage}
-                updatePlayerFirestore={updatePlayerFirestore}
-              />
-            </Tilt>
+            <WalletSwapForms
+              userId={userId}
+              setShowMessage={setShowMessage}
+              updatePlayerFirestore={updatePlayerFirestore}
+            />
           </motion.section>
 
-          {/* Smart Contract Transactions */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
               <TrendingUp className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
               Smart Contract Transactions
             </h2>
-            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
-              <SmartContractTransactions />
-            </Tilt>
+            <SmartContractTransactions />
           </motion.section>
 
-          {/* Market Activity Showcase */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-secondary">
               <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
@@ -352,7 +311,6 @@ const Market: FC<PageProps> = ({
             </p>
           </motion.section>
 
-          {/* Game Features */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
               <PlayCircle className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
@@ -371,38 +329,31 @@ const Market: FC<PageProps> = ({
                     exit={{ opacity: 0, y: 30 }}
                     transition={{ duration: 0.4 }}
                   >
-                    <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
-                      <SwytchCard gradient="from-[hsl(var(--primary),0.2)] to-[hsl(var(--secondary),0.2)]" className="p-8 holographic-card">
-                        <motion.div className="text-center" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <SwytchCard gradient="from-[hsl(var(--primary),0.2)] to-[hsl(var(--secondary),0.2)]" className="p-8 holographic-card">
+                      <Link
+                        to={item.path}
+                        className="text-center block h-full w-full"
+                        onClick={() => {
+                          if (!userId) {
+                            setShowMessage('⚠️ Sign in to access this feature!');
+                            setActiveModal('auth');
+                          } else {
+                            setShowMessage(`🎮 Navigating to ${item.title}!`);
+                          }
+                        }}
+                        role="button"
+                        aria-label={`Go to ${item.title}`}
+                      >
+                        <div className="h-full flex flex-col justify-center">
                           {item.icon && <div className="mx-auto mb-4">{item.icon}</div>}
                           <h3 className="text-2xl font-bold text-foreground font-russo">{item.title}</h3>
                           <p className="text-muted-foreground font-inter mt-2">{item.description}</p>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Link
-                                to={item.path}
-                                className="btn-accent inline-block px-4 py-2 text-sm mt-4"
-                                onClick={() => {
-                                  if (!userId) {
-                                    setShowMessage('⚠️ Sign in to access this feature!');
-                                    setActiveModal('auth');
-                                  } else {
-                                    setShowMessage(`🎮 Navigating to ${item.title}!`);
-                                  }
-                                }}
-                                role="button"
-                                aria-label={`Go to ${item.title}`}
-                              >
-                                Go to {item.title}
-                              </Link>
-                            </DialogTrigger>
-                            <DialogContent className="tooltip max-w-md p-6">
-                              <p className="text-sm text-muted-foreground">Navigate to {item.title.toLowerCase()} to manage assets or play games!</p>
-                            </DialogContent>
-                          </Dialog>
-                        </motion.div>
-                      </SwytchCard>
-                    </Tilt>
+                          <span className="btn-accent inline-block px-4 py-2 text-sm mt-4">
+                            Go to {item.title}
+                          </span>
+                        </div>
+                      </Link>
+                    </SwytchCard>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -422,21 +373,17 @@ const Market: FC<PageProps> = ({
             )}
           </motion.section>
 
-          {/* Trust Market CTA */}
           <motion.section variants={sectionVariants} className="mb-16">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-primary">
               <Users className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
               Community Trading Hub
             </h2>
-            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
-              <TrustMarketCTA setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
-            </Tilt>
+            <TrustMarketCTA setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
             <p className="text-center text-muted-foreground max-w-2xl mx-auto mt-6 font-inter">
               Join the PETverse trading community to share strategies and dominate the market.
             </p>
           </motion.section>
 
-          {/* Footer Actions */}
           <motion.section variants={sectionVariants} className="text-center py-8 border-t border-border/50">
             <h2 className="text-4xl font-bold text-foreground font-russo mb-6 text-glow-accent">
               <MessageCircleHeart className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
@@ -468,7 +415,7 @@ const Market: FC<PageProps> = ({
                     role="button"
                     aria-label="Navigate to Home Page"
                   >
-                    <Link className="w-6 h-6 mr-2" to={''} /> Back to Home
+                    <Home className="w-6 h-6 mr-2" /> Back to Home
                   </Link>
                 </DialogTrigger>
                 <DialogContent className="tooltip max-w-md p-6">

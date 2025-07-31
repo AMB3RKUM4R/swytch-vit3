@@ -6,7 +6,7 @@ import SwytchCard from '../SwytchCard';
 
 interface BenefitsSupportProps {
   userId: string | null;
-  logUpiIntent: (amount: number) => Promise<void>; // Example prop for a support-related action
+  // Removed logUpiIntent as it is no longer used
 }
 
 const supportOptions = [
@@ -20,18 +20,18 @@ const supportOptions = [
     icon: MessageSquare,
     title: 'Community Forum',
     description: 'Connect with other players and find answers in our forum.',
-    action: '/community', // Link to community page
+    action: '/community',
   },
   {
     icon: Phone,
     title: 'Live Chat (Coming Soon)',
     description: 'Instant support from our team during business hours.',
-    action: '#', // Placeholder for live chat
+    action: '#',
     comingSoon: true,
   },
 ];
 
-const BenefitsSupport: FC<BenefitsSupportProps> = ({ userId, logUpiIntent }) => {
+const BenefitsSupport: FC<BenefitsSupportProps> = ({ userId }) => {
   const handleActionClick = (action: string, comingSoon: boolean = false) => {
     if (comingSoon) {
       alert('This feature is coming soon!');
@@ -40,9 +40,7 @@ const BenefitsSupport: FC<BenefitsSupportProps> = ({ userId, logUpiIntent }) => 
     if (action.startsWith('http') || action.startsWith('mailto')) {
       window.open(action, '_blank');
     } else if (action.startsWith('/')) {
-      // For internal links, Link component would be better, but for buttons:
-      // This would require navigate from react-router-dom, or a direct link
-      window.location.href = action; // Simple redirect for now
+      window.location.href = action;
     }
   };
 
@@ -74,19 +72,6 @@ const BenefitsSupport: FC<BenefitsSupportProps> = ({ userId, logUpiIntent }) => 
         ))}
       </div>
 
-      {userId && (
-        <div className="text-center mt-6">
-          <motion.button
-            className="btn-primary flex items-center justify-center mx-auto"
-            onClick={() => logUpiIntent(100)} // Example: log a UPI intent for 100 INR for support
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label="Make a small UPI deposit for support"
-          >
-            <ArrowRight className="w-5 h-5 mr-2" /> Quick Support Deposit (UPI)
-          </motion.button>
-        </div>
-      )}
     </SwytchCard>
   );
 };

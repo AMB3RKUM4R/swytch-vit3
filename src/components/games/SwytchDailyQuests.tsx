@@ -3,14 +3,16 @@ import { FC, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, CheckCircle, XCircle, Trophy } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { Quest, PlayerData } from '@/lib/types'; // Import Quest and PlayerData types
+import { Quest, PlayerData, TransactionType, TransactionStatus } from '@/lib/types';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
 
 interface SwytchDailyQuestsProps {
   userId: string | null;
   quests: Quest[];
   setQuests: React.Dispatch<React.SetStateAction<Quest[]>>;
   jewelsBalance: number;
-  saveStateToFirestore: (updates: Partial<PlayerData>) => Promise<void>; // Use Partial<PlayerData>
+  saveStateToFirestore: (updates: Partial<PlayerData>) => Promise<void>;
   setActiveModal: (modalName: string | null) => void;
   setShowMessage: (message: string) => void;
 }
@@ -44,28 +46,27 @@ const SwytchDailyQuests: FC<SwytchDailyQuestsProps> = ({
     setShowMessage(`Claiming reward for "${questToClaim.title}"...`);
 
     try {
-      // Update quest status locally and remove rewards to prevent double claiming
+      // Create a claim request in a Firestore collection
+      // A Cloud Function will listen for this document and securely process the reward
+      await addDoc(collection(db, 'quest_claim_requests'), {
+        userId,
+        questId,
+        requestedAt: serverTimestamp(),
+        status: 'pending',
+      });
+
+      // Optimistic local update for UI (rewards are zeroed out locally after "claim" is requested)
       const updatedQuests = quests.map(q =>
-        q.id === questId ? { ...q, rewardJEWELS: 0, rewardXP: 0 } : q
+        q.id === questId ? { ...q, rewardJEWELS: 0, rewardXP: 0, completed: false } : q // Mark as claimed locally to prevent re-claim attempts
       );
       setQuests(updatedQuests);
 
-      // Update user's jewels and quests in Firestore
-      const newJewelsBalance = jewelsBalance + questToClaim.rewardJEWELS;
-      // Assuming XP is also part of PlayerData and needs to be updated
-      // For now, only updating jewels and quests array.
-      await saveStateToFirestore({
-        jewels: newJewelsBalance,
-        quests: updatedQuests, // Save the updated quests array
-      });
-
-      setShowMessage(`🎉 Claimed ${questToClaim.rewardJEWELS} JEWELS and ${questToClaim.rewardXP} XP from "${questToClaim.title}"!`);
+      setShowMessage(`🎉 Claim request submitted for "${questToClaim.title}"! Reward pending backend verification.`);
     } catch (error) {
-      console.error('Failed to claim quest reward:', error);
-      setShowMessage('⚠️ Failed to claim reward. Please try again.');
+      console.error('Failed to submit claim request:', error);
+      setShowMessage('⚠️ Failed to submit claim request. Please try again.');
     }
-  }, [userId, quests, jewelsBalance, setQuests, saveStateToFirestore, setActiveModal, setShowMessage]);
-
+  }, [userId, quests, setQuests, setActiveModal, setShowMessage]);
 
   return (
     <SwytchCard gradient="from-yellow-700/20 to-orange-700/20" className="p-6">

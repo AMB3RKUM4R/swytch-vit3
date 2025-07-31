@@ -3,22 +3,20 @@ import { FC, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowUpCircle } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { MEMBERSHIP_TIERS, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '@/lib/types';
+import { MEMBERSHIP_TIERS, SupportedCurrency, PlayerData } from '@/lib/types';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 
 interface MembershipUpgradeProps {
   userId: string | null;
-  setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>; // To update local state
-  updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>; // To update Firestore
+  setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>;
+  updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
   setActiveModal: (modalName: string | null) => void;
   setShowMessage: (message: string) => void;
 }
 
 const MembershipUpgrade: FC<MembershipUpgradeProps> = ({
   userId,
-  setIsPETMember,
-  updatePlayerFirestore,
   setActiveModal,
   setShowMessage,
 }) => {
@@ -49,36 +47,28 @@ const MembershipUpgrade: FC<MembershipUpgradeProps> = ({
 
     setLoading(true);
     try {
-      const transactionId = `${userId}_membership_upgrade_${selectedTier}_${Date.now()}`;
-      await addDoc(collection(db, 'Transactions'), {
-        transactionId,
+      // Create a secure request document in a Firestore collection
+      // A backend Cloud Function will listen for this document and process the payment
+      await addDoc(collection(db, 'membership_purchase_requests'), {
         userId,
-        amount: tierDetails.amount,
-        currency: 'INR' as SupportedCurrency, // Assuming INR for membership purchase
-        transactionType: 'membership' as TransactionType,
-        status: 'pending' as TransactionStatus, // Pending admin approval
-        timestamp: serverTimestamp(),
-        itemId: selectedTier,
-        game: 'membership',
+        selectedTier,
+        amount: tierDetails.usdAmount,
+        currency: 'USD' as SupportedCurrency, // Using USD for clarity
+        requestedAt: serverTimestamp(),
+        status: 'pending',
       });
 
-      // Optimistically update membership status in Firestore.
-      // The actual 'isPETMember' flag would be set by an admin after payment verification.
-      await updatePlayerFirestore({ membership: selectedTier, updatedAt: serverTimestamp() });
-      setIsPETMember(true); // Optimistically set to true for UI feedback
-
       setShowMessage(`ℹ️ Membership upgrade to ${tierDetails.name} submitted! Awaiting payment confirmation.`);
-      setActiveModal('payment'); // Open the global payment modal for the user to complete payment
+      setActiveModal('payment');
     } catch (err: any) {
-      console.error('Membership upgrade error:', err);
+      console.error('Membership upgrade request error:', err);
       setError(err.message || 'Failed to initiate membership upgrade. Please try again.');
       setShowMessage('⚠️ Failed to initiate membership upgrade. Try again.');
     } finally {
       setLoading(false);
-      setSelectedTier(null); // Reset selected tier
+      setSelectedTier(null);
     }
-  }, [userId, selectedTier, updatePlayerFirestore, setIsPETMember, setActiveModal, setShowMessage]);
-
+  }, [userId, selectedTier, setActiveModal, setShowMessage]);
 
   return (
     <SwytchCard gradient="from-purple-700/20 to-pink-700/20" className="p-6">
@@ -102,7 +92,7 @@ const MembershipUpgrade: FC<MembershipUpgradeProps> = ({
             <option value="" disabled>Select a tier</option>
             {Object.entries(MEMBERSHIP_TIERS).map(([key, tier]) => (
               <option key={key} value={key}>
-                {tier.name} - {tier.amount} INR ({tier.usdAmount} USD)
+                {tier.name} - {tier.usdAmount} USD
               </option>
             ))}
           </select>

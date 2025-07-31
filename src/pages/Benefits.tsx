@@ -1,3 +1,4 @@
+// src/pages/Benefits.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -5,7 +6,7 @@ import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/f
 import { db } from '../lib/firebaseConfig';
 import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 import Tilt from 'react-parallax-tilt';
-import { Sparkles, MessageCircleHeart, Info, Star, Wallet, Users } from 'lucide-react';
+import { Sparkles, MessageCircleHeart, Info, Star, Wallet, Users, Home } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import StarfieldBackground from '../components/StarfieldBackground';
 import BenefitsGrid from '../components/benefits/BenefitsGrid';
@@ -206,7 +207,7 @@ export const Benefits: FC<PageProps> = ({
                 {
                   name: 'Wallet Integration',
                   image: 'https://via.placeholder.com/300x200?text=Wallet+Integration',
-                  description: 'Seamlessly manage crypto and fiat.',
+                  description: 'Seamlessly manage your crypto.',
                   tooltip: 'Swap and withdraw assets with ease.',
                 },
                 {
@@ -221,12 +222,12 @@ export const Benefits: FC<PageProps> = ({
                     <div className="holographic-card p-8 text-center animated-aura">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <div className="relative group">
+                          <button className="relative group">
                             <img src={benefit.image} alt={benefit.name} className="w-full h-48 object-cover rounded-lg mb-6" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                               <Info className="w-8 h-8 text-[hsl(var(--secondary))] animate-neon-pulse" />
                             </div>
-                          </div>
+                          </button>
                         </DialogTrigger>
                         <DialogContent className="tooltip max-w-md p-6">
                           <h3 className="text-lg font-bold text-foreground font-russo mb-2">{benefit.name}</h3>
@@ -329,10 +330,6 @@ export const Benefits: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
               <BenefitsSupport
                 userId={userId}
-                logUpiIntent={async (amount: number) => {
-                  setShowMessage(`Initiating UPI intent for ${amount} INR.`);
-                  setActiveModal('payment');
-                }}
               />
             </Tilt>
           </motion.section>
@@ -364,7 +361,7 @@ export const Benefits: FC<PageProps> = ({
               Community Benefits Hub
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 font-inter">
-              Join the PETverse community to share benefits and unlock exclusive perks.
+              Connect with the PETverse community to share benefits and unlock exclusive perks.
             </p>
             <Dialog>
               <DialogTrigger asChild>
@@ -415,7 +412,7 @@ export const Benefits: FC<PageProps> = ({
                     role="button"
                     aria-label="Navigate to Home Page"
                   >
-                    <span className="w-6 h-6 mr-2" /> Back to Home
+                    <Home className="w-6 h-6 mr-2" /> Back to Home
                   </Link>
                 </DialogTrigger>
                 <DialogContent className="tooltip max-w-md p-6">
