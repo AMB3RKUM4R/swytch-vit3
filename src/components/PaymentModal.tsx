@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, DollarSign, ArrowUpCircle, ArrowDownCircle, Star } from 'lucide-react';
 import { useModal } from '../components/context/ModalContext';
 import { useTheme } from '../components/context/ThemeContext';
-import { Dialog, DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
+import { DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
 
 import RazorTransaction from '../RazorWithdraw';
 import { MEMBERSHIP_TIERS, SupportedCurrency, TransactionType, PaymentModalProps } from '@/lib/types';
@@ -12,13 +12,13 @@ import { MEMBERSHIP_TIERS, SupportedCurrency, TransactionType, PaymentModalProps
 type PaymentView = 'selection' | 'transaction';
 
 const PaymentModal: FC<PaymentModalProps> = ({ userId, setShowMessage }) => {
-  const { isDarkMode } = useTheme();
+  useTheme();
   const { activeModal, setActiveModal } = useModal();
 
   const [currentView, setCurrentView] = useState<PaymentView>('selection');
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
   const [amount, setAmount] = useState<number>(0);
-  const [currency, setCurrency] = useState<SupportedCurrency>('USD');
+  const [, setCurrency] = useState<SupportedCurrency>('USD');
   const [itemId, setItemId] = useState<string | null>(null);
 
   useEffect(() => {

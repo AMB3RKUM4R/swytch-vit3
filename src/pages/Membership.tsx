@@ -1,6 +1,6 @@
 // src/pages/Membership.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
@@ -13,7 +13,6 @@ import MembershipBenefits from '../components/membership/MembershipBenefits';
 import MembershipUpgrade from '../components/membership/MembershipUpgrade';
 import SwytchLevelsGrid from '../components/membership/SwytchLevelsGrid';
 import FeatureCards from '../components/FeaturedCards';
-import SwytchCard from '../components/SwytchCard';
 import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
 
 // Animation variants
@@ -43,8 +42,8 @@ const Membership: FC<PageProps> = ({
   authLoading,
   initialAuthCheckComplete,
 }) => {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [, setPlayerData] = useState<PlayerData | null>(null);
+  const [, setIsModalLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (userId) {

@@ -1,7 +1,7 @@
 // src/components/CryptoSwapModal.tsx
-import { FC, useState, useCallback, useEffect } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, RefreshCw, ArrowRight } from 'lucide-react';
+import { X, ArrowRight } from 'lucide-react';
 import Tilt from 'react-parallax-tilt';
 import { useAccount, useBalance, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useSendTransaction } from 'wagmi';
 import { parseEther } from 'viem';
@@ -30,7 +30,7 @@ const CryptoSwapModal: FC<CryptoSwapModalProps> = ({ onClose, setShowMessage, us
   const { data: usdtBalance } = useBalance({ address: connectedAddress, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' });
 
   // Wagmi hooks for sending transaction
-  const { data: hash, sendTransaction, isPending: isTxPending } = useSendTransaction();
+  const { data: hash, isPending: isTxPending } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({ hash });
 
   const { data: swapConfig } = useSimulateContract({

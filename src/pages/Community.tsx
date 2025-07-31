@@ -1,5 +1,6 @@
+// src/pages/Community.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
@@ -14,7 +15,7 @@ import CommunityChat from '../components/community/CommunityChat';
 import CommunityRankings from '../components/community/CommunityRankings';
 import { PageProps, Quest, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
 
-// Animation variants
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.4 } },
@@ -45,9 +46,9 @@ const Community: FC<PageProps> = ({
   authLoading,
   initialAuthCheckComplete,
 }) => {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
+  const [, setPlayerData] = useState<PlayerData | null>(null);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [, setIsModalLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (userId) {
@@ -62,9 +63,11 @@ const Community: FC<PageProps> = ({
             return savedQuest && initialQuest.goal === savedQuest.goal ? savedQuest : initialQuest;
           });
           setQuests(mergedQuests);
+
           if (!mergedQuests.find((q) => q.id === "community-visit")?.completed) {
             setShowMessage('🎉 Quest "Visit Community Page" completed! Reward pending verification.');
           }
+
         } else {
           setPlayerData(null);
           setIsPETMember(false);
@@ -121,6 +124,7 @@ const Community: FC<PageProps> = ({
     }
     setIsModalLoading(false);
   }, [userId, quests, setShowMessage, setActiveModal]);
+
 
   if (authLoading || isPending) {
     return null;
@@ -204,12 +208,17 @@ const Community: FC<PageProps> = ({
                     <div className="holographic-card p-8 text-center animated-aura">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <div className="relative group">
+                          <motion.button
+                            className="relative group p-0 m-0 border-none bg-transparent w-full h-full flex flex-col items-center justify-center"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            aria-label={`Learn more about ${feature.name}`}
+                          >
                             <img src={feature.image} alt={feature.name} className="w-full h-48 object-cover rounded-lg mb-6" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center rounded-lg">
                               <Info className="w-8 h-8 text-[hsl(var(--secondary))] animate-neon-pulse" />
                             </div>
-                          </div>
+                          </motion.button>
                         </DialogTrigger>
                         <DialogContent className="tooltip max-w-md p-6">
                           <h3 className="text-lg font-bold text-foreground font-russo mb-2">{feature.name}</h3>
@@ -310,6 +319,7 @@ const Community: FC<PageProps> = ({
               <DialogTrigger asChild>
                 <motion.button
                   className="btn-system-glow text-lg font-semibold group"
+                  onClick={() => setShowMessage('👥 Join the cosmic community!')}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   aria-label="Join Community"
@@ -325,8 +335,8 @@ const Community: FC<PageProps> = ({
 
           {/* Footer Actions */}
           <motion.section variants={sectionVariants} className="text-center py-8 border-t border-border/50">
-            <h2 className="text-4xl font-bold text-foreground font-russo mb-6 text-glow-accent">
-              <MessageCircleHeart className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
+            <h2 className="text-4xl font-bold text-foreground font-russo mb-6 text-glow-primary">
+              <MessageCircleHeart className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
               Spread the Word
             </h2>
             <div className="flex flex-wrap justify-center gap-6">
@@ -355,7 +365,7 @@ const Community: FC<PageProps> = ({
                     role="button"
                     aria-label="Navigate to Home Page"
                   >
-                    <Link className="w-6 h-6 mr-2" to={''} /> Back to Home
+                    <span className="w-6 h-6 mr-2" aria-hidden="true">🏠</span> Back to Home
                   </Link>
                 </DialogTrigger>
                 <DialogContent className="tooltip max-w-md p-6">

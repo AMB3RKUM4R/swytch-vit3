@@ -10,7 +10,7 @@ interface MessageDisplayProps {
 }
 
 const MessageDisplay: FC<MessageDisplayProps> = ({ message }) => {
-  const { isDarkMode } = useTheme();
+  useTheme();
   const { setShowMessage } = useModal();
 
   const messageVariants = {

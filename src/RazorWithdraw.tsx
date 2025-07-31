@@ -1,9 +1,8 @@
 // src/components/RazorTransaction.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, DollarSign, Wallet } from 'lucide-react';
-import { MEMBERSHIP_TIERS, SupportedCurrency, Transaction, TransactionStatus, TransactionType } from '@/lib/types';
-import { doc, setDoc, serverTimestamp, collection, addDoc, getDoc } from 'firebase/firestore';
+import { SupportedCurrency, Transaction, TransactionType } from '@/lib/types';
+import { serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 import { PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
 import QRCode from 'react-qr-code';

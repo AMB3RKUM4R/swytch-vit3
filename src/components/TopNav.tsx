@@ -1,11 +1,11 @@
-import { FC, useState, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
+import { FC, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Sparkles, User, Package, Store, Car, ShoppingBag, ShieldCheck, Gamepad2, Info, Settings, Star, BarChart, HandCoins, Users } from 'lucide-react';
+import { Wallet, Sparkles, User, Gamepad2, Settings, Star, BarChart, HandCoins, Users } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { useTheme } from '../components/context/ThemeContext';
 import { TopNavProps } from '../lib/types';
 import { useAuthUser } from '@/hooks/useAuthUser';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Tilt from 'react-parallax-tilt';
 import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 
@@ -31,7 +31,6 @@ const TopNav: FC<TopNavProps> = ({
   const { isConnected, address } = useAccount();
   const { isDarkMode, toggleTheme } = useTheme();
   const { user } = useAuthUser();
-  const navigate = useNavigate();
 
   const handleAuthWalletClick = () => {
     setActiveAuthModal('auth');

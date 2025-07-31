@@ -1,12 +1,10 @@
 // src/components/SendCryptoModal.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Wallet, DollarSign } from 'lucide-react';
-import { useModal } from './context/ModalContext';
+import { X, Wallet, DollarSign } from 'lucide-react';
 import { useTheme } from './context/ThemeContext';
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt, useBalance } from 'wagmi';
 import { parseEther } from 'viem';
-import { SupportedCurrency, PaymentModalProps } from '@/lib/types';
 import Tilt from 'react-parallax-tilt';
 
 interface SendCryptoModalProps {
@@ -16,7 +14,7 @@ interface SendCryptoModalProps {
 }
 
 const SendCryptoModal: FC<SendCryptoModalProps> = ({ onClose, setShowMessage, userId }) => {
-  const { isDarkMode } = useTheme();
+  useTheme();
   const { isConnected, address: connectedAddress } = useAccount();
 
   const [toAddress, setToAddress] = useState('');

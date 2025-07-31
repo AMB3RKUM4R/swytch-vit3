@@ -1,7 +1,7 @@
 // src/components/ErrorBoundaryComponent.tsx
 import { useState, useEffect, ReactNode, FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface SwytchErrorBoundaryProps {
   children: ReactNode;
@@ -15,7 +15,7 @@ const errorModalVariants = {
   exit: { opacity: 0, scale: 0.8, transition: { duration: 0.3 } },
 };
 
-const SwytchErrorBoundary: FC<SwytchErrorBoundaryProps> = ({ children, setShowMessage, setActiveModal }) => {
+const SwytchErrorBoundary: FC<SwytchErrorBoundaryProps> = ({ children, setShowMessage }) => {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
