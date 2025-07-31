@@ -621,6 +621,3 @@ export interface Transaction {
   timestamp: any;
   receivedAmount?: number;
 }
-interface PhoneLoginProps {
-  setShowMessage: (message: string) => void;
-}

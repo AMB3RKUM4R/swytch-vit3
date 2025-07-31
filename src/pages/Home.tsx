@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Parallax } from 'react-parallax';
 import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 import Tilt from 'react-parallax-tilt';
-import { Sparkles, MessageCircleHeart, Swords, Users, Star, Info, Shield, Trophy, Gem, DollarSign, Lock, Zap, Gamepad2, Award, Map } from 'lucide-react';
+import { Sparkles, MessageCircleHeart, Swords, Users, Star, Info, Shield, Trophy, Gem, DollarSign, Lock, Gamepad2, Map } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import StarfieldBackground from '../components/StarfieldBackground';
 import UserOverviewCard from '../components/home/UserOverviewCard';

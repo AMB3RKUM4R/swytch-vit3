@@ -2,7 +2,6 @@
 import { FC, useRef, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
-import * as THREE from 'three';
 // You would use @react-three/fiber here for a full React integration
 // import { Canvas, useFrame } from '@react-three/fiber';
 

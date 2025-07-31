@@ -12,16 +12,6 @@ import StarfieldBackground from '../components/StarfieldBackground';
 import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
 
 // Placeholder DisclosureHeader component
-const DisclosureHeader: FC = () => (
-  <SwytchCard gradient="from-[hsl(var(--primary),0.2)] to-[hsl(var(--secondary),0.2)]" className="max-w-4xl mx-auto p-8 holographic-card">
-    <h1 className="text-4xl font-bold text-foreground flex items-center justify-center gap-3 font-russo text-glow-primary">
-      <Sparkles className="w-8 h-8 text-[hsl(var(--secondary))] animate-neon-pulse" /> Swytch PET Disclosure
-    </h1>
-    <p className="text-muted-foreground max-w-xl mx-auto mt-4 font-inter text-center">
-      Understand the risks and responsibilities of joining the PETverse’s decentralized universe.
-    </p>
-  </SwytchCard>
-);
 
 // Placeholder DisclosureContent component
 const DisclosureContent: FC = () => (
@@ -73,7 +63,7 @@ const DSPETDisclosure: FC<PageProps> = ({
   authLoading,
   initialAuthCheckComplete,
 }) => {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
+  const [, setPlayerData] = useState<PlayerData | null>(null);
 
   useEffect(() => {
     if (userId) {

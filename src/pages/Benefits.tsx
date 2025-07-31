@@ -9,12 +9,10 @@ import { Sparkles, MessageCircleHeart, Info, Star, Wallet, Users } from 'lucide-
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import StarfieldBackground from '../components/StarfieldBackground';
 import BenefitsGrid from '../components/benefits/BenefitsGrid';
-import BenefitsCTA from '../components/benefits/BenefitsCTA';
 import BenefitsWallets from '../components/benefits/BenefitsWallets';
 import BenefitsPitfalls from '../components/benefits/BenefitsPitfalls';
 import BenefitsSupport from '../components/benefits/BenefitsSupport';
 import BenefitsQuests from '../components/benefits/BenefitsQuests';
-import SwytchCard from '../components/SwytchCard';
 import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData, Quest } from '../lib/types';
 
 // Animation variants
@@ -48,9 +46,9 @@ export const Benefits: FC<PageProps> = ({
   authLoading,
   initialAuthCheckComplete,
 }) => {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
+  const [, setPlayerData] = useState<PlayerData | null>(null);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [, setIsModalLoading] = useState<boolean>(false);
   const [expandedBenefit, setExpandedBenefit] = useState<string | null>(null);
   const [showPitfalls, setShowPitfalls] = useState(false);
 

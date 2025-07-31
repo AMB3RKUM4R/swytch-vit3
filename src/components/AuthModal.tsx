@@ -1,14 +1,12 @@
 // src/components/AuthModal.tsx
-import { FC, useState, useEffect, SetStateAction } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, User, Wallet, Phone, Sparkles, Globe, GitBranchPlusIcon } from 'lucide-react';
+import { X, Mail, User, Wallet, Phone, Sparkles, Globe } from 'lucide-react';
 import { useAuthUser } from '../hooks/useAuthUser';
 import { useModal } from './context/ModalContext';
 import { useTheme } from './context/ThemeContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Link } from 'react-router-dom';
-import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
-import Tilt from 'react-parallax-tilt';
 import StarfieldBackground from './StarfieldBackground';
 
 interface AuthModalProps {
@@ -21,29 +19,16 @@ const modalVariants = {
   visible: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
 };
 
-const orbitVariants = {
-  animate: (index: number) => ({
-    rotate: [0, 360],
-    transition: { duration: 10, repeat: Infinity, ease: 'linear', delay: index * 0.2 }
-  }),
-};
 
-const buttonVariants = {
-  hover: { scale: 1.1, transition: { duration: 0.2 } },
-  tap: { scale: 0.95 },
-};
 
 const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
-  const { isDarkMode } = useTheme();
+  useTheme();
   const { activeModal, setActiveModal: setModalActive } = useModal();
   const {
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,
     signInWithFacebook,
-    signInWithTwitter,
-    signInWithGithub,
-    signInWithMicrosoft,
   } = useAuthUser();
 
   const [email, setEmail] = useState('');
@@ -102,13 +87,6 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
   };
 
   const inputClassName = `input-system bg-input/50 text-foreground p-3 rounded-md border border-[hsl(var(--primary-hsl),0.2)] w-full font-inter`;
-  const socialOptions = [
-    { name: 'Google Nexus', fn: signInWithGoogle, icon: <Sparkles className="w-6 h-6" />, image: 'https://via.placeholder.com/50x50?text=Google', tooltip: 'Access via Google Nexus' },
-    { name: 'Meta-Network', fn: signInWithFacebook, icon: <Globe className="w-6 h-6" />, image: 'https://via.placeholder.com/50x50?text=Facebook', tooltip: 'Connect through Meta-Network' },
-    { name: 'Cyber-Bird', fn: signInWithTwitter, icon: <X className="w-6 h-6" />, image: 'https://via.placeholder.com/50x50?text=Twitter', tooltip: 'Link via Cyber-Bird' },
-    { name: 'Git-Archive', fn: signInWithGithub, icon: <GitBranchPlusIcon className="w-6 h-6" />, image: 'https://via.placeholder.com/50x50?text=GitHub', tooltip: 'Authenticate with Git-Archive' },
-    { name: 'Micro-Matrix', fn: signInWithMicrosoft, icon: <Sparkles className="w-6 h-6" />, image: 'https://via.placeholder.com/50x50?text=Microsoft', tooltip: 'Access via Micro-Matrix' },
-  ];
 
   return (
     <AnimatePresence>

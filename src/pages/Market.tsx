@@ -52,7 +52,7 @@ const Market: FC<PageProps> = ({
 }) => {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [visibleGameFeatures, setVisibleGameFeatures] = useState(gameFeatures.slice(0, 3));
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [, setIsModalLoading] = useState<boolean>(false);
   const [hasMore, setHasMore] = useState<boolean>(true);
 
   useEffect(() => {

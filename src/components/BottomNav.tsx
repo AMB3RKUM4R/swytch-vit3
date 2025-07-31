@@ -57,7 +57,7 @@ const iconVariants = {
 };
 
 const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage }) => {
-  const [isGamesOpen, setIsGamesOpen] = useState(false);
+  const [, setIsGamesOpen] = useState(false);
   const { isDarkMode } = useTheme();
   const { setActiveModal } = useModal();
   const location = useLocation();

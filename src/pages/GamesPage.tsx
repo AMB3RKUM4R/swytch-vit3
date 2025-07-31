@@ -1,12 +1,11 @@
 import { FC, useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 import Tilt from 'react-parallax-tilt';
 import { Sparkles, MessageCircleHeart, Package, Store, PlayCircle, Info, Swords, Users } from 'lucide-react';
-import SwytchCard from '../components/SwytchCard';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import StarfieldBackground from '../components/StarfieldBackground';
 import SwytchDailyQuests from '../components/games/SwytchDailyQuests';
@@ -49,9 +48,9 @@ const GamesPage: FC<PageProps> = ({
   authLoading,
   initialAuthCheckComplete,
 }) => {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
+  const [, setPlayerData] = useState<PlayerData | null>(null);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [, setIsModalLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (userId) {

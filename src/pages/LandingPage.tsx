@@ -40,7 +40,7 @@ const LandingPage: FC<PageProps> = ({
   authLoading,
   initialAuthCheckComplete,
 }) => {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
+  const [, setPlayerData] = useState<PlayerData | null>(null);
 
   useEffect(() => {
     if (userId) {

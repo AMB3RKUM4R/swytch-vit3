@@ -37,7 +37,7 @@ import AdminPage from './pages/AdminPage';
 import Benefits from './pages/Benefits';
 
 // Import Types
-import { AppProps, PageProps, PlayerData, Transaction, TopNavProps, BottomNavProps } from './lib/types';
+import { PlayerData, Transaction } from './lib/types';
 import { useCharacter } from './hooks/useCharacter';
 
 const App: FC = () => {
@@ -51,7 +51,7 @@ const App: FC = () => {
 
     const { characterModel, updateCharacter } = useCharacter();
     const { activeModal, setActiveModal, showMessage, setShowMessage } = useModal();
-    const { isDarkMode } = useTheme();
+    useTheme();
 
     useEffect(() => {
         performInitialSignIn().then(() => {

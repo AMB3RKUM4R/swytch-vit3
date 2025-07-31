@@ -54,7 +54,7 @@ export const Vault: FC<PageProps> = ({
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [visibleGames, setVisibleGames] = useState(games.slice(0, 4));
   const [hasMore, setHasMore] = useState<boolean>(true);
-  const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [, setIsModalLoading] = useState<boolean>(false);
   const [withdrawalAmount, setWithdrawalAmount] = useState<string>('');
   const [paypalEmail, setPaypalEmail] = useState<string>('');
 
