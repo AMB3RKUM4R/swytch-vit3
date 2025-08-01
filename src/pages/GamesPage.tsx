@@ -33,9 +33,9 @@ const initialQuests: Quest[] = [
 ];
 
 const gameFeatures = [
-  { id: 'inventory', title: 'Your Inventory', path: '/inventory', description: 'Manage your in-game items and NFTs.', icon: <Package className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />, image: 'https://via.placeholder.com/300x200?text=Inventory' },
-  { id: 'marketplace', title: 'Item Marketplace', path: '/marketplace', description: 'Buy and sell unique items with crypto.', icon: <Store className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />, image: 'https://via.placeholder.com/300x200?text=Marketplace' },
-  { id: 'unity-games-launcher', title: 'Launch Unity Games', path: '/launch-unity', description: 'Access and play your favorite Unity games.', icon: <PlayCircle className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />, image: 'https://via.placeholder.com/300x200?text=Unity+Games' },
+  { id: 'inventory', title: 'Your Inventory', path: '/inventory', description: 'Manage your in-game items and NFTs.', icon: <Package className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />, image: '/art47.jpg' },
+  { id: 'marketplace', title: 'Item Marketplace', path: '/marketplace', description: 'Buy and sell unique items with crypto.', icon: <Store className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />, image: '/art54.jpg' },
+  { id: 'unity-games-launcher', title: 'Launch Unity Games', path: '/launch-unity', description: 'Access and play your favorite Unity games.', icon: <PlayCircle className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />, image: '/art23.jpg' },
 ];
 
 const GamesPage: FC<PageProps> = ({
@@ -144,7 +144,7 @@ const GamesPage: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Cosmic+Games+Hub"
+                  src="/art47.jpg"
                   alt="PETverse Games Hub"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -242,7 +242,7 @@ const GamesPage: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Daily+Quests"
+                  src="/art46.jpg"
                   alt="Daily Quests"
                   className="w-full h-80 object-cover rounded-lg"
                 />

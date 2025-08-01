@@ -189,7 +189,7 @@ const Shop: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Cosmic+Shop"
+                  src="art30.jpg"
                   alt="PETverse Shop"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -230,19 +230,19 @@ const Shop: FC<PageProps> = ({
               {[
                 {
                   name: 'Starforged Sword',
-                  image: 'https://via.placeholder.com/300x200?text=Starforged+Sword',
+                  image: '/art42.jpg',
                   description: 'A powerful NFT weapon for cosmic battles.',
                   tooltip: 'Boost your combat prowess with this rare sword.',
                 },
                 {
                   name: 'Galactic Shield',
-                  image: 'https://via.placeholder.com/300x200?text=Galactic+Shield',
+                  image: '/art43.jpg',
                   description: 'Defend against attacks with this NFT shield.',
                   tooltip: 'Increases defense stats across PETverse games.',
                 },
                 {
                   name: 'Cosmic Crystal',
-                  image: 'https://via.placeholder.com/300x200?text=Cosmic+Crystal',
+                  image: '/art41',
                   description: 'Unlock special abilities with this crystal.',
                   tooltip: 'Grants unique perks and enhances rewards.',
                 },
@@ -322,7 +322,7 @@ const Shop: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Membership+Showcase"
+                  src="/art1.jpg"
                   alt="Membership Showcase"
                   className="w-full h-80 object-cover rounded-lg"
                 />

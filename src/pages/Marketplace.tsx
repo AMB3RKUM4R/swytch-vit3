@@ -96,7 +96,7 @@ const Marketplace: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Galactic+Marketplace"
+                  src="/art15.jpg"
                   alt="PETverse Marketplace"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -137,25 +137,25 @@ const Marketplace: FC<PageProps> = ({
               {[
                 {
                   name: 'Cosmic Blade',
-                  image: 'https://via.placeholder.com/300x200?text=Cosmic+Blade',
+                  image: '/art12.jpg',
                   description: 'A legendary NFT weapon forged in the stars.',
                   tooltip: 'This rare blade boosts your combat stats in the PETverse.',
                 },
                 {
                   name: 'Stellar Armor',
-                  image: 'https://via.placeholder.com/300x200?text=Stellar+Armor',
+                  image: '/art13.jpg',
                   description: 'Protect yourself with this radiant NFT armor.',
                   tooltip: 'Enhances defense across all PETverse games.',
                 },
                 {
                   name: 'Astral Gem',
-                  image: 'https://via.placeholder.com/300x200?text=Astral+Gem',
+                  image: '/art38.jpg',
                   description: 'A rare gem with mysterious powers.',
                   tooltip: 'Unlocks special abilities and boosts rewards.',
                 },
                 {
                   name: 'Nebula Orb',
-                  image: 'https://via.placeholder.com/300x200?text=Nebula+Orb',
+                  image: '/art11.jpg',
                   description: 'Harness cosmic energy with this orb.',
                   tooltip: 'Grants unique gameplay perks and trade value.',
                 },

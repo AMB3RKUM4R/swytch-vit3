@@ -131,7 +131,7 @@ const Home: FC<PageProps> = ({
               <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
                 <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                   <img
-                    src="https://via.placeholder.com/1000x500?text=PETverse+Galaxy+Hub"
+                    src="/art112.jpg"
                     alt="SWYTCH PETverse Hub"
                     className="w-full h-80 object-cover rounded-lg"
                   />
@@ -215,21 +215,21 @@ const Home: FC<PageProps> = ({
                   icon: <Gem className="w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse" />,
                   title: 'NFT Ownership',
                   description: 'Own and trade unique NFTs across the PETverse.',
-                  image: 'https://via.placeholder.com/300x200?text=NFT+Ownership',
+                  image: '/art57.jpg',
                   tooltip: 'Forge and trade rare items on our secure blockchain.',
                 },
                 {
                   icon: <DollarSign className="w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse" />,
                   title: 'Crypto Rewards',
                   description: 'Earn and withdraw JEWELS, crypto, or fiat.',
-                  image: 'https://via.placeholder.com/300x200?text=Crypto+Rewards',
+                  image: '/art47.jpg',
                   tooltip: 'Convert your earnings into real-world value.',
                 },
                 {
                   icon: <Lock className="w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse" />,
                   title: 'Secure Blockchain',
                   description: 'Enjoy fair play with transparent transactions.',
-                  image: 'https://via.placeholder.com/300x200?text=Secure+Blockchain',
+                  image: '/art54.jpg',
                   tooltip: 'Every action is verified for ultimate security.',
                 },
               ].map((feature, index) => (
@@ -287,7 +287,7 @@ const Home: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Galactic+Journey"
+                  src="art26.jpg"
                   alt="Galactic Journey"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -322,7 +322,7 @@ const Home: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Cosmic+Community"
+                  src="/art25.jpg"
                   alt="Cosmic Community"
                   className="w-full h-80 object-cover rounded-lg"
                 />

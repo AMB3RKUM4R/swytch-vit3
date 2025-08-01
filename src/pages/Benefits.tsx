@@ -159,7 +159,7 @@ export const Benefits: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Cosmic+Benefits"
+                  src="/art15.jpg"
                   alt="PETverse Benefits"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -200,19 +200,19 @@ export const Benefits: FC<PageProps> = ({
               {[
                 {
                   name: 'Exclusive Rewards',
-                  image: 'https://via.placeholder.com/300x200?text=Exclusive+Rewards',
+                  image: '/bg16.jpg',
                   description: 'Earn JEWELS and XP through quests.',
                   tooltip: 'Complete quests to unlock rare rewards and boosts.',
                 },
                 {
                   name: 'Wallet Integration',
-                  image: 'https://via.placeholder.com/300x200?text=Wallet+Integration',
+                  image: '/bg14.jpg',
                   description: 'Seamlessly manage your crypto.',
                   tooltip: 'Swap and withdraw assets with ease.',
                 },
                 {
                   name: 'Community Power',
-                  image: 'https://via.placeholder.com/300x200?text=Community+Power',
+                  image: '/bg5.jpg',
                   description: 'Join a vibrant player community.',
                   tooltip: 'Engage with players for tips and alliances.',
                 },
@@ -343,7 +343,7 @@ export const Benefits: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Benefits+Showcase"
+                  src="/art14.jpg"
                   alt="Benefits Showcase"
                   className="w-full h-80 object-cover rounded-lg"
                 />

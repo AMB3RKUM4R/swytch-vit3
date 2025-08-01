@@ -142,7 +142,7 @@ const DSPETDisclosure: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Transparency+Hub"
+                  src="/art38.jpg"
                   alt="PETverse Disclosure"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -183,19 +183,19 @@ const DSPETDisclosure: FC<PageProps> = ({
               {[
                 {
                   name: 'Investment Risks',
-                  image: 'https://via.placeholder.com/300x200?text=Investment+Risks',
+                  image: '/art40.jpg',
                   description: 'Understand the volatility of crypto assets.',
                   tooltip: 'JEWELS and NFTs may fluctuate in value.',
                 },
                 {
                   name: 'Legal Disclaimer',
-                  image: 'https://via.placeholder.com/300x200?text=Legal+Disclaimer',
+                  image: '/art41.jpg',
                   description: 'PETverse is not a financial institution.',
                   tooltip: 'Comply with local regulations for crypto and gaming.',
                 },
                 {
                   name: 'KYC/AML Compliance',
-                  image: 'https://via.placeholder.com/300x200?text=KYC+AML',
+                  image: '/art42.jpg',
                   description: 'Required for fiat withdrawals.',
                   tooltip: 'Ensure compliance for high-value transactions.',
                 },
@@ -249,7 +249,7 @@ const DSPETDisclosure: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Transparency+Showcase"
+                  src="/art45.jpg"
                   alt="Transparency Showcase"
                   className="w-full h-80 object-cover rounded-lg"
                 />

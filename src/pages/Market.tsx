@@ -143,7 +143,7 @@ const Market: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Cosmic+Market"
+                  src="/art8.jpg"
                   alt="PETverse Market"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -183,19 +183,19 @@ const Market: FC<PageProps> = ({
               {[
                 {
                   name: 'Nebula Dagger',
-                  image: 'https://via.placeholder.com/300x200?text=Nebula+Dagger',
+                  image: '/art9.jpg',
                   description: 'A swift NFT weapon for stealth attacks.',
                   tooltip: 'This dagger enhances agility in PETverse battles.',
                 },
                 {
                   name: 'Starlight Armor',
-                  image: 'https://via.placeholder.com/300x200?text=Starlight+Armor',
+                  image: '/art16.jpg',
                   description: 'Radiant armor for cosmic defense.',
                   tooltip: 'Boosts defense stats across all games.',
                 },
                 {
                   name: 'Astral Token',
-                  image: 'https://via.placeholder.com/300x200?text=Astral+Token',
+                  image: 'art17.jpg',
                   description: 'A rare token with trading value.',
                   tooltip: 'Use this token to unlock premium market features.',
                 },
@@ -300,7 +300,7 @@ const Market: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Market+Activity"
+                  src="/art10.jpg"
                   alt="Market Activity"
                   className="w-full h-80 object-cover rounded-lg"
                 />

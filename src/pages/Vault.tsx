@@ -162,7 +162,7 @@ export const Vault: FC<PageProps> = ({
           <section className="text-center mb-16">
             <div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura">
               <img
-                src="https://via.placeholder.com/1000x500?text=Energy+Vault"
+                src="/art24.jpg"
                 alt="PETverse Vault"
                 className="w-full h-80 object-cover rounded-lg"
               />
@@ -200,13 +200,13 @@ export const Vault: FC<PageProps> = ({
               {[
                 {
                   name: 'Crypto Swaps',
-                  image: 'https://via.placeholder.com/300x200?text=Crypto+Swaps',
+                  image: '/art2.jpg',
                   description: 'Swap JEWELS and other cryptocurrencies.',
                   tooltip: 'Securely exchange assets on the blockchain.',
                 },
                 {
                   name: 'Membership Upgrades',
-                  image: 'https://via.placeholder.com/300x200?text=Membership+Upgrades',
+                  image: '/art30.jpg',
                   description: 'Unlock exclusive perks with memberships.',
                   tooltip: 'Access premium features and rewards.',
                 },
@@ -280,7 +280,7 @@ export const Vault: FC<PageProps> = ({
             </h2>
             <div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura">
               <img
-                src="https://via.placeholder.com/1000x500?text=Vault+Showcase"
+                src="/art29.jpg"
                 alt="Vault Showcase"
                 className="w-full h-80 object-cover rounded-lg"
               />

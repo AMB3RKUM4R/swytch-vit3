@@ -93,7 +93,7 @@ const LandingPage: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura border border-[hsl(var(--primary),0.2)]" variants={imageVariants}>
                 <img
-                  src="./bg (4).jpg"
+                  src="./bg6.jpg"
                   alt="Hero Rising in PETverse"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -137,21 +137,21 @@ const LandingPage: FC<PageProps> = ({
                   icon: <Gem className="w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse" />,
                   title: 'Epic NFT Arsenal',
                   description: 'Craft and trade unique NFT weapons and artifacts on a secure blockchain, forging gear worthy of a legendary hunter.',
-                  image: './icon_1.gif',
+                  image: './bg3.jpg',
                   tooltip: 'Forge rare NFTs to dominate the PETverse’s dungeons.',
                 },
                 {
                   icon: <Sparkles className="w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse" />,
                   title: 'JEWELS & Gold',
                   description: 'Slay cosmic beasts in quests to earn JEWELS and Gold, convertible to crypto or fiat for real-world rewards.',
-                  image: 'https://via.placeholder.com/300x200?text=JEWELS+Vault',
+                  image: './bg4.jpg',
                   tooltip: 'Earn glowing rewards to fuel your ascent.',
                 },
                 {
                   icon: <Shield className="w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse" />,
                   title: 'Ironclad Blockchain',
                   description: 'Engage in decentralized battles with transparent, secure transactions, protected by blockchain runes.',
-                  image: 'https://via.placeholder.com/300x200?text=Blockchain+Runes',
+                  image: './bg5.jpg',
                   tooltip: 'Trust in a secure, transparent cosmos.',
                 },
               ].map((feature, index) => (
@@ -191,7 +191,7 @@ const LandingPage: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura border border-[hsl(var(--primary),0.2)]" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=PET+Legend"
+                  src="./bg2.jpg"
                   alt="PET Membership Showcase"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -280,7 +280,7 @@ const LandingPage: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura border border-[hsl(var(--primary),0.2)]" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Cosmic+Conquest"
+                  src="./bg1.jpg"
                   alt="Cosmic Conquest Showcase"
                   className="w-full h-80 object-cover rounded-lg"
                 />

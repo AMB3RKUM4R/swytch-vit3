@@ -136,7 +136,7 @@ const AdminPage: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Admin+Command+Center"
+                  src="/art20.jpg"
                   alt="Admin Command Center"
                   className="w-full h-80 object-cover rounded-lg"
                 />

@@ -116,7 +116,7 @@ const Community: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Cosmic+Community+Hub"
+                  src="art30.jpg"
                   alt="PETverse Community Hub"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -157,19 +157,19 @@ const Community: FC<PageProps> = ({
               {[
                 {
                   name: 'Live Chat',
-                  image: 'https://via.placeholder.com/300x200?text=Live+Chat',
+                  image: '/art30.jpg',
                   description: 'Engage with players in real-time discussions.',
                   tooltip: 'Join live chats to share tips and strategies.',
                 },
                 {
                   name: 'Rankings',
-                  image: 'https://via.placeholder.com/300x200?text=Rankings',
+                  image: '/art31.jpg',
                   description: 'Compete to top the community leaderboards.',
                   tooltip: 'Climb the ranks to earn exclusive rewards.',
                 },
                 {
                   name: 'Events',
-                  image: 'https://via.placeholder.com/300x200?text=Community+Events',
+                  image: 'art32.jpg',
                   description: 'Participate in galactic community events.',
                   tooltip: 'Join events for unique rewards and bragging rights.',
                 },
@@ -260,7 +260,7 @@ const Community: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Galactic+Rankings"
+                  src="/art31.jpg"
                   alt="Community Rankings"
                   className="w-full h-80 object-cover rounded-lg"
                 />

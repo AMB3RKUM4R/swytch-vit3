@@ -107,7 +107,7 @@ const Inventory: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Cosmic+Inventory"
+                  src="/art24.jpg"
                   alt="PETverse Inventory"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -148,19 +148,19 @@ const Inventory: FC<PageProps> = ({
               {[
                 {
                   name: 'Starforged Blade',
-                  image: 'https://via.placeholder.com/300x200?text=Starforged+Blade',
+                  image: '/art122.jpg',
                   description: 'A legendary NFT weapon for epic battles.',
                   tooltip: 'This blade boosts combat stats across PETverse games.',
                 },
                 {
                   name: 'Nebula Shield',
-                  image: 'https://via.placeholder.com/300x200?text=Nebula+Shield',
+                  image: '/art12345.jpg',
                   description: 'A radiant shield for cosmic defense.',
                   tooltip: 'Enhances defense and protects in battles.',
                 },
                 {
                   name: 'Astral Gem',
-                  image: 'https://via.placeholder.com/300x200?text=Astral+Gem',
+                  image: '/art123.jpg',
                   description: 'A rare gem with mysterious powers.',
                   tooltip: 'Unlocks special abilities and boosts rewards.',
                 },
@@ -230,7 +230,7 @@ const Inventory: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Inventory+Showcase"
+                  src="/art19.jpg"
                   alt="Inventory Showcase"
                   className="w-full h-80 object-cover rounded-lg"
                 />

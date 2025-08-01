@@ -154,7 +154,7 @@ const Membership: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Cosmic+Membership"
+                  src="bg5.jpg"
                   alt="PETverse Membership"
                   className="w-full h-80 object-cover rounded-lg"
                 />
@@ -195,19 +195,19 @@ const Membership: FC<PageProps> = ({
               {[
                 {
                   name: 'Stellar Tier',
-                  image: 'https://via.placeholder.com/300x200?text=Stellar+Tier',
+                  image: '/bg12.jpg',
                   description: 'Unlock premium rewards and boosts.',
                   tooltip: 'Access exclusive quests and higher JEWELS rewards.',
                 },
                 {
                   name: 'Nebula Tier',
-                  image: 'https://via.placeholder.com/300x200?text=Nebula+Tier',
+                  image: '/bg13.jpg',
                   description: 'Enhanced trading and game perks.',
                   tooltip: 'Gain priority in marketplace trades and events.',
                 },
                 {
                   name: 'Galactic Tier',
-                  image: 'https://via.placeholder.com/300x200?text=Galactic+Tier',
+                  image: '/art1234.jpg',
                   description: 'Rule the PETverse with elite status.',
                   tooltip: 'Enjoy VIP support and rare NFT drops.',
                 },
@@ -312,7 +312,7 @@ const Membership: FC<PageProps> = ({
             <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
               <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
                 <img
-                  src="https://via.placeholder.com/1000x500?text=Membership+Showcase"
+                  src="bg11.jpg"
                   alt="Membership Showcase"
                   className="w-full h-80 object-cover rounded-lg"
                 />
