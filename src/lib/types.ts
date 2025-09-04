@@ -1,6 +1,6 @@
 // src/lib/types.ts
-import { Dispatch, SetStateAction } from 'react';
-import { Timestamp } from 'firebase/firestore';
+import { Dispatch, SetStateAction, ReactNode, FormEvent } from 'react';
+import { Timestamp, FieldValue } from 'firebase/firestore';
 
 // ==========================================================
 // Core Application & Global Data Types
@@ -30,8 +30,10 @@ export interface InventoryItem {
   imageUrl: string;
   rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
   type: 'armor' | 'weapon' | 'consumable' | 'collectible';
-  stats?: { attack?: number; defense?: number; energyBoost?: number; manaBoost?: number; };
-  isEquipped?: boolean;
+  stats?: {
+    energyBoost: any;
+    manaBoost: any; attack?: number; defense?: number; 
+};
   ownerId: string;
   isListedForSale: boolean;
   listingPriceCrypto?: number | null;
@@ -52,18 +54,19 @@ export interface PlayerData {
   isPETMember: boolean;
   membership: MembershipTier;
   walletAddress: string | null;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Timestamp | FieldValue;
+  updatedAt: Timestamp | FieldValue;
   character: { selectedID: string; skin: string; } | null;
-  chest: string | null;
-  energy: number;
-  mana: number;
-  xp: number;
-  key: string | null;
   inventory: { equipped: { armor: string; weapon: string; }; items: Record<string, InventoryItem>; } | null;
   lastBonusTime: Timestamp | null;
   quests?: Quest[];
   transactions?: Transaction[];
+  xp: number;
+  // --- FIX: Re-added missing game properties ---
+  energy: number;
+  mana: number;
+  chest: string | null;
+  key: string | null;
 }
 
 export interface Transaction {
@@ -73,17 +76,14 @@ export interface Transaction {
   currency: SupportedCurrency;
   transactionType: TransactionType;
   status: TransactionStatus;
-  timestamp: Timestamp;
+  timestamp: Timestamp | FieldValue;
   itemId?: string | null;
   game?: string | null;
-  adminId?: string | null;
   walletAddress?: string | null;
-  updatedAt?: Timestamp | null;
-  receivedAmount?: number;
 }
 
 // ==========================================================
-// App & Page Props
+// Component & Page Props
 // ==========================================================
 
 export interface PageProps {
@@ -104,9 +104,52 @@ export interface PageProps {
   playerData: PlayerData | null;
 }
 
-// ==========================================================
-// Component Props
-// ==========================================================
+export interface AuthModalProps {
+  setShowMessage: (message: string) => void;
+}
+
+export interface PaymentModalProps {
+  userId: string | null;
+  setShowMessage: (message: string) => void;
+  setActiveModal: (modalName: string | null) => void;
+  activeModal: string | null;
+}
+
+export interface LoadingSpinnerProps {
+  message?: string;
+  fullScreen?: boolean;
+}
+
+export interface SwytchCardProps {
+  children: ReactNode;
+  gradient: string;
+  className?: string;
+  onClick?: () => void;
+}
+
+export interface ListForSaleModalProps {
+  item: InventoryItem;
+  userId: string | null;
+  onClose: () => void;
+  onSuccess: (item: InventoryItem) => void;
+  setShowMessage: (message: string) => void;
+}
+
+export interface ChatMessage {
+  id: string;
+  user: string;
+  avatar: string;
+  message: string;
+  timestamp: Timestamp;
+  userId: string;
+}
+
+export interface YieldCalculatorProps {
+  userId: string | null;
+  handleCalculateYield: (e: FormEvent) => Promise<void>;
+  setShowMessage: Dispatch<SetStateAction<string>>;
+  setActiveModal: Dispatch<SetStateAction<string | null>>;
+}
 
 export interface TopNavProps {
   userId: string | null;
@@ -135,28 +178,20 @@ export interface Quest {
   completed: boolean;
 }
 
-// --- Shop Page Components ---
-
-// This Purchase type is defined to match your new RecentPurchases.tsx component
 export interface Purchase {
   id: string;
   avatar: string;
   address: string;
   amount: string;
-  timestamp: Date | string; // Allowing string for flexibility
+  timestamp: Date | string;
 }
 
 export interface RecentPurchasesProps {
   recentPurchases: Purchase[];
 }
-export interface PaymentModalProps {
-  userId: string | null;
-  setShowMessage: (message: string) => void;
-  setActiveModal: (modalName: string | null) => void;
-}
-export interface PaymentModalProps {
-  userId: string | null;
-  setShowMessage: (message: string) => void;
-  setActiveModal: (modalName: string | null) => void;
-  activeModal: string | null; // FIX: Add this property
+
+export interface CryptoSwapModalProps {
+  onClose: () => void;
+  setShowMessage: (message: string) => void;
+  userId: string | null;
 }
