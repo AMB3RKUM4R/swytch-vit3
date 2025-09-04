@@ -1,40 +1,36 @@
 // src/pages/Community.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
-import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
-import Tilt from 'react-parallax-tilt';
-import { Sparkles, MessageCircleHeart, Users, Info, Award } from 'lucide-react';
+import { MessageCircleHeart, Users, Award, HelpCircle } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import StarfieldBackground from '../components/StarfieldBackground';
-import CommunityHero from '../components/community/CommunityHero';
-import CommunityFeatures from '../components/community/CommunityFeatures';
 import CommunityChat from '../components/community/CommunityChat';
 import CommunityRankings from '../components/community/CommunityRankings';
 import { PageProps, Quest, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
 
-// Define Framer Motion variants
+// Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.4 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.3 } },
 };
 
 const sectionVariants = {
-  hidden: { opacity: 0, y: 60 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.9, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 50 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } },
 };
 
-const imageVariants = {
-  hidden: { opacity: 0, scale: 0.8 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.9, ease: 'easeOut' } },
-};
+const tabContentVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.3, ease: 'easeIn' } },
+}
 
-// Define initial quests outside the component to prevent re-creation on every render
+// Quest definitions
 const initialQuests: Quest[] = [
-  { id: "community-visit", title: "Visit Community Page", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 10, completed: false },
-  { id: "community-share", title: "Share Community on X", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 5, completed: false },
+  { id: "community-visit", title: "Visit Community Hub", progress: 0, goal: 1, rewardJEWELS: 5, rewardXP: 10, completed: false },
+  { id: "community-share", title: "Share on X", progress: 0, goal: 1, rewardJEWELS: 15, rewardXP: 25, completed: false },
 ];
 
 const Community: FC<PageProps> = ({
@@ -46,18 +42,16 @@ const Community: FC<PageProps> = ({
   initialAuthCheckComplete,
 }) => {
   const [quests] = useState<Quest[]>(initialQuests);
+  const [activeTab, setActiveTab] = useState<'chat' | 'rankings' | 'quests'>('chat');
 
-  // Instead of fetching player data here, we'll assume it's available from a context
-  // or passed down from the parent `App` component as props.
+  // Logic for quests and authentication remains unchanged
   useEffect(() => {
     if (userId) {
-      // The logic for handling `community-visit` quest can be moved here
-      // and update Firestore if needed.
-      // For now, we'll just show the message to the user as in the original code.
       if (initialAuthCheckComplete) {
         const visitQuest = quests.find((q) => q.id === "community-visit");
         if (visitQuest && !visitQuest.completed) {
-          setShowMessage('🎉 Quest "Visit Community Page" completed! Reward pending verification.');
+          setShowMessage('🎉 Quest "Visit Community Hub" complete! Reward pending.');
+          // Here you would typically update the user's quest progress in Firestore
         }
       }
     } else if (initialAuthCheckComplete) {
@@ -88,7 +82,7 @@ const Community: FC<PageProps> = ({
           game: 'community',
           itemId: shareQuest.id,
         });
-        setShowMessage(`🎉 Shared Community on X! Reward pending verification.`);
+        setShowMessage(`🎉 Quest "Share on X" complete! Reward pending verification.`);
       } catch (err) {
         console.error('Failed to log transaction:', err);
         setShowMessage('⚠️ Failed to share on X. Try again.');
@@ -101,6 +95,44 @@ const Community: FC<PageProps> = ({
     return null;
   }
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'chat':
+        return (
+          <motion.div key="chat" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
+            <CommunityChat userId={userId} setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
+          </motion.div>
+        );
+      case 'rankings':
+        return (
+            <motion.div key="rankings" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
+                <CommunityRankings userId={userId} setActiveModal={setActiveModal} setShowMessage={setShowMessage} leaderboard={[]} />
+            </motion.div>
+        );
+      case 'quests':
+        return (
+            <motion.div key="quests" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit" className="space-y-4">
+                {quests.map(quest => (
+                    <div key={quest.id} className="p-6 bg-black/20 rounded-lg border border-[hsl(var(--primary),0.1)] flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-russo text-glow-primary">{quest.title}</h3>
+                            <p className="text-sm text-muted-foreground font-inter">Reward: {quest.rewardJEWELS} JEWELS & {quest.rewardXP} XP</p>
+                        </div>
+                        {quest.id === 'community-share' && (
+                            <button onClick={handleShareOnX} className="btn-system-glow-secondary px-5 py-2">Complete Quest</button>
+                        )}
+                         {quest.id === 'community-visit' && (
+                            <button disabled className="btn-system-glow-secondary px-5 py-2 opacity-50 cursor-not-allowed">Completed</button>
+                        )}
+                    </div>
+                ))}
+            </motion.div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
@@ -110,242 +142,55 @@ const Community: FC<PageProps> = ({
         animate="visible"
       >
         <StarfieldBackground />
-        <motion.div className="relative z-20 max-w-7xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          {/* Hero Section */}
-          <motion.section variants={sectionVariants} className="text-center mb-16">
-            <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
-              <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
-                <img
-                  src="art30.jpg"
-                  alt="PETverse Community Hub"
-                  className="w-full h-80 object-cover rounded-lg"
-                />
-              </motion.div>
-            </Tilt>
-            <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-6 text-glow-primary">
-              <Users className="inline-block w-12 h-12 text-[hsl(var(--secondary))] animate-neon-pulse mr-4" />
+        <div className="relative z-10 max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-12">
+          
+          {/* ## Simplified Header Section ## */}
+          <motion.section variants={sectionVariants} className="text-center">
+            <Users className="mx-auto w-16 h-16 text-[hsl(var(--secondary))] animate-neon-pulse mb-4" />
+            <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-4 text-glow-primary tracking-tight">
               Cosmic Community Hub
             </h1>
-            <p className="text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto font-inter mb-8">
-              Unite with players across the galaxy to share strategies, trade items, and climb the ranks in the PETverse.
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto font-inter">
+              Chat with fellow hunters, climb the leaderboards, and complete quests to earn exclusive rewards.
             </p>
-            <Dialog>
-              <DialogTrigger asChild>
-                <motion.button
-                  className="btn-system-glow text-lg font-semibold group"
-                  onClick={() => setShowMessage('👥 Join the cosmic community!')}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label="Join Community"
-                >
-                  Join Now <Users className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
-                </motion.button>
-              </DialogTrigger>
-              <DialogContent className="tooltip max-w-md p-6">
-                <p className="text-sm text-muted-foreground">Connect with the PETverse community on Discord or X!</p>
-              </DialogContent>
-            </Dialog>
           </motion.section>
 
-          {/* Community Highlights */}
-          <motion.section variants={sectionVariants} className="mb-16">
-            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-secondary">
-              <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
-              Community Highlights
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[
-                {
-                  name: 'Live Chat',
-                  image: '/art30.jpg',
-                  description: 'Engage with players in real-time discussions.',
-                  tooltip: 'Join live chats to share tips and strategies.',
-                },
-                {
-                  name: 'Rankings',
-                  image: '/art31.jpg',
-                  description: 'Compete to top the community leaderboards.',
-                  tooltip: 'Climb the ranks to earn exclusive rewards.',
-                },
-                {
-                  name: 'Events',
-                  image: 'art32.jpg',
-                  description: 'Participate in galactic community events.',
-                  tooltip: 'Join events for unique rewards and bragging rights.',
-                },
-              ].map((feature, index) => (
-                <motion.div key={index} variants={sectionVariants}>
-                  <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
-                    <div className="holographic-card p-8 text-center animated-aura">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <motion.button
-                            className="relative group p-0 m-0 border-none bg-transparent w-full h-full flex flex-col items-center justify-center"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            aria-label={`Learn more about ${feature.name}`}
-                          >
-                            <img src={feature.image} alt={feature.name} className="w-full h-48 object-cover rounded-lg mb-6" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center rounded-lg">
-                              <Info className="w-8 h-8 text-[hsl(var(--secondary))] animate-neon-pulse" />
-                            </div>
-                          </motion.button>
-                        </DialogTrigger>
-                        <DialogContent className="tooltip max-w-md p-6">
-                          <h3 className="text-lg font-bold text-foreground font-russo mb-2">{feature.name}</h3>
-                          <p className="text-sm text-muted-foreground">{feature.tooltip}</p>
-                        </DialogContent>
-                      </Dialog>
-                      <h3 className="text-2xl font-semibold text-foreground font-russo mt-4">{feature.name}</h3>
-                      <p className="text-sm text-muted-foreground mt-2">{feature.description}</p>
-                    </div>
-                  </Tilt>
-                </motion.div>
-              ))}
+          {/* ## Tabbed Interface ## */}
+          <motion.section variants={sectionVariants}>
+            {/* Tab Navigation */}
+            <div className="flex justify-center items-center gap-4 sm:gap-8 mb-10 p-2 bg-black/20 border border-[hsl(var(--primary),0.1)] rounded-lg">
+                {(['chat', 'rankings', 'quests'] as const).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`relative w-full text-center px-4 py-3 font-russo text-lg capitalize rounded-md transition-colors duration-300
+                        ${activeTab === tab ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                        {activeTab === tab && (
+                            <motion.div
+                                layoutId="active-tab-indicator"
+                                className="absolute inset-0 bg-[hsl(var(--primary),0.2)] rounded-md z-0"
+                                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                            />
+                        )}
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                           {tab === 'chat' && <MessageCircleHeart size={20} />}
+                           {tab === 'rankings' && <Award size={20} />}
+                           {tab === 'quests' && <HelpCircle size={20} />}
+                           {tab}
+                        </span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Tab Content */}
+            <div className="min-h-[300px] p-4 sm:p-8 bg-black/20 rounded-lg border border-[hsl(var(--primary),0.1)] backdrop-blur-sm">
+                <AnimatePresence mode="wait">
+                    {renderTabContent()}
+                </AnimatePresence>
             </div>
           </motion.section>
-
-          {/* Community Hero */}
-          <motion.section variants={sectionVariants} className="mb-16">
-            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
-              <Users className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
-              Community Hero
-            </h2>
-            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
-              <CommunityHero
-                userId={userId}
-                jewelsBalance={0} // Pass jewelsBalance from props if available in App.tsx
-                setActiveModal={setActiveModal}
-                setShowMessage={setShowMessage}
-              />
-            </Tilt>
-          </motion.section>
-
-          {/* Community Features */}
-          <motion.section variants={sectionVariants} className="mb-16">
-            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-primary">
-              <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
-              Community Features
-            </h2>
-            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
-              <CommunityFeatures
-                userId={userId}
-                setActiveModal={setActiveModal}
-                setShowMessage={setShowMessage}
-              />
-            </Tilt>
-          </motion.section>
-
-          {/* Community Chat */}
-          <motion.section variants={sectionVariants} className="mb-16">
-            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
-              <MessageCircleHeart className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
-              Community Chat
-            </h2>
-            <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.3}>
-              <CommunityChat
-                userId={userId}
-                setActiveModal={setActiveModal}
-                setShowMessage={setShowMessage}
-              />
-            </Tilt>
-          </motion.section>
-
-          {/* Community Rankings */}
-          <motion.section variants={sectionVariants} className="mb-16">
-            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-secondary">
-              <Award className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
-              Galactic Rankings
-            </h2>
-            <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4}>
-              <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
-                <img
-                  src="/art31.jpg"
-                  alt="Community Rankings"
-                  className="w-full h-80 object-cover rounded-lg"
-                />
-              </motion.div>
-            </Tilt>
-            <CommunityRankings
-              userId={userId}
-              setActiveModal={setActiveModal}
-              setShowMessage={setShowMessage}
-              leaderboard={[]} // This should be replaced with actual data
-            />
-            <p className="text-center text-muted-foreground max-w-2xl mx-auto mt-6 font-inter">
-              Climb the leaderboards to earn fame and exclusive rewards in the PETverse community.
-            </p>
-          </motion.section>
-
-          {/* Join the Galaxy CTA */}
-          <motion.section variants={sectionVariants} className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground font-russo mb-8 text-glow-primary">
-              <Users className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
-              Join the Galaxy
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 font-inter">
-              Become a part of the PETverse community and forge alliances across the cosmos.
-            </p>
-            <Dialog>
-              <DialogTrigger asChild>
-                <motion.button
-                  className="btn-system-glow text-lg font-semibold group"
-                  onClick={() => setShowMessage('👥 Join the cosmic community!')}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label="Join Community"
-                >
-                  Join Now <Users className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
-                </motion.button>
-              </DialogTrigger>
-              <DialogContent className="tooltip max-w-md p-6">
-                <p className="text-sm text-muted-foreground">Connect with the PETverse community on Discord or X!</p>
-              </DialogContent>
-            </Dialog>
-          </motion.section>
-
-          {/* Footer Actions */}
-          <motion.section variants={sectionVariants} className="text-center py-8 border-t border-border/50">
-            <h2 className="text-4xl font-bold text-foreground font-russo mb-6 text-glow-primary">
-              <MessageCircleHeart className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
-              Spread the Word
-            </h2>
-            <div className="flex flex-wrap justify-center gap-6">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <motion.button
-                    className="btn-primary inline-flex items-center px-8 py-4 text-lg font-semibold group"
-                    onClick={handleShareOnX}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Share Community on X"
-                  >
-                    <MessageCircleHeart className="w-6 h-6 mr-2" /> Share Community on X
-                  </motion.button>
-                </DialogTrigger>
-                <DialogContent className="tooltip max-w-md p-6">
-                  <p className="text-sm text-muted-foreground">Share your community adventures on X and earn rewards!</p>
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Link
-                    to="/home"
-                    className="btn-primary inline-flex items-center px-8 py-4 text-lg font-semibold group"
-                    onClick={() => setShowMessage('🏠 Navigating to Home!')}
-                    role="button"
-                    aria-label="Navigate to Home Page"
-                  >
-                    <span className="w-6 h-6 mr-2" aria-hidden="true">🏠</span> Back to Home
-                  </Link>
-                </DialogTrigger>
-                <DialogContent className="tooltip max-w-md p-6">
-                  <p className="text-sm text-muted-foreground">Return to the PETverse home to continue your adventure!</p>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </motion.section>
-        </motion.div>
+        </div>
       </motion.div>
     </SwytchErrorBoundary>
   );

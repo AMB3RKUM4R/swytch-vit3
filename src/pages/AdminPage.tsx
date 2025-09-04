@@ -1,127 +1,107 @@
-// src/pages/AdminPage.tsx
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
-import Tilt from 'react-parallax-tilt';
-import { Settings, User, Database, Link, Key, Users } from 'lucide-react';
-import SwytchCard from '../components/SwytchCard';
+import { Link } from 'react-router-dom';
+import { Settings, UserPlus, BarChart2, ShieldAlert } from 'lucide-react';
+import { useAccount } from 'wagmi';
+
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import StarfieldBackground from '../components/StarfieldBackground';
-import { db } from '@/lib/firebaseConfig';
+import { db } from '../lib/firebaseConfig'; 
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { PageProps } from '../lib/types';
 
 // Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.4 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.3 } },
 };
 
 const sectionVariants = {
-  hidden: { opacity: 0, y: 60 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.9, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 50 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } },
 };
 
-const imageVariants = {
-  hidden: { opacity: 0, scale: 0.8 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.9, ease: 'easeOut' } },
-};
+const tabContentVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.3, ease: 'easeIn' } },
+}
 
 const AdminPage: FC<PageProps> = ({
-  userId,
-  setActiveModal,
   setShowMessage,
+  setActiveModal,
   isPending,
   authLoading,
 }) => {
-  const adminUID = '0CfobCbXnPZsJwT662H4OhDrXk33';
-  const isAdmin = userId === adminUID;
-  const [newAdminId, setNewAdminId] = useState('');
-  const [loadingConfig, setLoadingConfig] = useState(true);
+  // Primary admin wallet address (case-insensitive comparison)
+  const adminWalletAddress = '0xDE9978913D9a969d799A2ba9381FB82450b92CE0';
+  
+  const { address: connectedAddress } = useAccount();
+  const isAdmin = connectedAddress?.toLowerCase() === adminWalletAddress.toLowerCase();
+
+  const [newAdminAddress, setNewAdminAddress] = useState('');
   const [updateLoading, setUpdateLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'management' | 'stats'>('management');
 
-  useEffect(() => {
-    // This hook simulates fetching a config, but for now we will just assume permissions are handled.
-    setLoadingConfig(false);
-  }, []);
-
-  const handleGrantAdmin = async () => {
+  const handleGrantAdmin = useCallback(async () => {
     if (!isAdmin) {
-      setShowMessage('⚠️ Access Denied: You are not authorized to grant admin access.');
+      setShowMessage('⚠️ Access Denied: You are not authorized for this action.');
       return;
     }
-    if (!newAdminId.trim()) {
-      setShowMessage('⚠️ Please enter a valid User ID.');
+    // Basic address validation
+    if (!/^0x[a-fA-F0-9]{40}$/.test(newAdminAddress.trim())) {
+      setShowMessage('⚠️ Please enter a valid Ethereum wallet address.');
       return;
     }
 
     setUpdateLoading(true);
-    setError(null);
-
     try {
-      // In a production environment, this would be a secure backend call (Cloud Function)
-      // For this implementation, we will log a request to a Firestore collection
+      // This action should be secured by Firestore rules allowing only admins to write
       const adminConfigRef = doc(db, 'AdminConfig', 'globalConfig');
       await updateDoc(adminConfigRef, {
-        admins: arrayUnion(newAdminId.trim()),
+        admins: arrayUnion(newAdminAddress.trim().toLowerCase()), // Store addresses in lowercase
       });
       
-      setShowMessage(`✅ Admin access granted to User ID: ${newAdminId}!`);
-      setNewAdminId('');
+      setShowMessage(`✅ Admin access granted to address: ${newAdminAddress}!`);
+      setNewAdminAddress('');
     } catch (err) {
       console.error('Failed to grant admin access:', err);
-      setError('Failed to grant admin access. Check console for details.');
-      setShowMessage('⚠️ Failed to grant admin access.');
+      setShowMessage('⚠️ Operation failed. See console for details.');
     } finally {
       setUpdateLoading(false);
     }
-  };
+  }, [isAdmin, newAdminAddress, setShowMessage]);
 
-  if (authLoading || isPending || loadingConfig) {
-    return null;
+  if (authLoading || isPending) {
+    return null; // Render nothing during initial loading states
   }
 
+  // --- Access Denied View ---
   if (!isAdmin) {
     return (
       <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
-        <motion.div
-          className="min-h-screen text-foreground font-orbitron bg-noise"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
+        <div className="min-h-screen text-foreground font-orbitron bg-noise">
           <StarfieldBackground />
-          <motion.div className="relative z-20 flex items-center justify-center min-h-screen">
-            <motion.div variants={sectionVariants} className="text-center">
-              <h1 className="text-5xl font-extrabold text-foreground font-russo mb-6 text-glow-primary">
-                <Settings className="inline-block w-12 h-12 text-[hsl(var(--secondary))] animate-neon-pulse mr-4" />
+          <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+            <motion.div variants={sectionVariants} initial="hidden" animate="visible" className="text-center p-8 bg-black/20 rounded-lg border border-[hsl(var(--destructive),0.2)] backdrop-blur-sm max-w-2xl">
+              <ShieldAlert className="mx-auto w-16 h-16 text-[hsl(var(--destructive))] animate-pulse mb-4" />
+              <h1 className="text-4xl lg:text-5xl font-extrabold text-foreground font-russo mb-4 text-glow-destructive tracking-tight">
                 Access Denied
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 font-inter">
-                You do not have the cosmic clearance to access the Admin Command Center.
+              <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8 font-inter">
+                You do not have the required clearance to access the Admin Command Center. This area is restricted to authorized wallet addresses only.
               </p>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Link
-                    to="/home"
-                    className="btn-system-glow text-lg font-semibold group"
-                    onClick={() => setShowMessage('🏠 Redirecting to Home.')}
-                  >
-                    Return to Home <Link className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
-                  </Link>
-                </DialogTrigger>
-                <DialogContent className="tooltip max-w-md p-6">
-                  <p className="text-sm text-muted-foreground">Navigate back to the PETverse home to continue your journey!</p>
-                </DialogContent>
-              </Dialog>
+              <Link to="/home" className="btn-system-glow text-lg font-semibold group">
+                Return to Home
+              </Link>
             </motion.div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </SwytchErrorBoundary>
     );
   }
 
+  // --- Main Admin Dashboard ---
   return (
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
@@ -131,114 +111,79 @@ const AdminPage: FC<PageProps> = ({
         animate="visible"
       >
         <StarfieldBackground />
-        <motion.div className="relative z-20 max-w-5xl mx-auto py-16 px-6 sm:px-8 lg:px-16">
-          <motion.section variants={sectionVariants} className="text-center mb-16">
-            <Tilt tiltMaxAngleX={12} tiltMaxAngleY={12} glareEnable={true} glareMaxOpacity={0.4} glareColor="hsl(var(--primary))">
-              <motion.div className="holographic-card mb-8 mx-auto max-w-5xl overflow-hidden animated-aura" variants={imageVariants}>
-                <img
-                  src="/art20.jpg"
-                  alt="Admin Command Center"
-                  className="w-full h-80 object-cover rounded-lg"
-                />
-              </motion.div>
-            </Tilt>
-            <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-6 text-glow-primary">
-              <Settings className="inline-block w-12 h-12 text-[hsl(var(--secondary))] animate-neon-pulse mr-4" />
-              Admin Command Center
-            </h1>
-            <p className="text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto font-inter mb-8">
-              Configure the PETverse’s galactic economy with precision. Securely manage platform settings and user permissions.
-            </p>
-          </motion.section>
-
-          <motion.section variants={sectionVariants} className="mb-16">
-            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-8 text-glow-accent">
-              <Users className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
-              Manage Admin Access
-            </h2>
-            <SwytchCard gradient="from-purple-700/20 to-pink-700/20" className="p-8 holographic-card">
-              <div className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <User className="w-6 h-6 text-[hsl(var(--secondary))] animate-neon-pulse" />
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <input
-                        type="text"
-                        placeholder="Enter User ID to promote"
-                        value={newAdminId}
-                        onChange={(e) => setNewAdminId(e.target.value)}
-                        className="input-system w-full"
-                        aria-label="User ID to Promote"
-                        disabled={updateLoading}
-                      />
-                    </DialogTrigger>
-                    <DialogContent className="tooltip max-w-md p-6">
-                      <p className="text-sm text-muted-foreground">Enter the unique User ID of the player you wish to grant admin access to.</p>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <motion.button
-                      className="btn-system-glow w-full flex items-center justify-center gap-3 text-lg"
-                      onClick={handleGrantAdmin}
-                      disabled={updateLoading || !newAdminId.trim()}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {updateLoading ? 'Granting Access...' : 'Grant Admin Access'} <Key className="w-6 h-6" />
-                    </motion.button>
-                  </DialogTrigger>
-                  <DialogContent className="tooltip max-w-md p-6">
-                    <p className="text-sm text-muted-foreground">Submit a request to grant admin privileges. This action is irreversible.</p>
-                  </DialogContent>
-                </Dialog>
-                <AnimatePresence>
-                  {error && (
-                    <motion.p
-                      className="text-rose-400 text-sm text-center mt-4 font-inter system-message"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    >
-                      {error}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
-                <p className="text-xs text-muted-foreground mt-4 text-center font-inter">
-                  *This action requires the primary admin's clearance. The updated list of admins will be reflected across the platform.
+        <div className="relative z-10 max-w-5xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-12">
+            {/* Header */}
+            <motion.section variants={sectionVariants} className="text-center">
+                <Settings className="mx-auto w-16 h-16 text-[hsl(var(--secondary))] animate-neon-pulse mb-4" />
+                <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-4 text-glow-primary tracking-tight">
+                Admin Command Center
+                </h1>
+                <p className="text-xl text-muted-foreground max-w-3xl mx-auto font-inter">
+                Manage user permissions, monitor system activity, and configure the PETverse.
                 </p>
-              </div>
-            </SwytchCard>
-          </motion.section>
+            </motion.section>
 
-          <motion.section variants={sectionVariants} className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground font-russo mb-8 text-glow-accent">
-              <Database className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
-              Admin Actions
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-inter mb-8">
-              Manage transaction logs, review player activities, and more.
-              <br/>
-              <span className="text-sm text-gray-500 italic">Withdrawal management will be available in the upcoming alpha launch.</span>
-            </p>
-            <Dialog>
-              <DialogTrigger asChild>
-                <motion.button
-                  className="btn-accent text-lg font-semibold group"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label="View Transaction Logs"
-                >
-                  View Transaction Logs <Database className="ml-3 w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
-                </motion.button>
-              </DialogTrigger>
-              <DialogContent className="tooltip max-w-md p-6">
-                <p className="text-sm text-muted-foreground">Access transaction logs to monitor player activities (placeholder action).</p>
-              </DialogContent>
-            </Dialog>
-          </motion.section>
-        </motion.div>
+            {/* Tabbed Interface */}
+            <motion.section variants={sectionVariants}>
+                <div className="flex justify-center items-center gap-4 sm:gap-8 mb-10 p-2 bg-black/20 border border-[hsl(var(--primary),0.1)] rounded-lg">
+                    {(['management', 'stats'] as const).map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`relative w-full text-center px-4 py-3 font-russo text-lg capitalize rounded-md transition-colors duration-300 ${activeTab === tab ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                        {activeTab === tab && (
+                            <motion.div layoutId="admin-tab-indicator" className="absolute inset-0 bg-[hsl(var(--primary),0.2)] rounded-md z-0" transition={{ type: 'spring', stiffness: 300, damping: 30 }} />
+                        )}
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                           {tab === 'management' && <UserPlus size={20} />}
+                           {tab === 'stats' && <BarChart2 size={20} />}
+                           {tab === "management" ? "User Management" : "System Stats"}
+                        </span>
+                    </button>
+                    ))}
+                </div>
+
+                <div className="min-h-[250px] p-8 bg-black/20 rounded-lg border border-[hsl(var(--primary),0.1)] backdrop-blur-sm">
+                    <AnimatePresence mode="wait">
+                        {activeTab === 'management' && (
+                            <motion.div key="management" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6 max-w-lg mx-auto">
+                                <h3 className="text-2xl font-bold font-russo text-glow-secondary">Grant Admin Privileges</h3>
+                                <div className="flex flex-col sm:flex-row items-center gap-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter wallet address (0x...)"
+                                        value={newAdminAddress}
+                                        onChange={(e) => setNewAdminAddress(e.target.value)}
+                                        className="input-system w-full flex-grow"
+                                        aria-label="Wallet Address to Promote"
+                                        disabled={updateLoading}
+                                    />
+                                    <button
+                                        className="btn-system-glow w-full sm:w-auto flex-shrink-0"
+                                        onClick={handleGrantAdmin}
+                                        disabled={updateLoading || !newAdminAddress.trim()}
+                                    >
+                                        {updateLoading ? 'Granting...' : 'Grant Access'}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-muted-foreground text-center font-inter pt-2">
+                                    This action will add a new wallet address to the list of platform administrators. Ensure the address is correct as this is irreversible without database intervention.
+                                </p>
+                            </motion.div>
+                        )}
+                        {activeTab === 'stats' && (
+                             <motion.div key="stats" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit" className="text-center">
+                                <h3 className="text-2xl font-bold font-russo text-glow-secondary">System Statistics</h3>
+                                <p className="text-muted-foreground mt-4 font-inter">
+                                    System health monitoring and analytics dashboards will be available in a future update.
+                                </p>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </motion.section>
+        </div>
       </motion.div>
     </SwytchErrorBoundary>
   );

@@ -4,52 +4,65 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
+import { PayPalScriptProvider } from '@paypal/react-paypal-js';
+
+// Context Providers
 import { ModalProvider } from './components/context/ModalContext';
 import { ThemeProvider } from './components/context/ThemeContext';
+
+// Configs and App Component
 import { wagmiConfig } from './lib/wagmi';
+import App from './App';
 
-// Import the main AppContainer which now handles all app logic
-import AppContainer from './App';
-
-// Import global styles
+// Global styles
 import '@rainbow-me/rainbowkit/styles.css';
 import './index.css';
 
-// Initialize the react-query client
+// Initialize React Query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 2,
       staleTime: 1000 * 60, // 1 minute
-      gcTime: 1000 * 60 * 5, // 5 minutes
     },
   },
 });
 
-/**
- * The Root component sets up all the necessary global context providers.
- * The application's UI and logic are now entirely encapsulated within AppContainer.
- */
-const Root: React.FC = () => {
-  return (
-    <React.StrictMode>
-      <BrowserRouter>
-        <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <RainbowKitProvider>
-              <ThemeProvider>
-                <ModalProvider>
-                  <AppContainer />
-                </ModalProvider>
-              </ThemeProvider>
-            </RainbowKitProvider>
-          </WagmiProvider>
-        </QueryClientProvider>
-      </BrowserRouter>
-    </React.StrictMode>
-  );
+// Initial options for the PayPal SDK
+const initialPayPalOptions = {
+    // Use the environment variable, but provide "sb" as a safe fallback
+    // "sb" is a special value that loads the SDK in sandbox mode without needing a real client ID.
+    clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID || "sb",
+    currency: "USD",
+    intent: "capture",
 };
 
-// Render the Root component to the DOM.
+/**
+ * The Root component sets up all necessary global context providers
+ * for the application to function correctly.
+ */
+const Root: React.FC = () => {
+  return (
+    <React.StrictMode>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <WagmiProvider config={wagmiConfig}>
+            <RainbowKitProvider theme={darkTheme({})}>
+              <PayPalScriptProvider options={initialPayPalOptions}>
+                <ThemeProvider>
+                  <ModalProvider>
+                    <App />
+                  </ModalProvider>
+                </ThemeProvider>
+              </PayPalScriptProvider>
+            </RainbowKitProvider>
+          </WagmiProvider>
+        </QueryClientProvider>
+      </BrowserRouter>
+    </React.StrictMode>
+  );
+};
+
+// Render the application to the DOM
 ReactDOM.createRoot(document.getElementById('root')!).render(<Root />);
