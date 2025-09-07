@@ -22,7 +22,7 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
   const [fromAmount, setFromAmount] = useState<string>('');
   const [toAmount, setToAmount] = useState<string>('');
   const [fromCurrency, setFromCurrency] = useState<SupportedCurrency>('ETH');
-  const [toCurrency, setToCurrency] = useState<SupportedCurrency>('JEWELS');
+  const [toCurrency, setToCurrency] = useState<SupportedCurrency>('JOULES');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

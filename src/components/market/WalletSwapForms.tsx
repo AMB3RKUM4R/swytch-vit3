@@ -42,7 +42,7 @@ const WalletSwapForms: FC<WalletSwapFormsProps> = ({ userId, setShowMessage }) =
 
   useEffect(() => {
     if (fromAmount) {
-      const rate = getExchangeRate('ETH', 'JEWELS');
+      const rate = getExchangeRate('ETH', 'JOULES');
       setToAmount((parseFloat(fromAmount) * rate).toFixed(0));
     } else {
       setToAmount('');

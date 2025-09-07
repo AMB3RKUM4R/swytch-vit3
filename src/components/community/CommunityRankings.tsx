@@ -46,7 +46,7 @@ const CommunityRankings: FC<CommunityRankingsProps> = ({ /* userId, setActiveMod
           rank: rank++,
           name: data.username,
           level: data.level,
-          jewels: data.jewels,
+          jewels: data.joules,
           avatar: "https://placehold.co/40x40/random/FFFFFF?text=U", // Placeholder or fetch from PlayerData
         });
       });

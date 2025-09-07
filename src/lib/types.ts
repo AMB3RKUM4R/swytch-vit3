@@ -1,87 +1,94 @@
-// src/lib/types.ts
 import { Dispatch, SetStateAction, ReactNode, FormEvent } from 'react';
 import { Timestamp, FieldValue } from 'firebase/firestore';
 
 // ==========================================================
-// Core Application & Global Data Types
+// Core Application & Global Data Types (PETverse Aligned)
 // ==========================================================
 
 export type MembershipTier = 'ecosystem' | 'gamers' | 'gold' | 'none';
 
 export const MEMBERSHIP_TIERS = {
-  ecosystem: { level: 1, name: 'Ecosystem Explorer', usdAmount: 5, contentRoute: '/ecosystem-content' },
-  gamers: { level: 2, name: 'Gamer Elite', usdAmount: 15, contentRoute: '/gamers-content' },
-  gold: { level: 3, name: 'Gold Sovereign', usdAmount: 50, contentRoute: '/gold-content' },
+  ecosystem: { level: 1, name: 'Ecosystem Explorer', usdAmount: 10, contentRoute: '/ecosystem-content' },
+  gamers: { level: 2, name: 'Gamer Elite', usdAmount: 25, contentRoute: '/gamers-content' },
+  gold: { level: 3, name: 'Gold Sovereign', usdAmount: 100, contentRoute: '/gold-content' },
 } as const;
 
-export type SupportedCurrency = 'ETH' | 'JEWELS' | 'USDT' | 'INR';
+export type SupportedCurrency = 'ETH' | 'JOULES' | 'USDT' | 'INR';
 
 export type TransactionType = 'membership' | 'deposit' | 'withdraw' | 'level-purchase' | 'quest-reward' | 'payout' | 'connect' | 'disconnect' | 'item-purchase' | 'item-sale' | 'crypto-swap';
 export type TransactionStatus = 'success' | 'pending' | 'failed' | 'approved' | 'completed' | 'rejected';
 
 // ==========================================================
-// Firestore Document Interfaces
+// Firestore Document Interfaces (PETverse Aligned)
 // ==========================================================
 
+// This represents a unique item INSTANCE in a player's inventory.
 export interface InventoryItem {
-  id: string;
-  name: string;
-  description: string;
-  imageUrl: string;
-  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-  type: 'armor' | 'weapon' | 'consumable' | 'collectible';
-  stats?: {
-    energyBoost: any;
-    manaBoost: any; attack?: number; defense?: number; 
-};
-  ownerId: string;
-  isListedForSale: boolean;
-  listingPriceCrypto?: number | null;
-  listingCurrency?: SupportedCurrency | null;
-  tokenId?: string | null;
-  contractAddress?: string | null;
-  mintedAt?: Timestamp | null;
+  itemId: string;       // Reference to the blueprint in /ItemDefinitions
+  acquiredAt: Timestamp;
+  isListed?: boolean;  // FIXED: Added optional property for market listings
 }
 
+// This is the blueprint for an item, fetched from the /ItemDefinitions collection.
+export interface ItemDefinition {
+  id: string; // The document ID
+  itemName: string;
+  itemType: 'weapon' | 'armor' | 'consumable' | 'character_skin' | 'title';
+  rarity: 'E-Rank' | 'D-Rank' | 'C-Rank' | 'B-Rank' | 'A-Rank' | 'S-Rank';
+  description: string;
+  gc2PlayerType?: string | null;
+  levelRequirement?: number;
+  stats?: { [key: string]: number };
+  visuals?: {
+    prefabName: string;
+    iconName: string;
+  };
+}
+
+// This now perfectly matches our final PlayerData structure for Unity.
 export interface PlayerData {
   userId: string;
   username: string;
   email: string | null;
   phoneNumber: string | null;
-  jewels: number;
+  joules: number;
   gold: number;
   level: number;
+  xp: number;
   isPETMember: boolean;
   membership: MembershipTier;
   walletAddress: string | null;
   createdAt: Timestamp | FieldValue;
   updatedAt: Timestamp | FieldValue;
-  character: { selectedID: string; skin: string; } | null;
-  inventory: { equipped: { armor: string; weapon: string; }; items: Record<string, InventoryItem>; } | null;
-  lastBonusTime: Timestamp | null;
-  quests?: Quest[];
-  transactions?: Transaction[];
-  xp: number;
-  // --- FIX: Re-added missing game properties ---
   energy: number;
   mana: number;
-  chest: string | null;
-  key: string | null;
+  character: {
+    selectedID: string;
+    skin: string;
+  } | null;
+  inventory: {
+    equipped: {
+      weapon: string | null;
+      armor: string | null;
+    };
+    items: {
+      [instanceId: string]: InventoryItem;
+    };
+  } | null;
 }
 
+// Aligned with our final Firestore Rules and structure.
 export interface Transaction {
   transactionId: string;
   userId: string;
   amount: number;
-  currency: SupportedCurrency;
+  currency: SupportedCurrency | 'USD';
   transactionType: TransactionType;
   status: TransactionStatus;
   timestamp: Timestamp | FieldValue;
   itemId?: string | null;
-  game?: string | null;
-  walletAddress?: string | null;
+  paymentGatewayId?: string | null;
 }
-
 // ==========================================================
 // Component & Page Props
 // ==========================================================
