@@ -1,19 +1,20 @@
 // src/components/TopNav.tsx
 import { FC, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Sparkles, User, Settings, Star, HandCoins, Users, Package, ShoppingCart } from 'lucide-react';
-import { useAccount } from 'wagmi';
+import { Wallet, Sparkles, User, Settings, Star, HandCoins, Users, Package, ShoppingCart, LogOut } from 'lucide-react';
 import { useTheme } from '../components/context/ThemeContext';
 import { TopNavProps } from '../lib/types';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useAuthUserFirebase } from '../hooks/useAuthUserFirebase';
+import { useAuthUserWagmi } from '../hooks/useAuthUserWagmi';
 import { Link } from 'react-router-dom';
 import Tilt from 'react-parallax-tilt';
+import { cn } from '@/lib/utils';
+import { useModal } from './context/ModalContext';
 
-// Updated nav items to reflect the pages we have built
 const navItems = [
   { path: '/home', label: 'Home', icon: <Sparkles className="w-6 h-6" /> },
-  { path: '/inventory', label: 'Inventory', icon: <Package className="w-6 h-6" /> },
-  { path: '/shop', label: 'Shop', icon: <ShoppingCart className="w-6 h-6" /> },
+  { path: '/inventory', label: 'Inventory', icon: <Package className="w-6 h-6" /> },
+  { path: '/shop', label: 'Shop', icon: <ShoppingCart className="w-6 h-6" /> },
   { path: '/vault', label: 'Vault', icon: <HandCoins className="w-6 h-6" /> },
   { path: '/community', label: 'Community', icon: <Users className="w-6 h-6" /> },
   { path: '/membership', label: 'Membership', icon: <Star className="w-6 h-6" /> },
@@ -26,41 +27,37 @@ const TopNav: FC<TopNavProps> = ({
   setShowMessage,
   setActiveAuthModal,
 }) => {
-  const { isConnected, address } = useAccount();
   const { isDarkMode, toggleTheme } = useTheme();
-  const { user } = useAuthUser();
+  const { user, signOutUser } = useAuthUserFirebase();
+  const { isConnected, address, disconnect } = useAuthUserWagmi();
+  const { setActiveModal } = useModal();
 
-  const handleAuthWalletClick = () => {
-    setActiveAuthModal('auth');
-    setShowMessage('ℹ️ Opening authentication and wallet options...');
-  };
-
-
-  const displayName = user?.displayName || user?.email?.split('@')[0] || (userId ? `${userId.slice(0, 4)}...${userId.slice(-4)}` : 'Guest');
+  const isFirebaseLoggedIn = !!user;
+  const isWalletConnected = isConnected;
 
   const handleRestrictedNav = useCallback((path: string, label: string) => {
     const restrictedPaths = [
       '/home', '/vault', '/shop', '/community',
       '/membership', '/inventory', '/admin'
     ];
-    if (!userId && restrictedPaths.includes(path)) {
+    if (!isFirebaseLoggedIn && !isWalletConnected && restrictedPaths.includes(path)) {
       setShowMessage(`⚠️ Please sign in to access ${label}.`);
       setActiveAuthModal('auth');
       return false;
     }
     setShowMessage(`➡️ Navigating to ${label}!`);
     return true;
-  }, [userId, setShowMessage, setActiveAuthModal]);
+  }, [isFirebaseLoggedIn, isWalletConnected, setShowMessage, setActiveAuthModal]);
+
 
   return (
     <motion.nav
-      className={`fixed top-0 left-0 w-full z-50 py-2 px-2 md:px-4 flex items-center justify-between bg-noise holographic-card animated-aura ${isDarkMode ? 'glass-dark' : 'glass-light'}`}
+      className={cn(`fixed top-0 left-0 w-full z-50 py-2 px-2 md:px-4 flex items-center justify-between holographic-card animated-aura transition-all duration-300`, isDarkMode ? 'glass-dark' : 'glass-light')}
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5 }}
       style={{ background: 'linear-gradient(145deg, rgba(0,0,0,0.8), rgba(50,50,100,0.5))' }}
     >
-      {/* Logo / Brand Name */}
       <div className="flex items-center gap-2">
         <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
           <Sparkles className="text-[hsl(var(--primary))] w-6 h-6 animate-neon-pulse" aria-hidden="true" />
@@ -68,7 +65,6 @@ const TopNav: FC<TopNavProps> = ({
         <span className="text-xl font-bold text-foreground font-russo text-glow-primary hidden sm:block">SWYTCH</span>
       </div>
 
-      {/* Primary Navigation Links */}
       <div className="hidden md:flex flex-grow justify-center items-center gap-4 px-2 md:px-0">
         {navItems.map(({ path, label, icon }) => (
           <Link
@@ -87,14 +83,13 @@ const TopNav: FC<TopNavProps> = ({
         ))}
       </div>
 
-      {/* Right Side Actions */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {userId && (
+        {(isFirebaseLoggedIn || isWalletConnected) && (
           <div className="hidden md:flex items-center gap-2 text-foreground font-inter text-sm md:text-base">
             <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
               <User className="text-[hsl(var(--primary))] w-6 h-6 animate-neon-pulse" aria-hidden="true" />
             </Tilt>
-            <span className="truncate max-w-[100px] text-glow-primary" title={displayName}>{displayName}</span>
+            <span className="truncate max-w-[100px] text-glow-primary" title={user?.email || address}>{user?.email?.split('@')[0] || address?.slice(0, 4) + '...' + address?.slice(-4)}</span>
             <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
               <Sparkles className="text-[hsl(var(--primary))] w-6 h-6 animate-neon-pulse" aria-hidden="true" />
             </Tilt>
@@ -102,21 +97,27 @@ const TopNav: FC<TopNavProps> = ({
           </div>
         )}
 
-        {/* Auth/Wallet Button */}
         <motion.button
           className="btn-secondary flex items-center gap-2 p-2 rounded-md"
-          onClick={handleAuthWalletClick}
+          onClick={() => {
+            if (isFirebaseLoggedIn) {
+              signOutUser();
+            } else if (isWalletConnected) {
+              disconnect();
+            } else {
+              setActiveModal('auth');
+            }
+          }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          title={isConnected ? 'Wallet Connected' : 'Sign In / Connect Wallet'}
+          title={isFirebaseLoggedIn || isWalletConnected ? 'Sign Out' : 'Sign In'}
         >
           <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.4}>
-            <Wallet className="w-6 h-6 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />
+            {isFirebaseLoggedIn || isWalletConnected ? <LogOut className="w-6 h-6 text-destructive" /> : <Wallet className="w-6 h-6 text-[hsl(var(--primary))]" />}
           </Tilt>
-          <span className="hidden md:block text-glow-primary">{isConnected && address ? `${address.slice(0, 4)}...${address.slice(-4)}` : 'Sign In'}</span>
+          <span className="hidden md:block text-glow-primary">{isFirebaseLoggedIn || isWalletConnected ? 'Sign Out' : 'Sign In'}</span>
         </motion.button>
         
-        {/* Theme Toggle */}
         <motion.button
           className="theme-toggle-btn p-2 rounded-md bg-[hsla(var(--primary-hsl),0.2)]"
           onClick={toggleTheme}

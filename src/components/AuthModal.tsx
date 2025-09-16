@@ -1,15 +1,19 @@
 // src/components/AuthModal.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Key, Wallet, Sparkles } from 'lucide-react';
+import { X, Mail, Key, Wallet, Sparkles, LogOut } from 'lucide-react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
-import { useAuthUser } from '../hooks/useAuthUser';
+// FIX: Importing the new, separate authentication hooks
+import { useAuthUserFirebase } from '../hooks/useAuthUserFirebase';
+import { useAuthUserWagmi } from '../hooks/useAuthUserWagmi';
 import { useModal } from './context/ModalContext';
+import { cn } from '@/lib/utils';
 
 interface AuthModalProps {
   setShowMessage: (message: string) => void;
 }
+
 const modalVariants = {
   hidden: { opacity: 0, scale: 0.9 },
   visible: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } },
@@ -18,14 +22,15 @@ const modalVariants = {
 
 const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
   const { activeModal, setActiveModal: setModalActive } = useModal();
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuthUser();
+  // FIX: Using the new, separate hooks for Firebase and Wagmi
+  const { user, signInWithEmail, signUpWithEmail, signInWithGoogle, signOutUser } = useAuthUserFirebase();
+  const { isConnected, disconnect } = useAuthUserWagmi();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
 
   useEffect(() => {
-    // Reset state when modal is closed
     if (activeModal === null) {
       setEmail('');
       setPassword('');
@@ -51,9 +56,11 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
     }
     try {
       if (isSignUp) {
+        if (isConnected) disconnect();
         await signUpWithEmail(email, password);
         handleAuthSuccess('🎉 Welcome! You have successfully signed up.');
       } else {
+        if (isConnected) disconnect();
         await signInWithEmail(email, password);
         handleAuthSuccess('🎉 Welcome back! Signed in successfully.');
       }
@@ -64,12 +71,20 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
 
   const handleGoogleSignIn = async () => {
     try {
+      if (isConnected) disconnect();
       await signInWithGoogle();
       handleAuthSuccess('🎉 Signed in with Google successfully!');
     } catch (err) {
       handleAuthError(err, 'Failed to sign in with Google.');
     }
   };
+
+  const handleWalletDisconnect = async () => {
+    await disconnect();
+    setShowMessage('👋 Wallet disconnected.');
+  }
+
+  const isLoggedInWithFirebase = !!user;
 
   return (
     <AnimatePresence>
@@ -100,71 +115,93 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             </h2>
 
             <div className="space-y-4">
-                {/* Primary Action: Wallet Connect */}
-                <ConnectButton.Custom>
-                    {({ openConnectModal, mounted }) => (
-                        <button
-                        disabled={!mounted}
-                        onClick={() => {
-                            openConnectModal();
-                            handleAuthSuccess('ℹ️ Connecting crypto wallet...');
-                        }}
-                        className="btn-system-glow w-full text-lg"
-                        >
-                        <Wallet className="mr-2" /> Connect Wallet
-                        </button>
-                    )}
-                </ConnectButton.Custom>
-                
-                <div className="flex items-center gap-2">
-                    <hr className="w-full border-[hsl(var(--border)]" />
-                    <span className="text-xs text-muted-foreground">OR</span>
-                    <hr className="w-full border-[hsl(var(--border)]" />
-                </div>
-
-                {/* Secondary Actions */}
-                <button onClick={handleGoogleSignIn} className="btn-secondary w-full">
-                    <Sparkles className="mr-2" /> Sign In with Google
+              {!isLoggedInWithFirebase && (
+                  <ConnectButton.Custom>
+                      {({ openConnectModal, mounted }) => (
+                          <button
+                          disabled={!mounted || isConnected || isLoggedInWithFirebase}
+                          onClick={() => {
+                              openConnectModal();
+                              handleAuthSuccess('ℹ️ Connecting crypto wallet...');
+                          }}
+                          className={cn("btn-system-glow w-full text-lg", (isConnected || isLoggedInWithFirebase) && "opacity-50 cursor-not-allowed")}
+                          >
+                          <Wallet className="mr-2" /> Connect Wallet
+                          </button>
+                      )}
+                  </ConnectButton.Custom>
+              )}
+              {isConnected && (
+                <button 
+                  onClick={handleWalletDisconnect} 
+                  className="btn-primary w-full text-lg"
+                >
+                  <LogOut className="mr-2" /> Disconnect Wallet
                 </button>
-                
-                {/* Email Form */}
-                 <div className="space-y-3 pt-2">
-                     <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Email Address"
-                            className="input-system pl-10"
-                            autoComplete="email"
-                        />
-                    </div>
-                     <div className="relative">
-                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Password"
-                            className="input-system pl-10"
-                            autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                        />
-                    </div>
-                    <button className="btn-primary w-full" onClick={handleEmailAuth}>
-                        {isSignUp ? 'Sign Up with Email' : 'Sign In with Email'}
-                    </button>
-                 </div>
+              )}
+              
+              <div className="flex items-center gap-2">
+                  <hr className="w-full border-[hsl(var(--border)]" />
+                  <span className="text-xs text-muted-foreground">OR</span>
+                  <hr className="w-full border-[hsl(var(--border)]" />
+              </div>
 
-                <div className="text-center pt-2">
-                    <button
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors underline"
-                        onClick={() => setIsSignUp(!isSignUp)}
-                    >
-                        {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
-                    </button>
-                </div>
+              {!isConnected && (
+                <>
+                  <button onClick={handleGoogleSignIn} className={cn("btn-secondary w-full", isLoggedInWithFirebase && "opacity-50 cursor-not-allowed")} disabled={isLoggedInWithFirebase}>
+                      <Sparkles className="mr-2" /> Sign In with Google
+                  </button>
+                  
+                  <div className={cn("space-y-3 pt-2", isLoggedInWithFirebase && "opacity-50 cursor-not-allowed")}>
+                      <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+                          <input
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="Email Address"
+                              className="input-system pl-10"
+                              autoComplete="email"
+                              disabled={isLoggedInWithFirebase}
+                          />
+                      </div>
+                      <div className="relative">
+                          <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+                          <input
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="Password"
+                              className="input-system pl-10"
+                              autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                              disabled={isLoggedInWithFirebase}
+                          />
+                      </div>
+                      <button className="btn-primary w-full" onClick={handleEmailAuth} disabled={isLoggedInWithFirebase}>
+                          {isSignUp ? 'Sign Up with Email' : 'Sign In with Email'}
+                      </button>
+                  </div>
+                  <div className="text-center pt-2">
+                      <button
+                          className="text-sm text-muted-foreground hover:text-foreground transition-colors underline"
+                          onClick={() => setIsSignUp(!isSignUp)}
+                          disabled={isLoggedInWithFirebase}
+                      >
+                          {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+                      </button>
+                  </div>
+                </>
+              )}
             </div>
+            
+            {isLoggedInWithFirebase && !isConnected && (
+              <div className="mt-6 flex flex-col items-center">
+                <p className="text-sm text-muted-foreground mb-2">You are signed in with Firebase.</p>
+                <button onClick={signOutUser} className="btn-secondary w-full">
+                    <LogOut className="mr-2" /> Sign Out
+                </button>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}

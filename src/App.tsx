@@ -1,13 +1,15 @@
 // src/App.tsx
 import { FC, useState, useEffect, useCallback, useMemo } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { User } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, updateDoc, collection, addDoc, onSnapshot, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, updateDoc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db, performInitialSignIn, listenForAuthChanges } from '@/lib/firebaseConfig';
 
 // Hooks & Context
 import { useModal } from '@/components/context/ModalContext';
+import { useAuthUserFirebase } from './hooks/useAuthUserFirebase';
+import { useAuthUserWagmi } from './hooks/useAuthUserWagmi';
 
 // Components
 import SwytchErrorBoundary from '@/components/ErrorBoundaryComponent';
@@ -30,23 +32,22 @@ import AdminPage from '@/pages/AdminPage';
 // Types
 import { PlayerData, Transaction } from '@/lib/types';
 
-// The new player creation function now matches your Firestore rules
-const createNewPlayerData = (user: { uid: string; email: string | null; phoneNumber: string | null; }): PlayerData => {
+const createNewPlayerData = (user: User, walletAddress: string | null = null): PlayerData => {
     const now = Timestamp.now();
     return {
         userId: user.uid,
-        username: `Hunter${Math.floor(1000 + Math.random() * 9000)}`,
+        username: user.displayName || user.email?.split('@')[0] || `Hunter${Math.floor(1000 + Math.random() * 9000)}`,
         email: user.email,
         phoneNumber: user.phoneNumber,
-        joules: 0, // Enforcing rules: must be 0 on creation
-        gold: 0, // Enforcing rules: must be 0 on creation
-        level: 1, // Enforcing rules: must be 1 on creation
-        xp: 0, // Enforcing rules: must be 0 on creation
-        energy: 100, // Enforcing rules: must be 100 on creation
-        mana: 100, // Enforcing rules: must be 100 on creation
-        isPETMember: true, // Enforcing rules: must be true on creation
-        membership: 'ecosystem', // Enforcing rules: must be 'ecosystem' on creation
-        walletAddress: null,
+        joules: 0,
+        gold: 0,
+        level: 1,
+        xp: 0,
+        energy: 100,
+        mana: 100,
+        isPETMember: true,
+        membership: 'ecosystem',
+        walletAddress: walletAddress,
         character: null,
         inventory: null,
         createdAt: now,
@@ -54,81 +55,74 @@ const createNewPlayerData = (user: { uid: string; email: string | null; phoneNum
     };
 };
 
-
 const App: FC = () => {
-    // Core State
-    const [user, setUser] = useState<User | null>(null);
+    const navigate = useNavigate();
+    const { user: firebaseUser, loading: firebaseLoading } = useAuthUserFirebase();
+    const { address: wagmiAddress, isConnected: wagmiIsConnected, isDisconnected: wagmiIsDisconnected } = useAuthUserWagmi();
+
     const [playerData, setPlayerData] = useState<PlayerData | null>(null);
     const [isPETMember, setIsPETMember] = useState(false);
     
-    // UI & Loading State
     const { activeModal, setActiveModal, showMessage, setShowMessage } = useModal();
-    const [authLoading, setAuthLoading] = useState(true);
     const [isPending, setIsPending] = useState(false);
     const [initialAuthCheckComplete, setInitialAuthCheckComplete] = useState(false);
     
-    
-    // --- Authentication & Data Fetching ---
-    useEffect(() => {
-        performInitialSignIn().then(() => {
-            const unsubscribe = listenForAuthChanges((firebaseUser) => {
-                setUser(firebaseUser);
-                if (!firebaseUser) {
-                    setAuthLoading(false);
-                    setInitialAuthCheckComplete(true);
-                }
-            });
-            return () => unsubscribe();
-        });
-    }, []);
+    const userId = firebaseUser?.uid || wagmiAddress;
+    const authLoading = firebaseLoading;
 
+    // A single effect to handle authentication and data fetching
     useEffect(() => {
-        if (!user) {
+        if (!userId) {
             setPlayerData(null);
             setIsPETMember(false);
+            setInitialAuthCheckComplete(true);
             return;
         }
 
         setIsPending(true);
-        const playerRef = doc(db, 'Players', user.uid);
+        const playerRef = doc(db, 'Players', userId);
         const unsubscribe = onSnapshot(playerRef, (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data() as PlayerData;
                 setPlayerData(data);
                 setIsPETMember(data.isPETMember || false);
+                // Redirect to home page on successful login
+                if (window.location.pathname === '/') {
+                    navigate('/home');
+                }
             } else {
-                const newPlayerData = createNewPlayerData(user);
-                setDoc(playerRef, newPlayerData);
+                if (firebaseUser) {
+                    const newPlayerData = createNewPlayerData(firebaseUser, wagmiAddress);
+                    setDoc(playerRef, newPlayerData);
+                } else {
+                    // Handle creation for wagmi-only users if needed
+                    console.log('User signed in with Wagmi but no Firebase user found.');
+                }
             }
             setIsPending(false);
-            setAuthLoading(false);
             setInitialAuthCheckComplete(true);
         }, (error) => {
             console.error("Firestore snapshot error:", error);
             setShowMessage("⚠️ Could not load player data.");
             setIsPending(false);
-            setAuthLoading(false);
         });
 
         return () => unsubscribe();
-    }, [user, setShowMessage]);
+    }, [userId, firebaseUser, wagmiAddress, setShowMessage, navigate]);
 
-
-    // --- Firestore Callbacks ---
     const updatePlayerFirestore = useCallback(async (updates: Partial<PlayerData>) => {
-        if (!user) return;
-        await updateDoc(doc(db, 'Players', user.uid), { ...updates, updatedAt: serverTimestamp() });
-    }, [user]);
+        if (!userId) return;
+        await updateDoc(doc(db, 'Players', userId), { ...updates, updatedAt: serverTimestamp() });
+    }, [userId]);
 
     const logTransaction = useCallback(async (txData: Omit<Transaction, 'transactionId' | 'timestamp'>) => {
-        if (!user) return;
+        if (!userId) return;
         await addDoc(collection(db, 'Transactions'), { ...txData, timestamp: serverTimestamp() });
-    }, [user]);
+    }, [userId]);
 
 
-    // --- Memoized Props for Child Components ---
     const pageProps = useMemo(() => ({
-        userId: user?.uid || null,
+        userId,
         activeModal, setActiveModal,
         setShowMessage, setIsPETMember,
         updatePlayerFirestore, logTransaction,
@@ -139,24 +133,24 @@ const App: FC = () => {
         initialAuthCheckComplete,
         isPETMember,
         playerData,
-    }), [user, playerData, isPending, authLoading, initialAuthCheckComplete, isPETMember, activeModal, setActiveModal, setShowMessage, updatePlayerFirestore, logTransaction]);
+    }), [userId, playerData, isPending, authLoading, initialAuthCheckComplete, isPETMember, activeModal, setActiveModal, setShowMessage, updatePlayerFirestore, logTransaction]);
 
     const topNavProps = useMemo(() => ({
-        userId: user?.uid || null,
+        userId,
         jewelsBalance: playerData?.joules ?? 0,
         isPETMember,
         setShowMessage,
         setActiveAuthModal: () => setActiveModal('auth'),
         setShowPaymentModal: (show: boolean) => setActiveModal(show ? 'payment' : null),
-    }), [user, playerData, isPETMember, setShowMessage, setActiveModal]);
+    }), [userId, playerData, isPETMember, setShowMessage, setActiveModal]);
     
     const bottomNavProps = useMemo(() => ({
-        userId: user?.uid || null,
+        userId,
         jewelsBalance: playerData?.joules ?? 0,
         isPETMember,
         setShowMessage,
         globalMessage: showMessage,
-    }), [user, playerData, isPETMember, setShowMessage, showMessage]);
+    }), [userId, playerData, isPETMember, setShowMessage, showMessage]);
 
 
     if (authLoading && !initialAuthCheckComplete) {
@@ -170,13 +164,19 @@ const App: FC = () => {
                 <main className="flex-grow pt-16 pb-16">
                     <Routes>
                         <Route path="/" element={<SwytchErrorBoundary {...pageProps}><LandingPage {...pageProps} /></SwytchErrorBoundary>} />
-                        <Route path="/home" element={<SwytchErrorBoundary {...pageProps}><Home {...pageProps} /></SwytchErrorBoundary>} />
-                        <Route path="/vault" element={<SwytchErrorBoundary {...pageProps}><Vault {...pageProps} /></SwytchErrorBoundary>} />
-                        <Route path="/shop" element={<SwytchErrorBoundary {...pageProps}><Shop {...pageProps} /></SwytchErrorBoundary>} />
-                        <Route path="/community" element={<SwytchErrorBoundary {...pageProps}><Community {...pageProps} /></SwytchErrorBoundary>} />
-                        <Route path="/membership" element={<SwytchErrorBoundary {...pageProps}><Membership {...pageProps} /></SwytchErrorBoundary>} />
-                        <Route path="/inventory" element={<SwytchErrorBoundary {...pageProps}><Inventory {...pageProps} /></SwytchErrorBoundary>} />
-                        <Route path="/admin" element={<SwytchErrorBoundary {...pageProps}><AdminPage {...pageProps} /></SwytchErrorBoundary>} />
+                        {userId ? (
+                            <>
+                                <Route path="/home" element={<SwytchErrorBoundary {...pageProps}><Home {...pageProps} /></SwytchErrorBoundary>} />
+                                <Route path="/vault" element={<SwytchErrorBoundary {...pageProps}><Vault {...pageProps} /></SwytchErrorBoundary>} />
+                                <Route path="/shop" element={<SwytchErrorBoundary {...pageProps}><Shop {...pageProps} /></SwytchErrorBoundary>} />
+                                <Route path="/community" element={<SwytchErrorBoundary {...pageProps}><Community {...pageProps} /></SwytchErrorBoundary>} />
+                                <Route path="/membership" element={<SwytchErrorBoundary {...pageProps}><Membership {...pageProps} /></SwytchErrorBoundary>} />
+                                <Route path="/inventory" element={<SwytchErrorBoundary {...pageProps}><Inventory {...pageProps} /></SwytchErrorBoundary>} />
+                                <Route path="/admin" element={<SwytchErrorBoundary {...pageProps}><AdminPage {...pageProps} /></SwytchErrorBoundary>} />
+                            </>
+                        ) : (
+                            <Route path="*" element={<SwytchErrorBoundary {...pageProps}><LandingPage {...pageProps} /></SwytchErrorBoundary>} />
+                        )}
                     </Routes>
                 </main>
                 <BottomNav {...bottomNavProps} />
