@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Sparkles, Swords, Users, Shield, Trophy, Gem, DollarSign, Lock, Gamepad2, Map } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import StarfieldBackground from '../components/StarfieldBackground';
 import UserOverviewCard from '../components/home/UserOverviewCard';
 import MembershipStatusOverview from '../components/home/MembershipStatusOverview';
 import QuickAccessGames from '../components/home/QuickAccessGames';
@@ -12,7 +11,6 @@ import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/f
 import { db } from '../lib/firebaseConfig';
 import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
 
-// Animation variants (unchanged)
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.3 } },
@@ -36,7 +34,6 @@ const Home: FC<PageProps> = ({
 }) => {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
 
-  // useEffect and handleShareOnX logic remains unchanged
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
@@ -108,10 +105,8 @@ const Home: FC<PageProps> = ({
         initial="hidden"
         animate="visible"
       >
-        <StarfieldBackground />
         <div className="relative z-10 max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-20">
           
-          {/* ## Hero Section -> Welcome Banner ## */}
           <motion.section variants={sectionVariants} className="text-center">
             <Sparkles className="mx-auto w-16 h-16 text-[hsl(var(--secondary))] animate-neon-pulse mb-4" />
             <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-4 text-glow-primary tracking-tight">
@@ -122,7 +117,6 @@ const Home: FC<PageProps> = ({
             </p>
           </motion.section>
 
-          {/* ## User Dashboard -> Consolidated Status Section ## */}
           <motion.section variants={sectionVariants}>
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-secondary tracking-tight">
               <Shield className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
@@ -146,7 +140,6 @@ const Home: FC<PageProps> = ({
             </div>
           </motion.section>
 
-          {/* ## Quick Actions -> Consolidated Mission Control ## */}
           <motion.section variants={sectionVariants}>
              <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-accent tracking-tight">
                 <Trophy className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
@@ -164,7 +157,6 @@ const Home: FC<PageProps> = ({
           </motion.section>
 
 
-          {/* ## Core Features Showcase ## */}
           <motion.section variants={sectionVariants}>
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-primary tracking-tight">
               <Swords className="inline-block w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-3" />
@@ -189,10 +181,8 @@ const Home: FC<PageProps> = ({
             </div>
           </motion.section>
 
-          {/* ## Info Hub -> Journey & Community ## */}
           <motion.section variants={sectionVariants}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Galactic Journey Card */}
                 <div className="p-8 rounded-lg border border-[hsl(var(--accent),0.2)] bg-gradient-to-br from-[hsl(var(--accent),0.1)] to-transparent flex flex-col items-center text-center">
                     <Map className="w-12 h-12 text-[hsl(var(--accent))] animate-neon-pulse mb-4" />
                     <h3 className="text-3xl font-bold text-foreground font-russo text-glow-accent tracking-tight mb-3">Your Galactic Journey</h3>
@@ -200,7 +190,6 @@ const Home: FC<PageProps> = ({
                     <Link to="/profile" className="btn-system-glow-accent text-lg font-russo w-fit px-6 py-3 mt-auto">View Journey</Link>
                 </div>
 
-                {/* Community Hub Card */}
                 <div className="p-8 rounded-lg border border-[hsl(var(--secondary),0.2)] bg-gradient-to-br from-[hsl(var(--secondary),0.1)] to-transparent flex flex-col items-center text-center">
                     <Users className="w-12 h-12 text-[hsl(var(--secondary))] animate-neon-pulse mb-4" />
                     <h3 className="text-3xl font-bold text-foreground font-russo text-glow-secondary tracking-tight mb-3">Cosmic Community</h3>
@@ -210,7 +199,6 @@ const Home: FC<PageProps> = ({
             </div>
           </motion.section>
 
-          {/* ## Footer Actions ## */}
            <motion.section variants={sectionVariants} className="text-center py-8 border-t border-border/20">
              <div className="flex flex-wrap justify-center items-center gap-6">
                 <p className="text-xl font-russo text-glow-primary">Ready for the next adventure?</p>
@@ -225,7 +213,6 @@ const Home: FC<PageProps> = ({
                 </Link>
              </div>
            </motion.section>
-
         </div>
       </motion.div>
     </SwytchErrorBoundary>

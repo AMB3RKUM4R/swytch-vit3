@@ -31,38 +31,31 @@ const queryClient = new QueryClient({
 
 // Initial options for the PayPal SDK
 const initialPayPalOptions = {
-    // Use the environment variable, but provide "sb" as a safe fallback
-    // "sb" is a special value that loads the SDK in sandbox mode without needing a real client ID.
     clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID || "sb",
     currency: "USD",
     intent: "capture",
 };
 
-/**
- * The Root component sets up all necessary global context providers
- * for the application to function correctly.
- */
 const Root: React.FC = () => {
-  return (
-    <React.StrictMode>
-      <BrowserRouter>
-        <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <RainbowKitProvider theme={darkTheme({})}>
+  return (
+    <React.StrictMode>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <WagmiProvider config={wagmiConfig}>
+            <RainbowKitProvider theme={darkTheme({})}>
               <PayPalScriptProvider options={initialPayPalOptions}>
-                <ThemeProvider>
-                  <ModalProvider>
-                    <App />
-                  </ModalProvider>
-                </ThemeProvider>
+                <ThemeProvider>
+                  <ModalProvider>
+                    <App />
+                  </ModalProvider>
+                </ThemeProvider>
               </PayPalScriptProvider>
-            </RainbowKitProvider>
-          </WagmiProvider>
-        </QueryClientProvider>
-      </BrowserRouter>
-    </React.StrictMode>
-  );
+            </RainbowKitProvider>
+          </WagmiProvider>
+        </QueryClientProvider>
+      </BrowserRouter>
+    </React.StrictMode>
+  );
 };
 
-// Render the application to the DOM
 ReactDOM.createRoot(document.getElementById('root')!).render(<Root />);

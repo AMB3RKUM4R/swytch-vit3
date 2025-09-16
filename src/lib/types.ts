@@ -26,7 +26,7 @@ export type TransactionStatus = 'success' | 'pending' | 'failed' | 'approved' | 
 export interface InventoryItem {
   itemId: string;       // Reference to the blueprint in /ItemDefinitions
   acquiredAt: Timestamp;
-  isListed?: boolean;  // FIXED: Added optional property for market listings
+  isListed?: boolean;
 }
 
 // This is the blueprint for an item, fetched from the /ItemDefinitions collection.
@@ -45,7 +45,6 @@ export interface ItemDefinition {
   };
 }
 
-// This now perfectly matches our final PlayerData structure for Unity.
 export interface PlayerData {
   userId: string;
   username: string;
@@ -77,7 +76,6 @@ export interface PlayerData {
   } | null;
 }
 
-// Aligned with our final Firestore Rules and structure.
 export interface Transaction {
   transactionId: string;
   userId: string;
@@ -88,7 +86,12 @@ export interface Transaction {
   timestamp: Timestamp | FieldValue;
   itemId?: string | null;
   paymentGatewayId?: string | null;
+  
+  // NEW: Fields for smart contract integration
+  smartContractAddress?: string; // Address of the contract involved
+  transactionHash?: `0x${string}`; // On-chain transaction hash
 }
+
 // ==========================================================
 // Component & Page Props
 // ==========================================================

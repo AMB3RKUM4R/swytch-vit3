@@ -16,7 +16,6 @@ import PaymentModal from '@/components/PaymentModal';
 import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
 import LoadingScreen from '@/components/LoadingScreen';
-import StarfieldBackground from '@/components/StarfieldBackground';
 
 // Pages
 import Home from '@/pages/Home';
@@ -31,7 +30,7 @@ import AdminPage from '@/pages/AdminPage';
 // Types
 import { PlayerData, Transaction } from '@/lib/types';
 
-// Helper function to create new player data
+// The new player creation function now matches your Firestore rules
 const createNewPlayerData = (user: { uid: string; email: string | null; phoneNumber: string | null; }): PlayerData => {
     const now = Timestamp.now();
     return {
@@ -39,23 +38,19 @@ const createNewPlayerData = (user: { uid: string; email: string | null; phoneNum
         username: `Hunter${Math.floor(1000 + Math.random() * 9000)}`,
         email: user.email,
         phoneNumber: user.phoneNumber,
-        jewels: 100,
-        gold: 1000,
-        level: 1,
-        xp: 0,
-        energy: 100,
-        mana: 50,
-        isPETMember: false,
-        membership: 'none',
+        joules: 0, // Enforcing rules: must be 0 on creation
+        gold: 0, // Enforcing rules: must be 0 on creation
+        level: 1, // Enforcing rules: must be 1 on creation
+        xp: 0, // Enforcing rules: must be 0 on creation
+        energy: 100, // Enforcing rules: must be 100 on creation
+        mana: 100, // Enforcing rules: must be 100 on creation
+        isPETMember: true, // Enforcing rules: must be true on creation
+        membership: 'ecosystem', // Enforcing rules: must be 'ecosystem' on creation
         walletAddress: null,
         character: null,
-        chest: null,
-        key: null,
         inventory: null,
-        lastBonusTime: null,
         createdAt: now,
         updatedAt: now,
-        transactions: [],
     };
 };
 
@@ -137,18 +132,18 @@ const App: FC = () => {
         activeModal, setActiveModal,
         setShowMessage, setIsPETMember,
         updatePlayerFirestore, logTransaction,
-        jewelsBalance: playerData?.jewels ?? 0,
+        jewelsBalance: playerData?.joules ?? 0,
         goldBalance: playerData?.gold ?? 0,
         currentLevel: playerData?.level ?? 0,
         isPending, authLoading,
         initialAuthCheckComplete,
         isPETMember,
         playerData,
-    }), [user, playerData, isPending, authLoading, initialAuthCheckComplete, isPETMember, activeModal, setActiveModal, setShowMessage, setIsPETMember, updatePlayerFirestore, logTransaction]);
+    }), [user, playerData, isPending, authLoading, initialAuthCheckComplete, isPETMember, activeModal, setActiveModal, setShowMessage, updatePlayerFirestore, logTransaction]);
 
     const topNavProps = useMemo(() => ({
         userId: user?.uid || null,
-        jewelsBalance: playerData?.jewels ?? 0,
+        jewelsBalance: playerData?.joules ?? 0,
         isPETMember,
         setShowMessage,
         setActiveAuthModal: () => setActiveModal('auth'),
@@ -157,7 +152,7 @@ const App: FC = () => {
     
     const bottomNavProps = useMemo(() => ({
         userId: user?.uid || null,
-        jewelsBalance: playerData?.jewels ?? 0,
+        jewelsBalance: playerData?.joules ?? 0,
         isPETMember,
         setShowMessage,
         globalMessage: showMessage,
@@ -170,10 +165,9 @@ const App: FC = () => {
 
     return (
         <div className={`min-h-screen flex flex-col font-inter bg-noise`}>
-            <StarfieldBackground />
             <div className="relative z-10 flex flex-col min-h-screen overflow-y-auto">
                 <TopNav {...topNavProps} />
-                <main className="flex-grow pt-16 pb-16"> {/* Padding to avoid overlap */}
+                <main className="flex-grow pt-16 pb-16">
                     <Routes>
                         <Route path="/" element={<SwytchErrorBoundary {...pageProps}><LandingPage {...pageProps} /></SwytchErrorBoundary>} />
                         <Route path="/home" element={<SwytchErrorBoundary {...pageProps}><Home {...pageProps} /></SwytchErrorBoundary>} />

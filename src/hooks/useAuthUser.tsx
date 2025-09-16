@@ -18,11 +18,11 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth as firebaseAuth, db } from '@/lib/firebaseConfig';
 import { useAccount } from 'wagmi';
-import { PlayerData, MembershipTier } from '@/lib/types'; // Import PlayerData and MembershipTier
+import { PlayerData, MembershipTier } from '@/lib/types';
 
 interface AuthUserHook {
   user: User | null;
-  membership: MembershipTier | null; // Use MembershipTier for consistency
+  membership: MembershipTier | null;
   isPETMember: boolean;
   loading: boolean;
   error: string | null;
@@ -39,7 +39,7 @@ interface AuthUserHook {
 
 export const useAuthUser = (): AuthUserHook => {
   const [user, setUser] = useState<User | null>(null);
-  const [membership, setMembership] = useState<MembershipTier | null>(null); // Use MembershipTier
+  const [membership, setMembership] = useState<MembershipTier | null>(null);
   const [isPETMember, setIsPETMember] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,37 +60,33 @@ export const useAuthUser = (): AuthUserHook => {
           const userRef = doc(db, 'Players', u.uid);
           const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
-            // Create new player document with default values based on Firestore rules
+            // FIX: Updated `newPlayerData` to strictly match the Firestore rules
             const newPlayerData: PlayerData = {
               userId: u.uid,
-              username: u.displayName || u.email?.split('@')[0] || 'New Player', // Improved default username
+              username: u.displayName || u.email?.split('@')[0] || 'New Player',
               email: u.email || null,
               phoneNumber: u.phoneNumber || null,
-              jewels: 0,
+              joules: 0,
               gold: 0,
-              level: 0,
-              isPETMember: false,
-              membership: 'none',
+              level: 1,
+              isPETMember: true,
+              membership: 'ecosystem',
               walletAddress: address || null,
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
-              character: null, // Default to null as per rules
-              chest: null, // Default to null as per rules
-              energy: 100, // Default to 100 as per rules
-              mana: 100, // Default to 100 as per rules
-              xp: 0, // Default to 0 as per rules
-              key: null, // Default to null as per rules
-              inventory: { equipped: { armor: '', weapon: '' }, items: {} }, // Default empty inventory
-              lastBonusTime: null, // Default to null
+              character: null,
+              energy: 100,
+              mana: 100,
+              xp: 0,
+              inventory: null, // As per rules, inventory is not created on first login
             };
             await setDoc(userRef, newPlayerData);
-            setMembership('none');
-            setIsPETMember(false);
+            setMembership('ecosystem');
+            setIsPETMember(true);
           } else {
-            const userData = userSnap.data() as PlayerData; // Cast to PlayerData
+            const userData = userSnap.data() as PlayerData;
             setMembership(userData.membership || 'none');
             setIsPETMember(userData.isPETMember || false);
-            // Update walletAddress if connected and different
             if (address && userData.walletAddress !== address) {
               await setDoc(userRef, { walletAddress: address, updatedAt: serverTimestamp() }, { merge: true });
             }
@@ -108,7 +104,7 @@ export const useAuthUser = (): AuthUserHook => {
       }
     });
     return () => unsubscribe();
-  }, [address]); // Added address as dependency to react to wallet changes
+  }, [address]);
 
   const handleSignInPopup = async (provider: any) => {
     setLoading(true);
@@ -149,27 +145,25 @@ export const useAuthUser = (): AuthUserHook => {
       const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
       const newUser = userCredential.user;
       const userRef = doc(db, 'Players', newUser.uid);
+      // FIX: Updated `newPlayerData` to strictly match the Firestore rules
       const newPlayerData: PlayerData = {
         userId: newUser.uid,
         username: name || newUser.email?.split('@')[0] || 'New Player',
         email: newUser.email || null,
         phoneNumber: newUser.phoneNumber || null,
-        jewels: 0,
+        joules: 0,
         gold: 0,
-        level: 0,
-        isPETMember: false,
-        membership: 'none',
+        level: 1,
+        isPETMember: true,
+        membership: 'ecosystem',
         walletAddress: address || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         character: null,
-        chest: null,
         energy: 100,
         mana: 100,
         xp: 0,
-        key: null,
-        inventory: { equipped: { armor: '', weapon: '' }, items: {} },
-        lastBonusTime: null,
+        inventory: null,
       };
       await setDoc(userRef, newPlayerData);
     } catch (err: any) {

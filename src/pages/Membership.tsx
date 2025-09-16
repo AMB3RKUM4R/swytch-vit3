@@ -1,4 +1,3 @@
-// src/pages/Membership.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -6,12 +5,36 @@ import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/f
 import { db } from '../lib/firebaseConfig';
 import { Sparkles, Star, Users, Award } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import StarfieldBackground from '../components/StarfieldBackground';
 import MembershipUpgrade from '../components/membership/MembershipUpgrade';
 import SwytchLevelsGrid from '../components/membership/SwytchLevelsGrid';
 import { PageProps, SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
+import { useWriteContract } from 'wagmi';
+import { parseEther } from 'viem';
 
-// Animation variants
+// Placeholder for your smart contract info
+const DEPOSITORY_CONTRACT_ADDRESS = '0xYourDepositoryContractAddressHere' as `0x${string}`;
+const DEPOSITORY_CONTRACT_ABI = [
+  // This should contain the ABI for your contract's membership purchase function
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint64",
+        "name": "_tier",
+        "type": "uint64"
+      }
+    ],
+    "name": "deposit",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+] as const;
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.3 } },
@@ -34,8 +57,9 @@ const Membership: FC<PageProps> = ({
   initialAuthCheckComplete,
 }) => {
   const [, setPlayerData] = useState<PlayerData | null>(null);
+  
+  const { writeContract } = useWriteContract();
 
-  // All logic (useEffect, handlers) remains unchanged
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
@@ -68,33 +92,41 @@ const Membership: FC<PageProps> = ({
     }
   }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
-  const handlePurchaseLevel = useCallback(async (level: { id: string; name: string; cost: number; contentRoute: string }) => {
+  const handlePurchaseLevel = useCallback(async (level: { id: string; name: string; cost: number; contentRoute: string; level: number; }) => {
     if (!userId) {
       setShowMessage('⚠️ Please connect your wallet or log in.');
       setActiveModal('auth');
       return;
     }
+    
     try {
-      const transactionId = `${userId}_level_purchase_${level.id}_${Date.now()}`;
+      writeContract({
+        address: DEPOSITORY_CONTRACT_ADDRESS,
+        abi: DEPOSITORY_CONTRACT_ABI,
+        functionName: 'deposit',
+        args: [BigInt(parseEther(level.cost.toString())), BigInt(level.level)],
+        value: parseEther(level.cost.toString()),
+      });
+
+      setShowMessage(`ℹ️ Membership upgrade to ${level.name} submitted! Awaiting payment confirmation.`);
+
       await addDoc(collection(db, 'Transactions'), {
-        transactionId,
         userId,
         amount: level.cost,
-        currency: 'INR' as SupportedCurrency,
+        currency: 'ETH' as SupportedCurrency,
         transactionType: 'level-purchase' as TransactionType,
         status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
         game: 'membership',
         itemId: level.id,
       });
-      setShowMessage(`ℹ️ Membership upgrade to ${level.name} submitted! Awaiting payment confirmation.`);
-      setActiveModal('payment');
+
     } catch (err) {
       console.error('Level purchase error:', err);
       setShowMessage('⚠️ Failed to initiate level purchase. Try again.');
       setActiveModal('error');
     }
-  }, [userId, setShowMessage, setActiveModal]);
+  }, [userId, setShowMessage, setActiveModal, writeContract]);
 
   const handleShareOnX = useCallback(async () => {
     if (!userId) {
@@ -135,10 +167,8 @@ const Membership: FC<PageProps> = ({
         initial="hidden"
         animate="visible"
       >
-        <StarfieldBackground />
         <div className="relative z-10 max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-20">
           
-          {/* ## Header Section ## */}
           <motion.section variants={sectionVariants} className="text-center">
             <Star className="mx-auto w-16 h-16 text-[hsl(var(--secondary))] animate-neon-pulse mb-4" />
             <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-4 text-glow-primary tracking-tight">
@@ -149,7 +179,6 @@ const Membership: FC<PageProps> = ({
             </p>
           </motion.section>
 
-          {/* ## Membership Tiers Section ## */}
           <motion.section variants={sectionVariants}>
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-secondary tracking-tight">
               <Award className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
@@ -167,7 +196,6 @@ const Membership: FC<PageProps> = ({
               />
           </motion.section>
 
-          {/* ## Membership Upgrade Section (if applicable) ## */}
            <motion.section variants={sectionVariants}>
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-accent tracking-tight">
               <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--primary))] animate-neon-pulse mr-3" />
@@ -185,7 +213,6 @@ const Membership: FC<PageProps> = ({
           </motion.section>
 
 
-          {/* ## Final CTA Section ## */}
           <motion.section variants={sectionVariants} className="text-center p-8 bg-black/20 rounded-lg border border-[hsl(var(--primary),0.1)] backdrop-blur-sm">
              <h2 className="text-3xl font-bold text-foreground font-russo mb-4 text-glow-primary tracking-tight">
                 Connect & Share Your Ascent

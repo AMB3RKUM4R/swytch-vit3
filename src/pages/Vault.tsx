@@ -6,10 +6,8 @@ import { db } from '../lib/firebaseConfig';
 import { Wallet, Info, DollarSign, Star, SlidersHorizontal } from 'lucide-react';
 import { useAccount, useGasPrice, useBalance, useChainId, useBlockNumber } from 'wagmi';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import StarfieldBackground from '../components/StarfieldBackground';
 import VaultWalletInfo from '../components/vault/VaultWalletInfo';
 import VaultMembershipPackages from '../components/vault/VaultMembershipPackages';
-import CryptoSwapModule from '../components/vault/CryptoSwapModule';
 import VaultRules from '../components/vault/VaultRules';
 import YieldCalculator from '../components/vault/YieldCalculator';
 import { PageProps, PlayerData } from '../lib/types';
@@ -36,7 +34,6 @@ export const Vault: FC<PageProps> = ({
   setActiveModal,
   setShowMessage,
   setIsPETMember,
-  updatePlayerFirestore,
   isPending,
   authLoading,
   initialAuthCheckComplete,
@@ -44,14 +41,12 @@ export const Vault: FC<PageProps> = ({
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'swaps' | 'membership' | 'tools'>('info');
 
-  // Wagmi hooks provide live blockchain data
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { data: gasPrice } = useGasPrice();
   const { data: usdtBalance } = useBalance({ address, token: '0xdAC17F958D2ee523a2206206994597C13D831ec7' });
   const { data: currentBlockNumber } = useBlockNumber({ watch: true });
 
-  // All core logic for data fetching and handlers remains
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
@@ -74,7 +69,7 @@ export const Vault: FC<PageProps> = ({
 
   const handleMembershipPayment = useCallback(async (packageName: string) => {
     if (!userId) { setShowMessage('⚠️ Sign in to buy membership!'); setActiveModal('auth'); return; }
-    setShowMessage(`Initiating purchase for ${packageName}...`);
+    setShowMessage(`ℹ️ Initiating purchase for ${packageName}...`);
     setActiveModal('payment');
   }, [userId, setShowMessage, setActiveModal]);
 
@@ -86,12 +81,6 @@ export const Vault: FC<PageProps> = ({
     }, 1500);
   }, [setShowMessage]);
   
-  // (shareOnX function can be added here if needed)
-
-  if (authLoading || isPending) {
-    return null;
-  }
-
   const renderTabContent = () => {
     switch (activeTab) {
         case 'info':
@@ -103,7 +92,7 @@ export const Vault: FC<PageProps> = ({
         case 'swaps':
             return (
                 <motion.div key="swaps" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
-                    <CryptoSwapModule userId={userId} setShowMessage={setShowMessage} setActiveModal={setActiveModal} updatePlayerFirestore={updatePlayerFirestore} isConnected={isConnected} walletAddress={address || null} />
+                    <p className="text-center text-gray-400">Please use the payment modal to make a crypto deposit or swap.</p>
                 </motion.div>
             );
         case 'membership':
@@ -129,6 +118,10 @@ export const Vault: FC<PageProps> = ({
     }
   }
 
+  if (authLoading || isPending) {
+    return null;
+  }
+
   return (
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
@@ -137,10 +130,8 @@ export const Vault: FC<PageProps> = ({
         initial="hidden"
         animate="visible"
       >
-        <StarfieldBackground />
         <div className="relative z-10 max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-12">
           
-          {/* ## Header Section ## */}
           <motion.section variants={sectionVariants} className="text-center">
             <Wallet className="mx-auto w-16 h-16 text-[hsl(var(--secondary))] animate-neon-pulse mb-4" />
             <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-4 text-glow-primary tracking-tight">
@@ -151,7 +142,6 @@ export const Vault: FC<PageProps> = ({
             </p>
           </motion.section>
 
-          {/* ## Tabbed Interface ## */}
           <motion.section variants={sectionVariants}>
             <div className="flex justify-center items-center gap-2 sm:gap-4 mb-10 p-2 bg-black/20 border border-[hsl(var(--primary),0.1)] rounded-lg">
                 {(['info', 'swaps', 'membership', 'tools'] as const).map(tab => (

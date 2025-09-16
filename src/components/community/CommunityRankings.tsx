@@ -12,7 +12,7 @@ interface LeaderboardEntry {
   rank: number;
   name: string;
   level: number; // Corrected type to number
-  jewels: number;
+  joules: number;
   avatar: string; // Added avatar property
 }
 
@@ -33,7 +33,7 @@ const CommunityRankings: FC<CommunityRankingsProps> = ({ /* userId, setActiveMod
     setError(null);
     const q = query(
       collection(db, 'Players'),
-      orderBy('jewels', 'desc'),
+      orderBy('joules', 'desc'),
       limit(10)
     );
 
@@ -46,7 +46,7 @@ const CommunityRankings: FC<CommunityRankingsProps> = ({ /* userId, setActiveMod
           rank: rank++,
           name: data.username,
           level: data.level,
-          jewels: data.joules,
+          joules: data.joules,
           avatar: "https://placehold.co/40x40/random/FFFFFF?text=U", // Placeholder or fetch from PlayerData
         });
       });
@@ -101,7 +101,7 @@ const CommunityRankings: FC<CommunityRankingsProps> = ({ /* userId, setActiveMod
               </div>
               <div className="flex items-center gap-2">
                 <Gem className="w-5 h-5 text-yellow-400" />
-                <p className="text-primary font-bold">{entry.jewels.toFixed(0)}</p>
+                <p className="text-primary font-bold">{entry.joules.toFixed(0)}</p>
               </div>
             </motion.div>
           ))}

@@ -2,13 +2,43 @@ import { FC, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Settings, UserPlus, BarChart2, ShieldAlert } from 'lucide-react';
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import StarfieldBackground from '../components/StarfieldBackground';
-import { db } from '../lib/firebaseConfig'; 
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { PageProps } from '../lib/types';
+
+// Placeholder for your smart contract info
+const DEPOSITORY_CONTRACT_ADDRESS = '0xYourDepositoryContractAddressHere' as `0x${string}`;
+const DEPOSITORY_CONTRACT_ABI = [
+  {
+    "inputs": [],
+    "name": "DEFAULT_ADMIN_ROLE",
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "bytes32", "name": "role", "type": "bytes32"},
+      {"internalType": "address", "name": "account", "type": "address"}
+    ],
+    "name": "grantRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "bytes32", "name": "role", "type": "bytes32"},
+      {"internalType": "address", "name": "account", "type": "address"}
+    ],
+    "name": "hasRole",
+    "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+] as const;
+
 
 // Animation variants
 const containerVariants = {
@@ -33,22 +63,36 @@ const AdminPage: FC<PageProps> = ({
   isPending,
   authLoading,
 }) => {
-  // Primary admin wallet address (case-insensitive comparison)
-  const adminWalletAddress = '0xDE9978913D9a969d799A2ba9381FB82450b92CE0';
-  
   const { address: connectedAddress } = useAccount();
-  const isAdmin = connectedAddress?.toLowerCase() === adminWalletAddress.toLowerCase();
-
   const [newAdminAddress, setNewAdminAddress] = useState('');
   const [updateLoading, setUpdateLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'management' | 'stats'>('management');
+
+  const { data: defaultAdminRole } = useReadContract({
+    address: DEPOSITORY_CONTRACT_ADDRESS,
+    abi: DEPOSITORY_CONTRACT_ABI,
+    functionName: 'DEFAULT_ADMIN_ROLE',
+  });
+
+  const { data: isAdmin } = useReadContract({
+    address: DEPOSITORY_CONTRACT_ADDRESS,
+    abi: DEPOSITORY_CONTRACT_ABI,
+    functionName: 'hasRole',
+    args: [defaultAdminRole!, connectedAddress!],
+    query: {
+      enabled: !!defaultAdminRole && !!connectedAddress,
+    },
+  });
+
+  const { data: hash, writeContract } = useWriteContract();
+  const { isLoading: isTxPending } = useWaitForTransactionReceipt({ hash });
+
 
   const handleGrantAdmin = useCallback(async () => {
     if (!isAdmin) {
       setShowMessage('⚠️ Access Denied: You are not authorized for this action.');
       return;
     }
-    // Basic address validation
     if (!/^0x[a-fA-F0-9]{40}$/.test(newAdminAddress.trim())) {
       setShowMessage('⚠️ Please enter a valid Ethereum wallet address.');
       return;
@@ -56,32 +100,29 @@ const AdminPage: FC<PageProps> = ({
 
     setUpdateLoading(true);
     try {
-      // This action should be secured by Firestore rules allowing only admins to write
-      const adminConfigRef = doc(db, 'AdminConfig', 'globalConfig');
-      await updateDoc(adminConfigRef, {
-        admins: arrayUnion(newAdminAddress.trim().toLowerCase()), // Store addresses in lowercase
+      writeContract({
+        address: DEPOSITORY_CONTRACT_ADDRESS,
+        abi: DEPOSITORY_CONTRACT_ABI,
+        functionName: 'grantRole',
+        args: [defaultAdminRole!, newAdminAddress.trim() as `0x${string}`],
       });
-      
-      setShowMessage(`✅ Admin access granted to address: ${newAdminAddress}!`);
-      setNewAdminAddress('');
+      setShowMessage(`✅ Transaction submitted to grant admin access!`);
     } catch (err) {
       console.error('Failed to grant admin access:', err);
       setShowMessage('⚠️ Operation failed. See console for details.');
     } finally {
       setUpdateLoading(false);
     }
-  }, [isAdmin, newAdminAddress, setShowMessage]);
+  }, [isAdmin, newAdminAddress, setShowMessage, writeContract, defaultAdminRole, connectedAddress]);
 
   if (authLoading || isPending) {
-    return null; // Render nothing during initial loading states
+    return null;
   }
 
-  // --- Access Denied View ---
   if (!isAdmin) {
     return (
       <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
         <div className="min-h-screen text-foreground font-orbitron bg-noise">
-          <StarfieldBackground />
           <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
             <motion.div variants={sectionVariants} initial="hidden" animate="visible" className="text-center p-8 bg-black/20 rounded-lg border border-[hsl(var(--destructive),0.2)] backdrop-blur-sm max-w-2xl">
               <ShieldAlert className="mx-auto w-16 h-16 text-[hsl(var(--destructive))] animate-pulse mb-4" />
@@ -101,7 +142,6 @@ const AdminPage: FC<PageProps> = ({
     );
   }
 
-  // --- Main Admin Dashboard ---
   return (
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
@@ -110,9 +150,7 @@ const AdminPage: FC<PageProps> = ({
         initial="hidden"
         animate="visible"
       >
-        <StarfieldBackground />
         <div className="relative z-10 max-w-5xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-12">
-            {/* Header */}
             <motion.section variants={sectionVariants} className="text-center">
                 <Settings className="mx-auto w-16 h-16 text-[hsl(var(--secondary))] animate-neon-pulse mb-4" />
                 <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-4 text-glow-primary tracking-tight">
@@ -123,7 +161,6 @@ const AdminPage: FC<PageProps> = ({
                 </p>
             </motion.section>
 
-            {/* Tabbed Interface */}
             <motion.section variants={sectionVariants}>
                 <div className="flex justify-center items-center gap-4 sm:gap-8 mb-10 p-2 bg-black/20 border border-[hsl(var(--primary),0.1)] rounded-lg">
                     {(['management', 'stats'] as const).map(tab => (
@@ -157,14 +194,14 @@ const AdminPage: FC<PageProps> = ({
                                         onChange={(e) => setNewAdminAddress(e.target.value)}
                                         className="input-system w-full flex-grow"
                                         aria-label="Wallet Address to Promote"
-                                        disabled={updateLoading}
+                                        disabled={updateLoading || isTxPending}
                                     />
                                     <button
                                         className="btn-system-glow w-full sm:w-auto flex-shrink-0"
                                         onClick={handleGrantAdmin}
-                                        disabled={updateLoading || !newAdminAddress.trim()}
+                                        disabled={updateLoading || isTxPending || !newAdminAddress.trim()}
                                     >
-                                        {updateLoading ? 'Granting...' : 'Grant Access'}
+                                        {updateLoading || isTxPending ? 'Granting...' : 'Grant Access'}
                                     </button>
                                 </div>
                                 <p className="text-xs text-muted-foreground text-center font-inter pt-2">

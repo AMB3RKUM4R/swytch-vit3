@@ -6,41 +6,35 @@
 
 @layer base {
   :root {
-    /* Refined cosmic color palette with improved contrast */
-    --background: 220 60% 10%; /* Dark blue background */
-    --foreground: 220 10% 90%; /* Light gray for text, high contrast */
-    --card: 220 50% 15%; /* Slightly lighter dark blue for cards */
-    --card-foreground: 220 10% 90%; /* Light gray for card text */
+    --background: 220 60% 10%;
+    --foreground: 220 10% 90%;
+    --card: 220 50% 15%;
+    --card-foreground: 220 10% 90%;
     --popover: 220 50% 15%;
     --popover-foreground: 220 10% 90%;
-    --primary: 270 80% 65%; /* Purple for highlights */
-    --primary-foreground: 220 10% 95%; /* Near-white for primary text */
-    --secondary: 200 100% 55%; /* Cyan for secondary elements */
+    --primary: 270 80% 65%;
+    --primary-foreground: 220 10% 95%;
+    --secondary: 200 100% 55%;
     --secondary-foreground: 220 10% 95%;
-    --muted: 220 20% 20%; /* Slightly lighter muted blue */
-    --muted-foreground: 220 20% 60%; /* Lighter gray for muted text */
-    --accent: 330 80% 60%; /* Pink for accents */
+    --muted: 220 20% 20%;
+    --muted-foreground: 220 20% 60%;
+    --accent: 330 80% 60%;
     --accent-foreground: 220 10% 95%;
-    --destructive: 330 80% 50%; /* Darker pink for errors */
+    --destructive: 330 80% 50%;
     --destructive-foreground: 220 10% 95%;
-    --border: 220 40% 25%; /* Brighter blue border for visibility */
-    --input: 220 50% 20%; /* Darker blue for input fields */
-    --input-foreground: 220 10% 90%; /* Light gray for input text */
-    --ring: 270 80% 65%; /* Purple for focus rings */
-
-    /* HSL for hsla() usage */
+    --border: 220 40% 25%;
+    --input: 220 50% 20%;
+    --input-foreground: 220 10% 90%;
+    --ring: 270 80% 65%;
     --primary-hsl: 270, 80%, 65%;
     --secondary-hsl: 200, 100%, 55%;
     --accent-hsl: 330, 80%, 60%;
     --destructive-hsl: 330, 80%, 50%;
-
-    /* Chart colors */
-    --chart-1: 270 80% 65%; /* Purple */
-    --chart-2: 200 100% 55%; /* Cyan */
-    --chart-3: 330 80% 60%; /* Pink */
-    --chart-4: 280 70% 50%; /* Darker purple */
-    --chart-5: 190 100% 50%; /* Light cyan */
-
+    --chart-1: 270 80% 65%;
+    --chart-2: 200 100% 55%;
+    --chart-3: 330 80% 60%;
+    --chart-4: 280 70% 50%;
+    --chart-5: 190 100% 50%;
     --radius: 0.75rem;
     --glass-blur: 14px;
     --glass-bg-dark-value: 15, 15, 25, 0.7;
@@ -51,7 +45,7 @@
   }
 
   html, body {
-    @apply min-h-screen font-inter text-foreground; /* Default to Inter for body text */
+    @apply min-h-screen font-inter text-foreground;
     background: hsl(var(--background));
     background-image:
       radial-gradient(circle at 50% 20%, hsla(var(--primary-hsl), 0.6) 0%, transparent 60%),
@@ -66,7 +60,6 @@
     z-index: 1;
   }
 
-  /* Particle effect for starry cosmos */
   body::before {
     content: "";
     position: fixed;
@@ -108,15 +101,15 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-orbitron text-foreground; /* Headers use Orbitron */
+    @apply font-orbitron text-foreground;
   }
 
   button, .btn {
-    @apply font-orbitron; /* Buttons use Orbitron */
+    @apply font-orbitron;
   }
 
   strong, b {
-    @apply font-russo; /* Emphasis uses Russo One */
+    @apply font-russo;
   }
 }
 
@@ -225,7 +218,7 @@
            focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
            font-inter placeholder-muted-foreground
            transition-all duration-300 ease-in-out shadow-[0_0_15px_hsla(var(--primary-hsl),0.4)];
-    color: hsl(var(--input-foreground)); /* Use CSS variable directly */
+    color: hsl(var(--input-foreground));
     animation: rune-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 

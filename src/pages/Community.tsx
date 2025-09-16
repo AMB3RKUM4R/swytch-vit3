@@ -5,7 +5,6 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import { MessageCircleHeart, Users, Award, HelpCircle } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import StarfieldBackground from '../components/StarfieldBackground';
 import CommunityChat from '../components/community/CommunityChat';
 import CommunityRankings from '../components/community/CommunityRankings';
 import { PageProps, Quest, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
@@ -44,14 +43,12 @@ const Community: FC<PageProps> = ({
   const [quests] = useState<Quest[]>(initialQuests);
   const [activeTab, setActiveTab] = useState<'chat' | 'rankings' | 'quests'>('chat');
 
-  // Logic for quests and authentication remains unchanged
   useEffect(() => {
     if (userId) {
       if (initialAuthCheckComplete) {
         const visitQuest = quests.find((q) => q.id === "community-visit");
         if (visitQuest && !visitQuest.completed) {
           setShowMessage('🎉 Quest "Visit Community Hub" complete! Reward pending.');
-          // Here you would typically update the user's quest progress in Firestore
         }
       }
     } else if (initialAuthCheckComplete) {
@@ -100,13 +97,18 @@ const Community: FC<PageProps> = ({
       case 'chat':
         return (
           <motion.div key="chat" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
-            <CommunityChat userId={userId} setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
+            <CommunityChat  />
           </motion.div>
         );
       case 'rankings':
         return (
             <motion.div key="rankings" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
-                <CommunityRankings userId={userId} setActiveModal={setActiveModal} setShowMessage={setShowMessage} leaderboard={[]} />
+                <CommunityRankings
+                  userId={userId}
+                  setActiveModal={setActiveModal}
+                  setShowMessage={setShowMessage}
+                  leaderboard={[]} // Replace with actual leaderboard data if available
+                />
             </motion.div>
         );
       case 'quests':
@@ -141,10 +143,8 @@ const Community: FC<PageProps> = ({
         initial="hidden"
         animate="visible"
       >
-        <StarfieldBackground />
         <div className="relative z-10 max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-12">
           
-          {/* ## Simplified Header Section ## */}
           <motion.section variants={sectionVariants} className="text-center">
             <Users className="mx-auto w-16 h-16 text-[hsl(var(--secondary))] animate-neon-pulse mb-4" />
             <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-4 text-glow-primary tracking-tight">
@@ -155,9 +155,7 @@ const Community: FC<PageProps> = ({
             </p>
           </motion.section>
 
-          {/* ## Tabbed Interface ## */}
           <motion.section variants={sectionVariants}>
-            {/* Tab Navigation */}
             <div className="flex justify-center items-center gap-4 sm:gap-8 mb-10 p-2 bg-black/20 border border-[hsl(var(--primary),0.1)] rounded-lg">
                 {(['chat', 'rankings', 'quests'] as const).map(tab => (
                     <button
@@ -183,7 +181,6 @@ const Community: FC<PageProps> = ({
                 ))}
             </div>
 
-            {/* Tab Content */}
             <div className="min-h-[300px] p-4 sm:p-8 bg-black/20 rounded-lg border border-[hsl(var(--primary),0.1)] backdrop-blur-sm">
                 <AnimatePresence mode="wait">
                     {renderTabContent()}

@@ -1,8 +1,8 @@
-// src/components/market/RecentPurchases.tsx
+// src/components/RecentPurchases.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { History, ShoppingCart } from 'lucide-react';
-import SwytchCard from '../SwytchCard';
+import SwytchCard from './SwytchCard';
 import { Purchase } from '@/lib/types';
 
 interface RecentPurchasesProps {

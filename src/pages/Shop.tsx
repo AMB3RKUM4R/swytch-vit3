@@ -1,16 +1,11 @@
-// src/pages/Shop.tsx
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Store, ShoppingCart, Star, Wallet } from 'lucide-react';
-import { Timestamp } from 'firebase/firestore'; // Import Timestamp for the type check
-
 import SwytchErrorBoundary from '@/components/ErrorBoundaryComponent';
-import StarfieldBackground from '@/components/StarfieldBackground';
-import WalletSwapForms from '@/components/shop/WalletSwapForms';
-import RecentPurchases from '@/components/shop/RecentPurchases';
-import SwytchLevelsGrid from '@/components/membership/SwytchLevelsGrid';
-import { PageProps, Transaction, Purchase } from '@/lib/types';
+import RecentPurchases from '@/components/RecentPurchases';
+import { PageProps, Purchase } from '@/lib/types';
+import SwytchLevelsGrid from '../components/membership/SwytchLevelsGrid';
 
 const Shop: FC<PageProps> = ({
   userId,
@@ -20,29 +15,22 @@ const Shop: FC<PageProps> = ({
   currentLevel,
   isPending,
   authLoading,
-  playerData,
 }) => {
   const [activeTab, setActiveTab] = useState<'store' | 'wallet' | 'membership'>('store');
+  const [recentPurchasesData] = useState<Purchase[]>([]); // You'll fetch this data here
 
-  // ... (handlePurchaseLevel and other functions remain the same) ...
-
-  if (authLoading || isPending) {
-    return null;
-  }
-
-  // --- FIX: Safely convert Transaction[] to Purchase[] ---
-  const recentPurchasesData: Purchase[] = (playerData?.transactions?.slice(-5) || []).map((tx: Transaction): Purchase => ({
-    id: tx.transactionId,
-    avatar: '/default-avatar.png',
-    address: tx.walletAddress || tx.userId,
-    amount: `${tx.amount} ${tx.currency}`,
-    // This check ensures .toDate() is only called on actual Timestamp objects
-    timestamp: tx.timestamp instanceof Timestamp ? tx.timestamp.toDate() : new Date(),
-  }));
-
+  // You will need to implement this logic to call your smart contract
+  const handlePurchaseLevel = async (level: { id: string; name: string; cost: number; contentRoute: string; level: number; }) => {
+    if (!userId) {
+      setShowMessage('⚠️ Please sign in to purchase levels.');
+      setActiveModal('auth');
+      return;
+    }
+    // This function will be updated to call your smart contract
+    setShowMessage(`ℹ️ Initiating purchase for ${level.name}...`);
+  };
 
   const renderTabContent = () => {
-    // ... (the content of this function remains the same) ...
     switch (activeTab) {
         case 'store':
             return (
@@ -64,14 +52,15 @@ const Shop: FC<PageProps> = ({
             return (
                 <motion.div key="wallet">
                      <h3 className="text-3xl font-bold font-russo mb-4 text-glow-primary">Currency Exchange</h3>
-                    <WalletSwapForms userId={userId} setShowMessage={setShowMessage} updatePlayerFirestore={updatePlayerFirestore} />
+                    {/* The PaymentModal will be called from here to handle swaps */}
+                    <p className="text-center text-gray-400">Please visit the Vault page for payments and swaps.</p>
                 </motion.div>
             );
         case 'membership':
             return (
                 <motion.div key="membership">
                     <h3 className="text-3xl font-bold font-russo mb-4 text-glow-primary">Upgrade Your Membership</h3>
-                    <SwytchLevelsGrid userId={userId} currentLevel={currentLevel} isPending={isPending} authLoading={authLoading} updatePlayerFirestore={updatePlayerFirestore} handlePurchaseLevel={async () => {}} setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
+                    <SwytchLevelsGrid userId={userId} currentLevel={currentLevel} isPending={isPending} authLoading={authLoading} updatePlayerFirestore={updatePlayerFirestore} handlePurchaseLevel={handlePurchaseLevel} setActiveModal={setActiveModal} setShowMessage={setShowMessage} />
                 </motion.div>
             );
         default: return null;
@@ -84,7 +73,6 @@ const Shop: FC<PageProps> = ({
       <motion.div
         className="min-h-screen text-foreground font-orbitron bg-noise"
       >
-        <StarfieldBackground />
         <div className="relative z-10 max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-12">
           
           <motion.section className="text-center">

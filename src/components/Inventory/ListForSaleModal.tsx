@@ -1,27 +1,41 @@
+// src/components/Inventory/ListForSaleModal.tsx
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, DollarSign, Tag } from 'lucide-react';
 import { useTheme } from '@/components/context/ThemeContext';
 // UPDATED: All necessary types are now imported
-import { InventoryItem, ItemDefinition, SupportedCurrency } from '@/lib/types';
-// FIXED: Added missing Firestore imports
-import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebaseConfig';
-import { useAccount } from 'wagmi';
+import { InventoryItem, ItemDefinition, SupportedCurrency, PageProps } from '@/lib/types';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther } from 'viem';
 
-// Props are now aligned with our new types
-interface ListForSaleModalProps {
-  instance: InventoryItem;
+// Placeholder for the deployed marketplace contract information
+// You will need to replace this with your actual deployed contract address and ABI
+const MARKETPLACE_CONTRACT_ADDRESS = '0xYourMarketplaceContractAddressHere' as `0x${string}`;
+const MARKETPLACE_CONTRACT_ABI = [
+  // This should contain the ABI for your contract's listing function
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "tokenId", "type": "uint256"},
+      {"internalType": "uint256", "name": "price", "type": "uint256"},
+      {"internalType": "address", "name": "currency", "type": "address"}
+    ],
+    "name": "listItem",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+] as const;
+
+// FIX: The interface now extends PageProps to get all necessary props from the parent
+interface ListForSaleModalProps extends PageProps {
+  item: InventoryItem;
   definition: ItemDefinition;
-  instanceId: string; // The unique key for the item in the player's inventory
-  userId: string | null;
+  instanceId: string;
   onClose: () => void;
   onSuccess: (instanceId: string) => void;
-  setShowMessage: (message: string) => void;
 }
 
 const ListForSaleModal: FC<ListForSaleModalProps> = ({
-  instance,
   definition,
   instanceId,
   userId,
@@ -33,8 +47,9 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
   const { isConnected, address } = useAccount();
   const [price, setPrice] = useState<string>('');
   const [currency, setCurrency] = useState<SupportedCurrency>('JOULES');
-  const [loading, setLoading] = useState(false);
-  const [, setError] = useState<string | null>(null);
+  
+  const { data: hash, writeContract, isPending: isTxPending } = useWriteContract();
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
 
   const handleList = async () => {
     if (!userId || !address) {
@@ -46,47 +61,27 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     try {
-      const numericPrice = parseFloat(price);
-      const playerDocRef = doc(db, 'Players', userId);
-      // We will create a new top-level collection for all public market listings
-      const marketItemDocRef = doc(db, 'MarketListings', instanceId);
-
-      // 1. Create the public listing in the 'MarketListings' collection
-      await setDoc(marketItemDocRef, {
-        instanceId: instanceId,
-        itemId: instance.itemId,
-        sellerId: userId,
-        price: numericPrice,
-        currency: currency,
-        listedAt: serverTimestamp(),
-        itemName: definition.itemName,
-        rarity: definition.rarity,
-        itemType: definition.itemType,
+      // FIX: This now triggers an on-chain transaction instead of direct Firestore write.
+      writeContract({
+        address: MARKETPLACE_CONTRACT_ADDRESS,
+        abi: MARKETPLACE_CONTRACT_ABI,
+        functionName: 'listItem',
+        args: [BigInt(instanceId), parseEther(price), address as `0x${string}`], // Example args
       });
-
-      // 2. Mark the item as 'listed' in the player's private inventory
-      await updateDoc(playerDocRef, {
-        [`inventory.items.${instanceId}.isListed`]: true,
-        updatedAt: serverTimestamp()
-      });
-
-      setShowMessage(`✅ ${definition.itemName} listed for sale!`);
+      
+      setShowMessage(`ℹ️ Listing transaction submitted! Awaiting confirmation.`);
       onSuccess(instanceId);
 
     } catch (err: any) {
       console.error('Failed to list item for sale:', err);
-      setError(err.message || 'An unexpected error occurred.');
+      // FIX: The error is now caught by the wagmi hook
       setShowMessage('⚠️ Failed to list item for sale.');
-    } finally {
-      setLoading(false);
     }
   };
 
   const imageUrl = definition.visuals?.iconName;
+  const isLoading = isTxPending || isConfirming;
 
   return (
     <AnimatePresence>
@@ -137,11 +132,11 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
             <motion.button
               className="btn-primary w-full"
               onClick={handleList}
-              disabled={loading || !price || parseFloat(price) <= 0 || !isConnected}
+              disabled={isLoading || !price || parseFloat(price) <= 0 || !isConnected}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              {loading ? 'Listing...' : 'Confirm Listing'}
+              {isLoading ? 'Listing...' : 'Confirm Listing'}
             </motion.button>
           </div>
         </motion.div>
@@ -151,4 +146,3 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
 };
 
 export default ListForSaleModal;
-

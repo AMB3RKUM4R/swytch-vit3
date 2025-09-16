@@ -1,25 +1,19 @@
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, SetStateAction } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDocs, collection } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import { Link } from 'react-router-dom';
 import { Sparkles, Package, Store } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import StarfieldBackground from '../components/StarfieldBackground';
 import UserInventoryDisplay from '../components/Inventory/UserInventoryDisplay';
 import ListForSaleModal from '../components/Inventory/ListForSaleModal';
-import { PageProps, PlayerData, InventoryItem } from '../lib/types';
+import { PageProps, PlayerData, InventoryItem, ItemDefinition } from '../lib/types';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.3 } },
-};
+// Placeholder for your smart contract info
 
-const sectionVariants = {
-  hidden: { opacity: 0, y: 50 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } },
-};
+
+
 
 const Inventory: FC<PageProps> = ({
   userId,
@@ -27,15 +21,42 @@ const Inventory: FC<PageProps> = ({
   setShowMessage,
   isPending,
   authLoading,
-  updatePlayerFirestore,
   initialAuthCheckComplete,
+  activeModal,
+  updatePlayerFirestore,
+  logTransaction,
+  jewelsBalance,
+  goldBalance,
+  currentLevel,
+  isPETMember,
 }) => {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [playerInventoryItems, setPlayerInventoryItems] = useState<Record<string, InventoryItem>>({});
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [selectedItemDefinition, setSelectedItemDefinition] = useState<ItemDefinition | null>(null);
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
   const [showListForSaleModal, setShowListForSaleModal] = useState(false);
+  const [itemDefinitions, setItemDefinitions] = useState<Record<string, ItemDefinition>>({});
 
-  // All logic (useEffect, handlers) remains unchanged
+  const { data: mintHash } = useWriteContract();
+  useWaitForTransactionReceipt({ hash: mintHash });
+
+  useEffect(() => {
+    const fetchItemDefinitions = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "ItemDefinitions"));
+        const definitions: Record<string, ItemDefinition> = {};
+        querySnapshot.forEach((doc) => {
+          definitions[doc.id] = { id: doc.id, ...doc.data() } as ItemDefinition;
+        });
+        setItemDefinitions(definitions);
+      } catch (error) {
+        console.error("Error fetching item definitions:", error);
+      }
+    };
+    fetchItemDefinitions();
+  }, []);
+
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
@@ -68,21 +89,28 @@ const Inventory: FC<PageProps> = ({
     }
   }, [userId, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
-  const handleListForSale = (item: InventoryItem) => {
-    setSelectedItem(item);
+  const handleListForSale = (instance: InventoryItem, definition: ItemDefinition, instanceId: string) => {
+    setSelectedItem(instance);
+    setSelectedItemDefinition(definition);
+    setSelectedInstanceId(instanceId);
     setShowListForSaleModal(true);
+  };
+
+  const onListingSuccess = (instanceId: string) => {
+    const item = playerInventoryItems[instanceId];
+    const definition = itemDefinitions[item.itemId];
+    const itemName = definition?.itemName || 'Item';
+    setShowMessage(`✅ ${itemName} listed for sale! (Requires backend verification)`);
+    handleCloseListForSaleModal();
   };
 
   const handleCloseListForSaleModal = () => {
     setShowListForSaleModal(false);
     setSelectedItem(null);
+    setSelectedItemDefinition(null);
+    setSelectedInstanceId(null);
   };
-
-  const onListingSuccess = (updatedItem: InventoryItem) => {
-    setShowMessage(`✅ ${updatedItem.name} listed for sale! (Requires backend verification)`);
-    handleCloseListForSaleModal();
-  };
-
+  
   if (authLoading || isPending) {
     return null;
   }
@@ -91,15 +119,12 @@ const Inventory: FC<PageProps> = ({
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen text-foreground font-orbitron bg-noise"
-        variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <StarfieldBackground />
         <div className="relative z-10 max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-16">
           
-          {/* ## Simplified Header Section ## */}
-          <motion.section variants={sectionVariants} className="text-center">
+          <motion.section className="text-center">
             <Package className="mx-auto w-16 h-16 text-[hsl(var(--secondary))] animate-neon-pulse mb-4" />
             <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-4 text-glow-primary tracking-tight">
               Cosmic Inventory
@@ -112,40 +137,46 @@ const Inventory: FC<PageProps> = ({
             </Link>
           </motion.section>
 
-          {/* ## User Inventory Display ## */}
-          <motion.section variants={sectionVariants}>
+          <motion.section>
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-secondary tracking-tight">
               <Sparkles className="inline-block w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-3" />
               Your Galactic Treasures
             </h2>
             <div className="p-4 sm:p-8 bg-black/20 rounded-lg border border-[hsl(var(--primary),0.1)] backdrop-blur-sm">
                 <UserInventoryDisplay
-                  inventory={playerInventoryItems}
+                  playerData={playerData}
                   onListForSale={handleListForSale}
                   userId={userId}
-                  updatePlayerFirestore={updatePlayerFirestore}
                   setShowMessage={setShowMessage}
-                  setActiveModal={setActiveModal}
-                  playerData={playerData}
                 />
             </div>
           </motion.section>
         </div>
 
-        {/* ## List For Sale Modal (Logic Only) ## */}
         <AnimatePresence>
-          {showListForSaleModal && selectedItem && (
+          {showListForSaleModal && selectedItem && selectedItemDefinition && selectedInstanceId && (
             <ListForSaleModal
-                item={selectedItem}
-                userId={userId}
-                onClose={handleCloseListForSaleModal}
-                onSuccess={onListingSuccess}
-                setShowMessage={setShowMessage}
-                setActiveModal={setActiveModal}
-                updatePlayerFirestore={updatePlayerFirestore}
-                playerInventoryItems={playerInventoryItems}
-                playerEquipped={playerData?.inventory?.equipped || null}
-            />
+              item={selectedItem}
+              definition={selectedItemDefinition}
+              instanceId={selectedInstanceId}
+              userId={userId}
+              onClose={handleCloseListForSaleModal}
+              onSuccess={onListingSuccess}
+              setShowMessage={setShowMessage}
+              activeModal={activeModal}
+              setActiveModal={setActiveModal}
+              logTransaction={logTransaction}
+              isPETMember={isPETMember}
+              updatePlayerFirestore={updatePlayerFirestore}
+              jewelsBalance={jewelsBalance}
+              goldBalance={goldBalance}
+              currentLevel={currentLevel}
+              isPending={isPending}
+              authLoading={authLoading}
+              initialAuthCheckComplete={initialAuthCheckComplete}
+              playerData={playerData} setIsPETMember={function (_value: SetStateAction<boolean>): void {
+                throw new Error('Function not implemented.');
+              } }            />
           )}
         </AnimatePresence>
       </motion.div>

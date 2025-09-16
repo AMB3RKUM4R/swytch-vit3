@@ -6,10 +6,8 @@ import { db } from '../lib/firebaseConfig';
 import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 import { Users, Gem, Shield, Star, Sparkles, Rocket, Gamepad2 } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import StarfieldBackground from '../components/StarfieldBackground';
 import { PageProps, PlayerData } from '../lib/types';
 
-// Animation variants (unchanged)
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.3, delayChildren: 0.2 } },
@@ -42,7 +40,6 @@ const LandingPage: FC<PageProps> = ({
 }) => {
   const [, setPlayerData] = useState<PlayerData | null>(null);
 
-  // useEffect logic remains unchanged
   useEffect(() => {
     if (userId) {
       const userRef = doc(db, 'Players', userId);
@@ -76,7 +73,7 @@ const LandingPage: FC<PageProps> = ({
   }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
   if (authLoading || isPending) {
-    return null; // Keep loading state clean
+    return null;
   }
 
   return (
@@ -87,10 +84,8 @@ const LandingPage: FC<PageProps> = ({
         initial="hidden"
         animate="visible"
       >
-        <StarfieldBackground />
         <div className="relative z-10 max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
           
-          {/* ## Hero Section -> Featured Game Banner */}
           <motion.section 
             variants={sectionVariants} 
             className="text-center p-8 mb-20 bg-black/20 rounded-xl border border-[hsl(var(--primary),0.2)] backdrop-blur-sm"
@@ -116,28 +111,15 @@ const LandingPage: FC<PageProps> = ({
             </motion.button>
           </motion.section>
 
-          {/* ## Core Features -> Storefront Grid */}
           <motion.section variants={sectionVariants} className="mb-20">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-secondary tracking-tight">
               Core Gameplay Features
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
-                {
-                  icon: <Gem className="w-12 h-12 text-[hsl(var(--primary))]" />,
-                  title: 'Epic NFT Arsenal',
-                  description: 'Craft, trade, and wield unique NFT weapons and artifacts on a secure blockchain.',
-                },
-                {
-                  icon: <Sparkles className="w-12 h-12 text-[hsl(var(--secondary))]" />,
-                  title: 'Play-to-Earn Rewards',
-                  description: 'Slay beasts to earn JEWELS and Gold, convertible for real-world value.',
-                },
-                {
-                  icon: <Shield className="w-12 h-12 text-[hsl(var(--accent))]" />,
-                  title: 'Decentralized & Secure',
-                  description: 'Engage in battles with transparent, secure transactions protected by blockchain.',
-                },
+                { icon: <Gem className="w-12 h-12 text-[hsl(var(--primary))]" />, title: 'Epic NFT Arsenal', description: 'Craft, trade, and wield unique NFT weapons and artifacts on a secure blockchain.', },
+                { icon: <Sparkles className="w-12 h-12 text-[hsl(var(--secondary))]" />, title: 'Play-to-Earn Rewards', description: 'Slay beasts to earn JEWELS and Gold, convertible for real-world value.', },
+                { icon: <Shield className="w-12 h-12 text-[hsl(var(--accent))]" />, title: 'Decentralized & Secure', description: 'Engage in battles with transparent, secure transactions protected by blockchain.', },
               ].map((feature, index) => (
                 <motion.div
                   key={index}
@@ -154,11 +136,9 @@ const LandingPage: FC<PageProps> = ({
             </div>
           </motion.section>
 
-          {/* ## Membership & Community Sections */}
           <motion.section variants={sectionVariants}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
-              {/* PET Membership Card */}
               <div className="p-8 rounded-lg border border-[hsl(var(--accent),0.2)] bg-gradient-to-br from-[hsl(var(--accent),0.1)] to-transparent">
                 <div className="flex items-center mb-4">
                   <Star className="w-10 h-10 text-[hsl(var(--accent))] animate-neon-pulse mr-4" />
@@ -179,7 +159,6 @@ const LandingPage: FC<PageProps> = ({
                 </Link>
               </div>
 
-              {/* Community Card */}
               <div className="p-8 rounded-lg border border-[hsl(var(--secondary),0.2)] bg-gradient-to-br from-[hsl(var(--secondary),0.1)] to-transparent">
                 <div className="flex items-center mb-4">
                   <Users className="w-10 h-10 text-[hsl(var(--secondary))] animate-neon-pulse mr-4" />

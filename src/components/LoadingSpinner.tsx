@@ -2,7 +2,6 @@ import { FC } from 'react';
 import { Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LoadingSpinnerProps } from '../lib/types';
-import StarfieldBackground from './StarfieldBackground';
 
 const LoadingSpinner: FC<LoadingSpinnerProps> = ({ message = "Loading...", fullScreen = false }) => {
   return (
@@ -13,7 +12,6 @@ const LoadingSpinner: FC<LoadingSpinnerProps> = ({ message = "Loading...", fullS
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <StarfieldBackground />
       <div
         className="relative z-10 text-center max-w-sm w-full mx-auto p-6 holographic-card animated-aura"
         style={{ backgroundImage: 'url(https://via.placeholder.com/500x500?text=Cosmic+Spinner)' }}
