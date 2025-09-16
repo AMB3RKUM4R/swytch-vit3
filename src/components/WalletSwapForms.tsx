@@ -2,7 +2,7 @@
 import { FC, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Wallet } from 'lucide-react';
-import SwytchCard from '../SwytchCard';
+import SwytchCard from './SwytchCard';
 import { SupportedCurrency, PlayerData, TransactionType, TransactionStatus } from '@/lib/types';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
