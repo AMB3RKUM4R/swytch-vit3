@@ -34,20 +34,21 @@ const TopNav: FC<TopNavProps> = ({
 
   const isFirebaseLoggedIn = !!user;
   const isWalletConnected = isConnected;
+  const isLoggedIn = isFirebaseLoggedIn || isWalletConnected;
 
   const handleRestrictedNav = useCallback((path: string, label: string) => {
     const restrictedPaths = [
       '/home', '/vault', '/shop', '/community',
       '/membership', '/inventory', '/admin'
     ];
-    if (!isFirebaseLoggedIn && !isWalletConnected && restrictedPaths.includes(path)) {
+    if (!isLoggedIn && restrictedPaths.includes(path)) {
       setShowMessage(`⚠️ Please sign in to access ${label}.`);
       setActiveAuthModal('auth');
       return false;
     }
     setShowMessage(`➡️ Navigating to ${label}!`);
     return true;
-  }, [isFirebaseLoggedIn, isWalletConnected, setShowMessage, setActiveAuthModal]);
+  }, [isLoggedIn, setShowMessage, setActiveAuthModal]);
 
 
   return (
@@ -84,7 +85,7 @@ const TopNav: FC<TopNavProps> = ({
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0">
-        {(isFirebaseLoggedIn || isWalletConnected) && (
+        {isLoggedIn && (
           <div className="hidden md:flex items-center gap-2 text-foreground font-inter text-sm md:text-base">
             <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
               <User className="text-[hsl(var(--primary))] w-6 h-6 animate-neon-pulse" aria-hidden="true" />
