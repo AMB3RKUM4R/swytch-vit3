@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&family=Russo+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Trajan+Pro&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,38 +6,38 @@
 
 @layer base {
   :root {
-    --background: 220 60% 10%;
-    --foreground: 220 10% 90%;
-    --card: 220 50% 15%;
-    --card-foreground: 220 10% 90%;
-    --popover: 220 50% 15%;
-    --popover-foreground: 220 10% 90%;
-    --primary: 270 80% 65%;
-    --primary-foreground: 220 10% 95%;
-    --secondary: 200 100% 55%;
-    --secondary-foreground: 220 10% 95%;
-    --muted: 220 20% 20%;
-    --muted-foreground: 220 20% 60%;
-    --accent: 330 80% 60%;
-    --accent-foreground: 220 10% 95%;
-    --destructive: 330 80% 50%;
-    --destructive-foreground: 220 10% 95%;
-    --border: 220 40% 25%;
-    --input: 220 50% 20%;
-    --input-foreground: 220 10% 90%;
-    --ring: 270 80% 65%;
-    --primary-hsl: 270, 80%, 65%;
-    --secondary-hsl: 200, 100%, 55%;
-    --accent-hsl: 330, 80%, 60%;
-    --destructive-hsl: 330, 80%, 50%;
-    --chart-1: 270 80% 65%;
-    --chart-2: 200 100% 55%;
-    --chart-3: 330 80% 60%;
-    --chart-4: 280 70% 50%;
-    --chart-5: 190 100% 50%;
-    --radius: 0.75rem;
-    --glass-blur: 14px;
-    --glass-bg-dark-value: 15, 15, 25, 0.7;
+    --background: 220 20% 10%; /* Deep black with a subtle blue tint */
+    --foreground: 40 10% 90%; /* Off-white for typography */
+    --card: 220 15% 15%; /* Dark grey for cards */
+    --card-foreground: 40 10% 90%; /* Off-white for card text */
+    --popover: 220 15% 15%; /* Dark grey for popovers */
+    --popover-foreground: 40 10% 90%; /* Off-white for popover text */
+    --primary: 200 80% 70%; /* Intense light blue */
+    --primary-foreground: 220 20% 10%; /* Black for contrast */
+    --secondary: 220 10% 30%; /* Medium grey */
+    --secondary-foreground: 40 10% 90%; /* Off-white for secondary text */
+    --muted: 220 10% 20%; /* Darker grey for muted elements */
+    --muted-foreground: 220 10% 50%; /* Lighter grey for muted text */
+    --accent: 200 90% 50%; /* Light blue accent */
+    --accent-foreground: 220 20% 10%; /* Black for accent text */
+    --destructive: 0 60% 40%; /* Deep red for destructive actions */
+    --destructive-foreground: 40 10% 90%; /* Off-white for destructive text */
+    --border: 220 15% 25%; /* Dark grey border */
+    --input: 220 15% 20%; /* Dark grey for inputs */
+    --input-foreground: 40 10% 90%; /* Off-white for input text */
+    --ring: 200 80% 70%; /* Intense light blue for focus rings */
+    --primary-hsl: 200, 80%, 70%; /* Intense light blue */
+    --secondary-hsl: 220, 10%, 30%; /* Medium grey */
+    --accent-hsl: 200, 90%, 50%; /* Light blue */
+    --destructive-hsl: 0, 60%, 40%; /* Deep red */
+    --chart-1: 200 80% 70%; /* Intense light blue */
+    --chart-2: 200 90% 50%; /* Light blue */
+    --chart-3: 220 10% 30%; /* Medium grey */
+    --chart-4: 220 15% 20%; /* Dark grey */
+    --chart-5: 220 10% 25%; /* Slightly lighter grey */
+    --radius: 0.5rem; /* Subtle rounded edges */
+    --glass-blur: 12px; /* Enhanced glass-like blur */
+    --glass-bg-dark-value: 220, 20%, 15%, 0.8; /* Semi-transparent dark grey */
   }
 
   * {
@@ -45,16 +45,16 @@
   }
 
   html, body {
-    @apply min-h-screen font-inter text-foreground;
+    @apply min-h-screen font-cinzel text-foreground;
     background: hsl(var(--background));
     background-image:
-      radial-gradient(circle at 50% 20%, hsla(var(--primary-hsl), 0.6) 0%, transparent 60%),
-      radial-gradient(circle at 80% 80%, hsla(var(--accent-hsl), 0.5) 0%, transparent 50%),
-      linear-gradient(135deg, hsla(var(--secondary-hsl), 0.4), hsla(var(--primary-hsl), 0.5));
+      linear-gradient(45deg, hsla(var(--primary-hsl), 0.3), hsla(var(--secondary-hsl), 0.2)),
+      radial-gradient(circle at 50% 25%, hsla(var(--accent-hsl), 0.4) 0%, transparent 50%),
+      linear-gradient(135deg, hsla(var(--muted), 0.5), hsla(var(--card), 0.6));
     background-size: cover, cover, cover;
     background-repeat: no-repeat;
     background-attachment: fixed;
-    animation: cosmic-drift 30s linear infinite;
+    animation: obsidian-drift 20s linear infinite;
     overflow-x: hidden;
     position: relative;
     z-index: 1;
@@ -68,21 +68,16 @@
     background: transparent;
     background-image: radial-gradient(
       circle at top left,
-      hsla(var(--foreground), 0.3) 0.1%,
-      transparent 0.5%
+      hsla(var(--primary-hsl), 0.3) 0.2%,
+      transparent 0.7%
     ),
     radial-gradient(
       circle at bottom right,
-      hsla(var(--primary-hsl), 0.4) 0.15%,
-      transparent 0.6%
-    ),
-    radial-gradient(
-      circle at center,
-      hsla(var(--accent-hsl), 0.3) 0.1%,
-      transparent 0.5%
+      hsla(var(--accent-hsl), 0.4) 0.2%,
+      transparent 0.8%
     );
     background-size: 200% 200%;
-    animation: particle-flow 20s linear infinite;
+    animation: nebula-flow 12s linear infinite;
   }
 
   body::after {
@@ -92,60 +87,58 @@
     z-index: -1;
     background: transparent;
     box-shadow:
-      15vw 25vh 0 0.2rem hsla(var(--primary-hsl), 0.8),
-      25vw 45vh 0 0.15rem hsla(var(--accent-hsl), 0.7),
-      35vw 65vh 0 0.25rem hsla(var(--secondary-hsl), 0.6),
-      45vw 85vh 0 0.1rem hsla(var(--chart-4), 0.8),
-      55vw 105vh 0 0.3rem hsla(var(--chart-3), 0.7);
-    animation: starry-twinkle 15s ease-in-out infinite;
+      15vw 25vh 0 0.15rem hsla(var(--primary-hsl), 0.6),
+      25vw 45vh 0 0.1rem hsla(var(--accent-hsl), 0.5),
+      35vw 65vh 0 0.2rem hsla(var(--secondary-hsl), 0.5);
+    animation: star-glow 8s ease-in-out infinite;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-orbitron text-foreground;
+    @apply font-cinzel text-foreground;
   }
 
   button, .btn {
-    @apply font-orbitron;
+    @apply font-cinzel;
   }
 
   strong, b {
-    @apply font-russo;
+    @apply font-trajan;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-[hsla(var(--primary-hsl),0.9)] text-primary-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
+    @apply bg-[hsla(var(--primary-hsl),0.9)] text-primary-foreground px-6 py-3 rounded-md font-cinzel font-bold
            hover:bg-[hsla(var(--accent-hsl),0.9)] hover:text-primary-foreground
            focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
            transition-all duration-300 ease-in-out flex items-center justify-center gap-2
-           shadow-[0_0_20px_hsla(var(--primary-hsl),0.8)];
-    animation: cosmic-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+           shadow-[0_0_20px_hsla(var(--primary-hsl),0.7)];
+    animation: neon-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   .btn-secondary {
-    @apply bg-transparent text-primary-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
-           border-2 border-[hsla(var(--primary-hsl),0.7)] hover:bg-[hsla(var(--accent-hsl),0.3)] hover:text-primary-foreground
+    @apply bg-transparent text-foreground px-6 py-3 rounded-md font-cinzel font-bold
+           border-2 border-[hsla(var(--primary-hsl),0.7)] hover:bg-[hsla(var(--secondary-hsl),0.4)] hover:text-foreground
            focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
            transition-all duration-300 ease-in-out flex items-center justify-center gap-2
-           shadow-[0_0_15px_hsla(var(--primary-hsl),0.5)];
-    animation: rune-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+           shadow-[0_0_12px_hsla(var(--primary-hsl),0.5)];
+    animation: crystal-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   .btn-accent {
-    @apply bg-[hsla(var(--accent-hsl),0.9)] text-accent-foreground px-6 py-3 rounded-lg font-orbitron font-semibold
+    @apply bg-[hsla(var(--accent-hsl),0.9)] text-accent-foreground px-6 py-3 rounded-md font-cinzel font-bold
            hover:bg-[hsla(var(--primary-hsl),0.9)] hover:text-accent-foreground
            focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
            transition-all duration-300 ease-in-out flex items-center justify-center gap-2
-           shadow-[0_0_20px_hsla(var(--accent-hsl),0.8)];
-    animation: cosmic-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+           shadow-[0_0_20px_hsla(var(--accent-hsl),0.7)];
+    animation: neon-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   .btn-system-glow {
-    @apply relative overflow-hidden bg-[hsla(var(--primary-hsl),0.5)] text-primary-foreground px-8 py-4 rounded-lg font-orbitron font-bold
-           border-2 border-[hsla(var(--primary-hsl),0.9)] shadow-[0_0_30px_hsla(var(--primary-hsl),0.9)] hover:bg-[hsla(var(--accent-hsl),0.7)]
+    @apply relative overflow-hidden bg-[hsla(var(--primary-hsl),0.6)] text-primary-foreground px-8 py-4 rounded-md font-cinzel font-bold
+           border-2 border-[hsla(var(--primary-hsl),0.9)] shadow-[0_0_25px_hsla(var(--primary-hsl),0.8)] hover:bg-[hsla(var(--accent-hsl),0.8)]
            transition-all duration-300 ease-in-out flex items-center justify-center gap-3;
-    animation: cosmic-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: neon-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     position: relative;
     z-index: 1;
   }
@@ -160,39 +153,39 @@
     background: linear-gradient(
       90deg,
       transparent,
-      hsla(var(--accent-hsl), 0.4),
+      hsla(var(--accent-hsl), 0.5),
       transparent
     );
-    animation: shine 3s infinite linear;
+    animation: shine 2s infinite linear;
     z-index: -1;
   }
 
   .card {
-    @apply bg-[hsla(var(--card),0.8)] text-card-foreground p-6 rounded-lg shadow-lg
-           transition-transform duration-300 hover:scale-[1.03] ease-in-out
-           border border-[hsla(var(--primary-hsl),0.5)];
+    @apply bg-[hsla(var(--card),0.9)] text-card-foreground p-6 rounded-md shadow-lg
+           transition-transform duration-300 hover:scale-[1.02] ease-in-out
+           border border-[hsla(var(--primary-hsl),0.6)];
     backdrop-filter: blur(var(--glass-blur));
   }
 
   .holographic-card {
-    @apply relative p-6 rounded-lg overflow-hidden border-2 border-[hsla(var(--primary-hsl),0.9)];
+    @apply relative p-6 rounded-md overflow-hidden border-2 border-[hsla(var(--primary-hsl),0.9)];
     background: linear-gradient(
       135deg,
-      hsla(var(--card), 0.7),
-      hsla(var(--primary-hsl), 0.2),
-      hsla(var(--accent-hsl), 0.2)
+      hsla(var(--card), 0.8),
+      hsla(var(--primary-hsl), 0.4),
+      hsla(var(--accent-hsl), 0.4)
     );
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     box-shadow:
-      0 0 35px hsla(var(--primary-hsl), 0.7),
-      inset 0 0 15px hsla(var(--accent-hsl), 0.4);
-    animation: cosmic-glow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      0 0 30px hsla(var(--primary-hsl), 0.6),
+      inset 0 0 12px hsla(var(--accent-hsl), 0.4);
+    animation: crystal-glow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   .data-panel {
-    @apply p-6 rounded-lg border-2 border-[hsla(var(--primary-hsl),0.6)] bg-[hsla(var(--card),0.7)] backdrop-blur-lg
-           shadow-[0_0_20px_hsla(var(--primary-hsl),0.5)];
+    @apply p-6 rounded-md border-2 border-[hsla(var(--primary-hsl),0.6)] bg-[hsla(var(--card),0.8)] backdrop-blur-lg
+           shadow-[0_0_18px_hsla(var(--primary-hsl),0.5)];
     transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
 
@@ -205,31 +198,31 @@
     @apply h-3 rounded-full overflow-hidden;
     background: linear-gradient(
       90deg,
-      hsla(var(--primary-hsl), 0.8),
-      hsla(var(--accent-hsl), 0.8),
-      hsla(var(--secondary-hsl), 0.8)
+      hsla(var(--primary-hsl), 0.9),
+      hsla(var(--accent-hsl), 0.9),
+      hsla(var(--secondary-hsl), 0.9)
     );
     background-size: 300% 100%;
-    animation: cosmic-flow 5s linear infinite;
+    animation: nebula-flow 3.5s linear infinite;
   }
 
   .input-system {
-    @apply bg-[hsla(var(--input),0.8)] p-3 rounded-md border-2 border-[hsla(var(--primary-hsl),0.7)]
+    @apply bg-[hsla(var(--input),0.9)] p-3 rounded-md border-2 border-[hsla(var(--primary-hsl),0.7)]
            focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
-           font-inter placeholder-muted-foreground
-           transition-all duration-300 ease-in-out shadow-[0_0_15px_hsla(var(--primary-hsl),0.4)];
+           font-cinzel placeholder-muted-foreground
+           transition-all duration-300 ease-in-out shadow-[0_0_12px_hsla(var(--primary-hsl),0.4)];
     color: hsl(var(--input-foreground));
-    animation: rune-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: crystal-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   .tooltip {
-    @apply bg-[hsla(var(--popover),0.9)] text-popover-foreground p-5 rounded-lg border-2 border-[hsla(var(--primary-hsl),0.7)]
-           shadow-[0_0_20px_hsla(var(--primary-hsl),0.6)] backdrop-blur-lg
-           transition-opacity duration-300 max-w-md font-inter;
+    @apply bg-[hsla(var(--popover),0.9)] text-popover-foreground p-5 rounded-md border-2 border-[hsla(var(--primary-hsl),0.7)]
+           shadow-[0_0_18px_hsla(var(--primary-hsl),0.6)] backdrop-blur-lg
+           transition-opacity duration-300 max-w-md font-cinzel;
   }
 
   .progress-bar {
-    @apply relative h-4 rounded-full overflow-hidden bg-[hsla(var(--muted),0.5)];
+    @apply relative h-4 rounded-full overflow-hidden bg-[hsla(var(--muted),0.6)];
   }
 
   .progress-bar-fill {
@@ -241,63 +234,57 @@
       hsla(var(--secondary-hsl), 1)
     );
     background-size: 300% 100%;
-    animation: cosmic-flow 4s linear infinite;
+    animation: nebula-flow 3s linear infinite;
     transition: width 0.5s ease-in-out;
   }
 
   .overlay {
-    @apply fixed inset-0 bg-[hsla(var(--background),0.85)] backdrop-blur-md flex items-center justify-center z-50;
+    @apply fixed inset-0 bg-[hsla(var(--background),0.9)] backdrop-blur-md flex items-center justify-center z-50;
   }
 
   .system-message {
-    @apply bg-[hsla(var(--card),0.8)] border-2 border-[hsla(var(--primary-hsl),0.8)] text-card-foreground p-5 rounded-xl
-           shadow-[0_0_25px_hsla(var(--primary-hsl),0.7)] backdrop-blur-lg
-           font-inter animate-text-flicker;
+    @apply bg-[hsla(var(--card),0.9)] border-2 border-[hsla(var(--primary-hsl),0.8)] text-card-foreground p-5 rounded-lg
+           shadow-[0_0_22px_hsla(var(--primary-hsl),0.7)] backdrop-blur-lg
+           font-cinzel animate-text-flicker;
   }
 
   .nav-main {
-    @apply bg-[hsla(var(--background),0.9)] shadow-lg flex items-center justify-between px-6 py-4
-           backdrop-filter backdrop-blur-lg border-b border-[hsla(var(--primary-hsl),0.5)];
+    @apply bg-[hsla(var(--background),0.95)] shadow-lg flex items-center justify-between px-6 py-4
+           backdrop-filter backdrop-blur-lg border-b border-[hsla(var(--primary-hsl),0.6)];
   }
 }
 
 @layer utilities {
-  .font-orbitron { font-family: 'Orbitron', sans-serif; }
-  .font-russo { font-family: 'Russo One', sans-serif; }
-  .font-inter { font-family: 'Inter', sans-serif; }
+  .font-cinzel { font-family: 'Cinzel Decorative', serif; }
+  .font-trajan { font-family: 'Trajan Pro', serif; }
 
-  .text-glow-primary { text-shadow: 0 0 8px hsla(var(--primary-hsl), 0.9), 0 0 16px hsla(var(--primary-hsl), 0.6); }
-  .text-glow-secondary { text-shadow: 0 0 8px hsla(var(--secondary-hsl), 0.9), 0 0 16px hsla(var(--secondary-hsl), 0.6); }
-  .text-glow-accent { text-shadow: 0 0 8px hsla(var(--accent-hsl), 0.9), 0 0 16px hsla(var(--accent-hsl), 0.6); }
+  .text-glow-primary { text-shadow: 0 0 8px hsla(var(--primary-hsl), 0.9), 0 0 15px hsla(var(--primary-hsl), 0.6); }
+  .text-glow-secondary { text-shadow: 0 0 8px hsla(var(--secondary-hsl), 0.9), 0 0 15px hsla(var(--secondary-hsl), 0.6); }
+  .text-glow-accent { text-shadow: 0 0 8px hsla(var(--accent-hsl), 0.9), 0 0 15px hsla(var(--accent-hsl), 0.6); }
 
-  @keyframes cosmic-pulse {
-    0%, 100% { box-shadow: 0 0 15px hsla(var(--primary-hsl), 0.5); }
-    50% { box-shadow: 0 0 35px hsla(var(--primary-hsl), 0.8); }
+  @keyframes neon-pulse {
+    0%, 100% { box-shadow: 0 0 12px hsla(var(--primary-hsl), 0.5); }
+    50% { box-shadow: 0 0 30px hsla(var(--primary-hsl), 0.8); }
   }
 
-  @keyframes rune-glow {
+  @keyframes crystal-glow {
     0%, 100% { box-shadow: 0 0 10px hsla(var(--accent-hsl), 0.5); }
     50% { box-shadow: 0 0 25px hsla(var(--accent-hsl), 0.8); }
   }
 
-  @keyframes cosmic-glow {
-    0%, 100% { box-shadow: 0 0 20px hsla(var(--primary-hsl), 0.5), inset 0 0 10px hsla(var(--accent-hsl), 0.4); }
-    50% { box-shadow: 0 0 40px hsla(var(--primary-hsl), 0.7), inset 0 0 15px hsla(var(--accent-hsl), 0.6); }
-  }
-
-  @keyframes cosmic-drift {
+  @keyframes obsidian-drift {
     0% { background-position: 0% 0%, 0% 0%, 0% 0%; }
     100% { background-position: 100% 100%, 100% 100%, 200% 200%; }
   }
 
-  @keyframes particle-flow {
+  @keyframes nebula-flow {
     0% { background-position: 0% 0%; }
     100% { background-position: 200% 200%; }
   }
 
-  @keyframes starry-twinkle {
-    0%, 100% { opacity: 0.7; transform: scale(1); }
-    50% { opacity: 0.3; transform: scale(1.1); }
+  @keyframes star-glow {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(1.05); }
   }
 
   @keyframes shine {
@@ -308,22 +295,10 @@
 
   @keyframes text-flicker {
     0%, 100% { opacity: 1; text-shadow: 0 0 8px hsla(var(--primary-hsl), 0.9); }
-    5% { opacity: 0.85; text-shadow: 0 0 4px hsla(var(--primary-hsl), 0.7); }
+    5% { opacity: 0.9; text-shadow: 0 0 4px hsla(var(--primary-hsl), 0.7); }
     10% { opacity: 1; }
-    15% { opacity: 0.9; text-shadow: 0 0 6px hsla(var(--primary-hsl), 0.8); }
+    15% { opacity: 0.95; text-shadow: 0 0 5px hsla(var(--primary-hsl), 0.8); }
     20% { opacity: 1; }
-    25% { opacity: 0.75; text-shadow: 0 0 3px hsla(var(--primary-hsl), 0.6); }
-    30% { opacity: 1; }
-  }
-
-  @keyframes shadow-pulse {
-    0%, 100% { opacity: 0.8; }
-    50% { opacity: 0.4; }
-  }
-
-  @keyframes aura-flow {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 300% 50%; }
   }
 
   .animate-text-flicker {
@@ -331,7 +306,7 @@
   }
 
   .animate-shadow-pulse {
-    animation: shadow-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: shadow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   .animated-aura {
@@ -342,11 +317,11 @@
       hsla(var(--secondary-hsl), 0.7)
     );
     background-size: 300% 100%;
-    animation: aura-flow 6s linear infinite;
+    animation: nebula-flow 4s linear infinite;
   }
 
-  .bg-noise {
-    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M0 0h4v4H0zm10 10h4v4H10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm-60 10h4v4h-10zm60-60h4v4h-10zm-60 60h4v4h-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  .bg-obsidian {
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M0 0h4v4H0zm10 10h4v4H10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm-60 10h4v4h-10zm60-60h4v4h-10zm-60 60h4v4h-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
     background-size: 100px 100px;
     background-repeat: repeat;
   }

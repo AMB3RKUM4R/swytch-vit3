@@ -3,11 +3,7 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Award, Gem } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-
-interface TrustRewardTiersProps {
-  // No direct props, content is static for now
-}
-
+import { TrustRewardTiersProps } from '@/lib/types';
 const tiers = [
   {
     level: 1,
