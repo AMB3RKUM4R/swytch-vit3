@@ -3,9 +3,6 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
-import { getStorage, type FirebaseStorage } from 'firebase/storage'; // Added for file storage
-import { getFunctions, type Functions } from 'firebase/functions'; // Added for cloud functions
-
 // 1. Load your Firebase configuration from Vite's environment variables.
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -32,7 +29,5 @@ const app: FirebaseApp = getApps().length
 // 4. Export the initialized Firebase services you'll use throughout your app.
 export const auth: Auth = getAuth(app);
 export const db: Firestore = getFirestore(app);
-export const storage: FirebaseStorage = getStorage(app); // For file uploads, etc.
-export const functions: Functions = getFunctions(app, 'asia-south1'); // Specify your region here, e.g., 'asia-south1' for Mumbai
 
 export { app }; // Export the app instance itself if needed
