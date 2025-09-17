@@ -5,7 +5,7 @@ export default async function handler(request: Request): Promise<Response> {
   const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
   const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
   const PAYPAL_API_BASE_URL = process.env.PAYPAL_ENV === "sandbox" ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com";
-  const VITE_APP_URL = process.env.VITE_APP_URL || "https://your-app-domain.com";
+  const VITE_APP_URL = process.env.VITE_APP_URL || "https://swytchpet.io";
 
   console.log("API: create-paypal-order route hit.");
 
