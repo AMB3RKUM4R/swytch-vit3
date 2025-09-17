@@ -3,8 +3,6 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut,
   User,
   onAuthStateChanged,
@@ -23,8 +21,7 @@ interface FirebaseAuthHook {
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, name?: string) => Promise<void>;
+
   signOutUser: () => Promise<void>;
 }
 
@@ -92,36 +89,8 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
   };
 
   // ✅ ADDED BACK: The implementation for signing in with email.
-  const signInWithEmail = useCallback(async (email: string, password: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await signInWithEmailAndPassword(firebaseAuth, email, password);
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   // ✅ ADDED BACK: The implementation for signing up with email.
-  const signUpWithEmail = useCallback(async (email: string, password: string, name?: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
-      const newUser = userCredential.user;
-      const userRef = doc(db, 'Players', newUser.uid);
-      const newPlayerData = createNewPlayerData(newUser, name);
-      await setDoc(userRef, newPlayerData);
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const signOutUser = useCallback(async () => {
     setLoading(true);
@@ -144,8 +113,6 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
     loading,
     error,
     signInWithGoogle,
-    signInWithEmail, // ✅ ADDED BACK: Returning the function.
-    signUpWithEmail, // ✅ ADDED BACK: Returning the function.
     signOutUser,
   };
 };
