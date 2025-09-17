@@ -6,7 +6,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import { parseEther } from 'viem';
 import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
 
-import { PageProps, SupportedCurrency } from '@/lib/types';
+import { PageProps, Transaction, SupportedCurrency } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 // Placeholder for the deployed contract information
