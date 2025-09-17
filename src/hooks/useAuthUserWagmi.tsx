@@ -1,6 +1,5 @@
 // src/hooks/useAuthUserWagmi.tsx
 import { useAccount, useDisconnect } from 'wagmi';
-import { useEffect, useState } from 'react';
 
 interface WagmiAuthHook {
   address: `0x${string}` | undefined;

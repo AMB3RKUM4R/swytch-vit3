@@ -6,11 +6,11 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import { parseEther } from 'viem';
 import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
 
-import { PageProps, Transaction, SupportedCurrency } from '@/lib/types';
+import { PageProps, SupportedCurrency } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 // Placeholder for the deployed contract information
-const DEPOSITORY_CONTRACT_ADDRESS = '0xYourDepositoryContractAddressHere' as `0x${string}`;
+const DEPOSITORY_CONTRACT_ADDRESS = '0xDE9978913D9a969d799A2ba9381FB82450b92CE0' as `0x${string}`;
 const DEPOSITORY_CONTRACT_ABI = [
   {
     "inputs": [

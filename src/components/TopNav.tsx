@@ -22,8 +22,7 @@ const navItems = [
 ];
 
 const TopNav: FC<TopNavProps> = ({
-  userId,
-  joulesBalance,
+  jewelsBalance,
   setShowMessage,
   setActiveAuthModal,
 }) => {
@@ -94,7 +93,7 @@ const TopNav: FC<TopNavProps> = ({
             <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} glareEnable={true} glareMaxOpacity={0.3}>
               <Sparkles className="text-[hsl(var(--primary))] w-6 h-6 animate-neon-pulse" aria-hidden="true" />
             </Tilt>
-            <span className="text-glow-primary">{joulesBalance.toFixed(0)} JEWELS</span>
+            <span className="text-glow-primary">{jewelsBalance.toFixed(0)} JOULES</span>
           </div>
         )}
 
