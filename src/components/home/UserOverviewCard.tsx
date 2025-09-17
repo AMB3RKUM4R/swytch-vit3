@@ -28,7 +28,7 @@ const UserOverviewCard: FC<UserOverviewCardProps> = ({
         <div className="flex items-center gap-3 bg-gray-800/50 p-3 rounded-lg border border-gray-700">
           <Gem className="w-6 h-6 text-yellow-400" />
           <div>
-            <p className="text-sm text-gray-300">JEWELS Balance</p>
+            <p className="text-sm text-gray-300">JOULES Balance</p>
             <p className="text-xl font-bold text-white">{jewelsBalance.toFixed(0)}</p>
           </div>
         </div>
