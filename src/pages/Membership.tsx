@@ -12,7 +12,7 @@ import { useWriteContract } from 'wagmi';
 import { parseEther } from 'viem';
 
 // Placeholder for your smart contract info
-const DEPOSITORY_CONTRACT_ADDRESS = '0xYourDepositoryContractAddressHere' as `0x${string}`;
+const DEPOSITORY_CONTRACT_ADDRESS = '0xDE9978913D9a969d799A2ba9381FB82450b92CE0' as `0x${string}`;
 const DEPOSITORY_CONTRACT_ABI = [
   // This should contain the ABI for your contract's membership purchase function
   {
