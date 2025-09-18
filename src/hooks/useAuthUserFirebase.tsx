@@ -1,4 +1,5 @@
 // src/hooks/useAuthUserFirebase.tsx
+// NO CHANGES ARE REQUIRED. THIS SCRIPT IS CORRECT.
 import { useEffect, useState, useCallback } from 'react';
 import {
   GoogleAuthProvider,
@@ -21,7 +22,6 @@ interface FirebaseAuthHook {
   error: string | null;
   signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
-  // isAuthenticated() and isAdmin() are now client-side checks for convenience
   isAuthenticated: () => boolean;
   isAdmin: () => boolean;
 }
@@ -49,7 +49,6 @@ const createNewPlayerData = (user: User, name?: string): PlayerData => {
   };
 };
 
-// Admin UID is now hardcoded as a client-side check
 const ADMIN_UID = '0CfobCbXnPZsJwT662H4OhDrXk33';
 
 export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps = {}): FirebaseAuthHook => {
@@ -108,10 +107,8 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
     }
   }, [disconnectWagmi]);
 
-  // Client-side isAuthenticated check
   const isAuthenticated = useCallback(() => !!user, [user]);
 
-  // Client-side isAdmin check
   const isAdmin = useCallback(() => isAuthenticated() && user?.uid === ADMIN_UID, [user, isAuthenticated]);
 
   return {

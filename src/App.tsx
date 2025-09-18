@@ -2,6 +2,7 @@
 import { FC, useState, useEffect, useCallback, useMemo } from "react";
 import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
+// ❌ REMOVED: import { User } from "firebase/auth";
 import { doc, onSnapshot, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { useAuthUserFirebase } from "./hooks/useAuthUserFirebase";
@@ -72,7 +73,6 @@ const App: FC = () => {
     if (firebaseUser && activeModal === "auth") setActiveModal(null);
   }, [firebaseUser, activeModal, setActiveModal]);
 
-  // ✅ CORRECTED: logTransaction now explicitly includes the userId to satisfy Firestore rules.
   const logTransaction = useCallback(async (txData: Omit<Transaction, "transactionId" | "timestamp">) => {
     if (!userId) return;
     await addDoc(collection(db, "Transactions"), { ...txData, userId, timestamp: serverTimestamp() });
