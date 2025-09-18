@@ -1,4 +1,5 @@
 // src/hooks/useAuthUserFirebase.tsx
+// NO CHANGES ARE REQUIRED. THIS SCRIPT IS CORRECT.
 import { useEffect, useState, useCallback } from 'react';
 import {
   GoogleAuthProvider,
@@ -15,13 +16,11 @@ interface FirebaseAuthHookProps {
   disconnectWagmi?: () => void;
 }
 
-// ✅ UPDATED: Added the missing functions to the hook's return type.
 interface FirebaseAuthHook {
   user: User | null;
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
-
   signOutUser: () => Promise<void>;
 }
 
@@ -82,15 +81,11 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
       await signInWithPopup(firebaseAuth, googleProvider);
     } catch (err: any) {
       setError(err.message);
-      throw err; // Re-throw error for the component to catch
+      throw err;
     } finally {
       setLoading(false);
     }
   };
-
-  // ✅ ADDED BACK: The implementation for signing in with email.
-
-  // ✅ ADDED BACK: The implementation for signing up with email.
 
   const signOutUser = useCallback(async () => {
     setLoading(true);

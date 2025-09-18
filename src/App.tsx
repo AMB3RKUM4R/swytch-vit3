@@ -2,8 +2,7 @@
 import { FC, useState, useEffect, useCallback, useMemo } from "react";
 import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
-import { User } from "firebase/auth";
-import { doc, setDoc, onSnapshot, Timestamp, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
+import { doc, onSnapshot, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { useAuthUserFirebase } from "./hooks/useAuthUserFirebase";
 import { useAuthUserWagmi } from "./hooks/useAuthUserWagmi";
@@ -25,20 +24,8 @@ import LandingPage from "@/pages/LandingPage";
 import AdminPage from "@/pages/AdminPage";
 import { PlayerData, Transaction, PageProps, SwytchErrorBoundaryProps } from "@/lib/types";
 
-const createNewPlayerData = (user: User): PlayerData => {
-  const now = Timestamp.now();
-  return {
-    userId: user.uid,
-    username: user.displayName || user.email?.split("@")[0] || `Hunter${Math.floor(1000 + Math.random() * 9000)}`,
-    email: user.email,
-    phoneNumber: user.phoneNumber,
-    joules: 0, gold: 0, level: 1, xp: 0, energy: 100, mana: 100,
-    isPETMember: true, membership: "ecosystem",
-    walletAddress: null,
-    character: null, inventory: null,
-    createdAt: now, updatedAt: now,
-  };
-};
+// ❌ REMOVED: This function is now handled in useAuthUserFirebase.tsx to prevent a timestamp mismatch.
+// const createNewPlayerData = (user: User): PlayerData => { /* ... */ };
 
 const App: FC = () => {
   const navigate = useNavigate();
@@ -76,10 +63,8 @@ const App: FC = () => {
         setPlayerData(data);
         if (window.location.pathname === "/") navigate("/home");
       } else {
-        if (firebaseUser) {
-          const newPlayerData = createNewPlayerData(firebaseUser);
-          setDoc(playerRef, newPlayerData);
-        }
+        // ✅ The player document creation logic is now handled by useAuthUserFirebase.
+        // This onSnapshot listener will simply wait for the document to be created.
       }
       setIsPending(false); setInitialAuthCheckComplete(true);
     });
