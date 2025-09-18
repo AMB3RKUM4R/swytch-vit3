@@ -1,4 +1,4 @@
-// src/App.tsx - FINAL, COMPLETE AND CORRECTED VERSION
+// src/App.tsx
 import { FC, useState, useEffect, useCallback, useMemo } from "react";
 import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
@@ -24,13 +24,11 @@ import LandingPage from "@/pages/LandingPage";
 import AdminPage from "@/pages/AdminPage";
 import { PlayerData, Transaction, PageProps, SwytchErrorBoundaryProps } from "@/lib/types";
 
-// ❌ REMOVED: This function is now handled in useAuthUserFirebase.tsx to prevent a timestamp mismatch.
-// const createNewPlayerData = (user: User): PlayerData => { /* ... */ };
-
 const App: FC = () => {
   const navigate = useNavigate();
   const { address: wagmiAddress, disconnect: wagmiDisconnect } = useAuthUserWagmi();
-  const { user: firebaseUser, loading: firebaseLoading } = useAuthUserFirebase({ disconnectWagmi: wagmiDisconnect });
+  // We now destructure isAdmin from the hook
+  const { user: firebaseUser, loading: firebaseLoading, isAdmin } = useAuthUserFirebase({ disconnectWagmi: wagmiDisconnect });
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const { activeModal, setActiveModal, showMessage, setShowMessage } = useModal();
   const [isPending, setIsPending] = useState(false);
@@ -63,18 +61,19 @@ const App: FC = () => {
         setPlayerData(data);
         if (window.location.pathname === "/") navigate("/home");
       } else {
-        // ✅ The player document creation logic is now handled by useAuthUserFirebase.
+        // The player document creation logic is now handled exclusively by useAuthUserFirebase.
         // This onSnapshot listener will simply wait for the document to be created.
       }
       setIsPending(false); setInitialAuthCheckComplete(true);
     });
     return () => unsubscribe();
-  }, [userId, firebaseUser, navigate]);
+  }, [userId, navigate, authLoading]);
 
   useEffect(() => {
     if (firebaseUser && activeModal === "auth") setActiveModal(null);
   }, [firebaseUser, activeModal, setActiveModal]);
 
+  // logTransaction now directly writes to Firestore without a Cloud Function
   const logTransaction = useCallback(async (txData: Omit<Transaction, "transactionId" | "timestamp">) => {
     if (!userId) return;
     await addDoc(collection(db, "Transactions"), { ...txData, timestamp: serverTimestamp() });
@@ -91,8 +90,6 @@ const App: FC = () => {
     goldBalance: playerData?.gold ?? 0,
     currentLevel: playerData?.level ?? 0,
     isPending, authLoading, initialAuthCheckComplete, isPETMember: playerData?.isPETMember ?? false, playerData,
-    // The setIsPETMember function is part of the PageProps type but is only used on specific pages,
-    // so we provide a placeholder here. A better long-term solution would be a global state context.
     setIsPETMember: () => {}, 
   }), [userId, playerData, isPending, authLoading, initialAuthCheckComplete, activeModal, setActiveModal, setShowMessage, updatePlayerFirestore, logTransaction]);
 
@@ -115,7 +112,7 @@ const App: FC = () => {
             <Route path="/community" element={<SwytchErrorBoundary {...errorBoundaryProps}><Community {...pageProps} /></SwytchErrorBoundary>} />
             <Route path="/membership" element={<SwytchErrorBoundary {...errorBoundaryProps}><Membership {...pageProps} /></SwytchErrorBoundary>} />
             <Route path="/inventory" element={<SwytchErrorBoundary {...errorBoundaryProps}><Inventory {...pageProps} /></SwytchErrorBoundary>} />
-            <Route path="/admin" element={userId ? (<SwytchErrorBoundary {...errorBoundaryProps}><AdminPage {...pageProps} /></SwytchErrorBoundary>) : (<Navigate to="/" replace />)} />
+            <Route path="/admin" element={isAdmin() ? (<SwytchErrorBoundary {...errorBoundaryProps}><AdminPage {...pageProps} /></SwytchErrorBoundary>) : (<Navigate to="/" replace />)} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -128,4 +125,5 @@ const App: FC = () => {
     </div>
   );
 };
+
 export default App;
