@@ -1,4 +1,4 @@
-// src/App.tsx
+// src/App.tsx - FINAL, COMPLETE AND CORRECTED VERSION
 import { FC, useState, useEffect, useCallback, useMemo } from "react";
 import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
@@ -27,7 +27,6 @@ import { PlayerData, Transaction, PageProps, SwytchErrorBoundaryProps } from "@/
 const App: FC = () => {
   const navigate = useNavigate();
   const { address: wagmiAddress, disconnect: wagmiDisconnect } = useAuthUserWagmi();
-  // We now destructure isAdmin from the hook
   const { user: firebaseUser, loading: firebaseLoading, isAdmin } = useAuthUserFirebase({ disconnectWagmi: wagmiDisconnect });
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const { activeModal, setActiveModal, showMessage, setShowMessage } = useModal();
@@ -73,10 +72,10 @@ const App: FC = () => {
     if (firebaseUser && activeModal === "auth") setActiveModal(null);
   }, [firebaseUser, activeModal, setActiveModal]);
 
-  // logTransaction now directly writes to Firestore without a Cloud Function
+  // ✅ CORRECTED: logTransaction now explicitly includes the userId to satisfy Firestore rules.
   const logTransaction = useCallback(async (txData: Omit<Transaction, "transactionId" | "timestamp">) => {
     if (!userId) return;
-    await addDoc(collection(db, "Transactions"), { ...txData, timestamp: serverTimestamp() });
+    await addDoc(collection(db, "Transactions"), { ...txData, userId, timestamp: serverTimestamp() });
   }, [userId]);
 
   const { topNavProps, bottomNavProps } = useComponentProps({
