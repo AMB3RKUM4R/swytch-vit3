@@ -3,48 +3,45 @@ import { FC, ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Trophy, ShieldCheck, Lightbulb } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
+import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
+import { useModal } from '@/components/context/ModalContext'; // Import modal hook
 
 interface FeatureItem {
-  icon: ReactNode; // Changed to ReactNode to directly pass LucideIcon components
+  icon: ReactNode; 
   title: string;
   description: string;
-  gradient: string;
 }
 
-interface CommunityFeaturesProps {
-  userId: string | null;
-  setActiveModal: (modalName: string | null) => void;
-  setShowMessage: (message: string) => void;
-}
+// This component is now self-sufficient and requires no props.
 
 const features: FeatureItem[] = [
   {
-    icon: <MessageSquare className="w-8 h-8 text-blue-400" />,
+    icon: <MessageSquare className="w-10 h-10 text-primary" />,
     title: 'Live Chat & Forums',
     description: 'Engage in real-time discussions and share insights with other players.',
-    gradient: 'from-blue-700/20 to-cyan-700/20',
   },
   {
-    icon: <Trophy/>,
+    icon: <Trophy className="w-10 h-10 text-yellow-400" />,
     title: 'Leaderboards & Rankings',
     description: 'Compete for top spots and see where you stand among the PETverse elite.',
-    gradient: 'from-yellow-700/20 to-orange-700/20',
   },
   {
-    icon: <ShieldCheck/>,
+    icon: <ShieldCheck className="w-10 h-10 text-green-400" />,
     title: 'Community Governance',
     description: 'Vote on important decisions and shape the future of the PETverse ecosystem.',
-    gradient: 'from-purple-700/20 to-pink-700/20',
   },
   {
-    icon: <Lightbulb/>,
+    icon: <Lightbulb className="w-10 h-10 text-purple-400" />,
     title: 'Idea Sharing',
     description: 'Propose new game features, items, and improvements directly to the developers.',
-    gradient: 'from-green-700/20 to-teal-700/20',
   },
 ];
 
-const CommunityFeatures: FC<CommunityFeaturesProps> = ({ userId, setActiveModal, setShowMessage }) => {
+const CommunityFeatures: FC = () => {
+  // Pull data from our global contexts
+  const { userId } = usePlayer();
+  const { setActiveModal, setShowMessage } = useModal();
+
   const handleFeatureClick = (title: string) => {
     if (!userId) {
       setShowMessage('⚠️ Sign in to explore community features!');
@@ -58,15 +55,15 @@ const CommunityFeatures: FC<CommunityFeaturesProps> = ({ userId, setActiveModal,
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {features.map((feature, index) => (
-        <motion.div key={index} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+        <motion.div key={index} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
           <SwytchCard
-            gradient={feature.gradient}
+            variant="default"
             className="p-6 text-center h-full flex flex-col items-center justify-center cursor-pointer"
             onClick={() => handleFeatureClick(feature.title)}
           >
             {feature.icon}
-            <h3 className="text-xl font-semibold text-white mt-4">{feature.title}</h3>
-            <p className="text-sm text-gray-300 mt-2">{feature.description}</p>
+            <h3 className="text-xl font-semibold text-foreground mt-4 font-poppins">{feature.title}</h3>
+            <p className="text-sm text-muted-foreground mt-2 font-inter">{feature.description}</p>
           </SwytchCard>
         </motion.div>
       ))}

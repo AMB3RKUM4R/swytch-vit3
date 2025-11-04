@@ -5,7 +5,8 @@ import { Settings, UserPlus, BarChart2, ShieldAlert } from 'lucide-react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { PageProps } from '../lib/types';
+import { usePlayer } from '@/components/context/PlayerContext';
+import { useModal } from '@/components/context/ModalContext';
 
 // Placeholder for your smart contract info
 const DEPOSITORY_CONTRACT_ADDRESS = '0xYourDepositoryContractAddressHere' as `0x${string}`;
@@ -57,12 +58,14 @@ const tabContentVariants = {
     exit: { opacity: 0, y: -20, transition: { duration: 0.3, ease: 'easeIn' } },
 }
 
-const AdminPage: FC<PageProps> = ({
-  setShowMessage,
-  setActiveModal,
-  isPending,
-  authLoading,
-}) => {
+const AdminPage: FC = () => {
+  // Get all data from our new contexts
+  const { dataLoading, authLoading } = usePlayer();
+  const { setShowMessage, setActiveModal } = useModal();
+
+  // isPending from PageProps is now dataLoading from usePlayer
+  const isPending = dataLoading;
+
   const { address: connectedAddress } = useAccount();
   const [newAdminAddress, setNewAdminAddress] = useState('');
   const [updateLoading, setUpdateLoading] = useState(false);
@@ -113,7 +116,7 @@ const AdminPage: FC<PageProps> = ({
     } finally {
       setUpdateLoading(false);
     }
-  }, [isAdmin, newAdminAddress, setShowMessage, writeContract, defaultAdminRole, connectedAddress]);
+  }, [isAdmin, newAdminAddress, setShowMessage, writeContract, defaultAdminRole]);
 
   if (authLoading || isPending) {
     return null;
@@ -227,3 +230,4 @@ const AdminPage: FC<PageProps> = ({
 };
 
 export default AdminPage;
+

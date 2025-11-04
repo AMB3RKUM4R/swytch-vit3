@@ -1,12 +1,10 @@
 // src/components/vault/VaultRules.tsx
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gavel, Info, ArrowRight } from 'lucide-react';
+import { Gavel, Info, ChevronDown } from 'lucide-react'; // Use ChevronDown
 import SwytchCard from '../SwytchCard';
 
-interface VaultRulesProps {
-  // This component is purely presentational, no props needed for now
-}
+// This component is purely presentational and requires no props
 
 const rules = [
   {
@@ -31,7 +29,7 @@ const rules = [
   },
 ];
 
-const VaultRules: FC<VaultRulesProps> = () => {
+const VaultRules: FC = () => {
   const [expandedRule, setExpandedRule] = useState<string | null>(null);
 
   const toggleRule = (title: string) => {
@@ -39,43 +37,48 @@ const VaultRules: FC<VaultRulesProps> = () => {
   };
 
   return (
-    <SwytchCard gradient="from-gray-700/20 to-gray-900/20" className="p-6">
-      <h2 className="text-2xl font-bold text-white font-poppins mb-4 text-center flex items-center justify-center gap-2">
+    <SwytchCard variant="default" className="p-6">
+      <h2 className="text-2xl font-bold text-foreground font-poppins mb-4 text-center flex items-center justify-center gap-2">
         <Gavel className="w-7 h-7 text-primary" /> Vault Rules & Guidelines
       </h2>
-      <p className="text-lg text-gray-300 text-center mb-6">
+      <p className="text-lg text-muted-foreground text-center mb-6 font-inter">
         Important information for managing your assets in the PETverse Vault.
       </p>
 
       <div className="space-y-4">
         {rules.map((rule, index) => (
-          <motion.div key={index} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.99 }}>
-            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 cursor-pointer" onClick={() => toggleRule(rule.title)}>
-              <h3 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
-                <Info className="w-5 h-5 text-cyan-400" /> {rule.title}
+          <motion.div 
+            key={index} 
+            className="bg-black/20 p-4 rounded-lg border border-border cursor-pointer"
+            onClick={() => toggleRule(rule.title)}
+            layout
+          >
+            <motion.div layout="position" className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-foreground mb-1 font-poppins flex items-center gap-2">
+                <Info className="w-5 h-5 text-primary" /> {rule.title}
               </h3>
-              <p className="text-sm text-gray-300">{rule.description}</p>
-              <AnimatePresence>
-                {expandedRule === rule.title && (
-                  <motion.p
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-xs text-gray-400 mt-3"
-                  >
-                    {rule.details}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-              <motion.button
-                className="mt-3 text-primary text-sm font-semibold flex items-center gap-1"
-                onClick={(e) => { e.stopPropagation(); toggleRule(rule.title); }} // Prevent parent click
-                whileHover={{ x: 5 }}
+              <motion.div
+                animate={{ rotate: expandedRule === rule.title ? 180 : 0 }}
               >
-                {expandedRule === rule.title ? 'Show Less' : 'Read More'} <ArrowRight className="w-4 h-4" />
-              </motion.button>
-            </div>
+                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              </motion.div>
+            </motion.div>
+            
+            <motion.p layout="position" className="text-sm text-muted-foreground ml-7 font-inter">{rule.description}</motion.p>
+            
+            <AnimatePresence>
+              {expandedRule === rule.title && (
+                <motion.p
+                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginTop: '12px' }}
+                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className="text-sm text-muted-foreground ml-7 font-inter"
+                >
+                  {rule.details}
+                </motion.p>
+              )}
+            </AnimatePresence>
           </motion.div>
         ))}
       </div>

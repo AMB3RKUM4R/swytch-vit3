@@ -1,126 +1,98 @@
 // src/components/membership/MembershipUpgrade.tsx
 import { FC, useState, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUpCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Check, Loader2 } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { MEMBERSHIP_TIERS, SupportedCurrency, PlayerData } from '@/lib/types';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebaseConfig';
+import { serverTimestamp } from 'firebase/firestore';
+import { PlayerData } from '@/lib/types'; // Import PlayerData
 
+// Define props for this component
 interface MembershipUpgradeProps {
   userId: string | null;
-  setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsPETMember: (isMember: boolean) => void;
   updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
-  setActiveModal: (modalName: string | null) => void;
+  setActiveModal: (modal: string | null) => void;
   setShowMessage: (message: string) => void;
 }
 
 const MembershipUpgrade: FC<MembershipUpgradeProps> = ({
   userId,
+  setIsPETMember,
+  updatePlayerFirestore,
   setActiveModal,
-  setShowMessage,
+  setShowMessage
 }) => {
-  const [selectedTier, setSelectedTier] = useState<keyof typeof MEMBERSHIP_TIERS | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleUpgradeClick = useCallback(async () => {
-    setError(null);
+  const handleApplyPromoCode = useCallback(async () => {
     if (!userId) {
-      setError('Please sign in to upgrade membership!');
-      setShowMessage('⚠️ Please sign in to upgrade membership!');
+      setShowMessage('⚠️ Please sign in to apply a code.');
       setActiveModal('auth');
       return;
     }
-    if (!selectedTier) {
-      setError('Please select a membership tier.');
-      setShowMessage('⚠️ Please select a membership tier.');
-      return;
-    }
+    
+    setIsLoading(true);
+    
+    // Simulate API call for promo code validation
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    const tierDetails = MEMBERSHIP_TIERS[selectedTier];
-    if (!tierDetails) {
-      setError('Invalid membership tier selected.');
-      setShowMessage('⚠️ Invalid membership tier.');
-      return;
-    }
+    if (promoCode.toUpperCase() === 'PET_LAUNCH_2025') {
+      try {
+        // Update user's membership status in Firestore
+        await updatePlayerFirestore({
+          isPETMember: true,
+          membership: 'ecosystem', // Grant the base tier
+          updatedAt: serverTimestamp(),
+        });
 
-    setLoading(true);
-    try {
-      // Create a secure request document in a Firestore collection
-      // A backend Cloud Function will listen for this document and process the payment
-      await addDoc(collection(db, 'membership_purchase_requests'), {
-        userId,
-        selectedTier,
-        amount: tierDetails.usdAmount,
-        currency: 'USD' as SupportedCurrency, // Using USD for clarity
-        requestedAt: serverTimestamp(),
-        status: 'pending',
-      });
-
-      setShowMessage(`ℹ️ Membership upgrade to ${tierDetails.name} submitted! Awaiting payment confirmation.`);
-      setActiveModal('payment');
-    } catch (err: any) {
-      console.error('Membership upgrade request error:', err);
-      setError(err.message || 'Failed to initiate membership upgrade. Please try again.');
-      setShowMessage('⚠️ Failed to initiate membership upgrade. Try again.');
-    } finally {
-      setLoading(false);
-      setSelectedTier(null);
+        setIsPETMember(true);
+        setShowMessage('🎉 Promo code applied! You are now a PET Member!');
+        setPromoCode('');
+      } catch (err: any) {
+        console.error('Failed to apply promo code:', err);
+        setShowMessage('⚠️ Failed to apply promo code. Please try again.');
+      }
+    } else {
+      setShowMessage('❌ Invalid promo code.');
     }
-  }, [userId, selectedTier, setActiveModal, setShowMessage]);
+    
+    setIsLoading(false);
+  }, [promoCode, userId, setShowMessage, setActiveModal, updatePlayerFirestore, setIsPETMember]);
 
   return (
-    <SwytchCard gradient="from-purple-700/20 to-pink-700/20" className="p-6">
-      <h2 className="text-2xl font-bold text-white font-poppins mb-4 text-center flex items-center justify-center gap-2">
-        <ArrowUpCircle className="w-7 h-7 text-primary" /> Upgrade Your Membership
-      </h2>
-      <p className="text-lg text-gray-300 text-center mb-6">
-        Select a tier to unlock even more benefits and support the PETverse!
+    // FIX: Changed 'gradient' prop to 'variant'
+    <SwytchCard variant="holographic" className="p-6 text-center">
+      <h3 className="text-2xl font-bold text-foreground font-poppins mb-3">
+        Have a Promo Code?
+      </h3>
+      <p className="text-muted-foreground mb-6 font-inter">
+        Enter a special promotional code to unlock membership.
       </p>
-
-      <div className="space-y-4">
-        <div className="flex flex-col gap-2">
-          <label htmlFor="membershipTier" className="text-gray-300 text-sm">Choose Your Tier:</label>
-          <select
-            id="membershipTier"
-            value={selectedTier || ''}
-            onChange={(e) => setSelectedTier(e.target.value as keyof typeof MEMBERSHIP_TIERS)}
-            className="input"
-            disabled={loading}
-          >
-            <option value="" disabled>Select a tier</option>
-            {Object.entries(MEMBERSHIP_TIERS).map(([key, tier]) => (
-              <option key={key} value={key}>
-                {tier.name} - {tier.usdAmount} USD
-              </option>
-            ))}
-          </select>
-        </div>
-
+      <div className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+        <input
+          type="text"
+          placeholder="Enter code (e.g., PET_LAUNCH_2025)"
+          value={promoCode}
+          onChange={(e) => setPromoCode(e.target.value)}
+          className="input flex-grow text-center sm:text-left"
+          disabled={isLoading}
+        />
         <motion.button
-          className="btn-primary w-full"
-          onClick={handleUpgradeClick}
-          disabled={loading || !selectedTier}
+          className="btn-primary"
+          onClick={handleApplyPromoCode}
+          disabled={isLoading || !promoCode}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          {loading ? 'Processing...' : 'Upgrade Now'}
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Check className="w-5 h-5" />
+          )}
+          Apply Code
         </motion.button>
       </div>
-
-      <AnimatePresence>
-        {error && (
-          <motion.p
-            className="text-rose-400 text-sm text-center mt-4 font-inter"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            {error}
-          </motion.p>
-        )}
-      </AnimatePresence>
     </SwytchCard>
   );
 };

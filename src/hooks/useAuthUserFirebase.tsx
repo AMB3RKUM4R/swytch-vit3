@@ -1,5 +1,4 @@
 // src/hooks/useAuthUserFirebase.tsx
-// NO CHANGES ARE REQUIRED. THIS SCRIPT IS CORRECT.
 import { useEffect, useState, useCallback } from 'react';
 import {
   GoogleAuthProvider,
@@ -7,8 +6,12 @@ import {
   signOut,
   User,
   onAuthStateChanged,
+  // --- NEW IMPORTS ---
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore'; // Removed FieldValue
 import { auth as firebaseAuth, db } from '@/lib/firebaseConfig';
 import { PlayerData } from '@/lib/types';
 
@@ -16,18 +19,24 @@ interface FirebaseAuthHookProps {
   disconnectWagmi?: () => void;
 }
 
+// --- NEW FUNCTIONS ADDED TO THE HOOK'S RETURN TYPE ---
 interface FirebaseAuthHook {
   user: User | null;
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
+  registerWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   isAuthenticated: () => boolean;
   isAdmin: () => boolean;
 }
 
+// createNewPlayerData is now only defined in PlayerContext
+// We'll create a local version for the auth check
 const createNewPlayerData = (user: User, name?: string): PlayerData => {
-  const now = serverTimestamp();
+  const now = Timestamp.now(); // Use Timestamp.now() for client-side
   return {
     userId: user.uid,
     username: name || user.displayName || user.email?.split('@')[0] || `Hunter${Math.floor(1000 + Math.random() * 9000)}`,
@@ -46,10 +55,11 @@ const createNewPlayerData = (user: User, name?: string): PlayerData => {
     updatedAt: now,
     character: null,
     inventory: null,
+    profilePictureUrl: '', // Added new field from our types
   };
 };
 
-const ADMIN_UID = '0CfobCbXnPZsJwT662H4OhDrXk33';
+const ADMIN_UID = '0CfobCbXnPZsJwT662H4OhDrXk33'; // As seen in Players collection
 
 export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps = {}): FirebaseAuthHook => {
   const [user, setUser] = useState<User | null>(null);
@@ -65,6 +75,7 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
         const userRef = doc(db, 'Players', u.uid);
         const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) {
+          // This logic is critical for new sign-ups (Google or Email)
           const newPlayerData = createNewPlayerData(u);
           await setDoc(userRef, newPlayerData);
         }
@@ -83,6 +94,49 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
     setError(null);
     try {
       await signInWithPopup(firebaseAuth, googleProvider);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // --- NEW FUNCTION ---
+  const registerWithEmail = async (email: string, password: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await createUserWithEmailAndPassword(firebaseAuth, email, password);
+      // The onAuthStateChanged listener will handle creating the user document
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // --- NEW FUNCTION ---
+  const signInWithEmail = async (email: string, password: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await signInWithEmailAndPassword(firebaseAuth, email, password);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // --- NEW FUNCTION ---
+  const sendPasswordReset = async (email: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await sendPasswordResetEmail(firebaseAuth, email);
     } catch (err: any) {
       setError(err.message);
       throw err;
@@ -117,6 +171,9 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
     error,
     signInWithGoogle,
     signOutUser,
+    registerWithEmail, // <-- NEW
+    signInWithEmail,   // <-- NEW
+    sendPasswordReset, // <-- NEW
     isAuthenticated,
     isAdmin,
   };

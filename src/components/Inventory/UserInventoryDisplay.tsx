@@ -90,7 +90,7 @@ const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
   if (loading) return <div>Loading inventory...</div>;
 
   return (
-    <SwytchCard gradient="from-purple-700/20 to-pink-700/20" className="p-6">
+    <SwytchCard  className="p-6">
       {inventoryEntries.length === 0 ? (
         <div className="text-center py-10">
           <Package className="w-16 h-16 text-gray-500 mx-auto mb-4" />

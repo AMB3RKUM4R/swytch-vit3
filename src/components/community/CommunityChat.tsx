@@ -1,119 +1,132 @@
-import { FC, useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Trophy, Gem, BarChart } from 'lucide-react';
-import SwytchCard from '../SwytchCard';
-import { PlayerData } from '@/lib/types';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+// src/components/community/CommunityChat.tsx
+import { FC, useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Send } from 'lucide-react';
 import { db } from '@/lib/firebaseConfig';
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { usePlayer } from '@/components/context/PlayerContext';
+import { ChatMessage } from '@/lib/types';
 
-// Define the corrected LeaderboardEntry interface
-interface LeaderboardEntry {
-  rank: number;
-  name: string;
-  level: number;
-  joules: number; // FIXED: Standardized to 'joules'
-  avatar: string;
-}
-
-// This component is now self-contained and fetches its own data.
-interface CommunityRankingsProps {}
-
-const CommunityRankings: FC<CommunityRankingsProps> = () => {
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+const CommunityChat: FC = () => {
+  const { userId, playerData } = usePlayer();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const messagesEndRef = useRef<null | HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     const q = query(
-      collection(db, 'Players'),
-      orderBy('joules', 'desc'), // FIXED: Querying the correct field 'joules'
-      limit(10)
+      collection(db, 'CommunityChat'),
+      orderBy('timestamp', 'desc'),
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedLeaderboard: LeaderboardEntry[] = [];
-      let rank = 1;
+      const fetchedMessages: ChatMessage[] = [];
       snapshot.forEach(doc => {
-        const data = doc.data() as PlayerData;
-        fetchedLeaderboard.push({
-          rank: rank++,
-          name: data.username,
-          level: data.level,
-          joules: data.joules, // FIXED: Reading the correct field 'joules'
-          avatar: "https://placehold.co/40x40/7e22ce/FFFFFF?text=P", // Placeholder avatar
-        });
+        fetchedMessages.push({ id: doc.id, ...doc.data() } as ChatMessage);
       });
-      setLeaderboardData(fetchedLeaderboard);
+      setMessages(fetchedMessages.reverse()); // Reverse to show oldest first
       setLoading(false);
+      scrollToBottom();
     }, (err) => {
-      console.error('Failed to fetch leaderboard:', err);
-      // This can happen if the 'joules' index has not been created in Firestore yet.
-      // Firestore will provide a link in the console error to automatically create it.
-      setError('Failed to load leaderboard. Check console for index creation link.');
+      console.error('Failed to fetch chat:', err);
+      setError('Failed to load chat. Please try again.');
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  return (
-    <SwytchCard gradient="from-orange-700/20 to-red-700/20" className="p-6">
-      <h2 className="text-2xl font-bold text-white font-poppins mb-4 text-center flex items-center justify-center gap-2">
-        <Trophy className="w-7 h-7 text-primary" /> Community Rankings
-      </h2>
-      <p className="text-lg text-gray-300 text-center mb-6">
-        See who's at the top of the PETverse!
-      </p>
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
-      {loading ? (
-        <p className="text-center text-gray-400">Loading leaderboard...</p>
-      ) : error ? (
-        <p className="text-center text-rose-400">{error}</p>
-      ) : leaderboardData.length === 0 ? (
-        <p className="text-center text-gray-400">No rankings available yet. Be the first to make your mark!</p>
-      ) : (
-        <div className="space-y-3">
-          {leaderboardData.map((entry) => (
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId || !playerData || newMessage.trim() === "") return;
+
+    const messageText = newMessage;
+    setNewMessage(""); // Clear input immediately
+
+    try {
+      await addDoc(collection(db, 'CommunityChat'), {
+        userId: userId,
+        username: playerData.username,
+        profilePictureUrl: playerData.profilePictureUrl || null, // Use new 2D avatar
+        text: messageText,
+        timestamp: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Error sending message: ", err);
+      setError("Failed to send message.");
+      setNewMessage(messageText); // Put message back on error
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-[600px] bg-gray-900/50 rounded-lg border border-gray-700">
+      {/* Message Display Area */}
+      <div className="flex-grow p-4 space-y-4 overflow-y-auto">
+        {loading && <p className="text-center text-gray-400">Loading chat...</p>}
+        {error && <p className="text-center text-rose-400">{error}</p>}
+        <AnimatePresence>
+          {messages.map((msg) => (
             <motion.div
-              key={entry.rank}
-              className="bg-gray-800/50 p-3 rounded-lg border border-gray-700 flex items-center justify-between"
+              key={msg.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
+              className={`flex items-start gap-3 ${msg.userId === userId ? 'justify-end' : ''}`}
             >
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-xl text-primary w-8 text-center">{entry.rank}.</span>
-                <img
-                  src={entry.avatar}
-                  alt="Avatar"
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                <div>
-                  <p className="text-white font-semibold">{entry.name}</p>
-                  <p className="text-sm text-gray-400">Level {entry.level}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Gem className="w-5 h-5 text-yellow-400" />
-                <p className="text-primary font-bold">{entry.joules.toFixed(0)}</p>
+              {/* Avatar */}
+              <img
+                src={msg.profilePictureUrl || `https://placehold.co/40x40/7e22ce/FFFFFF?text=${msg.username.charAt(0)}`}
+                alt={msg.username}
+                className={`w-10 h-10 rounded-full object-cover ${msg.userId === userId ? 'order-2' : 'order-1'}`}
+              />
+              {/* Bubble */}
+              <div className={`p-3 rounded-lg max-w-xs ${msg.userId === userId ? 'order-1 bg-primary/20' : 'order-2 bg-gray-800'}`}>
+                <p className={`text-sm font-bold ${msg.userId === userId ? 'text-primary' : 'text-cyan-400'}`}>
+                  {msg.username}
+                </p>
+                <p className="text-white text-md break-words">{msg.text}</p>
               </div>
             </motion.div>
           ))}
-        </div>
-      )}
-      <div className="text-center mt-6">
+        </AnimatePresence>
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Message Input Area */}
+      <form onSubmit={handleSendMessage} className="flex items-center p-4 border-t border-gray-700">
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder={userId ? "Type your message..." : "Sign in to chat"}
+          className="input flex-grow bg-gray-800"
+          disabled={!userId || !playerData}
+        />
         <motion.button
-          className="btn-secondary flex items-center justify-center mx-auto"
+          type="submit"
+          className="btn-primary ml-2"
+          disabled={!userId || !playerData || newMessage.trim() === ""}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <BarChart className="w-5 h-5 mr-2" /> View Full Leaderboard
+          <Send className="w-5 h-5" />
         </motion.button>
-      </div>
-    </SwytchCard>
+      </form>
+    </div>
   );
 };
 
-export default CommunityRankings;
+export default CommunityChat;

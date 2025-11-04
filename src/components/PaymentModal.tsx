@@ -6,8 +6,10 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import { parseEther } from 'viem';
 import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
 
-import { PageProps, SupportedCurrency } from '@/lib/types';
+import { SupportedCurrency } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { usePlayer } from '@/components/context/PlayerContext';
+import { useModal } from '@/components/context/ModalContext';
 
 // Placeholder for the deployed contract information
 const DEPOSITORY_CONTRACT_ADDRESS = '0xDE9978913D9a969d799A2ba9381FB82450b92CE0' as `0x${string}`;
@@ -32,15 +34,12 @@ const DEPOSITORY_CONTRACT_ABI = [
   },
 ] as const;
 
-interface PaymentModalProps extends PageProps {}
 
-const PaymentModal: FC<PaymentModalProps> = ({
-  userId,
-  setShowMessage,
-  setActiveModal,
-  activeModal,
-  logTransaction,
-}) => {
+const PaymentModal: FC = () => {
+  // Get all data from our new contexts
+  const { userId, logTransaction } = usePlayer();
+  const { activeModal, setActiveModal, setShowMessage } = useModal();
+
   const { isConnected } = useAccount();
 
   const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'paypal'>('paypal');
@@ -219,3 +218,4 @@ const PaymentModal: FC<PaymentModalProps> = ({
 };
 
 export default PaymentModal;
+

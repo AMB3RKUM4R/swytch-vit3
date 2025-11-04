@@ -1,22 +1,9 @@
 import { FC } from 'react';
 import { Wallet, Link, DollarSign, Activity, HardHat, User, Zap } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
+import { VaultWalletInfoProps } from '@/lib/types'; // Import from types
 
-// Updated interface to accept gasPrice
-interface VaultWalletInfoProps {
-  isConnected: boolean;
-  address: `0x${string}` | undefined;
-  chainId: number | undefined;
-  ensName: string | null;
-  blockNumber: bigint | null;
-  gasPrice: bigint | undefined;
-  usdtBalance: {
-    formatted: string;
-    value: bigint;
-    symbol: string;
-    decimals: number;
-  } | undefined;
-}
+// This component receives props from its parent page (Vault.tsx)
 
 const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
   isConnected,
@@ -28,54 +15,82 @@ const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
   usdtBalance,
 }) => {
   return (
-    <SwytchCard gradient="from-purple-700/20 to-pink-700/20" className="p-6">
-      <h2 className="text-2xl font-bold text-white font-poppins mb-4 text-center">
+    <SwytchCard variant="default" className="p-6">
+      <h2 className="text-2xl font-bold text-foreground font-poppins mb-6 text-center">
         <Wallet className="inline-block w-7 h-7 mr-2 text-primary" /> Your Crypto Wallet
       </h2>
-      <div className="space-y-3 text-gray-200">
-        <div className="flex items-center gap-2">
-          <Link className="w-5 h-5 text-cyan-400" />
-          <p>Status: {isConnected ? 'Connected' : 'Disconnected'}</p>
+      <div className="space-y-4 text-foreground font-inter">
+        <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
+          <Link className="w-5 h-5 text-primary" />
+          <div>
+            <p className="text-sm text-muted-foreground">Status</p>
+            <p className="font-semibold">{isConnected ? <span className="text-green-400">Connected</span> : <span className="text-red-400">Disconnected</span>}</p>
+          </div>
         </div>
-        {address && (
-          <div className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-green-400" />
-            <p>Address: <span className="font-mono text-sm break-all">{address}</span></p>
+        
+        {isConnected && address && (
+          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
+            <User className="w-5 h-5 text-primary" />
+            <div>
+              <p className="text-sm text-muted-foreground">Address</p>
+              <p className="font-mono text-sm break-all">{address}</p>
+            </div>
           </div>
         )}
-        {ensName && (
-          <div className="flex items-center gap-2">
+        
+        {isConnected && ensName && (
+          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
             <User className="w-5 h-5 text-yellow-400" />
-            <p>ENS Name: <span className="font-semibold">{ensName}</span></p>
+            <div>
+              <p className="text-sm text-muted-foreground">ENS Name</p>
+              <p className="font-semibold">{ensName}</p>
+            </div>
           </div>
         )}
-        {chainId && (
-          <div className="flex items-center gap-2">
+
+        {isConnected && chainId && (
+          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
             <Activity className="w-5 h-5 text-purple-400" />
-            <p>Chain ID: <span className="font-semibold">{chainId}</span></p>
+            <div>
+              <p className="text-sm text-muted-foreground">Chain ID</p>
+              <p className="font-semibold">{chainId}</p>
+            </div>
           </div>
         )}
-        {blockNumber !== null && blockNumber !== undefined && (
-          <div className="flex items-center gap-2">
+        
+        {isConnected && blockNumber !== null && blockNumber !== undefined && (
+          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
             <HardHat className="w-5 h-5 text-orange-400" />
-            <p>Current Block: <span className="font-semibold">{blockNumber.toString()}</span></p>
+            <div>
+              <p className="text-sm text-muted-foreground">Current Block</p>
+              <p className="font-semibold">{blockNumber.toString()}</p>
+            </div>
           </div>
         )}
-        {gasPrice !== undefined && gasPrice !== null && (
-          <div className="flex items-center gap-2">
+
+        {isConnected && gasPrice !== undefined && gasPrice !== null && (
+          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
             <Zap className="w-5 h-5 text-red-400" />
-            <p>Gas Price: <span className="font-semibold">{(Number(gasPrice) / 1e9).toFixed(2)} Gwei</span></p>
+            <div>
+              <p className="text-sm text-muted-foreground">Gas Price</p>
+              <p className="font-semibold">{(Number(gasPrice) / 1e9).toFixed(2)} Gwei</p>
+            </div>
           </div>
         )}
-        {usdtBalance && (
-          <div className="flex items-center gap-2">
+
+        {isConnected && usdtBalance && (
+          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
             <DollarSign className="w-5 h-5 text-green-400" />
-            <p>USDT Balance: <span className="font-semibold">{Number(usdtBalance.formatted).toFixed(2)} {usdtBalance.symbol}</span></p>
+            <div>
+              <p className="text-sm text-muted-foreground">USDT Balance</p>
+              <p className="font-semibold">{Number(usdtBalance.formatted).toFixed(2)} {usdtBalance.symbol}</p>
+            </div>
           </div>
         )}
+
         {!isConnected && (
-          <p className="text-sm text-gray-400 text-center mt-4">
-            Connect your wallet to see more details and interact with crypto features.
+          <p className="text-sm text-muted-foreground text-center pt-4">
+            Connect your wallet to see your on-chain assets and network status.
           </p>
         )}
       </div>

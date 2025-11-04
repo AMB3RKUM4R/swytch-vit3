@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Trajan+Pro&display=swap');
+/* Import Google Fonts: Poppins (headings) and Inter (body) */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,323 +7,154 @@
 
 @layer base {
   :root {
-    --background: 220 20% 10%; /* Deep black with a subtle blue tint */
-    --foreground: 40 10% 90%; /* Off-white for typography */
-    --card: 220 15% 15%; /* Dark grey for cards */
-    --card-foreground: 40 10% 90%; /* Off-white for card text */
-    --popover: 220 15% 15%; /* Dark grey for popovers */
-    --popover-foreground: 40 10% 90%; /* Off-white for popover text */
-    --primary: 200 80% 70%; /* Intense light blue */
-    --primary-foreground: 220 20% 10%; /* Black for contrast */
-    --secondary: 220 10% 30%; /* Medium grey */
-    --secondary-foreground: 40 10% 90%; /* Off-white for secondary text */
-    --muted: 220 10% 20%; /* Darker grey for muted elements */
-    --muted-foreground: 220 10% 50%; /* Lighter grey for muted text */
-    --accent: 200 90% 50%; /* Light blue accent */
-    --accent-foreground: 220 20% 10%; /* Black for accent text */
-    --destructive: 0 60% 40%; /* Deep red for destructive actions */
-    --destructive-foreground: 40 10% 90%; /* Off-white for destructive text */
-    --border: 220 15% 25%; /* Dark grey border */
-    --input: 220 15% 20%; /* Dark grey for inputs */
-    --input-foreground: 40 10% 90%; /* Off-white for input text */
-    --ring: 200 80% 70%; /* Intense light blue for focus rings */
-    --primary-hsl: 200, 80%, 70%; /* Intense light blue */
-    --secondary-hsl: 220, 10%, 30%; /* Medium grey */
-    --accent-hsl: 200, 90%, 50%; /* Light blue */
-    --destructive-hsl: 0, 60%, 40%; /* Deep red */
-    --chart-1: 200 80% 70%; /* Intense light blue */
-    --chart-2: 200 90% 50%; /* Light blue */
-    --chart-3: 220 10% 30%; /* Medium grey */
-    --chart-4: 220 15% 20%; /* Dark grey */
-    --chart-5: 220 10% 25%; /* Slightly lighter grey */
-    --radius: 0.5rem; /* Subtle rounded edges */
-    --glass-blur: 12px; /* Enhanced glass-like blur */
-    --glass-bg-dark-value: 220, 20%, 15%, 0.8; /* Semi-transparent dark grey */
+    --background: 224 71% 4%; /* Deep, dark blue */
+    --foreground: 210 40% 98%; /* Almost white */
+    
+    --card: 223 47% 11%; /* Dark blue-gray card */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 100% 50%; /* Bright, professional blue */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217 33% 17%; /* Muted blue-gray */
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 210 100% 50%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%; /* Bright, clear red */
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%; /* Border color */
+    --input: 217 33% 17%; /* Input background */
+    --ring: 210 100% 50%; /* Focus ring */
+
+    --radius: 0.5rem; /* Standard border radius */
+    
+    /* HSL values for Tailwind CSS opacity modifiers */
+    --background-hsl: 224 71% 4%;
+    --foreground-hsl: 210 40% 98%;
+    --card-hsl: 223 47% 11%;
+    --primary-hsl: 210 100% 50%;
+    --secondary-hsl: 217 33% 17%;
+    --muted-hsl: 217 33% 17%;
+    --destructive-hsl: 0 84% 60%;
   }
 
   * {
-    border-color: hsl(var(--border));
+    @apply border-border;
   }
 
   html, body {
-    @apply min-h-screen font-cinzel text-foreground;
-    background: hsl(var(--background));
-    background-image:
-      linear-gradient(45deg, hsla(var(--primary-hsl), 0.3), hsla(var(--secondary-hsl), 0.2)),
-      radial-gradient(circle at 50% 25%, hsla(var(--accent-hsl), 0.4) 0%, transparent 50%),
-      linear-gradient(135deg, hsla(var(--muted), 0.5), hsla(var(--card), 0.6));
-    background-size: cover, cover, cover;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    animation: obsidian-drift 20s linear infinite;
+    /* Set the clean, professional fonts */
+    @apply min-h-screen font-inter text-foreground antialiased;
+    background-color: hsl(var(--background));
+    
+    /* A simplified, elegant background animation */
+    background-image: 
+      radial-gradient(circle at 1px 1px, hsl(var(--primary-hsl) / 0.1) 1px, transparent 0);
+    background-size: 20px 20px;
+    animation: background-pan 60s linear infinite;
     overflow-x: hidden;
-    position: relative;
-    z-index: 1;
   }
 
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background: transparent;
-    background-image: radial-gradient(
-      circle at top left,
-      hsla(var(--primary-hsl), 0.3) 0.2%,
-      transparent 0.7%
-    ),
-    radial-gradient(
-      circle at bottom right,
-      hsla(var(--accent-hsl), 0.4) 0.2%,
-      transparent 0.8%
-    );
-    background-size: 200% 200%;
-    animation: nebula-flow 12s linear infinite;
-  }
-
-  body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background: transparent;
-    box-shadow:
-      15vw 25vh 0 0.15rem hsla(var(--primary-hsl), 0.6),
-      25vw 45vh 0 0.1rem hsla(var(--accent-hsl), 0.5),
-      35vw 65vh 0 0.2rem hsla(var(--secondary-hsl), 0.5);
-    animation: star-glow 8s ease-in-out infinite;
-  }
-
+  /* Use Poppins for all headings */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-cinzel text-foreground;
+    @apply font-poppins font-semibold tracking-tight;
   }
 
-  button, .btn {
-    @apply font-cinzel;
-  }
-
-  strong, b {
-    @apply font-trajan;
+  /* Use Russo One for the logo/brand font (if needed) */
+  .font-russo {
+     font-family: 'Russo One', sans-serif;
   }
 }
 
 @layer components {
+  /* Base card style */
+  .card {
+    @apply bg-card text-card-foreground p-6 rounded-lg shadow-lg border border-white/10;
+  }
+  
+  /* Primary Button */
   .btn-primary {
-    @apply bg-[hsla(var(--primary-hsl),0.9)] text-primary-foreground px-6 py-3 rounded-md font-cinzel font-bold
-           hover:bg-[hsla(var(--accent-hsl),0.9)] hover:text-primary-foreground
-           focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
-           transition-all duration-300 ease-in-out flex items-center justify-center gap-2
-           shadow-[0_0_20px_hsla(var(--primary-hsl),0.7)];
-    animation: neon-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50
+           bg-primary text-primary-foreground hover:bg-primary/90
+           h-10 px-4 py-2;
   }
 
+  /* Secondary Button */
   .btn-secondary {
-    @apply bg-transparent text-foreground px-6 py-3 rounded-md font-cinzel font-bold
-           border-2 border-[hsla(var(--primary-hsl),0.7)] hover:bg-[hsla(var(--secondary-hsl),0.4)] hover:text-foreground
-           focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
-           transition-all duration-300 ease-in-out flex items-center justify-center gap-2
-           shadow-[0_0_12px_hsla(var(--primary-hsl),0.5)];
-    animation: crystal-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+     @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50
+           border border-input bg-background hover:bg-accent hover:text-accent-foreground
+           h-10 px-4 py-2;
   }
 
-  .btn-accent {
-    @apply bg-[hsla(var(--accent-hsl),0.9)] text-accent-foreground px-6 py-3 rounded-md font-cinzel font-bold
-           hover:bg-[hsla(var(--primary-hsl),0.9)] hover:text-accent-foreground
-           focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
-           transition-all duration-300 ease-in-out flex items-center justify-center gap-2
-           shadow-[0_0_20px_hsla(var(--accent-hsl),0.7)];
-    animation: neon-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  /* Destructive Button */
+  .btn-destructive {
+     @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50
+           bg-destructive text-destructive-foreground hover:bg-destructive/90
+           h-10 px-4 py-2;
   }
 
-  .btn-system-glow {
-    @apply relative overflow-hidden bg-[hsla(var(--primary-hsl),0.6)] text-primary-foreground px-8 py-4 rounded-md font-cinzel font-bold
-           border-2 border-[hsla(var(--primary-hsl),0.9)] shadow-[0_0_25px_hsla(var(--primary-hsl),0.8)] hover:bg-[hsla(var(--accent-hsl),0.8)]
-           transition-all duration-300 ease-in-out flex items-center justify-center gap-3;
-    animation: neon-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    position: relative;
-    z-index: 1;
+  /* Base input style */
+  .input {
+    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm
+           ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium
+           placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2
+           focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
-  .btn-system-glow::before {
+  /* Custom "Holographic" Card (Simplified & Professional) */
+  .holographic-card {
+    @apply relative overflow-hidden rounded-lg border border-primary/30 bg-card shadow-xl;
+  }
+  
+  .holographic-card::before {
     content: '';
     position: absolute;
     top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      hsla(var(--accent-hsl), 0.5),
-      transparent
-    );
-    animation: shine 2s infinite linear;
-    z-index: -1;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, hsl(var(--primary-hsl) / 0.1) 0%, transparent 50%, hsl(var(--primary-hsl) / 0.05) 100%);
+    z-index: 1;
+  }
+  
+  .holographic-card > * {
+    z-index: 2; /* Ensure content is above the gradient */
   }
 
-  .card {
-    @apply bg-[hsla(var(--card),0.9)] text-card-foreground p-6 rounded-md shadow-lg
-           transition-transform duration-300 hover:scale-[1.02] ease-in-out
-           border border-[hsla(var(--primary-hsl),0.6)];
-    backdrop-filter: blur(var(--glass-blur));
+  /* Glassy background for modals/navs */
+  .glass-dark {
+    @apply bg-card/80 backdrop-blur-md border-b border-white/10;
   }
-
-  .holographic-card {
-    @apply relative p-6 rounded-md overflow-hidden border-2 border-[hsla(var(--primary-hsl),0.9)];
-    background: linear-gradient(
-      135deg,
-      hsla(var(--card), 0.8),
-      hsla(var(--primary-hsl), 0.4),
-      hsla(var(--accent-hsl), 0.4)
-    );
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    box-shadow:
-      0 0 30px hsla(var(--primary-hsl), 0.6),
-      inset 0 0 12px hsla(var(--accent-hsl), 0.4);
-    animation: crystal-glow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .data-panel {
-    @apply p-6 rounded-md border-2 border-[hsla(var(--primary-hsl),0.6)] bg-[hsla(var(--card),0.8)] backdrop-blur-lg
-           shadow-[0_0_18px_hsla(var(--primary-hsl),0.5)];
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-
-  .data-panel:hover {
-    @apply transform scale-105;
-    box-shadow: 0 0 30px hsla(var(--primary-hsl), 0.7);
-  }
-
-  .stat-bar {
-    @apply h-3 rounded-full overflow-hidden;
-    background: linear-gradient(
-      90deg,
-      hsla(var(--primary-hsl), 0.9),
-      hsla(var(--accent-hsl), 0.9),
-      hsla(var(--secondary-hsl), 0.9)
-    );
-    background-size: 300% 100%;
-    animation: nebula-flow 3.5s linear infinite;
-  }
-
-  .input-system {
-    @apply bg-[hsla(var(--input),0.9)] p-3 rounded-md border-2 border-[hsla(var(--primary-hsl),0.7)]
-           focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]
-           font-cinzel placeholder-muted-foreground
-           transition-all duration-300 ease-in-out shadow-[0_0_12px_hsla(var(--primary-hsl),0.4)];
-    color: hsl(var(--input-foreground));
-    animation: crystal-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .tooltip {
-    @apply bg-[hsla(var(--popover),0.9)] text-popover-foreground p-5 rounded-md border-2 border-[hsla(var(--primary-hsl),0.7)]
-           shadow-[0_0_18px_hsla(var(--primary-hsl),0.6)] backdrop-blur-lg
-           transition-opacity duration-300 max-w-md font-cinzel;
-  }
-
-  .progress-bar {
-    @apply relative h-4 rounded-full overflow-hidden bg-[hsla(var(--muted),0.6)];
-  }
-
-  .progress-bar-fill {
-    @apply h-full rounded-full;
-    background: linear-gradient(
-      90deg,
-      hsla(var(--primary-hsl), 1),
-      hsla(var(--accent-hsl), 1),
-      hsla(var(--secondary-hsl), 1)
-    );
-    background-size: 300% 100%;
-    animation: nebula-flow 3s linear infinite;
-    transition: width 0.5s ease-in-out;
-  }
-
-  .overlay {
-    @apply fixed inset-0 bg-[hsla(var(--background),0.9)] backdrop-blur-md flex items-center justify-center z-50;
-  }
-
-  .system-message {
-    @apply bg-[hsla(var(--card),0.9)] border-2 border-[hsla(var(--primary-hsl),0.8)] text-card-foreground p-5 rounded-lg
-           shadow-[0_0_22px_hsla(var(--primary-hsl),0.7)] backdrop-blur-lg
-           font-cinzel animate-text-flicker;
-  }
-
-  .nav-main {
-    @apply bg-[hsla(var(--background),0.95)] shadow-lg flex items-center justify-between px-6 py-4
-           backdrop-filter backdrop-blur-lg border-b border-[hsla(var(--primary-hsl),0.6)];
+  
+  /* Text Glows (Simplified) */
+  .text-glow-primary {
+    text-shadow: 0 0 8px hsl(var(--primary-hsl) / 0.7);
   }
 }
 
 @layer utilities {
-  .font-cinzel { font-family: 'Cinzel Decorative', serif; }
-  .font-trajan { font-family: 'Trajan Pro', serif; }
+  /* Removed old, "unusual" fonts */
+  .font-inter { font-family: 'Inter', sans-serif; }
+  .font-poppins { font-family: 'Poppins', sans-serif; }
 
-  .text-glow-primary { text-shadow: 0 0 8px hsla(var(--primary-hsl), 0.9), 0 0 15px hsla(var(--primary-hsl), 0.6); }
-  .text-glow-secondary { text-shadow: 0 0 8px hsla(var(--secondary-hsl), 0.9), 0 0 15px hsla(var(--secondary-hsl), 0.6); }
-  .text-glow-accent { text-shadow: 0 0 8px hsla(var(--accent-hsl), 0.9), 0 0 15px hsla(var(--accent-hsl), 0.6); }
-
-  @keyframes neon-pulse {
-    0%, 100% { box-shadow: 0 0 12px hsla(var(--primary-hsl), 0.5); }
-    50% { box-shadow: 0 0 30px hsla(var(--primary-hsl), 0.8); }
-  }
-
-  @keyframes crystal-glow {
-    0%, 100% { box-shadow: 0 0 10px hsla(var(--accent-hsl), 0.5); }
-    50% { box-shadow: 0 0 25px hsla(var(--accent-hsl), 0.8); }
-  }
-
-  @keyframes obsidian-drift {
-    0% { background-position: 0% 0%, 0% 0%, 0% 0%; }
-    100% { background-position: 100% 100%, 100% 100%, 200% 200%; }
-  }
-
-  @keyframes nebula-flow {
+  /* Simplified background pan */
+  @keyframes background-pan {
     0% { background-position: 0% 0%; }
-    100% { background-position: 200% 200%; }
-  }
-
-  @keyframes star-glow {
-    0%, 100% { opacity: 0.5; transform: scale(1); }
-    50% { opacity: 0.3; transform: scale(1.05); }
-  }
-
-  @keyframes shine {
-    0% { left: -100%; }
-    50% { left: 100%; }
-    100% { left: 100%; }
-  }
-
-  @keyframes text-flicker {
-    0%, 100% { opacity: 1; text-shadow: 0 0 8px hsla(var(--primary-hsl), 0.9); }
-    5% { opacity: 0.9; text-shadow: 0 0 4px hsla(var(--primary-hsl), 0.7); }
-    10% { opacity: 1; }
-    15% { opacity: 0.95; text-shadow: 0 0 5px hsla(var(--primary-hsl), 0.8); }
-    20% { opacity: 1; }
-  }
-
-  .animate-text-flicker {
-    animation: text-flicker 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .animate-shadow-pulse {
-    animation: shadow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .animated-aura {
-    background: linear-gradient(
-      90deg,
-      hsla(var(--primary-hsl), 0.7),
-      hsla(var(--accent-hsl), 0.7),
-      hsla(var(--secondary-hsl), 0.7)
-    );
-    background-size: 300% 100%;
-    animation: nebula-flow 4s linear infinite;
-  }
-
-  .bg-obsidian {
-    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M0 0h4v4H0zm10 10h4v4H10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm10 10h4v4h-10zm-60 10h4v4h-10zm60-60h4v4h-10zm-60 60h4v4h-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    background-size: 100px 100px;
-    background-repeat: repeat;
+    100% { background-position: 20px 20px; }
   }
 }

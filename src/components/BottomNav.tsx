@@ -4,42 +4,44 @@ import { Home, LogOut, User, ShoppingCart, Package, Users, HandCoins } from 'luc
 import { Link, useNavigate } from 'react-router-dom';
 import { useModal } from '@/components/context/ModalContext';
 import { motion } from 'framer-motion';
-import Tilt from 'react-parallax-tilt';
-import { BottomNavProps } from '@/lib/types';
+import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
 import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase';
 import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi';
+import { cn } from '@/lib/utils'; // Import cn
 
 const navItems = [
-    { path: '/home', label: 'Home', icon: <Home className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" /> },
-    { path: '/shop', label: 'Shop', icon: <ShoppingCart className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" /> },
-    { path: '/inventory', label: 'Inventory', icon: <Package className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" /> },
-    { path: '/community', label: 'Community', icon: <Users className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" /> },
-    { path: '/vault', label: 'Vault', icon: <HandCoins className="w-9 h-9 text-[hsl(var(--primary))] group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" /> },
+    { path: '/home', label: 'Home', icon: Home },
+    { path: '/shop', label: 'Shop', icon: ShoppingCart },
+    { path: '/inventory', label: 'Inventory', icon: Package },
+    { path: '/community', label: 'Community', icon: Users },
+    { path: '/vault', label: 'Vault', icon: HandCoins },
 ];
 
 const iconVariants = {
-  rest: { scale: 1, y: 0 },
-  hover: { scale: 1.5, y: -10, transition: { duration: 0.3, ease: 'easeOut' } },
-  neighbor: { scale: 1.2, y: -5, transition: { duration: 0.3, ease: 'easeOut' } }
+  rest: { scale: 1, y: 0, color: 'hsl(var(--muted-foreground))' },
+  hover: { scale: 1.2, y: -5, color: 'hsl(var(--primary))', transition: { duration: 0.2, ease: 'easeOut' } },
 };
 
-const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage }) => {
-  const { setActiveModal } = useModal();
-  const navigate = useNavigate();
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+// This component is now self-sufficient and requires no props.
+const BottomNav: FC = () => {
+  // Get all data from our new contexts
+  const { userId } = usePlayer();
+  const { setActiveModal, setShowMessage } = useModal();
 
-  // ✅ UPDATED: Using our central auth hooks for consistent logic
+  const navigate = useNavigate();
+  const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
+
   const { disconnect } = useAuthUserWagmi();
   const { signOutUser } = useAuthUserFirebase({ disconnectWagmi: disconnect });
 
   const handleSignOut = async () => {
     await signOutUser();
     setShowMessage('✅ Signed out successfully!');
-    navigate('/');
+    navigate('/'); // Navigate to landing page on sign out
   };
 
   const handleRestrictedNav = (path: string, label: string) => {
-    if (!userId && path !== '/') {
+    if (!userId && path !== '/home' && path !== '/') { // Allow home
       setShowMessage(`⚠️ Sign in to access ${label}`);
       setActiveModal('auth');
       return false;
@@ -48,70 +50,73 @@ const BottomNav: FC<BottomNavProps> = ({ userId, setShowMessage }) => {
   };
 
   return (
-    <nav className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 rounded-2xl backdrop-blur-lg border border-[hsl(var(--primary),0.3)] shadow-2xl transition-all duration-300 ease-out max-w-lg w-[90vw] flex justify-between items-center gap-4 holographic-card animated-aura">
-      {navItems.map(({ path, label, icon }, index) => (
-        <Link
-          key={path}
-          to={path}
-          onClick={(e) => {
-            if (!handleRestrictedNav(path, label)) e.preventDefault();
-            else { setShowMessage(`➡️ Navigating to ${label}!`); }
-          }}
-          className="flex flex-col items-center text-sm group"
-          onMouseEnter={() => setHoveredIndex(index)}
-          onMouseLeave={() => setHoveredIndex(null)}
-        >
-          <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
+    <nav className="fixed bottom-0 left-0 w-full z-40 p-2 md:hidden">
+      {/* Main Nav Bar */}
+      <div 
+        className={cn(
+          "flex items-center justify-around w-full max-w-lg mx-auto p-2 rounded-xl shadow-lg",
+          "glass-dark border border-primary/20"
+        )}
+      >
+        {navItems.map(({ path, label, icon: Icon }) => (
+          <Link
+            key={path}
+            to={path}
+            onClick={(e) => {
+              if (!handleRestrictedNav(path, label)) e.preventDefault();
+            }}
+            className="flex flex-col items-center justify-center text-sm group w-14 h-14"
+            onMouseEnter={() => setHoveredLabel(label)}
+            onMouseLeave={() => setHoveredLabel(null)}
+          >
             <motion.div
               className="relative flex flex-col items-center"
               variants={iconVariants}
-              animate={hoveredIndex === index ? 'hover' : hoveredIndex !== null && Math.abs(hoveredIndex - index) === 1 ? 'neighbor' : 'rest'}
+              animate={hoveredLabel === label ? 'hover' : 'rest'}
             >
-              {icon}
-              <span className="text-xs mt-1 font-inter text-muted-foreground text-glow-primary">{label}</span>
+              <Icon className="w-7 h-7" />
+              <span className="text-xs mt-1 font-inter font-medium">{label}</span>
             </motion.div>
-          </Tilt>
-        </Link>
-      ))}
-      {userId ? (
-        <button
-          onClick={handleSignOut}
-          className="flex flex-col items-center group"
-          onMouseEnter={() => setHoveredIndex(navItems.length)}
-          onMouseLeave={() => setHoveredIndex(null)}
-        >
-          <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
+          </Link>
+        ))}
+        {/* Sign In / Sign Out Button */}
+        {userId ? (
+          <button
+            onClick={handleSignOut}
+            className="flex flex-col items-center justify-center text-sm group w-14 h-14"
+            onMouseEnter={() => setHoveredLabel('Sign Out')}
+            onMouseLeave={() => setHoveredLabel(null)}
+          >
             <motion.div
               className="relative flex flex-col items-center"
               variants={iconVariants}
-              animate={hoveredIndex === navItems.length ? 'hover' : 'rest'}
+              animate={hoveredLabel === 'Sign Out' ? 'hover' : 'rest'}
             >
-              <LogOut className="w-9 h-9 text-destructive group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />
-              <span className="text-xs mt-1 font-inter text-muted-foreground text-glow-primary">Sign Out</span>
+              <LogOut className="w-7 h-7 text-destructive" />
+              <span className="text-xs mt-1 font-inter font-medium text-destructive">Sign Out</span>
             </motion.div>
-          </Tilt>
-        </button>
-      ) : (
-        <button
-          onClick={() => setActiveModal('auth')}
-          className="flex flex-col items-center group"
-          onMouseEnter={() => setHoveredIndex(navItems.length)}
-          onMouseLeave={() => setHoveredIndex(null)}
-        >
-          <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.4}>
+          </button>
+        ) : (
+          <button
+            onClick={() => setActiveModal('auth')}
+            className="flex flex-col items-center justify-center text-sm group w-14 h-14"
+            onMouseEnter={() => setHoveredLabel('Sign In')}
+            onMouseLeave={() => setHoveredLabel(null)}
+          >
             <motion.div
               className="relative flex flex-col items-center"
               variants={iconVariants}
-              animate={hoveredIndex === navItems.length ? 'hover' : 'rest'}
+              animate={hoveredLabel === 'Sign In' ? 'hover' : 'rest'}
             >
-              <User className="w-9 h-9 text-foreground group-hover:text-[hsl(var(--secondary))] animate-neon-pulse" />
-              <span className="text-xs mt-1 font-inter text-muted-foreground text-glow-primary">Sign In</span>
+              <User className="w-7 h-7" />
+              <span className="text-xs mt-1 font-inter font-medium">Sign In</span>
             </motion.div>
-          </Tilt>
-        </button>
-      )}
+          </button>
+        )}
+      </div>
     </nav>
   );
 };
 
 export default BottomNav;
+

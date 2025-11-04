@@ -4,17 +4,10 @@ import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 import { MEMBERSHIP_TIERS } from '@/lib/types';
+import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
+import { useModal } from '@/components/context/ModalContext'; // Import modal hook
 
-interface SwytchLevelsGridProps {
-  userId: string | null;
-  currentLevel: number;
-  isPending: boolean;
-  authLoading: boolean;
-  updatePlayerFirestore: (updates: Partial<any>) => Promise<void>;
-  handlePurchaseLevel: (level: { id: string; name: string; cost: number; contentRoute: string; level: number; }) => Promise<void>;
-  setActiveModal: (modalName: string | null) => void;
-  setShowMessage: (message: string) => void;
-}
+// This component is now self-sufficient and requires no props.
 
 const levels = Object.entries(MEMBERSHIP_TIERS).map(([key, tier]) => ({
   ...tier,
@@ -25,18 +18,15 @@ const levels = Object.entries(MEMBERSHIP_TIERS).map(([key, tier]) => ({
   energyRequired: 'Varies',
   perks: ['Access to exclusive features', 'Priority support'],
   icon: Sparkles,
-  image: `https://placehold.co/150x100/FFD700/000000?text=${tier.name.replace(/\s/g, '+')}`,
+  image: `https://placehold.co/150x100/1e293b/94a3b8?text=${tier.name.replace(/\s/g, '+')}`,
 }));
 
-const SwytchLevelsGrid: FC<SwytchLevelsGridProps> = ({
-  userId,
-  currentLevel,
-  isPending,
-  authLoading,
-  handlePurchaseLevel,
-  setActiveModal,
-  setShowMessage,
-}) => {
+const SwytchLevelsGrid: FC = () => {
+  // Pull data from our global contexts
+  const { userId, currentLevel, dataLoading, authLoading } = usePlayer();
+  const { setActiveModal, setShowMessage } = useModal();
+  const isPending = dataLoading || authLoading;
+
   const handleLevelPurchase = (level: { id: string; title: string; cost: number; contentRoute: string; level: number; }) => {
     if (!userId) {
       setShowMessage('⚠️ Please sign in to purchase levels.');
@@ -47,57 +37,53 @@ const SwytchLevelsGrid: FC<SwytchLevelsGridProps> = ({
       setShowMessage(`ℹ️ You are already at or above ${level.title}.`);
       return;
     }
-    handlePurchaseLevel({
-      id: level.id,
-      name: level.title,
-      cost: level.cost,
-      contentRoute: level.contentRoute,
-      level: level.level,
-    });
+    // All purchases are now routed through the PaymentModal
+    setShowMessage(`Opening payment options for ${level.title}...`);
+    setActiveModal('payment');
   };
 
   if (authLoading || isPending) {
     return (
-      <SwytchCard gradient="from-gray-800/20 to-gray-700/20" className="p-6 text-center">
-        <p className="text-gray-400">Loading levels...</p>
+      <SwytchCard variant="default" className="p-6 text-center">
+        <p className="text-muted-foreground">Loading levels...</p>
       </SwytchCard>
     );
   }
 
   return (
-    <SwytchCard gradient="from-rose-700/20 to-purple-700/20" className="p-6">
-      <h2 className="text-2xl font-bold text-white font-poppins mb-4 text-center flex items-center justify-center gap-2">
+    <SwytchCard variant="default" className="p-6">
+      <h2 className="text-2xl font-bold text-foreground font-poppins mb-4 text-center flex items-center justify-center gap-2">
         <Sparkles className="w-7 h-7 text-primary" /> Membership Tiers
       </h2>
-      <p className="text-lg text-gray-300 text-center mb-6">
+      <p className="text-lg text-muted-foreground text-center mb-6 font-inter">
         Advance through tiers to unlock powerful perks and rewards!
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {levels.map((levelItem) => (
-          <motion.div key={levelItem.id} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+          <motion.div key={levelItem.id} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
             <SwytchCard
-              gradient={levelItem.level <= currentLevel ? 'from-green-700/20 to-green-900/20' : 'from-gray-800/20 to-gray-700/20'}
+              variant={levelItem.level <= currentLevel ? "default" : "holographic"}
               className="p-5 h-full flex flex-col"
             >
-              <div className="relative w-full h-32 bg-gray-700 rounded-md overflow-hidden mb-4 flex items-center justify-center">
+              <div className="relative w-full h-32 bg-secondary rounded-md overflow-hidden mb-4 flex items-center justify-center">
                 <img
                   src={levelItem.image}
                   alt={levelItem.title}
                   className="w-full h-full object-cover"
-                  onError={(e) => e.currentTarget.src = `https://placehold.co/150x100/FF0000/FFFFFF?text=Level+${levelItem.level}`}
+                  onError={(e) => e.currentTarget.src = `https://placehold.co/150x100/1e293b/94a3b8?text=Level+${levelItem.level}`}
                 />
                 {levelItem.level <= currentLevel && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <span className="text-white text-xl font-bold">UNLOCKED</span>
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span className="text-foreground text-xl font-bold font-poppins">UNLOCKED</span>
                   </div>
                 )}
               </div>
 
-              <h3 className="text-xl font-bold text-white font-poppins mb-2">{levelItem.title}</h3>
-              <p className="text-sm text-gray-300 flex-grow mb-3">{levelItem.reward}</p>
-              <p className="text-sm font-semibold text-primary mb-2">Cost: {levelItem.cost} USD</p>
-              <ul className="list-disc list-inside text-xs text-gray-200 space-y-1 mb-4">
+              <h3 className="text-xl font-bold text-foreground font-poppins mb-2">{levelItem.title}</h3>
+              <p className="text-sm text-muted-foreground flex-grow mb-3 font-inter">{levelItem.reward}</p>
+              <p className="text-2xl font-semibold text-primary mb-2">${levelItem.cost}</p>
+              <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1 mb-4 font-inter">
                 {levelItem.perks.map((perk, i) => (
                   <li key={i}>{perk}</li>
                 ))}
@@ -115,7 +101,7 @@ const SwytchLevelsGrid: FC<SwytchLevelsGridProps> = ({
                 </motion.button>
               ) : (
                 <button
-                  className="btn-secondary opacity-70 cursor-not-allowed mt-auto"
+                  className="btn-secondary-solid opacity-60 cursor-not-allowed mt-auto"
                   disabled
                 >
                   Current Tier

@@ -3,38 +3,39 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Star, ArrowRight } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { MembershipTier, MEMBERSHIP_TIERS } from '@/lib/types'; // Import types
+import { MEMBERSHIP_TIERS } from '@/lib/types';
+import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
+import { useModal } from '@/components/context/ModalContext'; // Import modal hook
 
-interface MembershipStatusOverviewProps {
-  membership: MembershipTier;
-  isPETMember: boolean;
-  setActiveModal: (modalName: string | null) => void;
-  setShowMessage: (message: string) => void;
-}
+// This component is now self-sufficient and requires no props.
+const MembershipStatusOverview: FC = () => {
+  // Pull data from our global contexts
+  const { isPETMember, playerData } = usePlayer();
+  const { setActiveModal, setShowMessage } = useModal();
 
-const MembershipStatusOverview: FC<MembershipStatusOverviewProps> = ({
-  membership,
-  isPETMember,
-  setActiveModal,
-  setShowMessage,
-}) => {
+  const membership = playerData?.membership || 'none';
   const currentMembershipName = membership === 'none' ? 'No Membership' : MEMBERSHIP_TIERS[membership]?.name || 'Unknown Tier';
 
   const handleUpgradeClick = () => {
     setShowMessage('🌟 Explore membership options!');
-    setActiveModal('payment'); // Trigger the payment modal for membership selection
+    // We navigate to the membership page instead of opening the payment modal directly
+    // This provides a better user experience.
+    // Or, open the payment modal to a specific "membership" tab if you add that feature.
+    setActiveModal('payment'); 
   };
 
   return (
-    <SwytchCard gradient="from-purple-700/20 to-pink-700/20" className="p-6 text-center">
-      <h2 className="text-2xl font-bold text-white font-poppins mb-3">
+    <SwytchCard variant="default" className="p-6 text-center">
+      <h2 className="text-2xl font-bold text-foreground font-poppins mb-3">
         <Star className="inline-block w-7 h-7 mr-2 text-yellow-400" /> Your Membership
       </h2>
-      <p className="text-lg text-gray-200 mb-4">
+      <p className="text-lg text-muted-foreground mb-4 font-inter">
         Status: <span className="font-semibold text-primary">{currentMembershipName}</span>
-        {isPETMember && <span className="ml-2 text-sm text-green-400">(Active PET Member)</span>}
       </p>
-      {!isPETMember && (
+      
+      {isPETMember ? (
+        <p className="text-sm text-green-400 font-inter">Enjoy your exclusive PET Member benefits!</p>
+      ) : (
         <motion.button
           className="btn-primary flex items-center justify-center mx-auto"
           onClick={handleUpgradeClick}
@@ -44,9 +45,6 @@ const MembershipStatusOverview: FC<MembershipStatusOverviewProps> = ({
         >
           Upgrade Membership <ArrowRight className="w-5 h-5 ml-2" />
         </motion.button>
-      )}
-      {isPETMember && (
-        <p className="text-sm text-gray-400">Enjoy your exclusive PET Member benefits!</p>
       )}
     </SwytchCard>
   );

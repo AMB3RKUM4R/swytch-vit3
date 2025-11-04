@@ -10,6 +10,7 @@ import { PayPalScriptProvider } from '@paypal/react-paypal-js';
 // Context Providers
 import { ModalProvider } from './components/context/ModalContext';
 import { ThemeProvider } from './components/context/ThemeContext';
+import { PlayerProvider } from './components/context/PlayerContext'; // 1. IMPORT
 
 // Configs and App Component
 import { wagmiConfig } from './lib/wagmi';
@@ -46,7 +47,9 @@ const Root: React.FC = () => {
               <PayPalScriptProvider options={initialPayPalOptions}>
                 <ThemeProvider>
                   <ModalProvider>
-                    <App />
+                    <PlayerProvider> {/* 2. WRAP THE APP */}
+                      <App />
+                    </PlayerProvider>
                   </ModalProvider>
                 </ThemeProvider>
               </PayPalScriptProvider>

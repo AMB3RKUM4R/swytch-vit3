@@ -69,14 +69,14 @@ const SwytchLevelsGrid: FC<SwytchLevelsGridProps> = ({
 
   if (authLoading || isPending) {
     return (
-      <SwytchCard gradient="from-gray-800/20 to-gray-700/20" className="p-6 text-center">
+      <SwytchCard  className="p-6 text-center">
         <p className="text-gray-400">Loading levels...</p>
       </SwytchCard>
     );
   }
 
   return (
-    <SwytchCard gradient="from-rose-700/20 to-purple-700/20" className="p-6">
+    <SwytchCard  className="p-6">
       <h2 className="text-2xl font-bold text-white font-poppins mb-4 text-center flex items-center justify-center gap-2">
         <Sparkles className="w-7 h-7 text-primary" /> Membership Tiers
       </h2>
@@ -88,7 +88,7 @@ const SwytchLevelsGrid: FC<SwytchLevelsGridProps> = ({
         {displayLevels.map((levelItem) => (
           <motion.div key={levelItem.id} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
             <SwytchCard
-              gradient={levelItem.level <= currentLevel ? 'from-green-700/20 to-green-900/20' : 'from-gray-800/20 to-gray-700/20'}
+              variant={levelItem.level <= currentLevel ? 'holographic' : 'default'}
               className="p-5 h-full flex flex-col"
             >
               <div className="relative w-full h-32 bg-gray-700 rounded-md overflow-hidden mb-4 flex items-center justify-center">

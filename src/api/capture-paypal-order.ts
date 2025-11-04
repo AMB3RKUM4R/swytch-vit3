@@ -46,11 +46,18 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const reqBody = await request.json();
-  const { orderID, userId, amount, depositType } = reqBody;
+  // --- FIX 1: Accept 'itemId' from the client ---
+  const { orderID, userId, amount, depositType, itemId } = reqBody; // Added itemId
 
   if (!orderID || !userId || !amount) {
     console.error("API: Missing required fields for PayPal order capture:", { orderID, userId, amount });
     return new Response(JSON.stringify({ error: "Missing required fields for capture" }), { status: 400, headers: { "Content-Type": "application/json" } });
+  }
+  
+  // --- FIX 2: Check for itemId if it's an item-purchase ---
+  if (depositType === 'item-purchase' && !itemId) {
+    console.error("API: Missing 'itemId' for an 'item-purchase' depositType.");
+    return new Response(JSON.stringify({ error: "Missing itemId for item purchase" }), { status: 400, headers: { "Content-Type": "application/json" } });
   }
 
   const parsedAmount = parseFloat(amount);
@@ -99,21 +106,52 @@ export default async function handler(request: Request): Promise<Response> {
     const captureResult = await captureResponse.json();
 
     if (captureResult.status === "COMPLETED") {
-      const transactionRefId = `paypal_${orderID}`;
-      await db.collection("Transactions").doc(transactionRefId).set({
-        transactionId: transactionRefId,
-        userId: userId,
-        amount: parsedAmount,
-        currency: captureResult.purchase_units[0].payments.captures[0].amount.currency_code,
-        transactionType: depositType || "deposit",
-        status: "pending",
-        timestamp: FieldValue.serverTimestamp(),
-        paypalOrderId: orderID,
-        paymentMethod: "PayPal",
-        paypalCaptureId: captureResult.purchase_units[0].payments.captures[0].id,
-      }, { merge: true });
+      // --- FIX 3: Use a Firestore transaction to do two things at once ---
+      await db.runTransaction(async (t) => {
+        // 1. Log the transaction
+        const transactionRefId = `paypal_${orderID}`;
+        const transactionRef = db.collection("Transactions").doc(transactionRefId);
+        
+        const isItemPurchase = depositType === 'item-purchase' && itemId;
 
-      return new Response(JSON.stringify({ success: true, message: "Payment captured and awaiting admin approval." }), { status: 200, headers: { "Content-Type": "application/json" } });
+        t.set(transactionRef, {
+          transactionId: transactionRefId,
+          userId: userId,
+          amount: parsedAmount,
+          currency: captureResult.purchase_units[0].payments.captures[0].amount.currency_code,
+          transactionType: depositType || "deposit",
+          // Auto-complete item purchases, but flag deposits for admin approval
+          status: isItemPurchase ? "completed" : "pending", 
+          timestamp: FieldValue.serverTimestamp(),
+          paypalOrderId: orderID,
+          paymentMethod: "PayPal",
+          paypalCaptureId: captureResult.purchase_units[0].payments.captures[0].id,
+          itemId: itemId || null, // Add the item ID to the transaction log
+        }, { merge: true });
+
+        // 2. If it was an item purchase, automatically grant the item
+        if (isItemPurchase) {
+          const playerRef = db.collection("Players").doc(userId);
+          // This creates a new item in the player's 'InventoryItems' subcollection
+          const newItemInstanceRef = playerRef.collection("InventoryItems").doc(); 
+
+          const newInventoryItem = {
+            itemId: itemId,
+            acquiredAt: FieldValue.serverTimestamp(),
+            // You can add other default properties here if needed
+          };
+          
+          t.set(newItemInstanceRef, newInventoryItem);
+        }
+      });
+      // --- End of Transaction ---
+
+      const message = (depositType === 'item-purchase' && itemId)
+        ? "Payment successful! Your item has been added to your inventory."
+        : "Payment captured and awaiting admin approval.";
+
+      return new Response(JSON.stringify({ success: true, message: message }), { status: 200, headers: { "Content-Type": "application/json" } });
+      
     } else {
       console.error("API: PayPal order not completed after capture:", captureResult);
       return new Response(JSON.stringify({ success: false, error: "PayPal payment not completed" }), { status: 400, headers: { "Content-Type": "application/json" } });

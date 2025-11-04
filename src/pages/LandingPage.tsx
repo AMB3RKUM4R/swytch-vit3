@@ -6,7 +6,9 @@ import { db } from '../lib/firebaseConfig';
 import { Dialog, DialogContent, DialogTrigger } from '@radix-ui/react-dialog';
 import { Users, Gem, Shield, Star, Sparkles, Rocket, Gamepad2 } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { PageProps, PlayerData } from '../lib/types';
+import { PlayerData } from '../lib/types';
+import { usePlayer } from '@/components/context/PlayerContext';
+import { useModal } from '@/components/context/ModalContext';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -29,15 +31,20 @@ const iconVariants = {
 };
 
 
-const LandingPage: FC<PageProps> = ({
-  userId,
-  setActiveModal,
-  setShowMessage,
-  setIsPETMember,
-  isPending,
-  authLoading,
-  initialAuthCheckComplete,
-}) => {
+const LandingPage: FC = () => {
+  // Get all data from our new contexts
+  const { 
+    userId, 
+    setIsPETMember, 
+    dataLoading, 
+    authLoading, 
+    initialAuthCheckComplete 
+  } = usePlayer();
+  const { setActiveModal, setShowMessage } = useModal();
+
+  // isPending from PageProps is now dataLoading from usePlayer
+  const isPending = dataLoading;
+
   const [, setPlayerData] = useState<PlayerData | null>(null);
 
   useEffect(() => {
@@ -65,7 +72,8 @@ const LandingPage: FC<PageProps> = ({
     } else {
       setPlayerData(null);
       setIsPETMember(false);
-      if (initialAuthCheckComplete) {
+      if (initialAuthCheckComplete && window.location.pathname !== '/') {
+        // Only show this message if they are not on the landing page
         setShowMessage('⚠️ Please sign in to explore the PETverse!');
         setActiveModal('auth');
       }
@@ -73,7 +81,7 @@ const LandingPage: FC<PageProps> = ({
   }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
   if (authLoading || isPending) {
-    return null;
+    return null; // Let the main App.tsx loading screen handle it
   }
 
   return (
@@ -193,3 +201,4 @@ const LandingPage: FC<PageProps> = ({
 };
 
 export default LandingPage;
+
