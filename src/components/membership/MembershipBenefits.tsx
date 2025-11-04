@@ -43,7 +43,7 @@ const benefits = [
 
 const MembershipBenefits: FC<MembershipBenefitsProps> = () => {
   return (
-    <SwytchCard gradient="from-teal-700/20 to-blue-700/20" className="p-6">
+    <SwytchCard  className="p-6">
       <h2 className="text-2xl font-bold text-white font-poppins mb-4 text-center flex items-center justify-center gap-2">
         <Star className="w-7 h-7 text-primary" /> Membership Benefits
       </h2>
