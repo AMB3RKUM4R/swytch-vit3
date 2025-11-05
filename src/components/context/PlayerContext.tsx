@@ -8,19 +8,20 @@ import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi';
 import { PlayerData, Transaction } from '@/lib/types';
 import { useNavigate } from 'react-router-dom';
 
-// 1. Define the shape of the data our context will provide
+// 1. DEFINE THE SHAPE OF THE CONTEXT
 interface PlayerContextType {
   // Auth State
   firebaseUser: User | null;
   wagmiAddress: `0x${string}` | undefined;
   userId: string | null;
   authLoading: boolean;
+  authError: string | null; 
   initialAuthCheckComplete: boolean;
 
   // Player Data State
   playerData: PlayerData | null;
   isPETMember: boolean;
-  setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>; // Added for pages that use it
+  setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>;
   joulesBalance: number;
   goldBalance: number;
   currentLevel: number;
@@ -29,14 +30,22 @@ interface PlayerContextType {
   // Core Functions
   updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
   logTransaction: (txData: Omit<Transaction, 'transactionId' | 'timestamp'>) => Promise<void>;
+
+  // Auth Functions
+  signInWithGoogle: () => Promise<void>;
+  signOutUser: () => Promise<void>;
+  registerWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
+  isAuthenticated: () => boolean;
+  isAdmin: () => boolean;
 }
 
-// 2. Create the context
+// 2. CREATE THE CONTEXT
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
-// Helper function to create new player data
-// (This is the same function from your App.tsx [cite: App.tsx])
-const createNewPlayerData = (user: User, walletAddress: string | null = null): PlayerData => {
+// Helper function
+const createNewPlayerData = (user: User, walletAddress: `0x${string}` | undefined): PlayerData => {
     const now = Timestamp.now();
     return {
         userId: user.uid,
@@ -51,28 +60,42 @@ const createNewPlayerData = (user: User, walletAddress: string | null = null): P
         mana: 100,
         isPETMember: true,
         membership: 'ecosystem',
-        walletAddress: walletAddress,
+        walletAddress: walletAddress || null, // Link wallet if available
         character: null,
         inventory: null,
         createdAt: now,
         updatedAt: now,
-        profilePictureUrl: '', // Default empty string  
+        profilePictureUrl: '',
     };
 };
 
-// 3. Create the Provider component
+// 3. CREATE THE PROVIDER
 export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
 
-  // --- AUTH LOGIC (Moved from App.tsx [cite: App.tsx]) ---
-  const { user: firebaseUser, loading: firebaseLoading } = useAuthUserFirebase();
-  const { address: wagmiAddress, isConnected: wagmiIsConnected } = useAuthUserWagmi();
-  const userId = firebaseUser?.uid || (wagmiIsConnected ? wagmiAddress : null);
+  // --- AUTH LOGIC ---
+  const { address: wagmiAddress, disconnect: disconnectWagmi } = useAuthUserWagmi();
+  
+  const { 
+    user: firebaseUser, 
+    loading: firebaseLoading,
+    error: authError,
+    signInWithGoogle,
+    signOutUser,
+    registerWithEmail,
+    signInWithEmail,
+    sendPasswordReset,
+    isAuthenticated,
+    isAdmin,
+  } = useAuthUserFirebase({ disconnectWagmi });
 
-  // --- DATA FETCHING LOGIC (Moved from App.tsx [cite: App.tsx]) ---
+  // --- FIX: The userId *MUST* come from Firebase to satisfy your rules ---
+  const userId = firebaseUser?.uid || null;
+
+  // --- DATA FETCHING LOGIC ---
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [isPETMember, setIsPETMember] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true); // Separate from authLoading
+  const [dataLoading, setDataLoading] = useState(true);
   const [initialAuthCheckComplete, setInitialAuthCheckComplete] = useState(false);
 
   useEffect(() => {
@@ -80,6 +103,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return; // Wait for Firebase auth to be ready
     }
     
+    // If no Firebase user, do nothing. This respects the security rules.
     if (!userId) {
       setPlayerData(null);
       setIsPETMember(false);
@@ -89,39 +113,37 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
 
     setDataLoading(true);
-    const playerRef = doc(db, 'Players', userId as string);
+    // This snapshot listener will now have a valid, authenticated UID
+    const playerRef = doc(db, 'Players', userId);
     const unsubscribe = onSnapshot(playerRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as PlayerData;
         setPlayerData(data);
         setIsPETMember(data.isPETMember || false);
-        // If user is on landing page, move them to home
         if (window.location.pathname === '/') {
             navigate('/home');
         }
       } else {
-        // Auto-create user document if it doesn't exist [cite: App.tsx]
+        // Auto-create user document ONLY for a valid Firebase user
         if (firebaseUser) {
             const newPlayerData = createNewPlayerData(firebaseUser, wagmiAddress);
-            setDoc(playerRef, newPlayerData);
-        } else if (wagmiIsConnected && wagmiAddress) {
-            // This logic is for wallet-only login
-            const wagmiUser: User = { uid: wagmiAddress, isAnonymous: false } as User;
-            const newPlayerData = createNewPlayerData(wagmiUser, wagmiAddress);
+            // This create operation will be allowed by your rules
             setDoc(playerRef, newPlayerData);
         }
       }
       setDataLoading(false);
       setInitialAuthCheckComplete(true);
     }, (error) => {
-      console.error("Firestore snapshot error:", error);
+      // This error should no longer be a permission error
+      console.error("Firestore snapshot error:", error); 
       setDataLoading(false);
     });
 
     return () => unsubscribe();
-  }, [userId, firebaseUser, wagmiAddress, wagmiIsConnected, firebaseLoading, navigate]);
+  // We no longer depend on wagmiIsConnected for this effect
+  }, [userId, firebaseUser, wagmiAddress, firebaseLoading, navigate]);
 
-  // --- CORE FUNCTIONS (Moved from App.tsx [cite: App.tsx]) ---
+  // --- CORE FUNCTIONS (Moved from App.tsx) ---
   const updatePlayerFirestore = useCallback(async (updates: Partial<PlayerData>) => {
     if (!userId) return;
     await updateDoc(doc(db, 'Players', userId as string), { ...updates, updatedAt: serverTimestamp() });
@@ -139,12 +161,13 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     wagmiAddress,
     userId: userId ?? null,
     authLoading: firebaseLoading,
+    authError: authError, 
     initialAuthCheckComplete,
 
     // Player Data State
     playerData,
     isPETMember,
-    setIsPETMember, // Provide the setter
+    setIsPETMember, 
     joulesBalance: playerData?.joules ?? 0,
     goldBalance: playerData?.gold ?? 0,
     currentLevel: playerData?.level ?? 0,
@@ -153,10 +176,20 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     // Core Functions
     updatePlayerFirestore,
     logTransaction,
+    
+    // Auth Functions
+    signInWithGoogle,
+    signOutUser,
+    registerWithEmail,
+    signInWithEmail,
+    sendPasswordReset,
+    isAuthenticated,
+    isAdmin,
   }), [
-    firebaseUser, wagmiAddress, userId, firebaseLoading, initialAuthCheckComplete,
+    firebaseUser, wagmiAddress, userId, firebaseLoading, authError, initialAuthCheckComplete,
     playerData, isPETMember, setIsPETMember, dataLoading,
-    updatePlayerFirestore, logTransaction
+    updatePlayerFirestore, logTransaction,
+    signInWithGoogle, signOutUser, registerWithEmail, signInWithEmail, sendPasswordReset, isAuthenticated, isAdmin
   ]);
 
   return (

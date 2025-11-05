@@ -1,73 +1,32 @@
-import { FC, useState, useEffect, useCallback } from 'react';
+// src/pages/Membership.tsx
+import { FC, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
-import { Sparkles, Star, Users, Award } from 'lucide-react';
+import { Sparkles, Star, Users, Award, FileText, CheckCircle } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import MembershipUpgrade from '../components/membership/MembershipUpgrade';
 import SwytchLevelsGrid from '../components/membership/SwytchLevelsGrid';
-import { SupportedCurrency, TransactionType, TransactionStatus, PlayerData } from '../lib/types';
+import MembershipBenefits from '../components/membership/MembershipBenefits';
+import { SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
+import SwytchCard from '@/components/SwytchCard';
 
 // Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.3 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
 const sectionVariants = {
-  hidden: { opacity: 0, y: 50 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } },
 };
 
 const Membership: FC = () => {
-  // Get all data from our new contexts
-  const {
-    userId,
-    setIsPETMember,
-    dataLoading,
-    authLoading,
-    initialAuthCheckComplete
-  } = usePlayer();
+  const { userId, isPETMember, authLoading } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
-
-  // isPending from PageProps is now dataLoading from usePlayer
-  const isPending = dataLoading;
-
-  const [, setPlayerData] = useState<PlayerData | null>(null);
-  
-  useEffect(() => {
-    if (userId) {
-      const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data() as PlayerData;
-          setPlayerData(data);
-          setIsPETMember(data.isPETMember || false);
-        } else {
-          setPlayerData(null);
-          setIsPETMember(false);
-          if (initialAuthCheckComplete) {
-            setShowMessage('⚠️ User data not found. Please ensure you are signed in.');
-            setActiveModal('auth');
-          }
-        }
-      }, (err) => {
-        console.error('Failed to fetch user data for Membership page:', err);
-        setShowMessage('⚠️ Failed to load membership data.');
-      });
-      return () => unsubscribe();
-    } else {
-      setPlayerData(null);
-      setIsPETMember(false);
-      if (initialAuthCheckComplete) {
-        setShowMessage('⚠️ Please sign in to explore membership!');
-        setActiveModal('auth');
-      }
-    }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
 
   const handleShareOnX = useCallback(async () => {
     if (!userId) {
@@ -81,21 +40,20 @@ const Membership: FC = () => {
       await addDoc(collection(db, 'Transactions'), {
         transactionId: `${userId}_share_membership_${Date.now()}`,
         userId,
-        amount: 5,
+        amount: 5, // Example quest reward
         currency: 'JOULES' as SupportedCurrency,
         transactionType: 'quest-reward' as TransactionType,
         status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
-        game: 'membership',
       });
       setShowMessage('🎉 Shared Membership on X! Reward pending verification.');
     } catch (err) {
       console.error('Failed to share on X:', err);
-      setShowMessage('⚠️ Failed to share on X. Try again.');
     }
   }, [userId, setShowMessage, setActiveModal]);
 
-  if (authLoading || isPending) {
+  if (authLoading) {
+    // Let the main loading screen handle this
     return null;
   }
 
@@ -110,47 +68,69 @@ const Membership: FC = () => {
         <div className="relative z-10 max-w-7xl mx-auto py-24 px-4 sm:px-6 lg:px-8 space-y-20">
           
           <motion.section variants={sectionVariants} className="text-center">
-            <Star className="mx-auto w-16 h-16 text-primary mb-4" />
-            <h1 className="text-5xl lg:text-6xl font-bold text-foreground mb-4">
-              Cosmic Membership
+            <Star className="mx-auto w-16 h-16 text-primary text-glow-primary mb-4" />
+            <h1 className="text-5xl lg:text-6xl font-bold text-foreground mb-4 font-russo">
+              PET Membership
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto font-inter">
-              Ascend to a higher tier. Unlock exclusive rewards and in-game advantages.
+              This isn't a subscription. It's your initiation into a new order.
+              Become a **P**erson of **E**nergy & **T**ruth.
             </p>
           </motion.section>
+          
+          {/* --- PHILOSOPHY CALLOUT --- */}
+          {isPETMember ? (
+            <motion.section variants={sectionVariants}>
+                <SwytchCard variant="holographic" className="p-8 text-center">
+                    <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
+                    <h2 className="text-3xl font-bold font-poppins text-foreground mb-2">
+                        You are PET. Welcome.
+                    </h2>
+                    <p className="text-lg text-muted-foreground font-inter">
+                        Your status is active. You are a Beneficiary with full rights to earn, vote, and build.
+                    </p>
+                </SwytchCard>
+            </motion.section>
+          ) : (
+            <motion.section variants={sectionVariants}>
+              <SwytchCard variant="holographic" className="p-8">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <FileText className="w-12 h-12 text-primary flex-shrink-0" />
+                  <div>
+                    <h2 className="text-2xl font-bold font-poppins text-foreground mb-2">
+                      A Digital Society of Opt-In Freedom
+                    </h2>
+                    <p className="text-muted-foreground font-inter">
+                      This $10 Swytch Personal Membership (SPM) isn't a fee, it's your **one-time buy-in** to the ecosystem. It unlocks your right to convert Energy to Value. It makes you a true member, not a customer.
+                    </p>
+                  </div>
+                </div>
+              </SwytchCard>
+            </motion.section>
+          )}
 
+          {/* --- MEMBERSHIP TIERS (Using new component) --- */}
           <motion.section variants={sectionVariants}>
-            <h2 className="text-4xl font-bold text-foreground text-center mb-10">
-              <Award className="inline-block w-10 h-10 text-primary mr-3" />
+            <h2 className="text-4xl font-bold text-foreground text-center mb-10 font-poppins flex items-center justify-center gap-3">
+              <Award className="w-10 h-10 text-primary" />
               Choose Your Tier
             </h2>
-             {/* FIX: Removed all props. Component is self-sufficient. */}
              <SwytchLevelsGrid />
           </motion.section>
 
+           {/* --- MEMBERSHIP BENEFITS (Using new component) --- */}
            <motion.section variants={sectionVariants}>
-            <h2 className="text-4xl font-bold text-foreground text-center mb-10">
-              <Sparkles className="inline-block w-10 h-10 text-primary mr-3" />
-              Special Upgrades
+            <h2 className="text-4xl font-bold text-foreground text-center mb-10 font-poppins flex items-center justify-center gap-3">
+              <Sparkles className="w-10 h-10 text-primary" />
+              Core Benefits
             </h2>
-            <div className="p-4 sm:p-8 bg-black/20 rounded-lg border border-border backdrop-blur-sm">
-                {/* FIX: Removed all props. Component is self-sufficient. */}
-                <MembershipUpgrade userId={null} setIsPETMember={function (_isMember: boolean): void {
-                throw new Error('Function not implemented.');
-              } } updatePlayerFirestore={function (_updates: Partial<PlayerData>): Promise<void> {
-                throw new Error('Function not implemented.');
-              } } setActiveModal={function (_modal: string | null): void {
-                throw new Error('Function not implemented.');
-              } } setShowMessage={function (_message: string): void {
-                throw new Error('Function not implemented.');
-              } }                
-                />
-            </div>
+            <MembershipBenefits />
           </motion.section>
 
 
-          <motion.section variants={sectionVariants} className="text-center p-8 bg-black/20 rounded-lg border border-border backdrop-blur-sm">
-             <h2 className="text-3xl font-bold text-foreground mb-4">
+          {/* --- FINAL CTA --- */}
+          <motion.section variants={sectionVariants} className="text-center p-8 bg-card rounded-lg border border-border">
+             <h2 className="text-3xl font-bold text-foreground mb-4 font-poppins">
                 Connect & Share Your Ascent
              </h2>
              <p className="text-muted-foreground max-w-2xl mx-auto font-inter mb-6">
@@ -173,4 +153,3 @@ const Membership: FC = () => {
 };
 
 export default Membership;
-

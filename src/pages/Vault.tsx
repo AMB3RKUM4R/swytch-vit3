@@ -1,28 +1,27 @@
 // src/pages/Vault.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebaseConfig';
-import { Wallet, Info, Star, SlidersHorizontal } from 'lucide-react';
+import { Wallet, Info, Star, SlidersHorizontal, FileText, Brain, Scale } from 'lucide-react';
 import { useAccount, useGasPrice, useBalance, useChainId, useBlockNumber } from 'wagmi';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import VaultWalletInfo from '../components/vault/VaultWalletInfo';
 import VaultMembershipPackages from '../components/vault/VaultMembershipPackages';
 import VaultRules from '../components/vault/VaultRules';
 import YieldCalculator from '../components/vault/YieldCalculator';
-import { PlayerData } from '../lib/types';
+import VaultMembershipBenefits from '../components/vault/VaultMembershipBenefits'; // Import benefits
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
+import SwytchCard from '@/components/SwytchCard';
 
 // Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.3 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
 const sectionVariants = {
-  hidden: { opacity: 0, y: 50 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } },
 };
 
 const tabContentVariants = {
@@ -32,71 +31,38 @@ const tabContentVariants = {
 }
 
 export const Vault: FC = () => {
-  // Get all data from our new contexts
-  const { 
-    userId, 
-    setIsPETMember, 
-    dataLoading, 
-    authLoading, 
-    initialAuthCheckComplete 
-  } = usePlayer();
+  const { userId, initialAuthCheckComplete } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
-
-  // isPending from PageProps is now dataLoading from usePlayer
-  const isPending = dataLoading;
-
-  const [, setPlayerData] = useState<PlayerData | null>(null);
-  const [activeTab, setActiveTab] = useState<'info' | 'membership' | 'tools'>('info'); // Removed 'swaps'
+  const [activeTab, setActiveTab] = useState<'info' | 'membership' | 'tools'>('info');
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { data: gasPrice } = useGasPrice();
-  // FIX: Added symbol and decimals to the balance query
   const { data: usdtBalance } = useBalance({ 
     address, 
-    token: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
-    query: {
-      select: (data) => ({
-        formatted: data.formatted,
-        value: data.value,
-        symbol: data.symbol,
-        decimals: data.decimals,
-      }),
-    }
+    token: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // Mainnet USDT
+    query: { select: (data) => data }
   });
   const { data: currentBlockNumber } = useBlockNumber({ watch: true });
 
+  // Simplified auth check for vault
   useEffect(() => {
-    if (userId) {
-      const userRef = doc(db, 'Players', userId);
-      const unsubscribe = onSnapshot(userRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data() as PlayerData;
-          setPlayerData(data);
-          setIsPETMember(data.isPETMember || false);
-        } else if (initialAuthCheckComplete) {
-            setShowMessage('⚠️ User data not found. Please sign in.');
-            setActiveModal('auth');
-        }
-      });
-      return () => unsubscribe();
-    } else if (initialAuthCheckComplete) {
+    if (!userId && initialAuthCheckComplete) {
       setShowMessage('⚠️ Please sign in to access the vault!');
       setActiveModal('auth');
     }
-  }, [userId, setIsPETMember, setShowMessage, setActiveModal, initialAuthCheckComplete]);
+  }, [userId, initialAuthCheckComplete, setShowMessage, setActiveModal]);
   
   const renderTabContent = () => {
     switch (activeTab) {
         case 'info':
             return (
                 <motion.div key="info" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
-                    {/* FIX: Props are correctly passed now */}
                     <VaultWalletInfo 
                       isConnected={isConnected} 
                       address={address} 
                       chainId={chainId} 
-                      ensName={null} 
+                      ensName={null} // ENS logic not implemented
                       blockNumber={currentBlockNumber || null} 
                       gasPrice={gasPrice} 
                       usdtBalance={usdtBalance} 
@@ -105,31 +71,20 @@ export const Vault: FC = () => {
             );
         case 'membership':
             return (
-                <motion.div key="membership" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
-                    {/* FIX: Removed all props. Component is self-sufficient. */}
+                <motion.div key="membership" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit" className="space-y-8">
                     <VaultMembershipPackages />
+                    <VaultMembershipBenefits />
                 </motion.div>
             );
         case 'tools':
              return (
-                <motion.div key="tools" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit" className="space-y-10">
-                    <div>
-                        <h3 className="text-3xl font-bold font-poppins mb-4 text-foreground">Yield Calculator</h3>
-                        {/* FIX: Removed all props. Component is self-sufficient. */}
-                        <YieldCalculator />
-                    </div>
-                     <div>
-                        <h3 className="text-3xl font-bold font-poppins mb-4 text-foreground">Vault Rules</h3>
-                        <VaultRules />
-                    </div>
+                <motion.div key="tools" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit" className="space-y-8">
+                    <YieldCalculator />
+                    <VaultRules />
                 </motion.div>
             );
         default: return null;
     }
-  }
-
-  if (authLoading || isPending) {
-    return null;
   }
 
   return (
@@ -143,17 +98,41 @@ export const Vault: FC = () => {
         <div className="relative z-10 max-w-7xl mx-auto py-24 px-4 sm:px-6 lg:px-8 space-y-12">
           
           <motion.section variants={sectionVariants} className="text-center">
-            <Wallet className="mx-auto w-16 h-16 text-primary mb-4" />
-            <h1 className="text-5xl lg:text-6xl font-bold text-foreground mb-4">
+            <Wallet className="mx-auto w-16 h-16 text-primary text-glow-primary mb-4" />
+            <h1 className="text-5xl lg:text-6xl font-bold text-foreground mb-4 font-russo">
               Energy Vault
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto font-inter">
-              Your command center for wallet info, currency swaps, and membership.
+              Your command center for wallet info, membership, and financial tools.
             </p>
           </motion.section>
 
+          {/* --- NEW PHILOSOPHY CALLOUT --- */}
           <motion.section variants={sectionVariants}>
-            <div className="flex justify-center items-center gap-2 sm:gap-4 mb-10 p-2 bg-black/20 border border-border rounded-lg">
+            <SwytchCard variant="holographic" className="p-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div className="flex flex-col items-center">
+                  <Brain className="w-10 h-10 text-primary mb-3" />
+                  <h3 className="text-xl font-poppins font-semibold text-foreground mb-2">Psychological Shift</h3>
+                  <p className="text-sm text-muted-foreground font-inter">You are a **Beneficiary**, not an investor. You are entitled to earn.</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  <Scale className="w-10 h-10 text-primary mb-3" />
+                  <h3 className="text-xl font-poppins font-semibold text-foreground mb-2">Ethical & Defensive</h3>
+                  <p className="text-sm text-muted-foreground font-inter">We focus on **value creation**, not speculation. This is sustainable and built for the long game.</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  <FileText className="w-10 h-10 text-primary mb-3" />
+                  <h3 className="text-xl font-poppins font-semibold text-foreground mb-2">The PET Omertà</h3>
+                  <p className="text-sm text-muted-foreground font-inter">"We honor Energy. We protect Truth. We uphold the Freedom to Earn."</p>
+                </div>
+              </div>
+            </SwytchCard>
+          </motion.section>
+
+          {/* --- MAIN VAULT TABS --- */}
+          <motion.section variants={sectionVariants}>
+            <div className="flex justify-center items-center gap-2 sm:gap-4 mb-10 p-2 bg-card border border-border rounded-lg">
                 {(['info', 'membership', 'tools'] as const).map(tab => (
                     <button
                         key={tab}
@@ -183,6 +162,3 @@ export const Vault: FC = () => {
     </SwytchErrorBoundary>
   );
 };
-
-export default Vault;
-

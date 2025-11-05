@@ -10,7 +10,7 @@ import { PayPalScriptProvider } from '@paypal/react-paypal-js';
 // Context Providers
 import { ModalProvider } from './components/context/ModalContext';
 import { ThemeProvider } from './components/context/ThemeContext';
-import { PlayerProvider } from './components/context/PlayerContext'; // 1. IMPORT
+import { PlayerProvider } from './components/context/PlayerContext';
 
 // Configs and App Component
 import { wagmiConfig } from './lib/wagmi';
@@ -47,7 +47,7 @@ const Root: React.FC = () => {
               <PayPalScriptProvider options={initialPayPalOptions}>
                 <ThemeProvider>
                   <ModalProvider>
-                    <PlayerProvider> {/* 2. WRAP THE APP */}
+                    <PlayerProvider>
                       <App />
                     </PlayerProvider>
                   </ModalProvider>
@@ -61,4 +61,26 @@ const Root: React.FC = () => {
   );
 };
 
-ReactDOM.createRoot(document.getElementById('root')!).render(<Root />);
+// --- THIS IS THE FIX ---
+
+const container = document.getElementById('root');
+
+if (container) {
+  // Check if a root has already been created.
+  // We check an internal property to avoid this warning in HMR.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let root = (container as any)._reactRootContainer; 
+  
+  if (!root) {
+    // If no root exists, create one and store it.
+    root = ReactDOM.createRoot(container);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (container as any)._reactRootContainer = root;
+  }
+
+  // Call render on the existing or new root.
+  root.render(<Root />);
+  
+} else {
+  console.error('Failed to find the root element to mount React.');
+}

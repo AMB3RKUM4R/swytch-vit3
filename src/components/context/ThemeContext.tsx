@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, FC, ReactNode } from 'react';
+// src/components/context/ThemeContext.tsx
+import { createContext, useContext, useState, FC, ReactNode, useEffect } from 'react';
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -7,12 +8,49 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const ThemeProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
+/**
+ * Gets the initial theme from localStorage or system preference.
+ */
+const getInitialTheme = (): boolean => {
+  // Check if window is defined (for server-side rendering)
+  if (typeof window !== 'undefined' && window.localStorage) {
+    // 1. Check for a saved preference in localStorage
+    const storedPrefs = window.localStorage.getItem('color-theme');
+    if (typeof storedPrefs === 'string') {
+      return storedPrefs === 'dark';
+    }
 
+    // 2. If no preference, check the user's OS preference
+    const userMedia = window.matchMedia('(prefers-color-scheme: dark)');
+    if (userMedia.matches) {
+      return true;
+    }
+  }
+  // 3. Default to dark mode if all else fails
+  return true;
+};
+
+export const ThemeProvider: FC<{ children: ReactNode }> = ({ children }) => {
+  // Use the function to set the initial state
+  const [isDarkMode, setIsDarkMode] = useState(getInitialTheme);
+
+  // --- THIS IS THE FIX ---
+  // This effect hook syncs the React state with the DOM and localStorage
+  useEffect(() => {
+    const root = document.documentElement; // This is the <html> tag
+
+    if (isDarkMode) {
+      root.classList.add('dark');
+      window.localStorage.setItem('color-theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      window.localStorage.setItem('color-theme', 'light');
+    }
+  }, [isDarkMode]); // This effect re-runs whenever 'isDarkMode' changes
+
+  // This function just needs to toggle the state; the effect will do the rest.
   const toggleTheme = () => {
     setIsDarkMode((prev) => !prev);
-    document.documentElement.classList.toggle('dark', !isDarkMode);
   };
 
   return (

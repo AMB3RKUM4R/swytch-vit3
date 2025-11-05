@@ -1,5 +1,7 @@
-/* Import Google Fonts: Poppins (headings) and Inter (body) */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;700&display=swap');
+/* src/index.css */
+
+/* Import Google Fonts: Poppins (headings), Inter (body), and Russo One (brand) */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;700&family=Russo+One&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -116,9 +118,10 @@
            focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
-  /* Custom "Holographic" Card (Simplified & Professional) */
+  /* --- UPDATED HOLOGRAPHIC CARD --- */
   .holographic-card {
-    @apply relative overflow-hidden rounded-lg border border-primary/30 bg-card shadow-xl;
+    /* Merged styles from your component and the old class */
+    @apply relative overflow-hidden p-8 bg-black/20 rounded-xl border border-[hsl(var(--primary),0.2)] shadow-xl;
   }
   
   .holographic-card::before {
@@ -129,12 +132,15 @@
     right: 0;
     bottom: 0;
     background: linear-gradient(135deg, hsl(var(--primary-hsl) / 0.1) 0%, transparent 50%, hsl(var(--primary-hsl) / 0.05) 100%);
-    z-index: 1;
+    z-index: -1; /* --- FIX: Set to -1 to go BEHIND content --- */
   }
   
+  /* --- FIX: REMOVED this entire buggy rule --- */
+  /*
   .holographic-card > * {
-    z-index: 2; /* Ensure content is above the gradient */
+    z-index: 2;
   }
+  */
 
   /* Glassy background for modals/navs */
   .glass-dark {
