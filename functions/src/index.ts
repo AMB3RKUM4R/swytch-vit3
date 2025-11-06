@@ -1,36 +1,38 @@
 // functions/src/index.ts
-import {initializeApp} from 'firebase-admin/app'; // <-- ADD THIS
-import {onRequest} from 'firebase-functions/v2/https';
-import {setGlobalOptions} from 'firebase-functions/v2';
+import {initializeApp} from 'firebase-admin/app';
+import {https} from 'firebase-functions/v2';
 
-// --- THIS IS THE FIX ---
-// Initialize the Admin SDK *once* here.
-// When deployed, Firebase automatically provides the correct credentials.
+// Initialize the Firebase Admin SDK
 initializeApp();
-// --- END OF FIX ---
 
-setGlobalOptions({region: 'us-central1'});
-
-// Import all handlers
-import {grantGameRewardHandler} from './grantGameReward';
+// --- Import all your function handlers ---
 import {grantLootOnKillHandler} from './grantLootOnKill';
-import {grantUserRewardHandler} from './grantUserReward';
-import {redeemJoulesHandler} from './redeemJoules';
-import {generateWebSessionHandler} from './generateWebSession';
 import {redeemWebTokenHandler} from './redeemWebToken';
 import {createCustomTokenHandler} from './createCustomToken';
-import {createUpiOrderHandler} from './create-upi-order';
-import {createUpiPaymentHandler} from './create-upi-payment';
+import {generateWebSessionHandler} from './generateWebSession';
+import {redeemJoulesHandler} from './redeemJoules';
+import {grantGameRewardHandler} from './grantGameReward';
+import {grantUserRewardHandler} from './grantUserReward';
 import {handleDepositWebhookHandler} from './handle-deposit-webhook';
 
-// Export all functions
-export const grantGameReward = onRequest(grantGameRewardHandler);
-export const grantLootOnKill = onRequest(grantLootOnKillHandler);
-export const grantUserReward = onRequest(grantUserRewardHandler);
-export const redeemJoules = onRequest(redeemJoulesHandler);
-export const handleDepositWebhook = onRequest(handleDepositWebhookHandler);
-export const generateWebSession = onRequest(generateWebSessionHandler);
-export const redeemWebToken = onRequest(redeemWebTokenHandler);
-export const createCustomToken = onRequest(createCustomTokenHandler);
-export const createUpiOrder = onRequest(createUpiOrderHandler);
-export const createUpiPayment = onRequest(createUpiPaymentHandler);
+// --- Export them as callable HTTPS functions ---
+
+// This name 'grantLootOnKill' is what your Unity EnemyController.cs calls
+export const grantLootOnKill = https.onRequest(grantLootOnKillHandler);
+
+// This name 'redeemWebToken' is what your Unity AuthManager.cs calls
+export const redeemWebToken = https.onRequest(redeemWebTokenHandler);
+
+// This name 'generateWebSession' is what your web app calls
+export const generateWebSession = https.onRequest(generateWebSessionHandler);
+
+// This name 'grantGameReward' is what your HyperCasual_CoinCollector.cs calls
+export const grantGameReward = https.onRequest(grantGameRewardHandler);
+
+// This name 'grantUserReward' is what your AdManager.cs calls
+export const grantUserReward = https.onRequest(grantUserRewardHandler);
+
+// These are your other web app functions
+export const createCustomToken = https.onRequest(createCustomTokenHandler);
+export const redeemJoules = https.onRequest(redeemJoulesHandler);
+export const handleDepositWebhook = https.onRequest(handleDepositWebhookHandler);

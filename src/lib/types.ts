@@ -33,6 +33,11 @@ export interface ItemDefinition {
   visuals?: { prefabName: string; iconName: string; };
   price?: { [key in SupportedCurrency]?: number } & { USD?: number };
 }
+
+export interface Session {
+  webToken: string | null;
+  webTokenCreatedAt: Timestamp | null;
+}
 export interface PlayerData {
   userId: string; 
   username: string; 
@@ -54,8 +59,10 @@ export interface PlayerData {
     equipped: { weapon: string | null; armor: string | null; }; 
     items: { [instanceId: string]: InventoryItem; }; 
   } | null;
-  profilePictureUrl?: string | null; // <-- FIX: Added for 2D Avatar
+  profilePictureUrl?: string | null;
+  session: Session; // <-- FIX: Added for 2D Avatar
 }
+
 
 // FIX: This interface was incorrectly defined, causing type conflicts.
 // This is the clean, correct definition.

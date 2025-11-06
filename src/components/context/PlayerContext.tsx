@@ -30,6 +30,7 @@ interface PlayerContextType {
   // Core Functions
   updatePlayerFirestore: (updates: { [key: string]: any }) => Promise<void>;
   logTransaction: (txData: Omit<Transaction, 'transactionId' | 'timestamp'>) => Promise<void>;
+  updatePlayerCharacter: (avatarId: string) => Promise<void>; 
 
   // Auth Functions
   signInWithGoogle: () => Promise<void>;
@@ -44,7 +45,7 @@ interface PlayerContextType {
 // 2. CREATE THE CONTEXT
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
-// Helper function
+// --- THIS IS THE UPDATED FUNCTION ---
 const createNewPlayerData = (user: User, walletAddress: `0x${string}` | undefined): PlayerData => {
     const now = Timestamp.now();
     return {
@@ -60,14 +61,31 @@ const createNewPlayerData = (user: User, walletAddress: `0x${string}` | undefine
         mana: 100,
         isPETMember: true,
         membership: 'ecosystem',
-        walletAddress: walletAddress || null, // Link wallet if available
-        character: null,
-        inventory: null,
+        walletAddress: walletAddress || null,
+        
+        // --- FIX 1: Match the default object from AuthManager.cs ---
+        character: { 
+          selectedID: "Hunter", 
+          skin: "default" 
+        },
+        // --- FIX 2: Match the default object from AuthManager.cs ---
+        inventory: { 
+          equipped: { weapon: null, armor: null }, 
+          items: {} 
+        },
+        
         createdAt: now,
         updatedAt: now,
         profilePictureUrl: '',
+
+        // --- FIX 3: Add the session map ---
+        session: {
+          webToken: null,
+          webTokenCreatedAt: null
+        }
     };
 };
+// --- END OF UPDATED FUNCTION ---
 
 // 3. CREATE THE PROVIDER
 export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -89,7 +107,6 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     isAdmin,
   } = useAuthUserFirebase({ disconnectWagmi });
 
-  // --- FIX: The userId *MUST* come from Firebase to satisfy your rules ---
   const userId = firebaseUser?.uid || null;
 
   // --- DATA FETCHING LOGIC ---
@@ -100,10 +117,9 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   useEffect(() => {
     if (firebaseLoading) {
-      return; // Wait for Firebase auth to be ready
+      return; 
     }
     
-    // If no Firebase user, do nothing. This respects the security rules.
     if (!userId) {
       setPlayerData(null);
       setIsPETMember(false);
@@ -113,7 +129,6 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
 
     setDataLoading(true);
-    // This snapshot listener will now have a valid, authenticated UID
     const playerRef = doc(db, 'Players', userId);
     const unsubscribe = onSnapshot(playerRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -124,23 +139,19 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             navigate('/home');
         }
       } else {
-        // Auto-create user document ONLY for a valid Firebase user
         if (firebaseUser) {
             const newPlayerData = createNewPlayerData(firebaseUser, wagmiAddress);
-            // This create operation will be allowed by your rules
             setDoc(playerRef, newPlayerData);
         }
       }
       setDataLoading(false);
       setInitialAuthCheckComplete(true);
     }, (error) => {
-      // This error should no longer be a permission error
       console.error("Firestore snapshot error:", error); 
       setDataLoading(false);
     });
 
     return () => unsubscribe();
-  // We no longer depend on wagmiIsConnected for this effect
   }, [userId, firebaseUser, wagmiAddress, firebaseLoading, navigate]);
 
   // --- CORE FUNCTIONS (Moved from App.tsx) ---
@@ -153,6 +164,20 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (!userId) return;
     await addDoc(collection(db, 'Transactions'), { ...txData, timestamp: serverTimestamp() });
   }, [userId]);
+
+  const updatePlayerCharacter = useCallback(async (avatarId: string) => {
+    if (!userId) {
+      console.error("No user logged in to update character.");
+      throw new Error("User not authenticated");
+    }
+    
+    const playerRef = doc(db, 'Players', userId);
+    await updateDoc(playerRef, {
+      'character.selectedID': avatarId,
+      'updatedAt': serverTimestamp()
+    });
+  }, [userId]); 
+
 
   // --- FINAL CONTEXT VALUE ---
   const value = useMemo(() => ({
@@ -176,6 +201,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     // Core Functions
     updatePlayerFirestore,
     logTransaction,
+    updatePlayerCharacter, 
     
     // Auth Functions
     signInWithGoogle,
@@ -188,7 +214,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }), [
     firebaseUser, wagmiAddress, userId, firebaseLoading, authError, initialAuthCheckComplete,
     playerData, isPETMember, setIsPETMember, dataLoading,
-    updatePlayerFirestore, logTransaction,
+    updatePlayerFirestore, logTransaction, updatePlayerCharacter, 
     signInWithGoogle, signOutUser, registerWithEmail, signInWithEmail, sendPasswordReset, isAuthenticated, isAdmin
   ]);
 

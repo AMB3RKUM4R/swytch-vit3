@@ -12,7 +12,8 @@ import { Package } from 'lucide-react';
 // --- COMPONENT IMPORTS ---
 import AvatarSelector from '@/components/Inventory/AvatarSelector';
 import MembershipStatusOverview from '@/components/home/MembershipStatusOverview';
-import GameLauncherButton from '@/components/Inventory/GameLauncherButton'; // --- NEW ---
+import GameLoginButton from '@/components/Inventory/GameLoginButton';
+import GameDownloadButton from '@/components/Inventory/GameDownloadButton';
 // ---
 
 // Animation variants
@@ -23,8 +24,7 @@ const sectionVariants = {
 
 const Inventory: FC = () => {
   const { setActiveModal, setShowMessage } = useModal();
-  const { userId, playerData } = usePlayer();
-  // --- All game launch logic has been moved to GameLauncherButton ---
+  const { userId, playerData } = usePlayer(); // <-- You already have playerData here
 
   const [selectedItem, setSelectedItem] = useState<{instance: InventoryItem, definition: ItemDefinition, instanceId: string} | null>(null);
   const [showListForSaleModal, setShowListForSaleModal] = useState(false);
@@ -66,21 +66,26 @@ const Inventory: FC = () => {
           {/* --- LEFT COLUMN (1/3 width) --- */}
           <div className="md:col-span-1 flex flex-col gap-8">
             
-            {/* --- MODIFIED: PLAY BUTTON CARD --- */}
             <motion.div
               variants={sectionVariants}
               className="bg-card p-6 rounded-lg border border-border"
             >
               <h2 className="text-2xl font-semibold font-poppins mb-4 text-primary">Launch Game</h2>
               <p className="text-muted-foreground mb-6">
-                Click here to play or download the Swytch game client.
+                Use 'Login to Game' to open your installed app. If you don't have it, download the APK.
               </p>
-              {/* This is now the self-contained smart button */}
-              <GameLauncherButton />
+              
+              <div className="grid grid-cols-1 gap-4">
+                <GameLoginButton />
+                <GameDownloadButton />
+              </div>
             </motion.div>
-            {/* --- END PLAY BUTTON CARD --- */}
 
-            <AvatarSelector />
+            {/* --- THIS IS THE CHANGE --- */}
+            {/* Pass the playerData object down as a prop */}
+            <AvatarSelector playerData={playerData} />
+            {/* --- END OF CHANGE --- */}
+
             <MembershipStatusOverview />
           </div>
 
