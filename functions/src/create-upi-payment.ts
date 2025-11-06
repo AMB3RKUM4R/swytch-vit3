@@ -1,9 +1,12 @@
-import crypto from "crypto";
+// functions/src/create-upi-payment.ts
+import * as crypto from "crypto";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { PlayerData, MEMBERSHIP_TIERS } from "@/lib/types"; // Make sure types are accessible
+import { PlayerData, MEMBERSHIP_TIERS } from "@/lib/types";
+import { Request } from "firebase-functions/v2/https"; // <-- THE FIX
+import type { Response } from "express"; // <-- THE FIX
 
-// This logic is copied directly from your capture-paypal-order.ts [cite: capture-paypal-order.ts]
+// (Firebase Admin Setup... no changes)
 interface ServiceAccount {
   projectId: string;
   clientEmail: string;
@@ -18,60 +21,53 @@ if (!getApps().length) {
   initializeApp({ credential: cert(serviceAccount) });
 }
 const db = getFirestore();
+// ---
 
-export default async function handler(request: Request): Promise<Response> {
+export const createUpiPaymentHandler = async (request: Request, response: Response) => { // <-- CORRECT TYPES
   const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
-  const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET; // Recommended: Set up a webhook secret for signature verification
+  const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
   if (!RAZORPAY_KEY_SECRET || !RAZORPAY_WEBHOOK_SECRET) {
      console.error("API: Razorpay secrets are not set on the server.");
-     return new Response(JSON.stringify({ error: "Server payment configuration error." }), { status: 500 });
+     response.status(500).json({ error: "Server payment configuration error." });
+     return;
   }
-
-  if (request.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method Not Allowed" }), { status: 405 });
-  }
-
-  const reqBodyText = await request.text();
-  const reqBody = JSON.parse(reqBodyText);
-
-  // 1. Verify the webhook signature (CRITICAL FOR SECURITY)
-  // This ensures the request is *actually* from Razorpay and not a hacker.
-  const signature = request.headers.get("x-razorpay-signature");
-  if (!signature) {
-    return new Response(JSON.stringify({ error: "Signature missing" }), { status: 400 });
+  // (Rest of the function is identical)
+  const signature = request.headers["x-razorpay-signature"];
+  if (typeof signature !== 'string') {
+    response.status(400).json({ error: "Signature missing or invalid" });
+    return;
   }
 
   const shasum = crypto.createHmac("sha256", RAZORPAY_WEBHOOK_SECRET);
-  shasum.update(reqBodyText);
+  shasum.update(request.rawBody);
   const digest = shasum.digest("hex");
 
   if (digest !== signature) {
     console.warn("API: Invalid Razorpay signature received.");
-    return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401 });
+    response.status(401).json({ error: "Invalid signature" });
+    return;
   }
 
-  // 2. Process the payment event
-  const { event, payload } = reqBody;
+  const { event, payload } = request.body;
 
   if (event === "payment.captured") {
     const payment = payload.payment.entity;
-    // const orderId = payment.order_id; // <-- FIX: Removed unused variable
     const paymentId = payment.id;
     const notes = payment.notes;
     const userId = notes.userId;
     const depositType = notes.depositType;
     const itemId = notes.itemId;
     const amountInPaise = payment.amount;
-    const currency = payment.currency; // e.g., "INR"
+    const currency = payment.currency;
     const amount = amountInPaise / 100;
 
     if (!userId) {
       console.error("API: 'userId' not found in Razorpay payment notes.");
-      return new Response(JSON.stringify({ success: false, error: "User ID missing" }), { status: 200 }); // Return 200 so Razorpay doesn't retry
+      response.status(200).json({ success: false, error: "User ID missing" });
+      return;
     }
     
-    // 3. Update Firestore (Copied from capture-paypal-order.ts [cite: capture-paypal-order.ts])
     try {
       await db.runTransaction(async (t) => {
         const transactionRefId = `razorpay_${paymentId}`;
@@ -80,32 +76,31 @@ export default async function handler(request: Request): Promise<Response> {
         const isItemPurchase = depositType === 'item-purchase' && itemId;
         const isMembership = depositType === 'membership';
 
-        // Log the transaction
         t.set(transactionRef, {
           transactionId: transactionRefId,
           userId: userId,
           amount: amount,
           currency: currency,
           transactionType: depositType || "deposit",
-          status: "success", // Razorpay only sends webhook on capture
+          status: "success",
           timestamp: FieldValue.serverTimestamp(),
           paymentGatewayId: paymentId,
           paymentMethod: "Razorpay/UPI",
           itemId: itemId || null,
         }, { merge: true });
 
-        // Grant the item/membership
         const playerRef = db.collection("Players").doc(userId);
-        const playerData = (await t.get(playerRef)).data() as PlayerData;
+        const playerDoc = await t.get(playerRef);
+        if(!playerDoc.exists) {
+            throw new Error("Player not found");
+        }
+        const playerData = playerDoc.data() as PlayerData;
 
-        // FIX: Changed from Partial<PlayerData> to { [key: string]: any }
-        // This allows us to use FieldValue.increment()
         const updates: { [key: string]: any } = {
           updatedAt: FieldValue.serverTimestamp(),
         };
 
         if (isItemPurchase) {
-          // This logic is from capture-paypal-order.ts [cite: capture-paypal-order.ts]
           const newItemInstanceRef = playerRef.collection("InventoryItems").doc(); 
           t.set(newItemInstanceRef, {
             itemId: itemId,
@@ -114,7 +109,6 @@ export default async function handler(request: Request): Promise<Response> {
         }
         
         if (isMembership && (!playerData || !playerData.isPETMember)) {
-            // Find the tier they purchased (e.g., from 'itemId')
             const tierKey = itemId as keyof typeof MEMBERSHIP_TIERS;
             if (tierKey && MEMBERSHIP_TIERS[tierKey]) {
                 updates.isPETMember = true;
@@ -123,10 +117,8 @@ export default async function handler(request: Request): Promise<Response> {
             }
         }
         
-        // Add purchased JOULES (if it was a deposit)
         if (depositType === 'deposit') {
-            // Example: 1 INR = 10 JOULES
-            const joulesToAdd = amount * 10; 
+            const joulesToAdd = amount * 10;
             updates.joules = FieldValue.increment(joulesToAdd);
         }
 
@@ -140,11 +132,10 @@ export default async function handler(request: Request): Promise<Response> {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error(`API: Firestore transaction failed for Razorpay payment ${paymentId}: ${errorMessage}`);
-      return new Response(JSON.stringify({ success: false, error: "Database update failed" }), { status: 500 });
+      response.status(500).json({ success: false, error: "Database update failed" });
+      return;
     }
   }
 
-  // Acknowledge the webhook
-  return new Response(JSON.stringify({ success: true }), { status: 200 });
-}
-
+  response.status(200).json({ success: true });
+};
