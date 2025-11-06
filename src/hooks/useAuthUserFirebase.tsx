@@ -56,6 +56,10 @@ const createNewPlayerData = (user: User, name?: string): PlayerData => {
     character: null,
     inventory: null,
     profilePictureUrl: '', // Added new field from our types
+    session: {
+      webToken: null,
+      webTokenCreatedAt: null,
+    },
   };
 };
 
