@@ -1,25 +1,13 @@
 // functions/src/create-upi-payment.ts
-import * as crypto from "crypto";
-import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { PlayerData, MEMBERSHIP_TIERS } from "@/lib/types";
-import { Request } from "firebase-functions/v2/https"; // <-- THE FIX
-import type { Response } from "express"; // <-- THE FIX
+import * as crypto from 'crypto';
+
+import {getFirestore, FieldValue} from 'firebase-admin/firestore';
+import {PlayerData, MEMBERSHIP_TIERS} from './lib/types';
+import {Request} from 'firebase-functions/v2/https'; // <-- THE FIX
+import type {Response} from 'express'; // <-- THE FIX
 
 // (Firebase Admin Setup... no changes)
-interface ServiceAccount {
-  projectId: string;
-  clientEmail: string;
-  privateKey: string;
-}
-const serviceAccount: ServiceAccount = {
-  projectId: process.env.FIREBASE_PROJECT_ID!,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, "\n"),
-};
-if (!getApps().length) {
-  initializeApp({ credential: cert(serviceAccount) });
-}
+
 const db = getFirestore();
 // ---
 
@@ -28,30 +16,30 @@ export const createUpiPaymentHandler = async (request: Request, response: Respon
   const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
   if (!RAZORPAY_KEY_SECRET || !RAZORPAY_WEBHOOK_SECRET) {
-     console.error("API: Razorpay secrets are not set on the server.");
-     response.status(500).json({ error: "Server payment configuration error." });
-     return;
+    console.error('API: Razorpay secrets are not set on the server.');
+    response.status(500).json({error: 'Server payment configuration error.'});
+    return;
   }
   // (Rest of the function is identical)
-  const signature = request.headers["x-razorpay-signature"];
+  const signature = request.headers['x-razorpay-signature'];
   if (typeof signature !== 'string') {
-    response.status(400).json({ error: "Signature missing or invalid" });
+    response.status(400).json({error: 'Signature missing or invalid'});
     return;
   }
 
-  const shasum = crypto.createHmac("sha256", RAZORPAY_WEBHOOK_SECRET);
+  const shasum = crypto.createHmac('sha256', RAZORPAY_WEBHOOK_SECRET);
   shasum.update(request.rawBody);
-  const digest = shasum.digest("hex");
+  const digest = shasum.digest('hex');
 
   if (digest !== signature) {
-    console.warn("API: Invalid Razorpay signature received.");
-    response.status(401).json({ error: "Invalid signature" });
+    console.warn('API: Invalid Razorpay signature received.');
+    response.status(401).json({error: 'Invalid signature'});
     return;
   }
 
-  const { event, payload } = request.body;
+  const {event, payload} = request.body;
 
-  if (event === "payment.captured") {
+  if (event === 'payment.captured') {
     const payment = payload.payment.entity;
     const paymentId = payment.id;
     const notes = payment.notes;
@@ -63,15 +51,15 @@ export const createUpiPaymentHandler = async (request: Request, response: Respon
     const amount = amountInPaise / 100;
 
     if (!userId) {
-      console.error("API: 'userId' not found in Razorpay payment notes.");
-      response.status(200).json({ success: false, error: "User ID missing" });
+      console.error('API: \'userId\' not found in Razorpay payment notes.');
+      response.status(200).json({success: false, error: 'User ID missing'});
       return;
     }
-    
+
     try {
       await db.runTransaction(async (t) => {
         const transactionRefId = `razorpay_${paymentId}`;
-        const transactionRef = db.collection("Transactions").doc(transactionRefId);
+        const transactionRef = db.collection('Transactions').doc(transactionRefId);
 
         const isItemPurchase = depositType === 'item-purchase' && itemId;
         const isMembership = depositType === 'membership';
@@ -81,18 +69,18 @@ export const createUpiPaymentHandler = async (request: Request, response: Respon
           userId: userId,
           amount: amount,
           currency: currency,
-          transactionType: depositType || "deposit",
-          status: "success",
+          transactionType: depositType || 'deposit',
+          status: 'success',
           timestamp: FieldValue.serverTimestamp(),
           paymentGatewayId: paymentId,
-          paymentMethod: "Razorpay/UPI",
+          paymentMethod: 'Razorpay/UPI',
           itemId: itemId || null,
-        }, { merge: true });
+        }, {merge: true});
 
-        const playerRef = db.collection("Players").doc(userId);
+        const playerRef = db.collection('Players').doc(userId);
         const playerDoc = await t.get(playerRef);
-        if(!playerDoc.exists) {
-            throw new Error("Player not found");
+        if (!playerDoc.exists) {
+          throw new Error('Player not found');
         }
         const playerData = playerDoc.data() as PlayerData;
 
@@ -101,41 +89,40 @@ export const createUpiPaymentHandler = async (request: Request, response: Respon
         };
 
         if (isItemPurchase) {
-          const newItemInstanceRef = playerRef.collection("InventoryItems").doc(); 
+          const newItemInstanceRef = playerRef.collection('InventoryItems').doc();
           t.set(newItemInstanceRef, {
             itemId: itemId,
             acquiredAt: FieldValue.serverTimestamp(),
           });
         }
-        
+
         if (isMembership && (!playerData || !playerData.isPETMember)) {
-            const tierKey = itemId as keyof typeof MEMBERSHIP_TIERS;
-            if (tierKey && MEMBERSHIP_TIERS[tierKey]) {
-                updates.isPETMember = true;
-                updates.membership = tierKey;
-                updates.level = MEMBERSHIP_TIERS[tierKey].level;
-            }
+          const tierKey = itemId as keyof typeof MEMBERSHIP_TIERS;
+          if (tierKey && MEMBERSHIP_TIERS[tierKey]) {
+            updates.isPETMember = true;
+            updates.membership = tierKey;
+            updates.level = MEMBERSHIP_TIERS[tierKey].level;
+          }
         }
-        
+
         if (depositType === 'deposit') {
-            const joulesToAdd = amount * 10;
-            updates.joules = FieldValue.increment(joulesToAdd);
+          const joulesToAdd = amount * 10;
+          updates.joules = FieldValue.increment(joulesToAdd);
         }
 
         if (Object.keys(updates).length > 1) {
-            t.update(playerRef, updates);
+          t.update(playerRef, updates);
         }
       });
-      
-      console.log(`Successfully processed Razorpay payment ${paymentId} for user ${userId}`);
 
+      console.log(`Successfully processed Razorpay payment ${paymentId} for user ${userId}`);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error(`API: Firestore transaction failed for Razorpay payment ${paymentId}: ${errorMessage}`);
-      response.status(500).json({ success: false, error: "Database update failed" });
+      response.status(500).json({success: false, error: 'Database update failed'});
       return;
     }
   }
 
-  response.status(200).json({ success: true });
+  response.status(200).json({success: true});
 };

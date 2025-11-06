@@ -1,42 +1,30 @@
 // functions/src/grantUserReward.ts
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
-import { Request } from "firebase-functions/v2/https"; // <-- THE FIX
-import type { Response } from "express"; // <-- THE FIX
+
+import {getFirestore, FieldValue} from 'firebase-admin/firestore';
+import {getAuth} from 'firebase-admin/auth';
+import {Request} from 'firebase-functions/v2/https'; // <-- THE FIX
+import type {Response} from 'express'; // <-- THE FIX
 
 // (Firebase Admin Setup... no changes)
-interface ServiceAccount {
-  projectId: string;
-  clientEmail: string;
-  privateKey: string;
-}
-const serviceAccount: ServiceAccount = {
-  projectId: process.env.FIREBASE_PROJECT_ID!,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-};
-if (!getApps().length) {
-  initializeApp({ credential: cert(serviceAccount) });
-}
+
 const db = getFirestore();
 const auth = getAuth();
 // ---
 
 const AD_REWARDS: { [key: string]: { currency: string, amount: number } } = {
-  "ad_reward_small": { currency: "joules", amount: 100 },
-  "ad_reward_large": { currency: "gold", amount: 5 },
+  'ad_reward_small': {currency: 'joules', amount: 100},
+  'ad_reward_large': {currency: 'gold', amount: 5},
 };
 
 export const grantUserRewardHandler = async (request: Request, response: Response) => { // <-- CORRECT TYPES
   if (request.method !== 'POST') {
-    response.status(405).json({ error: 'Method Not Allowed' });
+    response.status(405).json({error: 'Method Not Allowed'});
     return;
   }
   // (Rest of the function is identical)
   const authorization = request.headers.authorization;
   if (!authorization || !authorization.startsWith('Bearer ')) {
-    response.status(401).json({ error: 'Unauthorized' });
+    response.status(401).json({error: 'Unauthorized'});
     return;
   }
   const idToken = authorization.split('Bearer ')[1];
@@ -44,16 +32,16 @@ export const grantUserRewardHandler = async (request: Request, response: Respons
   try {
     decodedToken = await auth.verifyIdToken(idToken);
   } catch (error: any) {
-    response.status(401).json({ error: 'Invalid token' });
+    response.status(401).json({error: 'Invalid token'});
     return;
   }
   const userId = decodedToken.uid;
 
-  const { rewardType } = request.body;
+  const {rewardType} = request.body;
 
   if (!rewardType || !AD_REWARDS[rewardType]) {
     console.error(`API: Invalid rewardType ${rewardType} from user ${userId}`);
-    response.status(400).json({ error: 'Invalid reward type' });
+    response.status(400).json({error: 'Invalid reward type'});
     return;
   }
 
@@ -64,9 +52,9 @@ export const grantUserRewardHandler = async (request: Request, response: Respons
     await db.runTransaction(async (t) => {
       const playerDoc = await t.get(playerRef);
       if (!playerDoc.exists) {
-        throw new Error("Player document not found");
+        throw new Error('Player document not found');
       }
-      
+
       t.update(playerRef, {
         [reward.currency]: FieldValue.increment(reward.amount),
         updatedAt: FieldValue.serverTimestamp(),
@@ -78,18 +66,17 @@ export const grantUserRewardHandler = async (request: Request, response: Respons
         userId: userId,
         amount: reward.amount,
         currency: reward.currency.toUpperCase(),
-        transactionType: "ad_reward",
-        status: "success",
+        transactionType: 'ad_reward',
+        status: 'success',
         timestamp: FieldValue.serverTimestamp(),
         rewardType: rewardType,
       });
     });
 
-    response.status(200).json({ success: true, message: `Granted ${reward.amount} ${reward.currency}` });
-
+    response.status(200).json({success: true, message: `Granted ${reward.amount} ${reward.currency}`});
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`API: Failed to grant ad reward for user ${userId}:`, errorMessage);
-    response.status(500).json({ error: 'Internal server error' });
+    response.status(500).json({error: 'Internal server error'});
   }
 };

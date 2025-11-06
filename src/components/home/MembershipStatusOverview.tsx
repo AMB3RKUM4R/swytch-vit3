@@ -3,7 +3,7 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Star, ArrowRight } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { MEMBERSHIP_TIERS } from '@/lib/types';
+import { MEMBERSHIP_TIERS } from '../../lib/types'; // Import membership tiers
 import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
 import { useModal } from '@/components/context/ModalContext'; // Import modal hook
 

@@ -4,18 +4,18 @@
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "outDir": "lib",
+    "rootDir": "src", // <-- THIS IS THE FIX
     "sourceMap": true,
     "strict": true,
     "target": "es2017",
-    // --- ADD THESE TWO LINES ---
     "baseUrl": ".",
     "paths": {
       "@/*": ["../src/*"]
     }
-    // --- END OF ADDITION ---
   },
   "compileOnSave": true,
   "include": [
-    "src"
+    "src/**/*.ts",
+    ".eslintrc.js"
   ]
 }

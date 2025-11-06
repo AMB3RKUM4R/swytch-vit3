@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Check, Loader2 } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 import { serverTimestamp } from 'firebase/firestore';
-import { PlayerData } from '@/lib/types'; // Import PlayerData
+import { PlayerData } from '../../lib/types'; // Import PlayerData
 
 // Define props for this component
 interface MembershipUpgradeProps {

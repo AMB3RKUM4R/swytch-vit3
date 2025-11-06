@@ -5,9 +5,9 @@
       "@/*": ["*"]
     },
     // Common compiler options for better strictness and compatibility
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "Node",
+    "module": "ESNext", // <-- THIS IS THE FIX
+    "target": "ES2020",
+    "moduleResolution": "Bundler",
     "jsx": "react-jsx", // Support React JSX (recommended for React 17+)
     "strict": true, // Enable all strict type-checking options
     "esModuleInterop": true, // Support for importing CommonJS modules

@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import UserOverviewCard from '../components/home/UserOverviewCard';
-import MembershipStatusOverview from '../components/home/MembershipStatusOverview';
 import QuickAccessGames from '@/components/home/QuickAccessGames';
 import ActionButtonsPanel from '@/components/home/ActionButtonsPanel';
 import RecentPurchases from '@/components/RecentPurchases';
@@ -281,7 +280,6 @@ const Home: FC = () => {
               Mission & Status
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <MembershipStatusOverview />
               <CommunityRankings />
             </div>
           </motion.div>
