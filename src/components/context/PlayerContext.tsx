@@ -28,7 +28,7 @@ interface PlayerContextType {
   dataLoading: boolean;
 
   // Core Functions
-  updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
+  updatePlayerFirestore: (updates: { [key: string]: any }) => Promise<void>;
   logTransaction: (txData: Omit<Transaction, 'transactionId' | 'timestamp'>) => Promise<void>;
 
   // Auth Functions

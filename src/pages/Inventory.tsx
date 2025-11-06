@@ -6,9 +6,13 @@ import UserInventoryDisplay from '../components/Inventory/UserInventoryDisplay';
 import ListForSaleModal from '../components/Inventory/ListForSaleModal';
 import { InventoryItem, ItemDefinition } from '../lib/types';
 import { useModal } from '@/components/context/ModalContext';
-import { usePlayer } from '@/components/context/PlayerContext'; // <-- 1. IMPORT
-import { Package, FileText } from 'lucide-react';
-import SwytchCard from '@/components/SwytchCard';
+import { usePlayer } from '@/components/context/PlayerContext';
+import { Package } from 'lucide-react';
+
+// --- NEW COMPONENT IMPORTS ---
+import AvatarSelector from '@/components/Inventory/AvatarSelector';
+import MembershipStatusOverview from '@/components/home/MembershipStatusOverview'; // Import your component
+// ---
 
 // Animation variants
 const sectionVariants = {
@@ -17,9 +21,8 @@ const sectionVariants = {
 };
 
 const Inventory: FC = () => {
-  // Get all data from our new contexts
   const { setActiveModal, setShowMessage } = useModal();
-  const { userId, playerData } = usePlayer(); // <-- 2. GET PLAYER DATA
+  const { userId, playerData } = usePlayer();
 
   const [selectedItem, setSelectedItem] = useState<{instance: InventoryItem, definition: ItemDefinition, instanceId: string} | null>(null);
   const [showListForSaleModal, setShowListForSaleModal] = useState(false);
@@ -49,36 +52,32 @@ const Inventory: FC = () => {
             Cosmic Inventory
           </h1>
           <p className="text-lg text-muted-foreground font-inter">
-            Manage your galactic treasures and equip powerful gear.
+            Manage your character, status, and galactic treasures.
           </p>
         </motion.div>
         
-        {/* --- NEW PHILOSOPHY CALLOUT --- */}
-        <motion.div variants={sectionVariants} className="mb-12">
-          <SwytchCard variant="holographic" className="p-8">
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <FileText className="w-12 h-12 text-primary flex-shrink-0" />
-              <div>
-                <h2 className="text-2xl font-bold font-poppins text-foreground mb-2">
-                  It’s *not just powerful* — it’s **timeless**.
-                </h2>
-                <p className="text-muted-foreground font-inter">
-                  Your items are more than pixels. They are your **Proof of Participation**. As a Beneficiary, you own what you earn. Your inventory is your digital vault, your armory, and your legacy.
-                </p>
-              </div>
-            </div>
-          </SwytchCard>
-        </motion.div>
+        {/* --- NEW 2-COLUMN LAYOUT --- */}
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          variants={sectionVariants}
+        >
+          {/* --- LEFT COLUMN (1/3 width) --- */}
+          <div className="md:col-span-1 flex flex-col gap-8">
+            <AvatarSelector />
+            <MembershipStatusOverview />
+          </div>
 
-        {/* --- 3. FIX: Pass real data from context --- */}
-        <motion.div variants={sectionVariants}>
-          <UserInventoryDisplay
-            playerData={playerData}
-            userId={userId}
-            onListForSale={handleListForSale}
-            setShowMessage={setShowMessage}
-          />
+          {/* --- RIGHT COLUMN (2/3 width) --- */}
+          <div className="md:col-span-2">
+            <UserInventoryDisplay
+              playerData={playerData}
+              userId={userId}
+              onListForSale={handleListForSale}
+              setShowMessage={setShowMessage}
+            />
+          </div>
         </motion.div>
+        {/* --- END OF NEW LAYOUT --- */}
         
         <AnimatePresence>
           {showListForSaleModal && selectedItem && (
@@ -87,11 +86,13 @@ const Inventory: FC = () => {
               instanceId={selectedItem.instanceId}
               onClose={() => setShowListForSaleModal(false)}
               onSuccess={onListingSuccess} 
-              itemInstance={selectedItem.instance}            />
+              itemInstance={selectedItem.instance}
+            />
           )}
         </AnimatePresence>
       </motion.div>
     </SwytchErrorBoundary>
   );
 };
+
 export default Inventory;
