@@ -9,9 +9,10 @@ import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { Package } from 'lucide-react';
 
-// --- NEW COMPONENT IMPORTS ---
+// --- COMPONENT IMPORTS ---
 import AvatarSelector from '@/components/Inventory/AvatarSelector';
-import MembershipStatusOverview from '@/components/home/MembershipStatusOverview'; // Import your component
+import MembershipStatusOverview from '@/components/home/MembershipStatusOverview';
+import GameLauncherButton from '@/components/Inventory/GameLauncherButton'; // --- NEW ---
 // ---
 
 // Animation variants
@@ -23,6 +24,7 @@ const sectionVariants = {
 const Inventory: FC = () => {
   const { setActiveModal, setShowMessage } = useModal();
   const { userId, playerData } = usePlayer();
+  // --- All game launch logic has been moved to GameLauncherButton ---
 
   const [selectedItem, setSelectedItem] = useState<{instance: InventoryItem, definition: ItemDefinition, instanceId: string} | null>(null);
   const [showListForSaleModal, setShowListForSaleModal] = useState(false);
@@ -56,13 +58,28 @@ const Inventory: FC = () => {
           </p>
         </motion.div>
         
-        {/* --- NEW 2-COLUMN LAYOUT --- */}
+        {/* --- 2-COLUMN LAYOUT --- */}
         <motion.div 
           className="grid grid-cols-1 md:grid-cols-3 gap-8"
           variants={sectionVariants}
         >
           {/* --- LEFT COLUMN (1/3 width) --- */}
           <div className="md:col-span-1 flex flex-col gap-8">
+            
+            {/* --- MODIFIED: PLAY BUTTON CARD --- */}
+            <motion.div
+              variants={sectionVariants}
+              className="bg-card p-6 rounded-lg border border-border"
+            >
+              <h2 className="text-2xl font-semibold font-poppins mb-4 text-primary">Launch Game</h2>
+              <p className="text-muted-foreground mb-6">
+                Click here to play or download the Swytch game client.
+              </p>
+              {/* This is now the self-contained smart button */}
+              <GameLauncherButton />
+            </motion.div>
+            {/* --- END PLAY BUTTON CARD --- */}
+
             <AvatarSelector />
             <MembershipStatusOverview />
           </div>
@@ -77,7 +94,6 @@ const Inventory: FC = () => {
             />
           </div>
         </motion.div>
-        {/* --- END OF NEW LAYOUT --- */}
         
         <AnimatePresence>
           {showListForSaleModal && selectedItem && (
