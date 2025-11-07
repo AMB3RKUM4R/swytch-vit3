@@ -11,12 +11,12 @@ import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
 
 // ────────────────────────────────────────────────────────────────
-// CONFIGURATION – LIVE PayPal client-id
+// CONFIGURATION – LIVE PayPal credentials from .env
 // ────────────────────────────────────────────────────────────────
 const FUNCTIONS_BASE_URL = import.meta.env.VITE_FUNCTIONS_BASE_URL ||
   'https://us-central1-swytch-pet.cloudfunctions.net';
 
-const PAYPAL_CLIENT_ID = 'AWXzq_rqRIkO289lxmHnRl65RPuVHG-RErvnok3LpO6n9qkSVWJPCD1ngL3kEnC5clOeT_I3yN2CkUNH';
+const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID;
 
 // ────────────────────────────────────────────────────────────────
 // Contract (unchanged)
@@ -53,9 +53,9 @@ const PaymentModal: FC = () => {
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } =
     useWaitForTransactionReceipt({ hash });
 
-  // ── Load PayPal script once ───────────────────────────────────────
+  // ── Load PayPal script once (only when PayPal tab is active) ─────
   useEffect(() => {
-    if (paymentMethod !== 'paypal' || paypalReady) return;
+    if (paymentMethod !== 'paypal' || paypalReady || !PAYPAL_CLIENT_ID) return;
 
     const script = document.createElement('script');
     script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD&intent=capture`;
@@ -65,18 +65,19 @@ const PaymentModal: FC = () => {
     document.body.appendChild(script);
 
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
-  }, [paymentMethod, paypalReady]);
+  }, [paymentMethod, paypalReady, PAYPAL_CLIENT_ID]);
 
   // ── Render PayPal button when ready ───────────────────────────────
   useEffect(() => {
-    if (!paypalReady || !paypalContainerRef.current || !userId) return;
+    if (!paypalReady || !paypalContainerRef.current || !userId || !PAYPAL_CLIENT_ID) return;
 
-    // Clear previous button
     paypalContainerRef.current.innerHTML = '';
 
-    // @ts-ignore – paypal global
+    // @ts-ignore – PayPal SDK global
     window.paypal
       .Buttons({
         style: {
@@ -86,12 +87,12 @@ const PaymentModal: FC = () => {
           label: 'paypal',
         },
 
-        // 1. Create order on the backend
+        // 1. Create order via backend
         createOrder: async () => {
           setError(null);
           const num = parseFloat(amount);
           if (isNaN(num) || num <= 0) {
-            const msg = 'Enter a valid amount.';
+            const msg = 'Please enter a valid amount.';
             setError(msg);
             throw new Error(msg);
           }
@@ -109,12 +110,12 @@ const PaymentModal: FC = () => {
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to create order');
+            if (!res.ok) throw new Error(data.error || 'Failed to create PayPal order');
             if (!data.id) throw new Error('No order ID returned');
 
             return data.id;
           } catch (e: any) {
-            console.error(e);
+            console.error('createOrder error:', e);
             setError(e.message);
             throw e;
           }
@@ -135,14 +136,16 @@ const PaymentModal: FC = () => {
             });
 
             const result = await res.json();
-            if (!res.ok || !result.success) throw new Error(result.error || 'Capture failed');
+            if (!res.ok || !result.success) {
+              throw new Error(result.error || 'Payment capture failed');
+            }
 
             setShowMessage(
               'PayPal payment successful! Your balance will update after admin confirmation.'
             );
             setActiveModal(null);
           } catch (e: any) {
-            console.error(e);
+            console.error('onApprove error:', e);
             setError(e.message);
             setShowMessage(`Warning: ${e.message}`);
           }
@@ -198,7 +201,7 @@ const PaymentModal: FC = () => {
     isTxPending,
   ]);
 
-  // ── Crypto payment ───────────────────────────────────────────────────
+  // ── Crypto payment handler ───────────────────────────────────────────
   const handleCryptoPayment = () => {
     setError(null);
     if (!userId || !isConnected || !amount || parseFloat(amount) <= 0) {
@@ -310,11 +313,11 @@ const PaymentModal: FC = () => {
                 </motion.button>
               )}
 
-              {/* PayPal button (classic) */}
+              {/* PayPal button (classic script method) */}
               {paymentMethod === 'paypal' && (
                 <div className="min-h-[50px] flex justify-center">
                   {!paypalReady ? (
-                    <Loader2 className="animate-spin" />
+                    <Loader2 className="animate-spin text-primary" />
                   ) : (
                     <div ref={paypalContainerRef} className="w-full max-w-[200px]" />
                   )}
@@ -326,12 +329,12 @@ const PaymentModal: FC = () => {
             <AnimatePresence>
               {error && (
                 <motion.p
-                  className="text-rose-400 text-sm text-center mt-4 font-inter"
+                  className="text-rose-400 text-sm text-center mt-4 font-inter flex items-center justify-center"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  <AlertTriangle className="inline-block w-4 h-4 mr-2" />
+                  <AlertTriangle className="w-4 h-4 mr-2" />
                   {error}
                 </motion.p>
               )}
