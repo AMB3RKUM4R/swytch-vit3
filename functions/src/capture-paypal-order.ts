@@ -2,16 +2,11 @@
 
 import {Buffer} from 'buffer';
 import {getFirestore, FieldValue} from 'firebase-admin/firestore';
-// --- REMOVED: initializeApp, getApps, cert imports ---
-import {getApps, initializeApp} from 'firebase-admin/app'; // <-- Keep this one
+import {initializeApp, getApps} from 'firebase-admin/app';
 import {Request} from 'firebase-functions/v2/https';
 import {Response} from 'express';
 
-// --- REMOVED: ServiceAccount interface and serviceAccount object ---
-// --- REMOVED: initializeFirebaseAdmin function ---
-
-// Re-initialize app cleanly without explicit service account
-// This uses Google's implicit credentials during deployment/runtime
+// Re-initialize app cleanly without explicit service account (Fixes deployment crash)
 if (!getApps().length) {
   initializeApp();
 }
@@ -35,7 +30,6 @@ export const capturePayPalOrder = async (request: Request, response: Response) =
     return;
   }
 
-  // --- REST OF THE FUNCTION (UNCHANGED LOGIC) ---
   const {orderID, userId, amount, depositType, itemId} = reqBody;
 
   if (!orderID || !userId || !amount) {
@@ -79,7 +73,7 @@ export const capturePayPalOrder = async (request: Request, response: Response) =
       console.error('API: PayPal access token error during capture:', tokenError);
       throw new Error(`Failed to get PayPal access token for capture: ${tokenError}`);
     }
-    const {access_token: accessToken} = await tokenResponse.json();
+    const {access_token: accessToken} = await tokenResponse.json(); // Lint-clean variable
 
     // 2. Capture the Order
     const captureResponse = await fetch(`${PAYPAL_API_BASE_URL}/v2/checkout/orders/${orderID}/capture`, {
