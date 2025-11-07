@@ -14,6 +14,8 @@ import { useModal } from '@/components/context/ModalContext';
 // ────────────────────────────────────────────────────────────────
 // CONFIGURATION – **LIVE** PayPal client-id
 // ────────────────────────────────────────────────────────────────
+const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID ||
+  'AerajJLPX6bi0id_jGZIyB7YRcGoUj8xTNGsrX_8WyTPG2I5EgQeqSwukPgr7kuaSWvAZPjDZFLp6zSz';
 
 const FUNCTIONS_BASE_URL = import.meta.env.VITE_FUNCTIONS_BASE_URL ||
   'https://us-central1-swytch-pet.cloudfunctions.net';
