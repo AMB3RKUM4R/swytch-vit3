@@ -15,7 +15,7 @@ import {grantGameRewardHandler} from './grantGameReward';
 import {grantUserRewardHandler} from './grantUserReward';
 import {handleDepositWebhookHandler} from './handle-deposit-webhook';
 
-// --- Import NEW Payment Handlers ---
+// --- Import Payment Handlers ---
 import {createPayPalOrder} from './create-paypal-order';
 import {capturePayPalOrder} from './capture-paypal-order';
 import {createUpiOrder} from './create-upi-order';
@@ -37,11 +37,11 @@ export const redeemJoules = https.onRequest(redeemJoulesHandler);
 
 // Webhook functions
 export const handleDepositWebhook = https.onRequest(handleDepositWebhookHandler);
-export const razorpayWebhook = https.onRequest(createUpiPaymentWebhook); // <-- NEW RAZORPAY WEBHOOK EXPORT
+export const razorpayWebhook = https.onRequest(createUpiPaymentWebhook);
 
 // PayPal API functions (called by frontend)
 export const createPayPalOrderApi = https.onRequest(createPayPalOrder);
 export const capturePayPalOrderApi = https.onRequest(capturePayPalOrder);
 
 // Razorpay API functions (called by frontend)
-export const createUpiOrderApi = https.onRequest(createUpiOrder); // <-- NEW RAZORPAY ORDER EXPORT
+export const createUpiOrderApi = https.onRequest(createUpiOrder);
