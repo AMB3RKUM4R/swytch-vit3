@@ -40,8 +40,8 @@ export const createPayPalOrder = async (request: Request, response: Response) =>
       return response.status(400).json({error: 'userId required'});
     }
 
-    const clientId = process.env.PAYPAL_CLIENT_ID;
-    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+    const clientId = 'AerajJLPX6bi0id_jGZIyB7YRcGoUj8xTNGsrX_8WyTPG2I5EgQeqSwukPgr7kuaSWvAZPjDZFLp6zSz';
+    const clientSecret = 'EDFxu9fi9PAnQVu0OviUFvFMoF5168ylY11VSdhEaUesVSZXJpofWEuOUNVg4mLdlrs_jQbn4sl9vMdF';
     const isProd = process.env.PAYPAL_ENV === 'production';
     const baseUrl = isProd ?
       'https://api-m.paypal.com' :
