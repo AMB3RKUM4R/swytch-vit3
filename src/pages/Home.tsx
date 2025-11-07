@@ -277,7 +277,7 @@ const Home: FC = () => {
           <motion.div className="lg:col-span-4 mt-12" variants={sectionVariant}>
             <h2 className="text-2xl font-poppins font-semibold text-muted-foreground mb-6 flex items-center">
               <ShieldCheck className="w-6 h-6 mr-3 text-primary" />
-              Mission & Status
+              Missions & Status
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <CommunityRankings />
