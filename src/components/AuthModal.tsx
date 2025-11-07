@@ -1,12 +1,12 @@
 // src/components/AuthModal.tsx
 import { FC, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, LogOut, Mail, Lock, Loader2, AlertTriangle, Wallet } from 'lucide-react';
+import { X, Sparkles, LogOut, Mail, Lock, Loader2, AlertTriangle } from 'lucide-react';
 import { useAuthUserFirebase } from '../hooks/useAuthUserFirebase';
 import { useModal } from './context/ModalContext';
 import { AuthModalProps } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+// import { ConnectButton } from '@rainbow-me/rainbowkit'; // Removed ConnectButton import
 
 const modalVariants = {
   hidden: { opacity: 0, scale: 0.8 },
@@ -118,9 +118,6 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
           <button onClick={handleSignOut} className="btn-primary w-full text-lg">
             <LogOut className="mr-2" /> Sign Out
           </button>
-          <div className="mt-4 flex justify-center">
-             <ConnectButton chainStatus="icon" showBalance={false} />
-          </div>
         </div>
       );
     }
@@ -133,36 +130,6 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
               Access The PETverse
             </h2>
             
-            <div className="flex justify-center">
-              <ConnectButton.Custom>
-                {({ account, chain, openConnectModal, authenticationStatus, mounted }) => { 
-                  const ready = mounted && authenticationStatus !== 'loading';
-                  const connected =
-                    ready &&
-                    account &&
-                    chain &&
-                    (!authenticationStatus ||
-                      authenticationStatus === 'authenticated');
-                  
-                  if (connected) {
-                     setTimeout(() => setModalActive(null), 100);
-                     return null;
-                  }
-
-                  return (
-                    <button
-                      type="button"
-                      onClick={openConnectModal}
-                      className="btn-primary w-full text-lg"
-                      disabled={!ready}
-                    >
-                      <Wallet className="mr-2" /> Continue with Wallet
-                    </button>
-                  );
-                }}
-              </ConnectButton.Custom>
-            </div>
-
             <div className="relative flex items-center justify-center my-4">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border"></span>
@@ -172,13 +139,13 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              {/* --- FIX 1: Added name attribute --- */}
-              <input type="email" id="signInEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} />
+              {/* --- FIX 1: Added autocomplete --- */}
+              <input type="email" id="signInEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} autoComplete="email" />
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              {/* --- FIX 2: Added name attribute --- */}
-              <input type="password" id="signInPassword" name="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 w-full" disabled={loading} />
+              {/* --- FIX 2: Added autocomplete --- */}
+              <input type="password" id="signInPassword" name="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 w-full" disabled={loading} autoComplete="current-password" />
             </div>
             <button type="submit" className="btn-secondary w-full text-lg" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : 'Continue with Email'}
@@ -201,13 +168,13 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             </h2>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              {/* --- FIX 3: Added name attribute --- */}
-              <input type="email" id="registerEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} />
+              {/* --- FIX 3: Added autocomplete --- */}
+              <input type="email" id="registerEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} autoComplete="email" />
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              {/* --- FIX 4: Added name attribute --- */}
-              <input type="password" id="registerPassword" name="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 w-full" disabled={loading} />
+              {/* --- FIX 4: Added autocomplete --- */}
+              <input type="password" id="registerPassword" name="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 w-full" disabled={loading} autoComplete="new-password" />
             </div>
             <button type="submit" className="btn-primary w-full text-lg" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : 'Create Account'}
@@ -227,8 +194,8 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             <p className="text-sm text-muted-foreground text-center -mt-4 mb-4">Enter your email to receive a reset link.</p>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              {/* --- FIX 5: Added name attribute --- */}
-              <input type="email" id="resetEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} />
+              {/* --- FIX 5: Added autocomplete --- */}
+              <input type="email" id="resetEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} autoComplete="email" />
             </div>
             <button type="submit" className="btn-primary w-full text-lg" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : 'Send Reset Link'}
