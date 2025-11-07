@@ -2,6 +2,7 @@
 import {Buffer} from 'buffer';
 import type {Request, Response} from 'express';
 import * as cors from 'cors';
+import * as functions from 'firebase-functions';
 
 const corsHandler = cors({
   origin: 'https://www.swytchpet.io',
@@ -40,8 +41,8 @@ export const createPayPalOrder = async (request: Request, response: Response) =>
       return response.status(400).json({error: 'userId required'});
     }
 
-    const clientId = process.env.VITE_PAYPAL_CLIENT_ID || process.env.PAYPAL_CLIENT_ID;
-    const clientSecret = process.env.VITE_PAYPAL_CLIENT_SECRET || process.env.PAYPAL_CLIENT_ID;
+    const clientId = functions.config().paypal.client_id;
+    const clientSecret = functions.config().paypal.client_secret;
     const isProd = process.env.PAYPAL_ENV === 'production';
     const baseUrl = isProd ?
       'https://api-m.paypal.com' :
