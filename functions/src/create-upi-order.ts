@@ -1,10 +1,11 @@
 // functions/src/create-upi-order.ts
 import {Buffer} from 'buffer';
 import fetch from 'node-fetch'; // Requires @types/node-fetch
-import {Request} from 'firebase-functions/v2/https'; // <-- THE FIX
-import type {Response} from 'express'; // <-- THE FIX
+import {Request} from 'firebase-functions/v2/https';
+import type {Response} from 'express';
 
-export const createUpiOrderHandler = async (request: Request, response: Response) => { // <-- CORRECT TYPES
+// Standardized export name
+export const createUpiOrder = async (request: Request, response: Response) => {
   const RAZORPAY_KEY_ID = process.env.VITE_RAZORPAY_KEY_ID;
   const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
@@ -13,7 +14,7 @@ export const createUpiOrderHandler = async (request: Request, response: Response
     response.status(500).json({error: 'Server payment configuration error.'});
     return;
   }
-  // (Rest of the function is identical)
+
   if (request.method !== 'POST') {
     response.status(405).json({error: 'Method Not Allowed'});
     return;

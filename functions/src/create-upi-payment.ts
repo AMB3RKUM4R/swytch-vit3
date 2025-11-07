@@ -3,15 +3,13 @@ import * as crypto from 'crypto';
 
 import {getFirestore, FieldValue} from 'firebase-admin/firestore';
 import {PlayerData, MEMBERSHIP_TIERS} from './lib/types';
-import {Request} from 'firebase-functions/v2/https'; // <-- THE FIX
-import type {Response} from 'express'; // <-- THE FIX
-
-// (Firebase Admin Setup... no changes)
+import {Request} from 'firebase-functions/v2/https';
+import type {Response} from 'express';
 
 const db = getFirestore();
-// ---
 
-export const createUpiPaymentHandler = async (request: Request, response: Response) => { // <-- CORRECT TYPES
+// Standardized export name
+export const createUpiPaymentWebhook = async (request: Request, response: Response) => {
   const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
   const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -20,13 +18,14 @@ export const createUpiPaymentHandler = async (request: Request, response: Respon
     response.status(500).json({error: 'Server payment configuration error.'});
     return;
   }
-  // (Rest of the function is identical)
+
   const signature = request.headers['x-razorpay-signature'];
   if (typeof signature !== 'string') {
     response.status(400).json({error: 'Signature missing or invalid'});
     return;
   }
 
+  // Signature verification (Security check)
   const shasum = crypto.createHmac('sha256', RAZORPAY_WEBHOOK_SECRET);
   shasum.update(request.rawBody);
   const digest = shasum.digest('hex');

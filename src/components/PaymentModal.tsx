@@ -11,6 +11,12 @@ import { cn } from '@/lib/utils';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
 
+// --- NEW CONFIGURATION ---
+// IMPORTANT: You must set this environment variable for the live domain
+const FUNCTIONS_BASE_URL = import.meta.env.VITE_FUNCTIONS_BASE_URL || 
+                           'https://us-central1-swytch-pet.cloudfunctions.net'; // Fallback URL
+// ---
+
 // Placeholder for the deployed contract information
 const DEPOSITORY_CONTRACT_ADDRESS = '0xDE9978913D9a969d799A2ba9381FB82450b92CE0' as `0x${string}`;
 const DEPOSITORY_CONTRACT_ABI = [
@@ -100,27 +106,35 @@ const PaymentModal: FC = () => {
       throw new Error(msg);
     }
     try {
-      const response = await fetch('/api/create-paypal-order', {
+      // --- CRITICAL CHANGE 1: Use the deployed Firebase Function URL ---
+      const response = await fetch(`${FUNCTIONS_BASE_URL}/createPayPalOrderApi`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount, currency: 'USD', userId, depositType: 'deposit' }),
       });
+      // --- END CRITICAL CHANGE 1 ---
+      
       const order = await response.json();
       if (order.id) return order.id;
       throw new Error(order.error || "Failed to create PayPal order.");
     } catch (err: any) {
       setError(err.message);
+      // Log the error to the console for debugging
+      console.error("PayPal createOrder function failed:", err);
       throw err;
     }
   };
 
   const onPayPalApprove = async (data: { orderID: string }): Promise<void> => {
     try {
-      const response = await fetch('/api/capture-paypal-order', {
+      // --- CRITICAL CHANGE 2: Use the deployed Firebase Function URL ---
+      const response = await fetch(`${FUNCTIONS_BASE_URL}/capturePayPalOrderApi`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderID: data.orderID, userId, amount, depositType: 'deposit' }),
       });
+      // --- END CRITICAL CHANGE 2 ---
+
       const result = await response.json();
       if (result.success) {
         setShowMessage("✅ PayPal payment successful! Your balance will update after admin confirmation.");
@@ -218,4 +232,3 @@ const PaymentModal: FC = () => {
 };
 
 export default PaymentModal;
-

@@ -15,24 +15,33 @@ import {grantGameRewardHandler} from './grantGameReward';
 import {grantUserRewardHandler} from './grantUserReward';
 import {handleDepositWebhookHandler} from './handle-deposit-webhook';
 
+// --- Import NEW Payment Handlers ---
+import {createPayPalOrder} from './create-paypal-order';
+import {capturePayPalOrder} from './capture-paypal-order';
+import {createUpiOrder} from './create-upi-order';
+import {createUpiPaymentWebhook} from './create-upi-payment';
+// ---
+
 // --- Export them as callable HTTPS functions ---
 
-// This name 'grantLootOnKill' is what your Unity EnemyController.cs calls
+// Game/Loot functions
 export const grantLootOnKill = https.onRequest(grantLootOnKillHandler);
-
-// This name 'redeemWebToken' is what your Unity AuthManager.cs calls
 export const redeemWebToken = https.onRequest(redeemWebTokenHandler);
-
-// This name 'generateWebSession' is what your web app calls
 export const generateWebSession = https.onRequest(generateWebSessionHandler);
-
-// This name 'grantGameReward' is what your HyperCasual_CoinCollector.cs calls
 export const grantGameReward = https.onRequest(grantGameRewardHandler);
-
-// This name 'grantUserReward' is what your AdManager.cs calls
 export const grantUserReward = https.onRequest(grantUserRewardHandler);
 
-// These are your other web app functions
+// Wallet/Auth functions
 export const createCustomToken = https.onRequest(createCustomTokenHandler);
 export const redeemJoules = https.onRequest(redeemJoulesHandler);
+
+// Webhook functions
 export const handleDepositWebhook = https.onRequest(handleDepositWebhookHandler);
+export const razorpayWebhook = https.onRequest(createUpiPaymentWebhook); // <-- NEW RAZORPAY WEBHOOK EXPORT
+
+// PayPal API functions (called by frontend)
+export const createPayPalOrderApi = https.onRequest(createPayPalOrder);
+export const capturePayPalOrderApi = https.onRequest(capturePayPalOrder);
+
+// Razorpay API functions (called by frontend)
+export const createUpiOrderApi = https.onRequest(createUpiOrder); // <-- NEW RAZORPAY ORDER EXPORT
