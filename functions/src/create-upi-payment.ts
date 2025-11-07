@@ -6,10 +6,13 @@ import {PlayerData, MEMBERSHIP_TIERS} from './lib/types';
 import {Request} from 'firebase-functions/v2/https';
 import type {Response} from 'express';
 
-const db = getFirestore();
+// REMOVED GLOBAL CALL: const db = getFirestore();
 
 // Standardized export name
 export const createUpiPaymentWebhook = async (request: Request, response: Response) => {
+  // FIX: Initialize Firestore inside the handler
+  const db = getFirestore();
+
   const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
   const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 

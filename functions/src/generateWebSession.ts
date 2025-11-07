@@ -6,13 +6,12 @@ import {randomBytes} from 'crypto';
 import {Request} from 'firebase-functions/v2/https';
 import type {Response} from 'express';
 
-// (Firebase Admin Setup... no changes)
-
-const db = getFirestore();
-const auth = getAuth();
-// ---
 
 export const generateWebSessionHandler = async (request: Request, response: Response) => {
+  // FIX: Initialize SDKs inside the handler
+  const db = getFirestore();
+  const auth = getAuth();
+
   if (request.method !== 'POST') {
     response.status(405).json({error: 'Method Not Allowed'});
     return;

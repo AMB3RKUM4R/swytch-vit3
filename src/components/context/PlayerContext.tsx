@@ -14,6 +14,8 @@ interface PlayerContextType {
   firebaseUser: User | null;
   wagmiAddress: `0x${string}` | undefined;
   userId: string | null;
+  // FIX: Added idToken to the interface to resolve the compiler error in WithdrawModal.tsx
+  idToken: string | null; 
   authLoading: boolean;
   authError: string | null; 
   initialAuthCheckComplete: boolean;
@@ -109,6 +111,25 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const userId = firebaseUser?.uid || null;
 
+  // --- ID TOKEN STATE (NEW) ---
+  const [idToken, setIdToken] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (firebaseUser) {
+        // Fetch the ID token whenever the user object changes
+        firebaseUser.getIdToken().then(token => {
+            setIdToken(token);
+        }).catch(err => {
+            console.error("Failed to fetch ID token:", err);
+            setIdToken(null);
+        });
+    } else {
+        setIdToken(null);
+    }
+  }, [firebaseUser]);
+  // --- END OF ID TOKEN STATE ---
+
+
   // --- DATA FETCHING LOGIC ---
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [isPETMember, setIsPETMember] = useState(false);
@@ -185,6 +206,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     firebaseUser,
     wagmiAddress,
     userId: userId ?? null,
+    idToken, // <-- EXPOSE idToken
     authLoading: firebaseLoading,
     authError: authError, 
     initialAuthCheckComplete,
@@ -212,7 +234,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     isAuthenticated,
     isAdmin,
   }), [
-    firebaseUser, wagmiAddress, userId, firebaseLoading, authError, initialAuthCheckComplete,
+    firebaseUser, wagmiAddress, userId, idToken, firebaseLoading, authError, initialAuthCheckComplete,
     playerData, isPETMember, setIsPETMember, dataLoading,
     updatePlayerFirestore, logTransaction, updatePlayerCharacter, 
     signInWithGoogle, signOutUser, registerWithEmail, signInWithEmail, sendPasswordReset, isAuthenticated, isAdmin

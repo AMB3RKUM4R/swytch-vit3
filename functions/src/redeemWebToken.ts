@@ -6,8 +6,7 @@ import type {Response} from 'express'; // <-- THE FIX
 
 // (Firebase Admin Setup... no changes)
 
-const db = getFirestore();
-const auth = getAuth();
+
 // ---
 
 export const redeemWebTokenHandler = async (request: Request, response: Response) => { // <-- CORRECT TYPES
@@ -15,6 +14,8 @@ export const redeemWebTokenHandler = async (request: Request, response: Response
     response.status(405).json({error: 'Method Not Allowed'});
     return;
   }
+  const db = getFirestore();
+  const auth = getAuth();
   // (Rest of the function is identical)
   const {token} = request.body;
 

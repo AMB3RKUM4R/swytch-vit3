@@ -9,9 +9,6 @@ import type {Response} from 'express'; // <-- THE FIX
 
 // (Firebase Admin Setup... no changes)
 
-const db = getFirestore();
-const auth = getAuth();
-// ---
 
 const RPC_URL = process.env.POLYGON_RPC_URL!;
 const USDC_CONTRACT_ADDRESS = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
@@ -24,6 +21,8 @@ export const redeemJoulesHandler = async (request: Request, response: Response) 
     return;
   }
   // (Rest of the function is identical)
+  const db = getFirestore();
+  const auth = getAuth();
   const authorization = request.headers.authorization;
   if (!authorization || !authorization.startsWith('Bearer ')) {
     response.status(401).json({error: 'Unauthorized'});

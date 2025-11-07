@@ -1,7 +1,7 @@
 // src/components/PaymentModal.tsx
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, HandCoins, AlertTriangle, CreditCard, Droplet, QrCode } from 'lucide-react'; // Added QrCode
+import { X, HandCoins, AlertTriangle, CreditCard, Droplet, QrCode } from 'lucide-react'; 
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, isAddress } from 'viem';
 
@@ -29,8 +29,8 @@ const PaymentModal: FC = () => {
   const { activeModal, setActiveModal, setShowMessage } = useModal();
   const { isConnected } = useAccount();
 
-  // Set default to UPI
-  const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'paypal' | 'upi'>('upi');
+  // Set default to PayPal now that it's first
+  const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'paypal' | 'upi'>('paypal');
   const [amount, setAmount] = useState<string>('10.00');
   const [error, setError] = useState<string | null>(null);
   
@@ -55,18 +55,24 @@ const PaymentModal: FC = () => {
     const intentUrl = `upi://pay?pa=${STATIC_UPI_ID}&pn=SwytchPETverse&am=${parsedAmount}&cu=INR&tn=Deposit%20for%20user%20${userId}`;
 
     // 1. Log Transaction as Pending (Crucial for Admin Approval)
-    // Generate a hex-prefixed placeholder so it satisfies the `0x${string}` type expected for transactionHash.
-    const upiTxHash = `0x${Date.now().toString(16)}` as `0x${string}`;
-    logTransaction({
+    {
+      // Build a synthetic hex-prefixed ID so the value conforms to the `0x${string}` branded type
+      const upiId = `UPI_INIT_${Date.now()}`;
+      const upiHex = '0x' + Array.from(upiId)
+        .map((c) => c.charCodeAt(0).toString(16).padStart(2, '0'))
+        .join('');
+
+      logTransaction({
         userId: userId!,
         amount: parseFloat(parsedAmount),
         currency: 'INR' as SupportedCurrency,
         transactionType: 'deposit',
-        status: 'pending', 
+        status: 'pending',
         itemId: 'upi-deposit-direct',
-        paymentGatewayId: STATIC_UPI_ID, 
-        transactionHash: upiTxHash, 
-    });
+        paymentGatewayId: STATIC_UPI_ID,
+        transactionHash: upiHex as `0x${string}`,
+      });
+    }
 
     // 2. Show success message (instruct user on manual approval)
     setShowMessage(`UPI payment initiated! Please complete the payment via the UPI app. Your account will be credited by an admin upon confirmation.`);
@@ -168,27 +174,10 @@ const PaymentModal: FC = () => {
               <HandCoins className="w-7 h-7" /> Make a Payment
             </h2>
 
-            {/* Payment method tabs (REARRANGED: UPI, PayPal, Crypto) */}
+            {/* Payment method tabs (REARRANGED: PayPal, Crypto, UPI Intent) */}
             <div className="flex items-center justify-center gap-2 mb-4 p-1 bg-black/20 rounded-lg">
               
-              {/* 1. UPI Intent Button */}
-              <button
-                onClick={() => {
-                  setPaymentMethod('upi');
-                  setError(null);
-                }}
-                className={cn(
-                  'w-1/3 p-2 rounded-md text-sm font-semibold transition-colors',
-                  paymentMethod === 'upi'
-                    ? 'bg-[hsl(var(--primary))] text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-white/10'
-                )}
-              >
-                <QrCode className="inline-block w-4 h-4 mr-1" />
-                UPI Intent
-              </button>
-
-              {/* 2. PayPal Button */}
+              {/* 1. PayPal Button */}
               <button
                 onClick={() => {
                   setPaymentMethod('paypal');
@@ -205,7 +194,7 @@ const PaymentModal: FC = () => {
                 PayPal
               </button>
               
-              {/* 3. Crypto Button */}
+              {/* 2. Crypto Button */}
               <button
                 onClick={() => {
                   setPaymentMethod('crypto');
@@ -220,6 +209,23 @@ const PaymentModal: FC = () => {
               >
                 <Droplet className="inline-block w-4 h-4 mr-1" />
                 Crypto
+              </button>
+
+              {/* 3. UPI Intent Button */}
+              <button
+                onClick={() => {
+                  setPaymentMethod('upi');
+                  setError(null);
+                }}
+                className={cn(
+                  'w-1/3 p-2 rounded-md text-sm font-semibold transition-colors',
+                  paymentMethod === 'upi'
+                    ? 'bg-[hsl(var(--primary))] text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-white/10'
+                )}
+              >
+                <QrCode className="inline-block w-4 h-4 mr-1" />
+                UPI Intent
               </button>
             </div>
 
@@ -240,21 +246,6 @@ const PaymentModal: FC = () => {
                   disabled={isLoading}
                 />
               </div>
-
-              {/* UPI Intent Button (Display) */}
-              {paymentMethod === 'upi' && (
-                <motion.button
-                  className="btn-primary w-full"
-                  onClick={handleUpiPayment}
-                  disabled={
-                    !amount ||
-                    parseFloat(amount) <= 0 ||
-                    isLoading
-                  }
-                >
-                  Pay with UPI Intent / QR
-                </motion.button>
-              )}
 
               {/* PayPal static link button (Display) */}
               {paymentMethod === 'paypal' && (
@@ -290,6 +281,22 @@ const PaymentModal: FC = () => {
                     : `Pay ${amount} ETH to Wallet`}
                 </motion.button>
               )}
+
+              {/* UPI Intent Button (Display) */}
+              {paymentMethod === 'upi' && (
+                <motion.button
+                  className="btn-primary w-full"
+                  onClick={handleUpiPayment}
+                  disabled={
+                    !amount ||
+                    parseFloat(amount) <= 0 ||
+                    isLoading
+                  }
+                >
+                  Pay with UPI Intent / QR
+                </motion.button>
+              )}
+
             </div>
 
             {/* Error message */}

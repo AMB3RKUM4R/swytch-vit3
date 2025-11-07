@@ -8,10 +8,6 @@ import type {Response} from 'express'; // <-- THE FIX
 // (Firebase Admin Setup... no changes)
 
 
-const db = getFirestore();
-const auth = getAuth();
-// ---
-
 const GAME_REWARDS: { [key: string]: { baseJoules: number, baseXp: number } } = {
   'coin_collector_level_1': {baseJoules: 50, baseXp: 100},
   'coin_collector_level_2': {baseJoules: 75, baseXp: 150},
@@ -22,6 +18,8 @@ export const grantGameRewardHandler = async (request: Request, response: Respons
     response.status(405).json({error: 'Method Not Allowed'});
     return;
   }
+  const db = getFirestore();
+  const auth = getAuth();
   // (Rest of the function is identical)
   const authorization = request.headers.authorization;
   if (!authorization || !authorization.startsWith('Bearer ')) {
