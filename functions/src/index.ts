@@ -20,10 +20,6 @@ import {redeemJoulesHandler} from './redeemJoules';
 import {handleDepositWebhookHandler} from './handle-deposit-webhook';
 import {createUpiPaymentWebhook} from './create-upi-payment';
 
-// === PAYMENT: PAYPAL (Frontend API) ===
-import {createPayPalOrder} from './create-paypal-order';
-import {capturePayPalOrder} from './capture-paypal-order';
-
 // === PAYMENT: RAZORPAY / UPI (Frontend API) ===
 import {createUpiOrder} from './create-upi-order';
 
@@ -46,14 +42,5 @@ export const redeemJoules = https.onRequest(redeemJoulesHandler);
 export const handleDepositWebhook = https.onRequest(handleDepositWebhookHandler);
 export const razorpayWebhook = https.onRequest(createUpiPaymentWebhook);
 
-export const createPayPalOrderApi = https.onRequest((req, res) =>
-  void createPayPalOrder(req, res)
-);
-
-export const capturePayPalOrderApi = https.onRequest((req, res) =>
-  void capturePayPalOrder(req, res)
-);
 // ── Razorpay / UPI API (Called by Frontend) ─────────────────────
 export const createUpiOrderApi = https.onRequest(createUpiOrder);
-
-// ────────────────────────────────────────────────────────────────

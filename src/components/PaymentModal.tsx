@@ -1,7 +1,7 @@
 // src/components/PaymentModal.tsx
-import { FC, useState, useEffect, useRef } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, HandCoins, Loader2, AlertTriangle, CreditCard, Droplet } from 'lucide-react';
+import { X, HandCoins, AlertTriangle, CreditCard, Droplet } from 'lucide-react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 
@@ -13,10 +13,13 @@ import { useModal } from '@/components/context/ModalContext';
 // ────────────────────────────────────────────────────────────────
 // CONFIGURATION – LIVE PayPal credentials from .env
 // ────────────────────────────────────────────────────────────────
-const FUNCTIONS_BASE_URL = import.meta.env.VITE_FUNCTIONS_BASE_URL ||
-  'https://us-central1-swytch-pet.cloudfunctions.net';
+// NOTE: PayPal configuration is no longer strictly needed for a static link,
+// but keeping the base URL for the crypto confirmation handler's logic integrity (if any).
 
-const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+// ────────────────────────────────────────────────────────────────
+// NEW STATIC PAYPAL LINK
+// ────────────────────────────────────────────────────────────────
+const STATIC_PAYPAL_LINK = 'https://www.paypal.com/ncp/payment/TZ5XEBCG8NFGW';
 
 // ────────────────────────────────────────────────────────────────
 // Contract (unchanged)
@@ -44,123 +47,22 @@ const PaymentModal: FC = () => {
   const { isConnected } = useAccount();
 
   const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'paypal'>('paypal');
+  // NOTE: 'amount' state remains for Crypto payment, but is ignored for the static PayPal link.
   const [amount, setAmount] = useState<string>('10.00');
   const [error, setError] = useState<string | null>(null);
-  const [paypalReady, setPaypalReady] = useState(false);
-  const paypalContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Removed paypalReady state and paypalContainerRef ref
+  // const [paypalReady, setPaypalReady] = useState(false);
+  // const paypalContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: hash, writeContract, isPending: isTxPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } =
     useWaitForTransactionReceipt({ hash });
 
-  // ── Load PayPal script once (only when PayPal tab is active) ─────
-  useEffect(() => {
-    if (paymentMethod !== 'paypal' || paypalReady || !PAYPAL_CLIENT_ID) return;
-
-    const script = document.createElement('script');
-    script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD&intent=capture`;
-    script.async = true;
-    script.onload = () => setPaypalReady(true);
-    script.onerror = () => setError('Failed to load PayPal script.');
-    document.body.appendChild(script);
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, [paymentMethod, paypalReady, PAYPAL_CLIENT_ID]);
-
-  // ── Render PayPal button when ready ───────────────────────────────
-  useEffect(() => {
-    if (!paypalReady || !paypalContainerRef.current || !userId || !PAYPAL_CLIENT_ID) return;
-
-    paypalContainerRef.current.innerHTML = '';
-
-    // @ts-ignore – PayPal SDK global
-    window.paypal
-      .Buttons({
-        style: {
-          shape: 'rect',
-          color: 'blue',
-          layout: 'vertical',
-          label: 'paypal',
-        },
-
-        // 1. Create order via backend
-        createOrder: async () => {
-          setError(null);
-          const num = parseFloat(amount);
-          if (isNaN(num) || num <= 0) {
-            const msg = 'Please enter a valid amount.';
-            setError(msg);
-            throw new Error(msg);
-          }
-
-          try {
-            const res = await fetch(`${FUNCTIONS_BASE_URL}/createPayPalOrderApi`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                amount: num,
-                currency: 'USD',
-                userId,
-                depositType: 'deposit',
-              }),
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to create PayPal order');
-            if (!data.id) throw new Error('No order ID returned');
-
-            return data.id;
-          } catch (e: any) {
-            console.error('createOrder error:', e);
-            setError(e.message);
-            throw e;
-          }
-        },
-
-        // 2. Capture payment after approval
-        onApprove: async (data: { orderID: string }) => {
-          try {
-            const res = await fetch(`${FUNCTIONS_BASE_URL}/capturePayPalOrderApi`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                orderID: data.orderID,
-                userId,
-                amount,
-                depositType: 'deposit',
-              }),
-            });
-
-            const result = await res.json();
-            if (!res.ok || !result.success) {
-              throw new Error(result.error || 'Payment capture failed');
-            }
-
-            setShowMessage(
-              'PayPal payment successful! Your balance will update after admin confirmation.'
-            );
-            setActiveModal(null);
-          } catch (e: any) {
-            console.error('onApprove error:', e);
-            setError(e.message);
-            setShowMessage(`Warning: ${e.message}`);
-          }
-        },
-
-        // Error handling
-        onError: (err: any) => {
-          console.error('PayPal button error:', err);
-          setError('PayPal error – please try again.');
-        },
-      })
-      .render(paypalContainerRef.current);
-  }, [paypalReady, amount, userId, setShowMessage, setActiveModal]);
-
-  // ── Crypto confirmation handling ─────────────────────────────────────
+  // ── Removed: Load PayPal script useEffect ─────────────────────────
+  // ── Removed: Render PayPal button useEffect ───────────────────────
+  
+  // ── Crypto confirmation handling (Unchanged) ─────────────────────────
   useEffect(() => {
     if (isConfirmed && hash) {
       setShowMessage('Crypto deposit confirmed! Your balance will be updated shortly.');
@@ -201,7 +103,7 @@ const PaymentModal: FC = () => {
     isTxPending,
   ]);
 
-  // ── Crypto payment handler ───────────────────────────────────────────
+  // ── Crypto payment handler (Unchanged) ──────────────────────────────
   const handleCryptoPayment = () => {
     setError(null);
     if (!userId || !isConnected || !amount || parseFloat(amount) <= 0) {
@@ -250,7 +152,10 @@ const PaymentModal: FC = () => {
             {/* Payment method tabs */}
             <div className="flex items-center justify-center gap-2 mb-4 p-1 bg-black/20 rounded-lg">
               <button
-                onClick={() => setPaymentMethod('paypal')}
+                onClick={() => {
+                  setPaymentMethod('paypal');
+                  setError(null); // Clear error on tab switch
+                }}
                 className={cn(
                   'w-full p-2 rounded-md text-sm font-semibold transition-colors',
                   paymentMethod === 'paypal'
@@ -262,7 +167,10 @@ const PaymentModal: FC = () => {
                 PayPal (USD)
               </button>
               <button
-                onClick={() => setPaymentMethod('crypto')}
+                onClick={() => {
+                  setPaymentMethod('crypto');
+                  setError(null); // Clear error on tab switch
+                }}
                 className={cn(
                   'w-full p-2 rounded-md text-sm font-semibold transition-colors',
                   paymentMethod === 'crypto'
@@ -293,7 +201,7 @@ const PaymentModal: FC = () => {
                 />
               </div>
 
-              {/* Crypto button */}
+              {/* Crypto button (Unchanged) */}
               {paymentMethod === 'crypto' && (
                 <motion.button
                   className="btn-primary w-full"
@@ -313,19 +221,25 @@ const PaymentModal: FC = () => {
                 </motion.button>
               )}
 
-              {/* PayPal button (classic script method) */}
+              {/* PayPal static link button (NEW) */}
               {paymentMethod === 'paypal' && (
                 <div className="min-h-[50px] flex justify-center">
-                  {!paypalReady ? (
-                    <Loader2 className="animate-spin text-primary" />
-                  ) : (
-                    <div ref={paypalContainerRef} className="w-full max-w-[200px]" />
-                  )}
+                  {/* Using an anchor tag styled as a button */}
+                  <a
+                    href={STATIC_PAYPAL_LINK}
+                    target="_blank" // Opens in a new tab
+                    rel="noopener noreferrer" // Security best practice for target="_blank"
+                    className="btn-primary w-full text-center py-2 px-4 rounded-md font-semibold transition-colors"
+                    // The disabled style check is simple for a static link
+                    onClick={() => setActiveModal(null)} // Close the modal upon clicking the link
+                  >
+                    Pay with PayPal
+                  </a>
                 </div>
               )}
             </div>
 
-            {/* Error message */}
+            {/* Error message (Unchanged) */}
             <AnimatePresence>
               {error && (
                 <motion.p
