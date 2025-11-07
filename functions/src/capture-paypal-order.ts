@@ -1,145 +1,144 @@
 // functions/src/capture-paypal-order.ts
-
 import {Buffer} from 'buffer';
 import {getFirestore, FieldValue} from 'firebase-admin/firestore';
 import {initializeApp, getApps} from 'firebase-admin/app';
-import {Request} from 'firebase-functions/v2/https';
-import {Response} from 'express';
+import type {Request, Response} from 'express';
+import * as cors from 'cors';
 
-// Re-initialize app cleanly without explicit service account (Fixes deployment crash)
-if (!getApps().length) {
-  initializeApp();
-}
-
+if (!getApps().length) initializeApp();
 const db = getFirestore();
 
-// Use an export constant wrapper for deployment as a Firebase Function
+const corsHandler = cors({
+  origin: 'https://www.swytchpet.io',
+  methods: ['POST'],
+  credentials: true,
+});
+
+interface CaptureBody {
+  orderID: string;
+  userId: string;
+  amount: string | number;
+  depositType?: string;
+  itemId?: string;
+}
+
 export const capturePayPalOrder = async (request: Request, response: Response) => {
-  console.log('API: capture-paypal-order route hit.');
+  corsHandler(request, response, async () => {
+    try {
+      console.log('API: capturePayPalOrder (LIVE) hit.');
 
-  if (request.method !== 'POST') {
-    response.status(405).json({error: 'Method Not Allowed'});
-    return;
-  }
+      if (request.method !== 'POST') {
+        return response.status(405).json({error: 'Method Not Allowed'});
+      }
 
-  let reqBody;
-  try {
-    reqBody = request.body;
-  } catch (e) {
-    response.status(400).json({error: 'Invalid JSON body'});
-    return;
-  }
+      let body: CaptureBody;
+      try {
+        body = request.body;
+      } catch {
+        return response.status(400).json({error: 'Invalid JSON'});
+      }
 
-  const {orderID, userId, amount, depositType, itemId} = reqBody;
+      const {orderID, userId, amount, depositType, itemId} = body;
 
-  if (!orderID || !userId || !amount) {
-    console.error('API: Missing required fields for PayPal order capture:', {orderID, userId, amount});
-    response.status(400).json({error: 'Missing required fields for capture'});
-    return;
-  }
+      if (!orderID || !userId || !amount) {
+        return response.status(400).json({error: 'Missing orderID, userId, or amount'});
+      }
 
-  if (depositType === 'item-purchase' && !itemId) {
-    console.error('API: Missing \'itemId\' for an \'item-purchase\' depositType.');
-    response.status(400).json({error: 'Missing itemId for item purchase'});
-    return;
-  }
+      const parsedAmount = parseFloat(String(amount));
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return response.status(400).json({error: 'Invalid amount'});
+      }
 
-  const parsedAmount = parseFloat(amount);
-  if (isNaN(parsedAmount) || parsedAmount <= 0) {
-    console.error('API: Invalid amount received for capture:', amount);
-    response.status(400).json({error: 'Invalid amount provided for capture'});
-    return;
-  }
+      if (depositType === 'item-purchase' && !itemId) {
+        return response.status(400).json({error: 'itemId required'});
+      }
 
-  const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID!;
-  const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET!;
-  const PAYPAL_API_BASE_URL = process.env.PAYPAL_ENV === 'sandbox' ? 'https://api-m.sandbox.paypal.com' : 'https://api-m.paypal.com';
+      const clientId = process.env.PAYPAL_CLIENT_ID!;
+      const clientSecret = process.env.PAYPAL_CLIENT_SECRET!;
+      const isProd = process.env.PAYPAL_ENV === 'production';
+      const baseUrl = isProd ?
+        'https://api-m.paypal.com' :
+        'https://api-m.sandbox.paypal.com';
 
-  try {
-    const authString = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
+      const authString = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
-    // 1. Get Access Token
-    const tokenResponse = await fetch(`${PAYPAL_API_BASE_URL}/v1/oauth2/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${authString}`,
-      },
-      body: 'grant_type=client_credentials',
-    });
+      const tokenRes = await fetch(`${baseUrl}/v1/oauth2/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Basic ${authString}`,
+        },
+        body: 'grant_type=client_credentials',
+      });
 
-    if (!tokenResponse.ok) {
-      const tokenError = await tokenResponse.text();
-      console.error('API: PayPal access token error during capture:', tokenError);
-      throw new Error(`Failed to get PayPal access token for capture: ${tokenError}`);
-    }
-    const {access_token: accessToken} = await tokenResponse.json(); // Lint-clean variable
+      if (!tokenRes.ok) {
+        const txt = await tokenRes.text();
+        console.error('Token error:', txt);
+        return response.status(502).json({error: 'Auth failed', details: txt});
+      }
+      const {access_token: accessToken} = await tokenRes.json();
 
-    // 2. Capture the Order
-    const captureResponse = await fetch(`${PAYPAL_API_BASE_URL}/v2/checkout/orders/${orderID}/capture`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
+      const captureRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderID}/capture`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+          'PayPal-Request-Id': `capture-${orderID}-${Date.now()}`,
+        },
+      });
 
-    if (!captureResponse.ok) {
-      const errorBody = await captureResponse.text();
-      console.error('API: PayPal order capture failed:', errorBody);
-      throw new Error(`Failed to capture PayPal order: ${errorBody}`);
-    }
+      const captureData = await captureRes.json();
 
-    const captureResult = await captureResponse.json();
+      if (!captureRes.ok) {
+        console.error('Capture failed:', captureData);
+        return response.status(502).json({error: 'PayPal capture failed', details: captureData});
+      }
 
-    if (captureResult.status === 'COMPLETED') {
-      // 3. Update Firestore
+      if (captureData.status !== 'COMPLETED') {
+        return response.status(400).json({error: 'Payment not completed', status: captureData.status});
+      }
+
       await db.runTransaction(async (t) => {
-        const transactionRefId = `paypal_${orderID}`;
-        const transactionRef = db.collection('Transactions').doc(transactionRefId);
-
+        const txId = `paypal_${orderID}`;
+        const txRef = db.collection('Transactions').doc(txId);
+        const capture = captureData.purchase_units[0].payments.captures[0];
         const isItemPurchase = depositType === 'item-purchase' && itemId;
 
-        t.set(transactionRef, {
-          transactionId: transactionRefId,
-          userId: userId,
-          amount: parsedAmount,
-          currency: captureResult.purchase_units[0].payments.captures[0].amount.currency_code,
-          transactionType: depositType || 'deposit',
-          status: isItemPurchase ? 'completed' : 'pending',
-          timestamp: FieldValue.serverTimestamp(),
-          paypalOrderId: orderID,
-          paymentMethod: 'PayPal',
-          paypalCaptureId: captureResult.purchase_units[0].payments.captures[0].id,
-          itemId: itemId || null,
-        }, {merge: true});
+        t.set(
+            txRef,
+            {
+              transactionId: txId,
+              userId,
+              amount: parsedAmount,
+              currency: capture.amount.currency_code,
+              transactionType: depositType || 'deposit',
+              status: isItemPurchase ? 'completed' : 'pending',
+              timestamp: FieldValue.serverTimestamp(),
+              paypalOrderId: orderID,
+              paymentMethod: 'PayPal',
+              paypalCaptureId: capture.id,
+              itemId: itemId || null,
+            },
+            {merge: true}
+        );
 
-        // Grant item if it was a direct purchase
         if (isItemPurchase) {
           const playerRef = db.collection('Players').doc(userId);
-          const newItemInstanceRef = playerRef.collection('InventoryItems').doc();
-
-          const newInventoryItem = {
-            itemId: itemId,
-            acquiredAt: FieldValue.serverTimestamp(),
-          };
-
-          t.set(newItemInstanceRef, newInventoryItem);
+          const itemRef = playerRef.collection('InventoryItems').doc();
+          t.set(itemRef, {itemId, acquiredAt: FieldValue.serverTimestamp()});
         }
       });
 
-      const message = (depositType === 'item-purchase' && itemId) ?
-        'Payment successful! Your item has been added to your inventory.' :
-        'Payment captured and awaiting admin approval.';
+      const message = depositType === 'item-purchase' && itemId ?
+        'Item purchased!' :
+        'Deposit received. Awaiting approval.';
 
-      response.status(200).json({success: true, message: message});
-    } else {
-      console.error('API: PayPal order not completed after capture:', captureResult);
-      response.status(400).json({success: false, error: 'PayPal payment not completed'});
+      return response.status(200).json({success: true, message});
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown';
+      console.error('capturePayPalOrder error:', msg);
+      return response.status(500).json({success: false, error: 'Server error'});
     }
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('API: Capture PayPal order API route caught error:', errorMessage);
-    response.status(500).json({success: false, error: errorMessage || 'Error capturing PayPal order'});
-  }
+  });
 };

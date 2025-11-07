@@ -1,76 +1,102 @@
 // functions/src/create-paypal-order.ts
-
 import {Buffer} from 'buffer';
-import {Request} from 'firebase-functions/v2/https';
-import {Response} from 'express';
-import * as cors from 'cors'; // <-- NEW IMPORT
+import type {Request, Response} from 'express';
+import * as cors from 'cors';
 
-// Initialize CORS middleware
-const corsHandler = cors({origin: true}); // origin: true allows all origins (easiest for development)
-// For production, you would use: cors({ origin: 'https://www.swytchpet.io' })
+const corsHandler = cors({
+  origin: 'https://www.swytchpet.io',
+  methods: ['POST'],
+  credentials: true,
+});
 
+interface CreateOrderBody {
+  amount: number;
+  currency?: string;
+  userId: string;
+  depositType?: string;
+}
 
-// ... (rest of configuration and function setup) ...
-
-// Use an export constant wrapper for deployment as a Firebase Function
-export const createPayPalOrder = (request: Request, response: Response) => { // Removed 'async' from outer wrapper
-  // 1. Wrap the core logic in the CORS handler
+export const createPayPalOrder = async (request: Request, response: Response) => {
   corsHandler(request, response, async () => {
-    console.log('API: createPayPalOrder route hit.');
+    console.log('API: createPayPalOrder (LIVE) hit.');
 
     if (request.method !== 'POST') {
-      response.status(405).json({error: 'Method Not Allowed'});
-      return;
+      return response.status(405).json({error: 'Method Not Allowed'});
     }
 
-    let reqBody;
+    let body: CreateOrderBody;
     try {
-      reqBody = request.body;
-    } catch (e) {
-      response.status(400).json({error: 'Invalid JSON body'});
-      return;
+      body = request.body;
+    } catch {
+      return response.status(400).json({error: 'Invalid JSON'});
     }
 
-    // ... (rest of the code moved inside the async block) ...
+    const {amount, currency = 'USD', userId, depositType} = body;
 
-    const {amount, currency, userId, depositType} = reqBody as {
-            amount?: number;
-            currency?: string;
-            userId?: string;
-            depositType?: string;
-        };
+    if (!amount || amount <= 0 || amount > 999999.99) {
+      return response.status(400).json({error: 'Invalid amount'});
+    }
+    if (!userId) {
+      return response.status(400).json({error: 'userId required'});
+    }
 
-    // Use the destructured values (at minimum log them) so they aren't reported as unused.
-    console.log('createPayPalOrder payload:', {amount, currency, userId, depositType});
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+    const isProd = process.env.PAYPAL_ENV === 'production';
+    const baseUrl = isProd ?
+      'https://api-m.paypal.com' :
+      'https://api-m.sandbox.paypal.com';
 
-    // ... (validation and logic) ...
+    if (!clientId || !clientSecret) {
+      console.error('PayPal credentials missing');
+      return response.status(500).json({error: 'Server error'});
+    }
 
     try {
-      const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString('base64');
-      const order = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
+      const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+      const orderRes = await fetch(`${baseUrl}/v2/checkout/orders`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${auth}`,
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'PayPal-Request-Id': `create-${userId}-${Date.now()}`,
         },
         body: JSON.stringify({
           intent: 'CAPTURE',
-          purchase_units: [{
-            amount: {
-              currency_code: currency || 'USD',
-              value: amount?.toString() || '0',
+          purchase_units: [
+            {
+              amount: {
+                currency_code: currency,
+                value: amount.toFixed(2),
+              },
+              description:
+                depositType === 'item-purchase' ? 'SwytchPet Item Purchase' : 'SwytchPet Deposit',
             },
-          }],
+          ],
+          application_context: {
+            brand_name: 'SwytchPet',
+            landing_page: 'BILLING',
+            user_action: 'PAY_NOW',
+            return_url: 'https://www.swytchpet.io/success',
+            cancel_url: 'https://www.swytchpet.io/cancel',
+          },
         }),
-      }).then((res) => res.json());
+      });
 
-      // 3. Success: Send Order ID back to client
-      // No need to use JSON.stringify here, response.json() handles it
-      response.status(200).json({id: order.id});
-    } catch (error: unknown) {
-      const errorMessage = (error instanceof Error) ? error.message : String(error);
-      console.error('API: Create PayPal order API route caught error:', errorMessage);
-      response.status(500).json({error: errorMessage || 'Error creating PayPal order'});
+      const order = await orderRes.json();
+
+      if (!orderRes.ok) {
+        console.error('PayPal create failed:', order);
+        return response.status(502).json({error: 'PayPal error', details: order});
+      }
+
+      return response.status(200).json({id: order.id});
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown';
+      console.error('createPayPalOrder error:', msg);
+      return response.status(500).json({error: 'Internal error'});
     }
-  }); // End of corsHandler wrapper
+  });
 };
