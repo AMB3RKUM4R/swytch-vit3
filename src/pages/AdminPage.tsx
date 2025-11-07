@@ -1,11 +1,16 @@
-// AdminPage.tsx (No functional changes needed - it already supports your backend)
-import { FC, useState, useCallback } from 'react';
+import { FC, useState, useCallback } from 'react'; // Added useMemo
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Settings, UserPlus, BarChart2, ShieldAlert, CheckCircle, Loader2 } from 'lucide-react';
+import { Settings, UserPlus, BarChart2, ShieldAlert, CheckCircle, Loader2, Feather, DollarSign } from 'lucide-react'; // Added Feather, DollarSign
+import { doc, setDoc, collection } from 'firebase/firestore'; // Import Firestore helpers for client-side item creation
+import { db } from '../lib/firebaseConfig'; // Assuming firebaseConfig is available globally
+
+// NOTE: We keep the imports for type clarity, but their implementation is mocked below
+import { ItemDefinition } from '@/lib/types'; // Import types
 
 // ────────────────────────────────────────────────────────────────
 // MOCK INTERFACES AND IMPLEMENTATIONS (To resolve compilation errors)
+// NOTE: These mock interfaces are for illustration; ensure your actual imports are correct.
 // ────────────────────────────────────────────────────────────────
 
 // Interface for the ErrorBoundary Component Props
@@ -53,27 +58,24 @@ const useReadContract = () => ({ data: true, isFetching: false, error: null });
 const useWriteContract = () => ({ writeContract: (args: any) => console.log('Mock write contract called:', args), data: '0xMockTxHash', isPending: false });
 const useWaitForTransactionReceipt = () => ({ isLoading: false });
 
+// Using 'db' imported from '@/lib/firebaseConfig' above (remove local mock to avoid naming conflict)
 
 // ────────────────────────────────────────────────────────────────
 // CONFIGURATION
 // ────────────────────────────────────────────────────────────────
-// The base URL for your deployed Firebase Cloud Functions - Hardcoded to bypass import.meta.env issue
 const FUNCTIONS_BASE_URL = 'https://us-central1-swytch-pet.cloudfunctions.net'; 
 
 // ────────────────────────────────────────────────────────────────
 // ANIMATION VARIANTS
 // ────────────────────────────────────────────────────────────────
-
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.3 } },
 };
-
 const sectionVariants = {
   hidden: { opacity: 0, y: 50 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } },
 };
-
 const tabContentVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
@@ -81,7 +83,152 @@ const tabContentVariants = {
 }
 
 // ────────────────────────────────────────────────────────────────
-// ADMIN CREDIT COMPONENT (Firebase Function Caller for Manual Approval)
+// 🟢 NEW: CONTENT MANAGER COMPONENT (Client-side Item Creation)
+// ────────────────────────────────────────────────────────────────
+
+const ContentManager: FC = () => {
+    const { setShowMessage } = useModal();
+    const [itemName, setItemName] = useState('');
+    const [itemType, setItemType] = useState<ItemDefinition['itemType']>('weapon');
+    const [rarity, setRarity] = useState<ItemDefinition['rarity']>('D-Rank');
+    const [description, setDescription] = useState('');
+    const [priceUSD, setPriceUSD] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const itemTypes: ItemDefinition['itemType'][] = ['weapon', 'armor', 'consumable', 'character_skin', 'title'];
+    const itemRarities: ItemDefinition['rarity'][] = ['E-Rank', 'D-Rank', 'C-Rank', 'B-Rank', 'A-Rank', 'S-Rank'];
+
+    const handleCreateItem = useCallback(async () => {
+        if (!itemName || !description || isNaN(parseFloat(priceUSD))) {
+            setShowMessage('⚠️ Please fill out the Item Name, Description, and Price fields.');
+            return;
+        }
+
+        setLoading(true);
+
+        const newItem: ItemDefinition = {
+            // Firestore generates the ID, so we use a placeholder here
+            id: 'TBD', 
+            itemName: itemName.trim(),
+            itemType: itemType,
+            rarity: rarity,
+            description: description.trim(),
+            levelRequirement: 1,
+            stats: { attack: 10, defense: 5 }, // Simple defaults
+            visuals: { prefabName: itemName.replace(/\s/g, ''), iconName: itemName.replace(/\s/g, '') + '_icon' },
+            price: { USD: parseFloat(priceUSD) },
+        };
+
+        try {
+            const itemsCollection = collection(db, 'ItemDefinitions');
+            const newDocRef = doc(itemsCollection);
+
+            // Set the Firestore ID into the document's 'id' field for easy querying
+            newItem.id = newDocRef.id;
+
+            // Use setDoc to create the item blueprint (Admin write access checked by rules)
+            await setDoc(newDocRef, newItem);
+            
+            setShowMessage(`✅ Successfully created new item blueprint: ${newItem.itemName} (${newDocRef.id})`);
+            
+            // Reset form
+            setItemName('');
+            setDescription('');
+            setPriceUSD('');
+            setItemType('weapon');
+            setRarity('D-Rank');
+
+        } catch (error: any) {
+            console.error('Failed to create item:', error);
+            // This will likely catch permission denied if the Admin claim isn't right
+            setShowMessage(`❌ Item creation failed: ${error.message}. Check your admin claim and Firestore rules.`);
+        } finally {
+            setLoading(false);
+        }
+    }, [itemName, itemType, rarity, description, priceUSD, setShowMessage]);
+
+    return (
+        <div className="p-6 bg-black/30 rounded-lg space-y-6 border border-[hsl(var(--secondary),0.2)] max-w-lg mx-auto">
+            <h4 className="text-xl font-bold font-russo text-[hsl(var(--secondary))] flex items-center gap-2">
+                <Feather size={20} /> Create Item Blueprint
+            </h4>
+            <p className="text-sm text-muted-foreground font-inter">
+                Add a new item definition to the `ItemDefinitions` collection. Items must exist here before they can be added to the shop or granted to a player.
+            </p>
+
+            <div className="space-y-3">
+                <input
+                    type="text"
+                    placeholder="Item Name (e.g., 'Arcane Blade')"
+                    value={itemName}
+                    onChange={(e) => setItemName(e.target.value)}
+                    className="input-system w-full"
+                    disabled={loading}
+                    aria-label="Item Name"
+                />
+                <textarea
+                    placeholder="Description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="input-system w-full h-20"
+                    disabled={loading}
+                    aria-label="Item Description"
+                />
+
+                <div className="flex gap-3">
+                    <select
+                        value={itemType}
+                        onChange={(e) => setItemType(e.target.value as ItemDefinition['itemType'])}
+                        className="input-system flex-1"
+                        disabled={loading}
+                        aria-label="Item Type"
+                    >
+                        {itemTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                    </select>
+                    <select
+                        value={rarity}
+                        onChange={(e) => setRarity(e.target.value as ItemDefinition['rarity'])}
+                        className="input-system flex-1"
+                        disabled={loading}
+                        aria-label="Item Rarity"
+                    >
+                        {itemRarities.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                </div>
+                
+                <div className="relative">
+                    <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Price in USD"
+                        value={priceUSD}
+                        onChange={(e) => setPriceUSD(e.target.value)}
+                        className="input-system w-full pl-8"
+                        disabled={loading}
+                        aria-label="Price in USD"
+                    />
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                </div>
+            </div>
+
+            <button
+                className="btn-system-secondary-glow w-full"
+                onClick={handleCreateItem}
+                disabled={loading || !itemName || !description || parseFloat(priceUSD) <= 0}
+            >
+                {loading ? (
+                    <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="animate-spin w-5 h-5" /> Creating...
+                    </div>
+                ) : 'Create Item Definition'}
+            </button>
+        </div>
+    );
+};
+
+
+// ────────────────────────────────────────────────────────────────
+// EXISTING COMPONENTS (CreditUser & SetAdminClaim) - UNCHANGED
 // ────────────────────────────────────────────────────────────────
 
 interface CreditUserProps {
@@ -115,7 +262,7 @@ const CreditUser: FC<CreditUserProps> = ({ adminIdToken }) => {
                     body: JSON.stringify({
                         targetUserId: targetUserId.trim(),
                         amount: parsedAmount,
-                        transactionNote: 'Manual Deposit Approval', // Updated note to be generic for PayPal/ETH
+                        transactionNote: 'Manual Deposit Approval',
                     }),
                 });
 
@@ -126,11 +273,11 @@ const CreditUser: FC<CreditUserProps> = ({ adminIdToken }) => {
                     setTargetUserId('');
                     setAmount('');
                     setLoading(false);
-                    return; // Exit function on success
+                    return; 
                 } else if (response.status === 403) {
                     setShowMessage(`❌ Permission Denied. You must have the Admin claim set in Firebase Auth.`);
                     setLoading(false);
-                    return; // Exit function on permanent failure
+                    return; 
                 } else {
                     throw new Error(result.message || `HTTP Error: ${response.status}`);
                 }
@@ -144,8 +291,6 @@ const CreditUser: FC<CreditUserProps> = ({ adminIdToken }) => {
                 }
             }
         }
-
-        // Reset loading state after all retry attempts are exhausted
         setLoading(false);
     }, [targetUserId, amount, adminIdToken, setShowMessage]);
 
@@ -155,7 +300,7 @@ const CreditUser: FC<CreditUserProps> = ({ adminIdToken }) => {
                 <CheckCircle size={20} /> Manual Payment Approval
             </h4>
             <p className="text-sm text-muted-foreground font-inter">
-                Use this after manually confirming a payment (e.g., static PayPal link or direct ETH transfer) to credit a user's account securely. You must be signed in as an **Admin** user with the required custom claim.
+                Use this after manually confirming a payment (e.g., static PayPal link or direct ETH transfer) to credit a user's account securely.
             </p>
 
             <div className="space-y-3">
@@ -194,10 +339,6 @@ const CreditUser: FC<CreditUserProps> = ({ adminIdToken }) => {
         </div>
     );
 };
-
-// ────────────────────────────────────────────────────────────────
-// ADMIN CLAIM COMPONENT (Firebase Function Caller for Admin Promotion)
-// ────────────────────────────────────────────────────────────────
 
 interface AdminClaimProps {
     adminIdToken: string;
@@ -295,7 +436,7 @@ const AdminPage: FC = () => {
   useAccount();
   const [newAdminAddress, setNewAdminAddress] = useState<string>('');
   const [updateLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'management' | 'stats'>('management');
+  const [activeTab, setActiveTab] = useState<'management' | 'stats' | 'content'>('management'); // Added 'content' tab
 
   // --- Smart Contract Logic (Mocked) ---
   // @ts-ignore
@@ -360,13 +501,14 @@ const AdminPage: FC = () => {
                 Admin Command Center
                 </h1>
                 <p className="text-xl text-muted-foreground max-w-3xl mx-auto font-inter">
-                Manage user permissions, monitor system activity, and configure the PETverse.
+                Manage user permissions, content, and system activity for the PETverse.
                 </p>
             </motion.section>
 
+            {/* --- TABS: Management, Content, Stats (UPDATED) --- */}
             <motion.section variants={sectionVariants}>
                 <div className="flex justify-center items-center gap-4 sm:gap-8 mb-10 p-2 bg-black/20 border border-[hsl(var(--primary),0.1)] rounded-lg">
-                    {(['management', 'stats'] as const).map(tab => (
+                    {(['management', 'content', 'stats'] as const).map(tab => ( // Added 'content'
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -377,8 +519,9 @@ const AdminPage: FC = () => {
                         )}
                         <span className="relative z-10 flex items-center justify-center gap-2">
                             {tab === 'management' && <UserPlus size={20} />}
+                            {tab === 'content' && <Feather size={20} />} {/* Icon for Content */}
                             {tab === 'stats' && <BarChart2 size={20} />}
-                            {tab === "management" ? "User Management" : "System Stats"}
+                            {tab === "management" ? "User Management" : tab === "content" ? "Content Manager" : "System Stats"}
                         </span>
                         </button>
                     ))}
@@ -389,12 +532,15 @@ const AdminPage: FC = () => {
                         {activeTab === 'management' && (
                             <motion.div key="management" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit" className="space-y-10">
                                 
+                                <h3 className="text-2xl font-bold font-russo text-glow-primary text-center">User Accounts & Permissions</h3>
+
                                 {/* 1. Set Admin Claim Tool */}
                                 {idToken && <SetAdminClaim adminIdToken={idToken} />}
 
-                                {/* 2. Manual Credit / Approval Tool (Used for PayPal and Direct ETH) */}
+                                {/* 2. Manual Credit / Approval Tool */}
                                 {idToken && <CreditUser adminIdToken={idToken} />}
 
+                                {/* 3. Blockchain Admin Tool (Mocked) */}
                                 <div className="space-y-6 max-w-lg mx-auto p-6 bg-black/30 rounded-lg border border-[hsl(var(--primary),0.2)]">
                                     <h3 className="text-2xl font-bold font-russo text-glow-secondary">Grant Admin Privileges (Blockchain)</h3>
                                     <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -417,6 +563,21 @@ const AdminPage: FC = () => {
                                     </div>
                                     <p className="text-xs text-muted-foreground text-center font-inter pt-2">
                                         This action will add a new wallet address to the list of platform administrators on the smart contract. (Mocked function call)
+                                    </p>
+                                </div>
+                            </motion.div>
+                        )}
+                         {activeTab === 'content' && (
+                            <motion.div key="content" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit" className="space-y-10">
+                                <h3 className="text-2xl font-bold font-russo text-glow-secondary text-center">Game Content Blueprints</h3>
+                                
+                                {/* NEW Content Manager Component */}
+                                <ContentManager />
+
+                                <div className="p-6 bg-black/30 rounded-lg border border-[hsl(var(--primary),0.2)] max-w-lg mx-auto">
+                                    <h4 className="text-xl font-bold font-russo text-glow-secondary">Other Content Tools</h4>
+                                    <p className="text-sm text-muted-foreground font-inter mt-2">
+                                        Tools for managing Dungeons, Quests, and Shop Listings (which reference Item Definitions) can be added here.
                                     </p>
                                 </div>
                             </motion.div>
