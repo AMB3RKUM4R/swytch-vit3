@@ -1,10 +1,9 @@
 // src/components/PaymentModal.tsx
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, HandCoins, Loader2, AlertTriangle, CreditCard, Droplet } from 'lucide-react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
-import { PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
 
 import { SupportedCurrency } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -12,11 +11,12 @@ import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
 
 // ────────────────────────────────────────────────────────────────
-// CONFIGURATION – **LIVE** PayPal client-id
+// CONFIGURATION – LIVE PayPal client-id
 // ────────────────────────────────────────────────────────────────
-
 const FUNCTIONS_BASE_URL = import.meta.env.VITE_FUNCTIONS_BASE_URL ||
   'https://us-central1-swytch-pet.cloudfunctions.net';
+
+const PAYPAL_CLIENT_ID = 'AWXzq_rqRIkO289lxmHnRl65RPuVHG-RErvnok3LpO6n9qkSVWJPCD1ngL3kEnC5clOeT_I3yN2CkUNH';
 
 // ────────────────────────────────────────────────────────────────
 // Contract (unchanged)
@@ -46,12 +46,116 @@ const PaymentModal: FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'paypal'>('paypal');
   const [amount, setAmount] = useState<string>('10.00');
   const [error, setError] = useState<string | null>(null);
+  const [paypalReady, setPaypalReady] = useState(false);
+  const paypalContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: hash, writeContract, isPending: isTxPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } =
     useWaitForTransactionReceipt({ hash });
 
-  const [{ isPending: isPayPalLoading }] = usePayPalScriptReducer();
+  // ── Load PayPal script once ───────────────────────────────────────
+  useEffect(() => {
+    if (paymentMethod !== 'paypal' || paypalReady) return;
+
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD&intent=capture`;
+    script.async = true;
+    script.onload = () => setPaypalReady(true);
+    script.onerror = () => setError('Failed to load PayPal script.');
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, [paymentMethod, paypalReady]);
+
+  // ── Render PayPal button when ready ───────────────────────────────
+  useEffect(() => {
+    if (!paypalReady || !paypalContainerRef.current || !userId) return;
+
+    // Clear previous button
+    paypalContainerRef.current.innerHTML = '';
+
+    // @ts-ignore – paypal global
+    window.paypal
+      .Buttons({
+        style: {
+          shape: 'rect',
+          color: 'blue',
+          layout: 'vertical',
+          label: 'paypal',
+        },
+
+        // 1. Create order on the backend
+        createOrder: async () => {
+          setError(null);
+          const num = parseFloat(amount);
+          if (isNaN(num) || num <= 0) {
+            const msg = 'Enter a valid amount.';
+            setError(msg);
+            throw new Error(msg);
+          }
+
+          try {
+            const res = await fetch(`${FUNCTIONS_BASE_URL}/createPayPalOrderApi`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                amount: num,
+                currency: 'USD',
+                userId,
+                depositType: 'deposit',
+              }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to create order');
+            if (!data.id) throw new Error('No order ID returned');
+
+            return data.id;
+          } catch (e: any) {
+            console.error(e);
+            setError(e.message);
+            throw e;
+          }
+        },
+
+        // 2. Capture payment after approval
+        onApprove: async (data: { orderID: string }) => {
+          try {
+            const res = await fetch(`${FUNCTIONS_BASE_URL}/capturePayPalOrderApi`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderID: data.orderID,
+                userId,
+                amount,
+                depositType: 'deposit',
+              }),
+            });
+
+            const result = await res.json();
+            if (!res.ok || !result.success) throw new Error(result.error || 'Capture failed');
+
+            setShowMessage(
+              'PayPal payment successful! Your balance will update after admin confirmation.'
+            );
+            setActiveModal(null);
+          } catch (e: any) {
+            console.error(e);
+            setError(e.message);
+            setShowMessage(`Warning: ${e.message}`);
+          }
+        },
+
+        // Error handling
+        onError: (err: any) => {
+          console.error('PayPal button error:', err);
+          setError('PayPal error – please try again.');
+        },
+      })
+      .render(paypalContainerRef.current);
+  }, [paypalReady, amount, userId, setShowMessage, setActiveModal]);
 
   // ── Crypto confirmation handling ─────────────────────────────────────
   useEffect(() => {
@@ -110,80 +214,7 @@ const PaymentModal: FC = () => {
     });
   };
 
-  // ── PayPal: create order (LIVE) ───────────────────────────────────────
-  const createPayPalOrder = async (): Promise<string> => {
-    setError(null);
-    const num = parseFloat(amount);
-    if (isNaN(num) || num <= 0) {
-      const msg = 'Please enter a valid amount for PayPal.';
-      setError(msg);
-      throw new Error(msg);
-    }
-
-    try {
-      console.log('Creating PayPal order (LIVE) – amount:', num, 'userId:', userId);
-      const res = await fetch(`${FUNCTIONS_BASE_URL}/createPayPalOrderApi`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: num,
-          currency: 'USD',
-          userId,
-          depositType: 'deposit',
-        }),
-      });
-
-      const data = await res.json();
-      console.log('PayPal create response:', data);
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to create order');
-      }
-      if (!data.id) {
-        throw new Error('No order ID returned');
-      }
-      return data.id;
-    } catch (err: any) {
-      console.error('PayPal createOrder error:', err);
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  // ── PayPal: capture order (LIVE) ───────────────────────────────────────
-  const onPayPalApprove = async (data: { orderID: string }): Promise<void> => {
-    try {
-      console.log('Capturing PayPal order:', data.orderID);
-      const res = await fetch(`${FUNCTIONS_BASE_URL}/capturePayPalOrderApi`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderID: data.orderID,
-          userId,
-          amount,
-          depositType: 'deposit',
-        }),
-      });
-
-      const result = await res.json();
-      console.log('PayPal capture response:', result);
-
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || 'Capture failed');
-      }
-
-      setShowMessage(
-        'PayPal payment successful! Your balance will update after admin confirmation.'
-      );
-      setActiveModal(null);
-    } catch (err: any) {
-      console.error('PayPal capture error:', err);
-      setError(err.message);
-      setShowMessage(`Warning: ${err.message}`);
-    }
-  };
-
-  const isLoading = isTxPending || isConfirming || isPayPalLoading;
+  const isLoading = isTxPending || isConfirming;
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -279,30 +310,13 @@ const PaymentModal: FC = () => {
                 </motion.button>
               )}
 
-              {/* PayPal button */}
+              {/* PayPal button (classic) */}
               {paymentMethod === 'paypal' && (
-                <div className="min-h-[50px]">
-                  {isPayPalLoading ? (
-                    <Loader2 className="mx-auto animate-spin" />
+                <div className="min-h-[50px] flex justify-center">
+                  {!paypalReady ? (
+                    <Loader2 className="animate-spin" />
                   ) : (
-                    <PayPalButtons
-                      style={{
-                        layout: 'vertical',
-                        color: 'blue',
-                        shape: 'rect',
-                        label: 'pay',
-                      }}
-                      createOrder={createPayPalOrder}
-                      onApprove={onPayPalApprove}
-                      onError={(err) => {
-                        console.error('PayPal SDK error:', err);
-                        setError('PayPal error – please try again.');
-                      }}
-                      forceReRender={[amount, userId]}
-                      disabled={
-                        !amount || parseFloat(amount) <= 0 || !userId
-                      }
-                    />
+                    <div ref={paypalContainerRef} className="w-full max-w-[200px]" />
                   )}
                 </div>
               )}
