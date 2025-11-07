@@ -1,42 +1,37 @@
 // src/components/PaymentModal.tsx
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, HandCoins, AlertTriangle, CreditCard, Droplet } from 'lucide-react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther } from 'viem';
+// Updated imports for Crypto payment: useSendTransaction and removed useWriteContract
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther, isAddress } from 'viem';
 
 import { SupportedCurrency } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
 
-// ────────────────────────────────────────────────────────────────
-// CONFIGURATION – LIVE PayPal credentials from .env
-// ────────────────────────────────────────────────────────────────
-// NOTE: PayPal configuration is no longer strictly needed for a static link,
-// but keeping the base URL for the crypto confirmation handler's logic integrity (if any).
+// --- ADDED: Razorpay window definition ---
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+// -----------------------------------------
 
 // ────────────────────────────────────────────────────────────────
-// NEW STATIC PAYPAL LINK
+// CONFIGURATION
 // ────────────────────────────────────────────────────────────────
 const STATIC_PAYPAL_LINK = 'https://www.paypal.com/ncp/payment/TZ5XEBCG8NFGW';
 
-// ────────────────────────────────────────────────────────────────
-// Contract (unchanged)
-// ────────────────────────────────────────────────────────────────
-const DEPOSITORY_CONTRACT_ADDRESS = '0xDE9978913D9a969d799A2ba9381FB82450b92CE0' as `0x${string}`;
-const DEPOSITORY_CONTRACT_ABI = [
-  {
-    inputs: [
-      { internalType: 'uint256', name: '_amount', type: 'uint256' },
-      { internalType: 'uint64', name: '_tier', type: 'uint64' },
-    ],
-    name: 'deposit',
-    outputs: [],
-    stateMutability: 'payable',
-    type: 'function',
-  },
-] as const;
+// 1. Your Wallet Address for direct ETH transfers
+const RECEIVER_ETH_ADDRESS = '0xDE9978913D9a969d799A2ba9381FB82450b92CE0' as `0x${string}`;
+
+// 2. Razorpay Key ID (must be exposed in the frontend environment, e.g., Vite/Next public env)
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_YourKeyId';
+
+// 3. API Endpoint to create a Razorpay Order
+const CREATE_ORDER_API = '/api/createUpiOrderApi'; // Assumes routing handles the path to createUpiOrder
 
 // ────────────────────────────────────────────────────────────────
 // Component
@@ -46,42 +41,137 @@ const PaymentModal: FC = () => {
   const { activeModal, setActiveModal, setShowMessage } = useModal();
   const { isConnected } = useAccount();
 
-  const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'paypal'>('paypal');
-  // NOTE: 'amount' state remains for Crypto payment, but is ignored for the static PayPal link.
+  // Set default to UPI
+  const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'paypal' | 'upi'>('upi');
   const [amount, setAmount] = useState<string>('10.00');
   const [error, setError] = useState<string | null>(null);
-  
-  // Removed paypalReady state and paypalContainerRef ref
-  // const [paypalReady, setPaypalReady] = useState(false);
-  // const paypalContainerRef = useRef<HTMLDivElement>(null);
+  const [upiLoading, setUpiLoading] = useState(false); // New state for UPI loading
 
-  const { data: hash, writeContract, isPending: isTxPending } = useWriteContract();
+  // --- CRYPTO PAYMENT LOGIC (UPDATED) ---
+  const ethValue = isNaN(parseFloat(amount)) || parseFloat(amount) <= 0 ? 0n : parseEther(amount);
+  
+  // Use useSendTransaction for a simple ETH transfer
+  const { data: hash, sendTransaction, isPending: isTxPending } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } =
     useWaitForTransactionReceipt({ hash });
 
-  // ── Removed: Load PayPal script useEffect ─────────────────────────
-  // ── Removed: Render PayPal button useEffect ───────────────────────
-  
-  // ── Crypto confirmation handling (Unchanged) ─────────────────────────
+  // ── Load Razorpay Script (NEW) ────────────────────────────────────
+  useEffect(() => {
+    if (paymentMethod === 'upi' && typeof window.Razorpay === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.body.appendChild(script);
+      return () => {
+        document.body.removeChild(script);
+      };
+    }
+  }, [paymentMethod]);
+
+  // ── UPI Payment Handler (NEW) ─────────────────────────────────────
+  const handleUpiPayment = useCallback(async () => {
+    setError(null);
+    if (!userId || !amount || parseFloat(amount) <= 0) {
+      setError('Please log in and enter a valid amount.');
+      return;
+    }
+    
+    setUpiLoading(true);
+
+    try {
+      // 1. Call your Cloud Function to create a Razorpay Order
+      const response = await fetch(CREATE_ORDER_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amount, // Send as string/float
+          currency: 'INR', // UPI is usually INR
+          userId: userId,
+          depositType: 'deposit',
+          itemId: 'none',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create Razorpay order.');
+      }
+
+      const orderData = await response.json();
+      const orderId = orderData.id;
+      const amountInPaise = orderData.amount; // Amount in paise from server
+
+      // 2. Open Razorpay Checkout (supports UPI Intent/QR)
+      const options = {
+        key: RAZORPAY_KEY_ID, // Your Public Key ID
+        amount: amountInPaise, 
+        currency: orderData.currency,
+        name: 'Game Deposit',
+        description: 'In-game currency deposit',
+        order_id: orderId,
+        handler: function (response: any) {
+          // This handler is called upon successful payment.
+          // The webhook (createUpiPaymentWebhook) handles the rest on the backend.
+          setShowMessage('Payment successful! Your account balance will be updated shortly.');
+          logTransaction({
+            userId: userId!,
+            amount: parseFloat(amount), // Use the amount entered by user
+            currency: 'INR' as SupportedCurrency,
+            transactionType: 'deposit',
+            status: 'pending', // Pending until webhook confirms
+            itemId: 'razorpay-deposit',
+            paymentGatewayId: 'Razorpay/UPI',
+            // FIX: Removed the custom 'paymentId' field. Razorpay's payment_id is unique.
+            // We use the transactionHash for the *final* payment ID for traceability.
+            transactionHash: response.razorpay_payment_id, 
+          });
+          setActiveModal(null);
+        },
+        modal: {
+            ondismiss: function() {
+                setUpiLoading(false); 
+                console.log('Razorpay modal closed');
+            }
+        },
+        display: {
+            preference: ['upi', 'netbanking', 'card'],
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+      
+    } catch (err: any) {
+      console.error('UPI Payment error:', err);
+      setError(err.message || 'Payment initiation failed.');
+      setShowMessage(`Warning: Payment initiation failed.`);
+    } finally {
+      setUpiLoading(false);
+    }
+  }, [userId, amount, logTransaction, setActiveModal, setShowMessage]);
+
+
+  // ── Crypto confirmation handling (UPDATED) ─────────────────
   useEffect(() => {
     if (isConfirmed && hash) {
-      setShowMessage('Crypto deposit confirmed! Your balance will be updated shortly.');
+      // NOTE: For direct ETH transfer, the backend will need a separate monitoring service
+      // or manual approval via the Admin page to update the balance.
+      setShowMessage('Crypto deposit confirmed! Your balance will be updated shortly (requires manual admin approval).');
       logTransaction({
         userId: userId!,
         amount: parseFloat(amount),
         currency: 'ETH' as SupportedCurrency,
         transactionType: 'deposit',
-        status: 'pending',
-        itemId: 'depository-deposit',
-        paymentGatewayId: 'smart-contract',
-        smartContractAddress: DEPOSITORY_CONTRACT_ADDRESS,
-        transactionHash: hash,
+        status: 'pending', // Set to pending as balance update is now manual/off-chain
+        itemId: 'eth-deposit-direct',
+        // FIX: Removed 'receiverAddress'. The receiver's address is stored here for context.
+        paymentGatewayId: RECEIVER_ETH_ADDRESS, 
+        transactionHash: hash, // The actual transaction hash
       });
       setActiveModal(null);
     }
 
     const anyError =
-      txError || (hash === null && !isTxPending)
+      txError || (hash === null && !isTxPending && sendTransaction)
         ? new Error('Transaction rejected or failed.')
         : null;
     if (anyError) {
@@ -101,25 +191,31 @@ const PaymentModal: FC = () => {
     userId,
     amount,
     isTxPending,
+    sendTransaction,
   ]);
 
-  // ── Crypto payment handler (Unchanged) ──────────────────────────────
+  // ── Crypto payment handler (UPDATED TO USE sendTransaction) ─────────
   const handleCryptoPayment = () => {
     setError(null);
     if (!userId || !isConnected || !amount || parseFloat(amount) <= 0) {
       setError('Please connect your wallet and enter a valid amount.');
       return;
     }
-    writeContract({
-      address: DEPOSITORY_CONTRACT_ADDRESS,
-      abi: DEPOSITORY_CONTRACT_ABI,
-      functionName: 'deposit',
-      args: [parseEther(amount), BigInt(0)],
-      value: parseEther(amount),
+    
+    // Check if the receiver address is valid before sending
+    if (!isAddress(RECEIVER_ETH_ADDRESS)) {
+        setError('Configuration error: Invalid ETH receiver address.');
+        return;
+    }
+
+    // Direct ETH transfer to your wallet
+    sendTransaction({
+        to: RECEIVER_ETH_ADDRESS, // Your ETH wallet
+        value: ethValue,
     });
   };
 
-  const isLoading = isTxPending || isConfirming;
+  const isLoading = isTxPending || isConfirming || upiLoading;
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -149,37 +245,52 @@ const PaymentModal: FC = () => {
               <HandCoins className="w-7 h-7" /> Make a Payment
             </h2>
 
-            {/* Payment method tabs */}
+            {/* Payment method tabs (Updated) */}
             <div className="flex items-center justify-center gap-2 mb-4 p-1 bg-black/20 rounded-lg">
               <button
                 onClick={() => {
-                  setPaymentMethod('paypal');
-                  setError(null); // Clear error on tab switch
+                  setPaymentMethod('upi');
+                  setError(null);
                 }}
                 className={cn(
-                  'w-full p-2 rounded-md text-sm font-semibold transition-colors',
-                  paymentMethod === 'paypal'
+                  'w-1/3 p-2 rounded-md text-sm font-semibold transition-colors',
+                  paymentMethod === 'upi'
                     ? 'bg-[hsl(var(--primary))] text-primary-foreground'
                     : 'text-muted-foreground hover:bg-white/10'
                 )}
               >
-                <CreditCard className="inline-block w-4 h-4 mr-2" />
-                PayPal (USD)
+                <CreditCard className="inline-block w-4 h-4 mr-1" />
+                UPI/Card
               </button>
               <button
                 onClick={() => {
                   setPaymentMethod('crypto');
-                  setError(null); // Clear error on tab switch
+                  setError(null);
                 }}
                 className={cn(
-                  'w-full p-2 rounded-md text-sm font-semibold transition-colors',
+                  'w-1/3 p-2 rounded-md text-sm font-semibold transition-colors',
                   paymentMethod === 'crypto'
                     ? 'bg-[hsl(var(--primary))] text-primary-foreground'
                     : 'text-muted-foreground hover:bg-white/10'
                 )}
               >
-                <Droplet className="inline-block w-4 h-4 mr-2" />
-                Crypto (ETH)
+                <Droplet className="inline-block w-4 h-4 mr-1" />
+                Crypto
+              </button>
+              <button
+                onClick={() => {
+                  setPaymentMethod('paypal');
+                  setError(null);
+                }}
+                className={cn(
+                  'w-1/3 p-2 rounded-md text-sm font-semibold transition-colors',
+                  paymentMethod === 'paypal'
+                    ? 'bg-[hsl(var(--primary))] text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-white/10'
+                )}
+              >
+                <CreditCard className="inline-block w-4 h-4 mr-1" />
+                PayPal
               </button>
             </div>
 
@@ -187,7 +298,7 @@ const PaymentModal: FC = () => {
             <div className="space-y-4">
               <div className="flex flex-col gap-2">
                 <label htmlFor="paymentAmount" className="text-gray-300 text-sm">
-                  Amount:
+                  Amount ({paymentMethod === 'crypto' ? 'ETH' : paymentMethod === 'upi' ? 'INR' : 'USD'}):
                 </label>
                 <input
                   id="paymentAmount"
@@ -201,7 +312,7 @@ const PaymentModal: FC = () => {
                 />
               </div>
 
-              {/* Crypto button (Unchanged) */}
+              {/* Crypto button (UPDATED) */}
               {paymentMethod === 'crypto' && (
                 <motion.button
                   className="btn-primary w-full"
@@ -214,24 +325,39 @@ const PaymentModal: FC = () => {
                   }
                 >
                   {isTxPending
-                    ? 'Confirm...'
+                    ? 'Confirm in Wallet...'
                     : isConfirming
                     ? 'Processing...'
-                    : 'Pay with ETH'}
+                    : `Pay ${amount} ETH to Wallet`}
                 </motion.button>
               )}
 
-              {/* PayPal static link button (NEW) */}
+              {/* UPI Button (NEW) */}
+              {paymentMethod === 'upi' && (
+                <motion.button
+                  className="btn-primary w-full"
+                  onClick={handleUpiPayment}
+                  disabled={
+                    isLoading ||
+                    !amount ||
+                    parseFloat(amount) <= 0
+                  }
+                >
+                  {upiLoading
+                    ? 'Initializing Razorpay...'
+                    : 'Pay with UPI / Card'}
+                </motion.button>
+              )}
+
+              {/* PayPal static link button (UNCHANGED) */}
               {paymentMethod === 'paypal' && (
                 <div className="min-h-[50px] flex justify-center">
-                  {/* Using an anchor tag styled as a button */}
                   <a
                     href={STATIC_PAYPAL_LINK}
-                    target="_blank" // Opens in a new tab
-                    rel="noopener noreferrer" // Security best practice for target="_blank"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="btn-primary w-full text-center py-2 px-4 rounded-md font-semibold transition-colors"
-                    // The disabled style check is simple for a static link
-                    onClick={() => setActiveModal(null)} // Close the modal upon clicking the link
+                    onClick={() => setActiveModal(null)}
                   >
                     Pay with PayPal
                   </a>

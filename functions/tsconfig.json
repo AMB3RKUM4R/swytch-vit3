@@ -16,6 +16,7 @@
   "compileOnSave": true,
   "include": [
     "src/**/*.ts",
-    ".eslintrc.js"
+    ".eslintrc.js",
+    "functions/src/**/*.ts"
   ]
 }
