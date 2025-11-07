@@ -1,14 +1,34 @@
 // src/components/TopNav.tsx
-import { FC, useCallback } from 'react';
+import { FC, useCallback, useState, useEffect } from 'react'; // Added useState, useEffect
 import { motion } from 'framer-motion';
-import { Sparkles, User, Settings, Star, HandCoins, Users, Package, ShoppingCart, LogOut, LoaderCircle, Gem } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Sparkles, User, Settings, Star, HandCoins, Users, Package, ShoppingCart, LogOut, LoaderCircle, Gem, BellRing } from 'lucide-react'; // Added BellRing
+import { Link, useLocation } from 'react-router-dom'; // Added useLocation
 import Tilt from 'react-parallax-tilt';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAuthUserFirebase } from '../hooks/useAuthUserFirebase';
 import { useAuthUserWagmi } from '../hooks/useAuthUserWagmi';
-import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
-import { useModal } from '@/components/context/ModalContext'; // Import modal hook
+import { usePlayer } from '@/components/context/PlayerContext'; 
+import { useModal } from '@/components/context/ModalContext'; 
+import { cn } from '@/lib/utils';
+
+// ────────────────────────────────────────────────────────────────
+// MOCK API & CONFIGURATION (for the status check)
+// ────────────────────────────────────────────────────────────────
+// NOTE: You would replace this mock fetch with a real Cloud Function call
+// that queries your 'Transactions' collection where status='pending' AND 
+// transactionType is one of your manual types (deposit_admin_approved, etc.)
+const MOCK_FETCH_PENDING_TX = async (): Promise<number> => {
+    // In a real application, this would call an authenticated Cloud Function:
+    // const response = await fetch(`${FUNCTIONS_BASE_URL}/getPendingTransactions?type=manual`);
+    // const data = await response.json();
+    // return data.count;
+    
+    // MOCK: Return 3 if the user is an admin, 0 otherwise.
+    return new Promise(resolve => setTimeout(() => resolve(
+        (localStorage.getItem('isAdmin') === 'true') ? 3 : 0
+    ), 500));
+};
+// ────────────────────────────────────────────────────────────────
 
 const navItems = [
   { path: '/home', label: 'Home', icon: <Sparkles className="w-5 h-5" /> },
@@ -19,21 +39,53 @@ const navItems = [
   { path: '/membership', label: 'Membership', icon: <Star className="w-5 h-5" /> },
 ];
 
-// This component is now self-sufficient and requires no props.
 const TopNav: FC = () => {
-  // Get all data from our new contexts
   const { userId, playerData, authLoading, joulesBalance } = usePlayer();
   const { setShowMessage, setActiveModal } = useModal();
+  const location = useLocation(); // To track current path
 
   const { disconnect } = useAuthUserWagmi();
-  // We pass disconnectWagmi to ensure wallet disconnects on Firebase sign out
   const { signOutUser, isAdmin } = useAuthUserFirebase({ disconnectWagmi: disconnect });
 
   const isLoggedIn = !!userId;
-  // Use new 2D avatar URL if it exists, fallback to User icon
-  const profileImageUrl = playerData?.profilePictureUrl;
-  const displayName = playerData?.username || (userId ? `${userId.slice(0, 6)}...` : 'Guest');
+  const isUserAdmin = isLoggedIn && isAdmin();
+  
+  // --- Payment Status State ---
+  const [pendingTxCount, setPendingTxCount] = useState<number>(0);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
+  // Function to fetch pending transaction count (Only runs for admins)
+  const checkPendingTxStatus = useCallback(async () => {
+      if (!isUserAdmin) {
+          setPendingTxCount(0);
+          return;
+      }
+
+      setIsCheckingStatus(true);
+      try {
+          // NOTE: Replace MOCK_FETCH_PENDING_TX with your real API call
+          const count = await MOCK_FETCH_PENDING_TX();
+          setPendingTxCount(count);
+      } catch (error) {
+          console.error("Failed to fetch pending transaction count:", error);
+          setPendingTxCount(0); // Assume 0 on error
+      } finally {
+          setIsCheckingStatus(false);
+      }
+  }, [isUserAdmin]);
+
+  // Effect to check status on load and every time the user state changes
+  useEffect(() => {
+      checkPendingTxStatus();
+
+      // Optionally poll for updates if status is critical (e.g., every 30 seconds)
+      const interval = setInterval(checkPendingTxStatus, 30000); 
+
+      return () => clearInterval(interval);
+  }, [checkPendingTxStatus]);
+
+
+  // --- Nav Handlers (Unchanged) ---
   const handleRestrictedNav = useCallback(( label: string) => {
     if (!isLoggedIn) {
       setShowMessage(`⚠️ Please sign in to access the ${label} page.`);
@@ -44,13 +96,16 @@ const TopNav: FC = () => {
   }, [isLoggedIn, setShowMessage, setActiveModal]);
   
   const handleAdminNav = useCallback((path: string) => {
-    if (!isAdmin()) {
+    if (!isUserAdmin) {
       setShowMessage(`🚫 Access to ${path} is restricted to Admins.`);
       return false;
     }
     return true;
-  }, [isAdmin, setShowMessage]);
+  }, [isUserAdmin, setShowMessage]);
 
+
+  const profileImageUrl = playerData?.profilePictureUrl;
+  const displayName = playerData?.username || (userId ? `${userId.slice(0, 6)}...` : 'Guest');
 
   return (
     <motion.nav
@@ -76,23 +131,47 @@ const TopNav: FC = () => {
             key={path}
             to={path}
             onClick={(e) => { if (!handleRestrictedNav(label)) e.preventDefault(); }}
-            className="flex items-center gap-2 text-sm font-medium text-muted-foreground p-2 rounded-md hover:text-primary transition-colors"
+            className={cn(
+                "flex items-center gap-2 text-sm font-medium p-2 rounded-md transition-colors",
+                location.pathname === path ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+            )}
             title={label}
           >
             {icon}
             <span className="hidden lg:block">{label}</span>
           </Link>
         ))}
-        {/* Show Admin link only if user is admin */}
-        {isLoggedIn && isAdmin() && (
+        
+        {/* Admin Link and Payment Status Alert */}
+        {isLoggedIn && isUserAdmin && (
            <Link
             to="/admin"
             onClick={(e) => { if (!handleAdminNav("/admin")) e.preventDefault(); }}
-            className="flex items-center gap-2 text-sm font-medium text-muted-foreground p-2 rounded-md hover:text-destructive transition-colors"
-            title="Admin"
+            className={cn(
+                "flex items-center gap-2 text-sm font-medium p-2 rounded-md transition-colors relative",
+                location.pathname === '/admin' ? 'text-destructive' : 'text-muted-foreground hover:text-destructive',
+                pendingTxCount > 0 && 'font-bold text-destructive hover:text-destructive/80' // Highlight if there are pending transactions
+            )}
+            title="Admin Command Center"
           >
             <Settings className="w-5 h-5" />
             <span className="hidden lg:block">Admin</span>
+            
+            {/* Payment Status Badge */}
+            {pendingTxCount > 0 && (
+                <motion.div 
+                    className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-yellow-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold text-black border border-background animate-pulse"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    title={`${pendingTxCount} pending payment approvals`}
+                >
+                    {pendingTxCount}
+                </motion.div>
+            )}
+            {/* Status Indicator when checking */}
+            {isCheckingStatus && pendingTxCount === 0 && (
+                <LoaderCircle className="w-3 h-3 animate-spin text-muted-foreground absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2" />
+            )}
           </Link>
         )}
       </div>
@@ -101,7 +180,7 @@ const TopNav: FC = () => {
       <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
         {isLoggedIn && playerData && (
           <div className="hidden lg:flex items-center gap-3 bg-black/20 p-2 rounded-md border border-border">
-            {/* 2D Avatar */}
+            {/* Profile Info */}
             {profileImageUrl ? (
               <img src={profileImageUrl} alt="Avatar" className="w-6 h-6 rounded-full object-cover" />
             ) : (
@@ -117,6 +196,22 @@ const TopNav: FC = () => {
             </div>
           </div>
         )}
+        
+        {/* Wallet Connection Status for Mobile/Small Screens */}
+        <div className='flex items-center'>
+            {isLoggedIn && isUserAdmin && pendingTxCount > 0 && (
+                <Link
+                    to="/admin"
+                    title={`${pendingTxCount} pending payment approvals`}
+                    className="md:hidden relative p-1.5 rounded-full mr-2 bg-yellow-500/10 hover:bg-yellow-500/20 transition-colors"
+                    onClick={(e) => { if (!handleAdminNav("/admin")) e.preventDefault(); }}
+                >
+                    <BellRing className="w-6 h-6 text-yellow-500" />
+                    <span className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full w-3 h-3 border border-background animate-ping" />
+                </Link>
+            )}
+        </div>
+
 
         {authLoading ? (
           <LoaderCircle className="w-6 h-6 animate-spin text-primary" />
@@ -131,7 +226,7 @@ const TopNav: FC = () => {
                 largeScreen: 'full',
               }}
             />
-            {/* Sign Out Button */}
+            {/* Sign Out Button (Desktop) */}
             {isLoggedIn && (
               <motion.button 
                 onClick={() => {
@@ -146,7 +241,7 @@ const TopNav: FC = () => {
                 <LogOut className="w-5 h-5 text-destructive" />
               </motion.button>
             )}
-            {/* Sign In Button (for mobile, if not logged in) */}
+            {/* Sign In Button (Mobile) */}
             {!isLoggedIn && (
               <motion.button 
                 onClick={() => setActiveModal('auth')}
@@ -164,4 +259,3 @@ const TopNav: FC = () => {
 };
 
 export default TopNav;
-
