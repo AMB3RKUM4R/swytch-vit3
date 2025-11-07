@@ -46,14 +46,14 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
 
   const handleSignOut = useCallback(async () => {
     await signOutUser();
-    handleAuthSuccess('👋 You have been signed out.');
+    handleAuthSuccess('窓 You have been signed out.');
   }, [signOutUser, handleAuthSuccess]);
 
   const handleGoogleSignIn = useCallback(async () => {
     setError(null);
     try {
       await signInWithGoogle();
-      handleAuthSuccess('🎉 Signed in with Google successfully!');
+      handleAuthSuccess('脂 Signed in with Google successfully!');
     } catch (err: any) {
       setError(err.message);
     }
@@ -68,7 +68,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
     }
     try {
       await signInWithEmail(email, password);
-      handleAuthSuccess('🎉 Signed in successfully!');
+      handleAuthSuccess('脂 Signed in successfully!');
     } catch (err: any) {
       setError(err.message);
     }
@@ -83,7 +83,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
     }
     try {
       await registerWithEmail(email, password);
-      handleAuthSuccess('🎉 Welcome! Account created successfully.');
+      handleAuthSuccess('脂 Welcome! Account created successfully.');
     } catch (err: any) {
       setError(err.message);
     }
@@ -98,7 +98,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
     }
     try {
       await sendPasswordReset(email);
-      setShowMessage('📬 Password reset link sent! Please check your email.');
+      setShowMessage('闘 Password reset link sent! Please check your email.');
       setMode('signIn');
     } catch (err: any) {
       setError(err.message);
@@ -135,7 +135,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             
             <div className="flex justify-center">
               <ConnectButton.Custom>
-                {({ account, chain, openConnectModal, authenticationStatus, mounted }) => { // <-- FIX: Removed unused variables
+                {({ account, chain, openConnectModal, authenticationStatus, mounted }) => { 
                   const ready = mounted && authenticationStatus !== 'loading';
                   const connected =
                     ready &&
@@ -172,11 +172,13 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} />
+              {/* --- FIX 1: Added name attribute --- */}
+              <input type="email" id="signInEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} />
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 w-full" disabled={loading} />
+              {/* --- FIX 2: Added name attribute --- */}
+              <input type="password" id="signInPassword" name="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 w-full" disabled={loading} />
             </div>
             <button type="submit" className="btn-secondary w-full text-lg" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : 'Continue with Email'}
@@ -199,11 +201,13 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             </h2>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} />
+              {/* --- FIX 3: Added name attribute --- */}
+              <input type="email" id="registerEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} />
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 w-full" disabled={loading} />
+              {/* --- FIX 4: Added name attribute --- */}
+              <input type="password" id="registerPassword" name="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 w-full" disabled={loading} />
             </div>
             <button type="submit" className="btn-primary w-full text-lg" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : 'Create Account'}
@@ -223,7 +227,8 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             <p className="text-sm text-muted-foreground text-center -mt-4 mb-4">Enter your email to receive a reset link.</p>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} />
+              {/* --- FIX 5: Added name attribute --- */}
+              <input type="email" id="resetEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} />
             </div>
             <button type="submit" className="btn-primary w-full text-lg" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : 'Send Reset Link'}
@@ -278,4 +283,3 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
 };
 
 export default AuthModal;
-
