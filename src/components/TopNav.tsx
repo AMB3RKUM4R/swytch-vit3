@@ -1,8 +1,8 @@
 // src/components/TopNav.tsx
-import { FC, useCallback, useState, useEffect } from 'react'; // Added useState, useEffect
+import { FC, useCallback, useState, useEffect } from 'react'; 
 import { motion } from 'framer-motion';
-import { Sparkles, User, Settings, Star, HandCoins, Users, Package, ShoppingCart, LogOut, LoaderCircle, Gem, BellRing } from 'lucide-react'; // Added BellRing
-import { Link, useLocation } from 'react-router-dom'; // Added useLocation
+import { Sparkles, User, Settings, Star, HandCoins, Users, Package, ShoppingCart, LogOut, LoaderCircle, Gem, BellRing } from 'lucide-react'; 
+import { Link, useLocation } from 'react-router-dom'; 
 import Tilt from 'react-parallax-tilt';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAuthUserFirebase } from '../hooks/useAuthUserFirebase';
@@ -42,7 +42,7 @@ const navItems = [
 const TopNav: FC = () => {
   const { userId, playerData, authLoading, joulesBalance } = usePlayer();
   const { setShowMessage, setActiveModal } = useModal();
-  const location = useLocation(); // To track current path
+  const location = useLocation(); 
 
   const { disconnect } = useAuthUserWagmi();
   const { signOutUser, isAdmin } = useAuthUserFirebase({ disconnectWagmi: disconnect });
