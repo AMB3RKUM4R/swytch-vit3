@@ -31,22 +31,15 @@ import {
 } from "wagmi/chains";
 
 // Import images (Vite resolves these as URLs)
-// Ensure these image paths are correct in your public folder
 import linea_logo from "/linea_logo.png";
 import lineaTestnet_logo from "/lineaTestnet_logo.png";
 
 const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 
 if (!walletConnectProjectId) {
-  // In a production environment, you might want a more graceful fallback or
-  // a clear error message in the UI rather than throwing,
-  // but for development, this ensures the project ID is set.
   console.warn(
     "WalletConnect project ID is not defined. Please check your environment variables.",
   );
-  // Provide a dummy project ID for local development if not set,
-  // or handle this error more gracefully in production.
-  // For now, we'll proceed, but keep this warning in mind.
 }
 
 const connectors = connectorsForWallets(
@@ -65,7 +58,7 @@ const connectors = connectorsForWallets(
       ],
     },
   ],
-  { appName: "Swytch PETverse", projectId: walletConnectProjectId || "YOUR_WALLETCONNECT_PROJECT_ID" }, // Use a default if not set for dev
+  { appName: "Swytch PETverse", projectId: walletConnectProjectId || "YOUR_WALLETCONNECT_PROJECT_ID" },
 );
 
 // Fix missing icons - ensure these logos exist in your public folder

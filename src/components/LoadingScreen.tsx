@@ -1,7 +1,7 @@
 // src/components/LoadingScreen.tsx
 import { FC, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Terminal } from 'lucide-react'; // Added Loader2
+import { Terminal } from 'lucide-react';
 
 const LoadingScreen: FC<{ message: string }> = ({ message }) => {
   const [dots, setDots] = useState('');

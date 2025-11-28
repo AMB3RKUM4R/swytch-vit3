@@ -1,5 +1,5 @@
 // src/components/WithdrawModal.tsx
-import { FC, useState, useCallback, useEffect } from 'react'; // FIX: Ensures all core React hooks are imported
+import { FC, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Landmark, AlertTriangle, Send } from 'lucide-react';
 import { useAccount } from 'wagmi';
@@ -12,19 +12,18 @@ import { useModal } from '@/components/context/ModalContext';
 // ────────────────────────────────────────────────────────────────
 // CONFIGURATION
 // ────────────────────────────────────────────────────────────────
-const REQUEST_WITHDRAWAL_API = '/api/requestWithdrawalApi'; 
-const WITHDRAWAL_CURRENCY = 'USD_EQUIVALENT'; 
+// The API endpoint that hits your Firebase Cloud Function (redeemJoules.ts)
+const REQUEST_WITHDRAWAL_API = '/api/redeemJoules'; 
 const MIN_WITHDRAWAL_AMOUNT = 10;
 // ────────────────────────────────────────────────────────────────
 
 const WithdrawModal: FC = () => {
-  // Accessing idToken is now correct due to PlayerContext fix.
-  const { userId, idToken, joulesBalance, logTransaction } = usePlayer();
+  const { userId, idToken, joulesBalance } = usePlayer();
   const { activeModal, setActiveModal, setShowMessage } = useModal();
   const { address: connectedWalletAddress } = useAccount();
 
   const [amount, setAmount] = useState<string>('');
-  const [targetAddress, setTargetAddress] = useState<string>(connectedWalletAddress || '');
+  const [targetAddress, setTargetAddress] = useState<string>(''); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,15 +31,15 @@ const WithdrawModal: FC = () => {
   const isValidAmount = !isNaN(parsedAmount) && parsedAmount >= MIN_WITHDRAWAL_AMOUNT;
   const hasEnoughJoules = parsedAmount <= joulesBalance;
   
-  // Basic validation for an Ethereum-style address
-  const isValidAddress = isAddress(targetAddress);
+  // FIX: Also check if it's empty, as empty is technically not an address
+  const isValidAddress = targetAddress.length > 0 && isAddress(targetAddress);
 
   // Auto-populate connected wallet address on modal open
   useEffect(() => { 
-    if (activeModal === 'withdraw' && connectedWalletAddress) {
+    if (activeModal === 'withdraw' && connectedWalletAddress && !targetAddress) {
         setTargetAddress(connectedWalletAddress);
     }
-  }, [activeModal, connectedWalletAddress]);
+  }, [activeModal, connectedWalletAddress, targetAddress]);
 
 
   const handleWithdrawalRequest = useCallback(async () => {
@@ -69,30 +68,21 @@ const WithdrawModal: FC = () => {
           'Authorization': `Bearer ${idToken}`, 
         },
         body: JSON.stringify({
-          amount: parsedAmount,
-          currency: WITHDRAWAL_CURRENCY,
-          targetAddress: targetAddress,
+          // The Cloud Function (redeemJoules.ts) expects 'amount' as the JOULES to redeem
+          amount: parsedAmount, 
+          targetAddress: targetAddress, 
         }),
       });
 
       const result = await response.json();
 
-      if (response.ok && result.status === 'pending') {
-        logTransaction({
-            userId: userId!,
-            amount: -parsedAmount, 
-            currency: 'JOULES',
-            transactionType: 'withdraw',
-            status: 'pending',
-            itemId: 'withdrawal-request',
-            paymentGatewayId: targetAddress, 
-            transactionHash: result.transactionId, 
-        });
-        
-        setShowMessage(`✅ Withdrawal request submitted! A deduction of ${parsedAmount} JOULES is pending approval.`);
+      if (response.ok && result.success) {
+        // The Cloud Function handles the deduction and logging on its side.
+        setShowMessage(`✅ Withdrawal request submitted! JOULES deducted and crypto withdrawal initiated. TxHash: ${result.txHash || 'Pending'}.`);
         setActiveModal(null);
       } else {
-        throw new Error(result.message || 'Withdrawal failed due to server error.');
+        // Error from the server (e.g., insuffient Joules, token issue)
+        throw new Error(result.error || 'Withdrawal failed due to server error.');
       }
     } catch (err: any) {
       console.error('Withdrawal request error:', err);
@@ -101,7 +91,7 @@ const WithdrawModal: FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [userId, idToken, parsedAmount, targetAddress, joulesBalance, isValidAmount, isValidAddress, logTransaction, setActiveModal, setShowMessage]);
+  }, [userId, idToken, parsedAmount, targetAddress, joulesBalance, isValidAmount, isValidAddress, setActiveModal, setShowMessage]);
 
 
   return (
@@ -186,7 +176,7 @@ const WithdrawModal: FC = () => {
               </motion.button>
               
               <p className="text-xs text-muted-foreground text-center pt-2">
-                Withdrawals are manually reviewed and processed by the Admin within 1-3 business days.
+                Withdrawals are automatically processed by smart contract upon request.
               </p>
             </div>
 

@@ -1,10 +1,8 @@
 // src/components/vault/VaultRules.tsx
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gavel, Info, ChevronDown } from 'lucide-react'; // Use ChevronDown
+import { Gavel, Info, ChevronDown } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-
-// This component is purely presentational and requires no props
 
 const rules = [
   {

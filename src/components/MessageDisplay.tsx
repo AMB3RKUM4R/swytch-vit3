@@ -2,11 +2,9 @@
 import { FC, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, X } from 'lucide-react';
-import { useModal } from '@/components/context/ModalContext'; // Import useModal
+import { useModal } from '@/components/context/ModalContext';
 
-// This component is now self-sufficient and requires no props.
 const MessageDisplay: FC = () => {
-  // Pull state from the global context
   const { showMessage: message, setShowMessage } = useModal();
 
   const messageVariants = {
@@ -33,7 +31,6 @@ const MessageDisplay: FC = () => {
           animate="visible"
           exit="exit"
           variants={messageVariants}
-          // Use our new professional styles
           className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] p-4 rounded-lg shadow-xl text-sm font-medium text-center 
                       font-inter border border-primary/50 glass-dark`}
         >

@@ -4,16 +4,14 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowUpCircle, ArrowDownCircle, Store, MessageCircleHeart } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
-import { useModal } from '@/components/context/ModalContext'; // Import modal hook
+import { usePlayer } from '@/components/context/PlayerContext';
+import { useModal } from '@/components/context/ModalContext';
 
-// This component is now self-sufficient and only takes handleShareOnX as a prop
 interface ActionButtonsPanelProps {
   handleShareOnX: () => Promise<void>;
 }
 
 const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({ handleShareOnX }) => {
-  // Pull data from our global contexts
   const { userId } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
 
@@ -34,19 +32,20 @@ const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({ handleShareOnX }) => 
         {/* Deposit */}
         <motion.button 
           className="btn-primary" 
-          onClick={() => { if (handleRestrictedAction('deposit')) setActiveModal('payment'); }}
+          onClick={() => { 
+            if (handleRestrictedAction('deposit')) setActiveModal('payment'); 
+          }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
           <ArrowUpCircle className="w-5 h-5 mr-2" /> Deposit
         </motion.button>
         
-        {/* Withdraw (Opens Payment Modal - future feature) */}
+        {/* Withdraw (Opens Withdraw Modal) */}
         <motion.button 
-          className="btn-secondary" // Secondary style for withdraw
+          className="btn-danger" // Using danger style for withdraw
           onClick={() => { 
-            // TODO: Add a "withdraw" tab to PaymentModal
-            if (handleRestrictedAction('withdraw')) setShowMessage("Withdrawals coming soon!"); 
+            if (handleRestrictedAction('withdraw')) setActiveModal('withdraw'); 
           }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -60,7 +59,8 @@ const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({ handleShareOnX }) => 
             to="/shop" 
             className="btn-secondary w-full" 
             onClick={(e) => {
-              if (!handleRestrictedAction('visit the shop', null)) e.preventDefault();
+              // Only open auth if it's a restricted page (shop is restricted)
+              if (!handleRestrictedAction('visit the shop', null)) e.preventDefault(); 
             }}
           >
             <Store className="w-5 h-5 mr-2" /> Shop

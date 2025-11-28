@@ -45,15 +45,18 @@ const Membership: FC = () => {
         transactionType: 'quest-reward' as TransactionType,
         status: 'pending' as TransactionStatus,
         timestamp: serverTimestamp(),
+        itemId: 'share-membership-quest', // Added specific itemId
       });
       setShowMessage('🎉 Shared Membership on X! Reward pending verification.');
     } catch (err) {
       console.error('Failed to share on X:', err);
+      // FIX: Show user-facing error message
+      setShowMessage('❌ Failed to log reward transaction.'); 
     }
   }, [userId, setShowMessage, setActiveModal]);
 
   if (authLoading) {
-    // Let the main loading screen handle this
+    // Rely on the main application wrapper (likely App.tsx) to handle the global loading screen.
     return null;
   }
 

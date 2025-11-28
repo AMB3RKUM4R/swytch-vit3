@@ -5,9 +5,7 @@ import SwytchCard from '../SwytchCard';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useAccount } from 'wagmi';
 
-// This component is now self-sufficient and requires no props.
 const UserOverviewCard: FC = () => {
-  // Pull data from our global context
   const { playerData, joulesBalance, goldBalance, isPETMember } = usePlayer();
   const { address: wagmiAddress } = useAccount();
 
@@ -22,7 +20,7 @@ const UserOverviewCard: FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left font-inter">
         
         {/* JOULES Balance */}
-        <div className="flex items-center gap-3 bg-black/20 p-4 rounded-lg border border-white/10">
+        <div className="flex items-center gap-3 bg-black/20 p-4 rounded-lg border border-primary/20">
           <Gem className="w-7 h-7 text-yellow-400" />
           <div>
             <p className="text-sm text-muted-foreground">JOULES Balance</p>
@@ -31,7 +29,7 @@ const UserOverviewCard: FC = () => {
         </div>
         
         {/* Gold Balance */}
-        <div className="flex items-center gap-3 bg-black/20 p-4 rounded-lg border border-white/10">
+        <div className="flex items-center gap-3 bg-black/20 p-4 rounded-lg border border-green-500/20">
           <DollarSign className="w-7 h-7 text-green-400" />
           <div>
             <p className="text-sm text-muted-foreground">Gold Balance</p>
@@ -40,7 +38,7 @@ const UserOverviewCard: FC = () => {
         </div>
         
         {/* Connected Wallet */}
-        <div className="flex items-center gap-3 bg-black/20 p-4 rounded-lg border border-white/10 col-span-1 md:col-span-2">
+        <div className="flex items-center gap-3 bg-black/20 p-4 rounded-lg border border-purple-400/20 col-span-1 md:col-span-2">
           <Wallet className="w-7 h-7 text-purple-400" />
           <div>
             <p className="text-sm text-muted-foreground">Connected Wallet</p>
@@ -51,7 +49,7 @@ const UserOverviewCard: FC = () => {
         </div>
         
         {/* Membership Status */}
-        <div className="flex items-center gap-3 bg-black/20 p-4 rounded-lg border border-white/10 col-span-1 md:col-span-2">
+        <div className="flex items-center gap-3 bg-black/20 p-4 rounded-lg border border-primary/20 col-span-1 md:col-span-2">
           <User className="w-7 h-7 text-primary" />
           <div>
             <p className="text-sm text-muted-foreground">Membership Status</p>

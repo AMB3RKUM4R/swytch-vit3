@@ -1,40 +1,23 @@
+// src/components/Inventory/UserInventoryDisplay.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package } from 'lucide-react';
+import { Package, Loader2, AlertTriangle } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 import InventoryItemCard from './InventoryItemCard';
-// UPDATED: All necessary types are imported
-import { InventoryItem, ItemDefinition, PlayerData } from '@/lib/types';
-import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { ItemDefinition, UserInventoryDisplayProps } from '@/lib/types';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
-
-// UPDATED: Props now require the master list of item blueprints
-interface UserInventoryDisplayProps {
-  playerData: PlayerData | null;
-  userId: string | null;
-  onListForSale: (instance: InventoryItem, definition: ItemDefinition, instanceId: string) => void;
-  setShowMessage: (message: string) => void;
-}
-
-const itemGridVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-};
-const itemCardVariants = {
-  hidden: { opacity: 0, scale: 0.8 },
-  visible: { opacity: 1, scale: 1 },
-};
+import { useModal } from '@/components/context/ModalContext';
 
 const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
   playerData,
-  userId,
   onListForSale,
-  setShowMessage,
 }) => {
-  // We need to fetch and store the master item blueprints
+  const { setShowMessage } = useModal();
   const [itemDefinitions, setItemDefinitions] = useState<Record<string, ItemDefinition>>({});
   const [loading, setLoading] = useState(true);
 
+  // Fetch Item Blueprints on component mount
   useEffect(() => {
     const fetchItemDefinitions = async () => {
       try {
@@ -46,89 +29,96 @@ const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
         setItemDefinitions(definitions);
       } catch (error) {
         console.error("Error fetching item definitions:", error);
+        setShowMessage("Failed to load item data");
       } finally {
         setLoading(false);
       }
     };
     fetchItemDefinitions();
-  }, []);
+  }, [setShowMessage]);
+  
+  if (!playerData) {
+      return (
+        <SwytchCard className="p-10 text-center">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-6" />
+            <p className="text-xl text-muted-foreground">Loading Player Data...</p>
+        </SwytchCard>
+      );
+  }
 
-  const handleEquipToggle = async (_instance: InventoryItem, definition: ItemDefinition, instanceId: string) => {
-    if (!userId || !playerData?.inventory) return;
-
-    const currentEquipped = playerData.inventory.equipped;
-    const isEquipped =
-      (definition.itemType === 'weapon' && currentEquipped?.weapon === instanceId) ||
-      (definition.itemType === 'armor' && currentEquipped?.armor === instanceId);
-
-    const newEquipped = { ...currentEquipped };
-    
-    if (isEquipped) { // Unequip
-      if (definition.itemType === 'weapon') newEquipped.weapon = null;
-      if (definition.itemType === 'armor') newEquipped.armor = null;
-    } else { // Equip
-      if (definition.itemType === 'weapon') newEquipped.weapon = instanceId;
-      if (definition.itemType === 'armor') newEquipped.armor = instanceId;
-    }
-
-    try {
-      const playerDocRef = doc(db, 'Players', userId);
-      await updateDoc(playerDocRef, {
-        'inventory.equipped': newEquipped
-      });
-      setShowMessage(`✅ ${definition.itemName} ${isEquipped ? 'unequipped' : 'equipped'}.`);
-    } catch (error) {
-      console.error("Failed to equip item:", error);
-      setShowMessage("⚠️ Failed to update equipment.");
-    }
-  };
-
-
-  const inventoryItems = playerData?.inventory?.items ?? {};
+  const inventoryItems = playerData?.inventory?.items || {};
   const inventoryEntries = Object.entries(inventoryItems);
 
-  if (loading) return <div>Loading inventory...</div>;
+  if (loading) {
+    return (
+      <SwytchCard className="p-10 text-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-6" />
+        <p className="text-xl text-muted-foreground">Fetching Item Blueprints...</p>
+      </SwytchCard>
+    );
+  }
+
+  if (inventoryEntries.length === 0) {
+    return (
+      <SwytchCard className="p-10 text-center">
+        <Package className="w-20 h-20 text-gray-500 mx-auto mb-6" />
+        <p className="text-2xl text-gray-400">Your inventory is empty</p>
+        <p className="text-gray-500 mt-2">Play games to earn items!</p>
+      </SwytchCard>
+    );
+  }
+  
+  if (Object.keys(itemDefinitions).length === 0) {
+      return (
+        <SwytchCard className="p-10 text-center text-rose-400">
+            <AlertTriangle className="w-10 h-10 mx-auto mb-6" />
+            <p className="text-xl">Error: Item blueprints failed to load.</p>
+        </SwytchCard>
+      );
+  }
+
 
   return (
-    <SwytchCard  className="p-6">
-      {inventoryEntries.length === 0 ? (
-        <div className="text-center py-10">
-          <Package className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-          <p className="text-gray-400 text-lg font-inter">Your inventory is empty.</p>
-        </div>
-      ) : (
-        <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-          variants={itemGridVariants} initial="hidden" animate="visible"
-        >
-          <AnimatePresence>
-            {inventoryEntries.map(([instanceId, instance]) => {
-              // Find the master blueprint for this item instance
-              const definition = itemDefinitions[instance.itemId];
-              // If we haven't loaded the blueprint yet, don't render the card
-              if (!definition) return null;
+    <SwytchCard className="p-6">
+      <motion.div
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ staggerChildren: 0.05 }}
+      >
+        <AnimatePresence>
+          {inventoryEntries.map(([instanceId, instance]) => {
+            const definition = itemDefinitions[instance.itemId];
+            
+            if (!definition) return null; 
 
-              const isEquipped =
-                (definition.itemType === 'weapon' && playerData?.inventory?.equipped?.weapon === instanceId) ||
-                (definition.itemType === 'armor' && playerData?.inventory?.equipped?.armor === instanceId);
+            const isEquipped =
+              (definition.itemType === 'weapon' && playerData.inventory?.equipped?.weapon === instanceId) ||
+              (definition.itemType === 'armor' && playerData.inventory?.equipped?.armor === instanceId);
 
-              return (
-                <motion.div key={instanceId} variants={itemCardVariants} exit="hidden">
-                  <InventoryItemCard
-                    instance={instance}
-                    definition={definition}
-                    isEquipped={isEquipped}
-                    onEquipToggle={() => handleEquipToggle(instance, definition, instanceId)}
-                    onListForSale={() => onListForSale(instance, definition, instanceId)}
-                    onUseConsumable={() => { /* TODO: Implement use consumable logic */ }}
-                    isListed={instance.isListed || false} // Pass the listed status
-                  />
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </motion.div>
-      )}
+            return (
+              <motion.div
+                key={instanceId}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                whileHover={{ y: -8 }}
+              >
+                <InventoryItemCard
+                  instance={instance}
+                  definition={definition}
+                  isEquipped={isEquipped}
+                  onEquipToggle={() => {}}
+                  onListForSale={() => onListForSale(instance, definition, instanceId)}
+                  onUseConsumable={() => {}}
+                  isListed={instance.isListed || false}
+                  instanceId={instanceId}
+                />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </motion.div>
     </SwytchCard>
   );
 };

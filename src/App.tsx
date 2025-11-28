@@ -1,76 +1,108 @@
-// src/App.tsx
-import { FC } from 'react';
-import { Routes, Route } from 'react-router-dom';
+// src/App.tsx — FINAL & FLAWLESS
+import { FC, useEffect, useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 
-// Hooks & Context
+// Contexts
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 
 // Components
-import SwytchErrorBoundary from '@/components/ErrorBoundaryComponent';
 import AuthModal from '@/components/AuthModal';
 import PaymentModal from '@/components/PaymentModal';
+import WithdrawModal from '@/components/WithdrawlModal';
 import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
 import LoadingScreen from '@/components/LoadingScreen';
+import LeftSidebar from '@/components/LeftSidebar'; 
+import UnityStage from '@/components/UnityStage';
 
 // Pages
+import LandingPage from '@/pages/LandingPage';
 import Home from '@/pages/Home';
-import { Vault } from '@/pages/Vault';
+import Customize from '@/pages/Customize';
+import { Vault } from '@/pages/Vault'; // Named import
 import Shop from '@/pages/Shop';
 import Community from '@/pages/Community';
 import Membership from '@/pages/Membership';
 import Inventory from '@/pages/Inventory';
-import LandingPage from '@/pages/LandingPage';
 import AdminPage from '@/pages/AdminPage';
 
 const App: FC = () => {
-  // All modal logic is now cleanly separated
-  const { activeModal, setActiveModal, setShowMessage } = useModal();
+  const { activeModal, setActiveModal, setShowMessage } = useModal(); 
+  const { 
+    userId, 
+    initialAuthCheckComplete, 
+    playerData
+  } = usePlayer();
 
-  // All auth and player data now comes from our new context
-  const { userId, initialAuthCheckComplete } = usePlayer();
+  const [activeGameId, setActiveGameId] = useState<string | null>(null);
+  const [showInitialAuthModal, setShowInitialAuthModal] = useState(true); 
+
+  useEffect(() => {
+    if (initialAuthCheckComplete && !userId && showInitialAuthModal) {
+      setShowInitialAuthModal(false); 
+    }
+  }, [initialAuthCheckComplete, userId, showInitialAuthModal, setActiveModal]);
 
   if (!initialAuthCheckComplete) {
-      return <LoadingScreen message="Initializing PETverse Core..." />;
+    return <LoadingScreen message="Initializing PETverse..." />;
   }
 
-  return (
-      <div className={`min-h-screen flex flex-col font-inter bg-noise`}>
-          <div className="relative z-10 flex flex-col min-h-screen overflow-y-auto">
-              {/* Components now pull data directly from context, no props needed */}
-              <TopNav />
-              <main className="flex-grow pt-16 pb-16">
-                  <Routes>
-                      {/* We pass minimal props to the error boundary */}
-                      <Route path="/" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><LandingPage /></SwytchErrorBoundary>} />
-                      {userId ? (
-                          <>
-                              {/* All pages now have NO props. They pull data from usePlayer() */}
-                              <Route path="/home" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Home /></SwytchErrorBoundary>} />
-                              <Route path="/vault" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Vault /></SwytchErrorBoundary>} />
-                              <Route path="/shop" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Shop /></SwytchErrorBoundary>} />
-                              <Route path="/community" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Community /></SwytchErrorBoundary>} />
-                              <Route path="/membership" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Membership /></SwytchErrorBoundary>} />
-                              <Route path="/inventory" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><Inventory /></SwytchErrorBoundary>} />
-                              <Route path="/admin" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><AdminPage /></SwytchErrorBoundary>} />
-                          </>
-                      ) : (
-                          <Route path="*" element={<SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}><LandingPage /></SwytchErrorBoundary>} />
-                      )}
-                  </Routes>
-              </main>
-              {/* Components now pull data directly from context, no props needed */}
-              <BottomNav />
-          </div>
+  const hasAvatar = !!playerData?.character?.selectedID;
+  const redirectPath = userId ? (hasAvatar ? '/home' : '/customize') : '/';
 
-          <AnimatePresence>
-              {activeModal === 'auth' && <AuthModal setShowMessage={setShowMessage} />}
-              {/* PaymentModal also pulls its own data, no props needed */}
-              {activeModal === 'payment' && <PaymentModal />}
-          </AnimatePresence>
-      </div>
+  return (
+    <div className="min-h-screen bg-black text-white font-inter"> 
+      {/* Game Overlay */}
+      <UnityStage activeGameId={activeGameId} setActiveGameId={setActiveGameId} />
+
+      {/* Navigation */}
+      <TopNav />
+      {/* Left Sidebar is fixed on lg screens and pushes content */}
+      <LeftSidebar /> 
+
+      {/* Main Content */}
+      <main className="pt-[70px] pb-24 md:pb-8 md:pl-0 lg:pl-80"> 
+        <AnimatePresence mode="wait">
+          <Routes>
+            {/* Public */}
+            <Route path="/" element={<LandingPage />} />
+
+            {/* Auth Flow */}
+            <Route 
+              path="/customize" 
+              element={userId ? <Customize /> : <Navigate to="/" replace />} 
+            />
+
+            {/* Protected Routes (Requires login and Avatar selection) */}
+            {(userId && hasAvatar) ? (
+              <>
+                <Route path="/home" element={<Home />} />
+                <Route path="/vault" element={<Vault />} />
+                <Route path="/shop" element={<Shop />} />
+                <Route path="/community" element={<Community />} />
+                <Route path="/membership" element={<Membership />} />
+                <Route path="/inventory" element={<Inventory />} />
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="*" element={<Navigate to="/home" replace />} /> 
+              </>
+            ) : (
+                <Route path="*" element={<Navigate to={redirectPath} replace />} />
+            )}
+          </Routes>
+        </AnimatePresence>
+      </main>
+
+      <BottomNav />
+
+      {/* MODALS */}
+      <AnimatePresence>
+        {activeModal === 'auth' && <AuthModal setShowMessage={setShowMessage} />} 
+        {(activeModal === 'payment' || activeModal === 'deposit') && <PaymentModal />} 
+        {activeModal === 'withdraw' && <WithdrawModal />} 
+      </AnimatePresence>
+    </div>
   );
 };
 

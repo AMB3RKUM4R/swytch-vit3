@@ -24,12 +24,17 @@ const sectionVariants = {
 
 const Inventory: FC = () => {
   const { setActiveModal, setShowMessage } = useModal();
-  const { userId, playerData } = usePlayer(); // <-- You already have playerData here
+  const { userId, playerData } = usePlayer();
 
   const [selectedItem, setSelectedItem] = useState<{instance: InventoryItem, definition: ItemDefinition, instanceId: string} | null>(null);
   const [showListForSaleModal, setShowListForSaleModal] = useState(false);
 
   const handleListForSale = (instance: InventoryItem, definition: ItemDefinition, instanceId: string) => {
+    if (!userId || !playerData) {
+        setShowMessage('⚠️ Please sign in to list items for sale.');
+        setActiveModal('auth');
+        return;
+    }
     setSelectedItem({ instance, definition, instanceId });
     setShowListForSaleModal(true);
   };
@@ -81,10 +86,7 @@ const Inventory: FC = () => {
               </div>
             </motion.div>
 
-            {/* --- THIS IS THE CHANGE --- */}
-            {/* Pass the playerData object down as a prop */}
             <AvatarSelector playerData={playerData} />
-            {/* --- END OF CHANGE --- */}
 
             <MembershipStatusOverview />
           </div>
@@ -95,7 +97,8 @@ const Inventory: FC = () => {
               playerData={playerData}
               userId={userId}
               onListForSale={handleListForSale}
-              setShowMessage={setShowMessage}
+              // FIX: Removed setShowMessage prop to resolve TS2322 error.
+              // If UserInventoryDisplay needs the setter, it should use useModal() internally.
             />
           </div>
         </motion.div>

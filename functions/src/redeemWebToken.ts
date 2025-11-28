@@ -1,22 +1,18 @@
+// functions/src/redeemWebToken.ts
 
 import {getFirestore, FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
-import {Request} from 'firebase-functions/v2/https'; // <-- THE FIX
-import type {Response} from 'express'; // <-- THE FIX
+import {Request} from 'firebase-functions/v2/https';
+import type {Response} from 'express';
 
-// (Firebase Admin Setup... no changes)
-
-
-// ---
-
-export const redeemWebTokenHandler = async (request: Request, response: Response) => { // <-- CORRECT TYPES
+export const redeemWebTokenHandler = async (request: Request, response: Response) => {
+  const db = getFirestore();
+  const auth = getAuth();
+  
   if (request.method !== 'POST') {
     response.status(405).json({error: 'Method Not Allowed'});
     return;
   }
-  const db = getFirestore();
-  const auth = getAuth();
-  // (Rest of the function is identical)
   const {token} = request.body;
 
   if (!token || typeof token !== 'string') {
@@ -38,11 +34,15 @@ export const redeemWebTokenHandler = async (request: Request, response: Response
     const playerDoc = querySnapshot.docs[0];
     const userId = playerDoc.id;
 
-    await playerDoc.ref.update({
-      'session.webToken': FieldValue.delete(),
-      'session.webTokenCreatedAt': FieldValue.delete(),
+    await db.runTransaction(async (t) => {
+        // 1. Delete the token from the player document
+        t.update(playerDoc.ref, {
+            'session.webToken': FieldValue.delete(),
+            'session.webTokenCreatedAt': FieldValue.delete(),
+        });
     });
 
+    // 2. Create the custom token outside the transaction
     const customToken = await auth.createCustomToken(userId);
 
     console.log(`API: Custom token created for user ${userId} via web redemption.`);

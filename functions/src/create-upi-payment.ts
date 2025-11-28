@@ -2,15 +2,11 @@
 import * as crypto from 'crypto';
 
 import {getFirestore, FieldValue} from 'firebase-admin/firestore';
-import {PlayerData, MEMBERSHIP_TIERS} from './lib/types';
+import {PlayerData, MEMBERSHIP_TIERS, InventoryItem} from './lib/types';
 import {Request} from 'firebase-functions/v2/https';
 import type {Response} from 'express';
 
-// REMOVED GLOBAL CALL: const db = getFirestore();
-
-// Standardized export name
 export const createUpiPaymentWebhook = async (request: Request, response: Response) => {
-  // FIX: Initialize Firestore inside the handler
   const db = getFirestore();
 
   const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -28,9 +24,8 @@ export const createUpiPaymentWebhook = async (request: Request, response: Respon
     return;
   }
 
-  // Signature verification (Security check)
   const shasum = crypto.createHmac('sha256', RAZORPAY_WEBHOOK_SECRET);
-  shasum.update(request.rawBody);
+  shasum.update(request.rawBody || JSON.stringify(request.body));
   const digest = shasum.digest('hex');
 
   if (digest !== signature) {
@@ -86,16 +81,18 @@ export const createUpiPaymentWebhook = async (request: Request, response: Respon
         }
         const playerData = playerDoc.data() as PlayerData;
 
-        const updates: { [key: string]: any } = {
+        const updates: {[key: string]: any} = {
           updatedAt: FieldValue.serverTimestamp(),
         };
 
         if (isItemPurchase) {
-          const newItemInstanceRef = playerRef.collection('InventoryItems').doc();
-          t.set(newItemInstanceRef, {
+          const newItemId = `item_${paymentId}`;
+          const newInventoryItem: InventoryItem = {
             itemId: itemId,
-            acquiredAt: FieldValue.serverTimestamp(),
-          });
+            acquiredAt: FieldValue.serverTimestamp() as any,
+            isListed: false,
+          };
+          updates[`inventory.items.${newItemId}`] = newInventoryItem; 
         }
 
         if (isMembership && (!playerData || !playerData.isPETMember)) {
@@ -112,7 +109,7 @@ export const createUpiPaymentWebhook = async (request: Request, response: Respon
           updates.joules = FieldValue.increment(joulesToAdd);
         }
 
-        if (Object.keys(updates).length > 1) {
+        if (Object.keys(updates).length > 1 || updates.joules) {
           t.update(playerRef, updates);
         }
       });
@@ -128,3 +125,4 @@ export const createUpiPaymentWebhook = async (request: Request, response: Respon
 
   response.status(200).json({success: true});
 };
+// Final EOL added

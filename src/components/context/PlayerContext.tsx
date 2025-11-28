@@ -1,7 +1,7 @@
 // src/components/context/PlayerContext.tsx
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { User } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, addDoc, collection, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, addDoc, collection, serverTimestamp, setDoc, Timestamp, FieldValue } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase';
 import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi';
@@ -14,7 +14,6 @@ interface PlayerContextType {
   firebaseUser: User | null;
   wagmiAddress: `0x${string}` | undefined;
   userId: string | null;
-  // FIX: Added idToken to the interface to resolve the compiler error in WithdrawModal.tsx
   idToken: string | null; 
   authLoading: boolean;
   authError: string | null; 
@@ -30,8 +29,8 @@ interface PlayerContextType {
   dataLoading: boolean;
 
   // Core Functions
-  updatePlayerFirestore: (updates: { [key: string]: any }) => Promise<void>;
-  logTransaction: (txData: Omit<Transaction, 'transactionId' | 'timestamp'>) => Promise<void>;
+  updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
+  logTransaction: (txData: Omit<Transaction, 'id' | 'timestamp'>) => Promise<void>;
   updatePlayerCharacter: (avatarId: string) => Promise<void>; 
 
   // Auth Functions
@@ -47,14 +46,13 @@ interface PlayerContextType {
 // 2. CREATE THE CONTEXT
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
-// --- THIS IS THE UPDATED FUNCTION ---
 const createNewPlayerData = (user: User, walletAddress: `0x${string}` | undefined): PlayerData => {
     const now = Timestamp.now();
     return {
         userId: user.uid,
         username: user.displayName || user.email?.split('@')[0] || `Hunter${Math.floor(1000 + Math.random() * 9000)}`,
         email: user.email,
-        phoneNumber: user.phoneNumber,
+        phoneNumber: user.phoneNumber || null,
         joules: 0,
         gold: 0,
         level: 1,
@@ -65,29 +63,28 @@ const createNewPlayerData = (user: User, walletAddress: `0x${string}` | undefine
         membership: 'ecosystem',
         walletAddress: walletAddress || null,
         
-        // --- FIX 1: Match the default object from AuthManager.cs ---
+        // FIX 1: Match the default object from AuthManager.cs
         character: { 
           selectedID: "Hunter", 
           skin: "default" 
         },
-        // --- FIX 2: Match the default object from AuthManager.cs ---
+        // FIX 2: Match the default object from AuthManager.cs
         inventory: { 
           equipped: { weapon: null, armor: null }, 
           items: {} 
         },
         
-        createdAt: now,
-        updatedAt: now,
+        createdAt: now as Timestamp,
+        updatedAt: now as Timestamp,
         profilePictureUrl: '',
 
-        // --- FIX 3: Add the session map ---
+        // FIX 3: Add the session map
         session: {
           webToken: null,
           webTokenCreatedAt: null
         }
     };
 };
-// --- END OF UPDATED FUNCTION ---
 
 // 3. CREATE THE PROVIDER
 export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -161,8 +158,10 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
       } else {
         if (firebaseUser) {
+            // This case should be rare, but handles Firestore doc deletion
             const newPlayerData = createNewPlayerData(firebaseUser, wagmiAddress);
             setDoc(playerRef, newPlayerData);
+            // setPlayerData will be updated by the next snapshot event
         }
       }
       setDataLoading(false);
@@ -175,15 +174,19 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return () => unsubscribe();
   }, [userId, firebaseUser, wagmiAddress, firebaseLoading, navigate]);
 
-  // --- CORE FUNCTIONS (Moved from App.tsx) ---
+  // --- CORE FUNCTIONS ---
   const updatePlayerFirestore = useCallback(async (updates: Partial<PlayerData>) => {
     if (!userId) return;
-    await updateDoc(doc(db, 'Players', userId as string), { ...updates, updatedAt: serverTimestamp() });
+    // Use FieldValue.serverTimestamp() for updatedAt, as defined in types.ts
+    await updateDoc(doc(db, 'Players', userId), { ...updates, updatedAt: serverTimestamp() as FieldValue });
   }, [userId]);
 
-  const logTransaction = useCallback(async (txData: Omit<Transaction, 'transactionId' | 'timestamp'>) => {
+  const logTransaction = useCallback(async (txData: Omit<Transaction, 'id' | 'timestamp'>) => {
     if (!userId) return;
-    await addDoc(collection(db, 'Transactions'), { ...txData, timestamp: serverTimestamp() });
+    await addDoc(collection(db, 'Transactions'), { 
+      ...txData, 
+      timestamp: serverTimestamp() as FieldValue 
+    });
   }, [userId]);
 
   const updatePlayerCharacter = useCallback(async (avatarId: string) => {
@@ -206,7 +209,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     firebaseUser,
     wagmiAddress,
     userId: userId ?? null,
-    idToken, // <-- EXPOSE idToken
+    idToken,
     authLoading: firebaseLoading,
     authError: authError, 
     initialAuthCheckComplete,

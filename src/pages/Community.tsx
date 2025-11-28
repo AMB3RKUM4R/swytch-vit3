@@ -7,8 +7,10 @@ import { MessageCircleHeart, Award, HelpCircle, FileText } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import CommunityChat from '../components/community/CommunityChat';
 import CommunityRankings from '../components/community/CommunityRankings';
-import CommunityHero from '../components/community/CommunityHero'; // Import Hero
-import CommunityFeatures from '../components/community/CommunityFeatures'; // Import Features
+import CommunityHero from '../components/community/CommunityHero';
+import CommunityFeatures from '../components/community/CommunityFeatures';
+// FIX: Import QuestsPanel
+import QuestsPanel from '../components/QuestsPanel'; 
 import { Quest, SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
@@ -31,33 +33,22 @@ const tabContentVariants = {
     exit: { opacity: 0, y: -20, transition: { duration: 0.3, ease: 'easeIn' } },
 }
 
-// Quest definitions
-const initialQuests: Quest[] = [
-  { id: "community-visit", title: "Visit Community Hub", progress: 0, goal: 1, rewardJOULES: 5, rewardXP: 10, completed: false },
-  { id: "community-share", title: "Share on X", progress: 0, goal: 1, rewardJOULES: 15, rewardXP: 25, completed: false },
-];
+// NOTE: Quests list is now managed primarily in QuestsPanel.tsx
+const initialQuests: Quest[] = []; 
 
 const Community: FC = () => {
   const { userId, initialAuthCheckComplete } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
 
-  const [quests] = useState<Quest[]>(initialQuests);
+  const [] = useState<Quest[]>(initialQuests);
   const [activeTab, setActiveTab] = useState<'chat' | 'rankings' | 'quests'>('chat');
 
   useEffect(() => {
-    if (userId) {
-      if (initialAuthCheckComplete) {
-        const visitQuest = quests.find((q) => q.id === "community-visit");
-        if (visitQuest && !visitQuest.completed) {
-          // You might want to update quest state in Firestore, but for now, just a message
-          // setShowMessage('🎉 Quest "Visit Community Hub" complete! Reward pending.');
-        }
-      }
-    } else if (initialAuthCheckComplete) {
+    if (!userId && initialAuthCheckComplete) {
       setShowMessage('⚠️ Please sign in to join the community!');
       setActiveModal('auth');
     }
-  }, [userId, initialAuthCheckComplete, quests, setActiveModal, setShowMessage]);
+  }, [userId, initialAuthCheckComplete, setActiveModal, setShowMessage]);
 
   const handleShareOnX = useCallback(async () => {
     if (!userId) {
@@ -65,27 +56,26 @@ const Community: FC = () => {
       setActiveModal('auth');
       return;
     }
-    const shareQuest = quests.find((q) => q.id === "community-share");
-    if (shareQuest) { // Allow sharing even if "completed"
-      const shareText = encodeURIComponent("Joined the vibrant Swytch PETverse community! 👥 Join at swytch.io! #SwytchPETverse");
-      window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-      try {
-        await addDoc(collection(db, 'Transactions'), {
-          transactionId: `${userId}_share_community_${Date.now()}`,
-          userId,
-          amount: shareQuest.rewardJOULES,
-          currency: 'JOULES' as SupportedCurrency,
-          transactionType: 'quest-reward' as TransactionType,
-          status: 'pending' as TransactionStatus,
-          timestamp: serverTimestamp(),
-          itemId: shareQuest.id,
-        });
-        setShowMessage(`🎉 Quest "Share on X" complete! Reward pending verification.`);
-      } catch (err) {
-        console.error('Failed to log transaction:', err);
-      }
+    // This logic should match the quest defined in QuestsPanel for sharing (15 JOULES)
+    const shareText = encodeURIComponent("Joined the vibrant Swytch PETverse community! 👥 Join at swytch.io! #SwytchPETverse");
+    window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
+    try {
+      await addDoc(collection(db, 'Transactions'), {
+        transactionId: `${userId}_share_community_${Date.now()}`,
+        userId,
+        amount: 15, // Manual reward amount
+        currency: 'JOULES' as SupportedCurrency,
+        transactionType: 'quest-reward' as TransactionType,
+        status: 'pending' as TransactionStatus,
+        timestamp: serverTimestamp(),
+        itemId: 'community-share',
+      });
+      setShowMessage(`🎉 Shared on X! Quest progress updated.`);
+    } catch (err) {
+      console.error('Failed to log transaction:', err);
+      setShowMessage('❌ Failed to log reward transaction.');
     }
-  }, [userId, quests, setShowMessage, setActiveModal]);
+  }, [userId, setShowMessage, setActiveModal]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -103,21 +93,15 @@ const Community: FC = () => {
         );
       case 'quests':
         return (
-            <motion.div key="quests" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit" className="space-y-4">
-                {quests.map(quest => (
-                    <SwytchCard variant="default" key={quest.id} className="p-6 flex items-center justify-between">
-                        <div>
-                            <h3 className="text-xl font-poppins font-bold text-foreground">{quest.title}</h3>
-                            <p className="text-sm text-muted-foreground font-inter">Reward: {quest.rewardJOULES} JOULES & {quest.rewardXP} XP</p>
-                        </div>
-                        {quest.id === 'community-share' && (
-                            <button onClick={handleShareOnX} className="btn-secondary px-5 py-2">Complete Quest</button>
-                        )}
-                         {quest.id === 'community-visit' && (
-                            <button disabled className="btn-secondary px-5 py-2 opacity-50 cursor-not-allowed">Completed</button>
-                        )}
-                    </SwytchCard>
-                ))}
+            <motion.div key="quests" variants={tabContentVariants} initial="hidden" animate="visible" exit="exit">
+                {/* FIX: Render the dedicated QuestsPanel component */}
+                <QuestsPanel />
+                
+                {/* Add a button here to manually trigger the share logic for demonstration */}
+                <SwytchCard variant="default" className="p-4 mt-6 text-center">
+                    <h3 className="text-xl font-bold font-poppins text-foreground mb-3">Quest Helper</h3>
+                     <button onClick={handleShareOnX} className="btn-primary px-5 py-2">Trigger X Share Logic</button>
+                </SwytchCard>
             </motion.div>
         );
       default:

@@ -14,16 +14,7 @@ import { cn } from '@/lib/utils';
 // ────────────────────────────────────────────────────────────────
 // MOCK API & CONFIGURATION (for the status check)
 // ────────────────────────────────────────────────────────────────
-// NOTE: You would replace this mock fetch with a real Cloud Function call
-// that queries your 'Transactions' collection where status='pending' AND 
-// transactionType is one of your manual types (deposit_admin_approved, etc.)
 const MOCK_FETCH_PENDING_TX = async (): Promise<number> => {
-    // In a real application, this would call an authenticated Cloud Function:
-    // const response = await fetch(`${FUNCTIONS_BASE_URL}/getPendingTransactions?type=manual`);
-    // const data = await response.json();
-    // return data.count;
-    
-    // MOCK: Return 3 if the user is an admin, 0 otherwise.
     return new Promise(resolve => setTimeout(() => resolve(
         (localStorage.getItem('isAdmin') === 'true') ? 3 : 0
     ), 500));
@@ -50,11 +41,9 @@ const TopNav: FC = () => {
   const isLoggedIn = !!userId;
   const isUserAdmin = isLoggedIn && isAdmin();
   
-  // --- Payment Status State ---
   const [pendingTxCount, setPendingTxCount] = useState<number>(0);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
-  // Function to fetch pending transaction count (Only runs for admins)
   const checkPendingTxStatus = useCallback(async () => {
       if (!isUserAdmin) {
           setPendingTxCount(0);
@@ -63,29 +52,25 @@ const TopNav: FC = () => {
 
       setIsCheckingStatus(true);
       try {
-          // NOTE: Replace MOCK_FETCH_PENDING_TX with your real API call
           const count = await MOCK_FETCH_PENDING_TX();
           setPendingTxCount(count);
       } catch (error) {
           console.error("Failed to fetch pending transaction count:", error);
-          setPendingTxCount(0); // Assume 0 on error
+          setPendingTxCount(0);
       } finally {
           setIsCheckingStatus(false);
       }
   }, [isUserAdmin]);
 
-  // Effect to check status on load and every time the user state changes
   useEffect(() => {
       checkPendingTxStatus();
 
-      // Optionally poll for updates if status is critical (e.g., every 30 seconds)
       const interval = setInterval(checkPendingTxStatus, 30000); 
 
       return () => clearInterval(interval);
   }, [checkPendingTxStatus]);
 
 
-  // --- Nav Handlers (Unchanged) ---
   const handleRestrictedNav = useCallback(( label: string) => {
     if (!isLoggedIn) {
       setShowMessage(`⚠️ Please sign in to access the ${label} page.`);
@@ -109,6 +94,7 @@ const TopNav: FC = () => {
 
   return (
     <motion.nav
+      // FIX: Applied glass-dark style to navigation background
       className="fixed top-0 left-0 w-full z-50 py-3 px-4 md:px-6 flex items-center justify-between glass-dark font-inter"
       initial={{ y: -100 }} animate={{ y: 0 }} transition={{ duration: 0.5 }}
     >
@@ -150,7 +136,7 @@ const TopNav: FC = () => {
             className={cn(
                 "flex items-center gap-2 text-sm font-medium p-2 rounded-md transition-colors relative",
                 location.pathname === '/admin' ? 'text-destructive' : 'text-muted-foreground hover:text-destructive',
-                pendingTxCount > 0 && 'font-bold text-destructive hover:text-destructive/80' // Highlight if there are pending transactions
+                pendingTxCount > 0 && 'font-bold text-destructive hover:text-destructive/80'
             )}
             title="Admin Command Center"
           >
@@ -233,12 +219,13 @@ const TopNav: FC = () => {
                   signOutUser(); 
                   setShowMessage("👋 You have been signed out.");
                 }} 
-                className="btn-secondary p-2 h-10 w-10 hidden md:flex" 
+                // FIX: Use btn-destructive for sign out
+                className="btn-destructive p-2 h-10 w-10 hidden md:flex" 
                 title="Sign Out" 
                 whileHover={{ scale: 1.05 }} 
                 whileTap={{ scale: 0.95 }}
               >
-                <LogOut className="w-5 h-5 text-destructive" />
+                <LogOut className="w-5 h-5" />
               </motion.button>
             )}
             {/* Sign In Button (Mobile) */}

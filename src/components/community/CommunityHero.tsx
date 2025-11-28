@@ -3,12 +3,10 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Users, MessageCircleHeart, Sparkles } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
-import { useModal } from '@/components/context/ModalContext'; // Import modal hook
+import { usePlayer } from '@/components/context/PlayerContext';
+import { useModal } from '@/components/context/ModalContext';
 
-// This component is now self-sufficient and requires no props.
 const CommunityHero: FC = () => {
-  // Pull data from our global contexts
   const { userId, joulesBalance } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
 
@@ -18,7 +16,6 @@ const CommunityHero: FC = () => {
       setActiveModal('auth');
     } else {
       setShowMessage('🎉 Welcome to the PETverse Community!');
-      // Potentially navigate to chat or forum section
     }
   };
 

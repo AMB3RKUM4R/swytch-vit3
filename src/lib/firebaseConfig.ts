@@ -1,4 +1,4 @@
-// src/lib/firebase.ts
+// src/lib/firebaseConfig.ts
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
@@ -15,13 +15,11 @@ const firebaseConfig = {
 };
 
 // 2. Add a simple check to ensure your environment variables are loaded.
-// This will prevent runtime errors if you forget to create your .env.local file.
 if (!firebaseConfig.apiKey) {
   throw new Error("VITE_FIREBASE_API_KEY is not set. Check your .env.local file.");
 }
 
 // 3. Initialize the Firebase app using a singleton pattern.
-// This prevents the app from being initialized multiple times.
 const app: FirebaseApp = getApps().length
   ? getApp()
   : initializeApp(firebaseConfig);
@@ -30,4 +28,4 @@ const app: FirebaseApp = getApps().length
 export const auth: Auth = getAuth(app);
 export const db: Firestore = getFirestore(app);
 
-export { app }; // Export the app instance itself if needed
+export { app };

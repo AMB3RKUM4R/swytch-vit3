@@ -8,7 +8,7 @@ import VaultWalletInfo from '../components/vault/VaultWalletInfo';
 import VaultMembershipPackages from '../components/vault/VaultMembershipPackages';
 import VaultRules from '../components/vault/VaultRules';
 import YieldCalculator from '../components/vault/YieldCalculator';
-import VaultMembershipBenefits from '../components/vault/VaultMembershipBenefits'; // Import benefits
+import VaultMembershipBenefits from '../components/vault/VaultMembershipBenefits';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
 import SwytchCard from '@/components/SwytchCard';
@@ -38,11 +38,13 @@ export const Vault: FC = () => {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { data: gasPrice } = useGasPrice();
+  
   const { data: usdtBalance } = useBalance({ 
     address, 
-    token: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // Mainnet USDT
+    token: '0xdAC17F958D2ee523a2206206994597C13D831ec7', 
     query: { select: (data) => data }
   });
+  
   const { data: currentBlockNumber } = useBlockNumber({ watch: true });
 
   // Simplified auth check for vault
@@ -53,6 +55,15 @@ export const Vault: FC = () => {
     }
   }, [userId, initialAuthCheckComplete, setShowMessage, setActiveModal]);
   
+  const usdtBalanceData = usdtBalance 
+    ? {
+      formatted: usdtBalance.formatted,
+      value: usdtBalance.value,
+      symbol: usdtBalance.symbol,
+      decimals: usdtBalance.decimals,
+    }
+    : undefined;
+
   const renderTabContent = () => {
     switch (activeTab) {
         case 'info':
@@ -62,10 +73,10 @@ export const Vault: FC = () => {
                       isConnected={isConnected} 
                       address={address} 
                       chainId={chainId} 
-                      ensName={null} // ENS logic not implemented
+                      ensName={null}
                       blockNumber={currentBlockNumber || null} 
                       gasPrice={gasPrice} 
-                      usdtBalance={usdtBalance} 
+                      usdtBalance={usdtBalanceData}
                     />
                 </motion.div>
             );
@@ -107,7 +118,7 @@ export const Vault: FC = () => {
             </p>
           </motion.section>
 
-          {/* --- NEW PHILOSOPHY CALLOUT --- */}
+          {/* --- NEW PHILOSOPHY CALLOUT (Restored) --- */}
           <motion.section variants={sectionVariants}>
             <SwytchCard variant="holographic" className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">

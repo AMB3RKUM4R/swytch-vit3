@@ -7,80 +7,72 @@ import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
 import { PayPalScriptProvider } from '@paypal/react-paypal-js';
 
-// Context Providers
+// Contexts
 import { ModalProvider } from './components/context/ModalContext';
 import { ThemeProvider } from './components/context/ThemeContext';
 import { PlayerProvider } from './components/context/PlayerContext';
 
-// Configs and App Component
+// Config & App
 import { wagmiConfig } from './lib/wagmi';
 import App from './App';
 
-// Global styles
+// Styles
 import '@rainbow-me/rainbowkit/styles.css';
 import './index.css';
 
-// Initialize React Query client
+// React Query
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2,
-      staleTime: 1000 * 60, // 1 minute
+      retry: 3,
+      staleTime: 1000 * 60 * 5,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
     },
   },
 });
 
-// Initial options for the PayPal SDK
-const initialPayPalOptions = {
-    clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID || "sb",
-    currency: "USD",
-    intent: "capture",
+// PayPal
+const paypalOptions = {
+  clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID || "sb",
+  currency: "USD",
+  intent: "capture",
+  "disable-funding": "credit,card",
 };
 
-const Root: React.FC = () => {
-  return (
-    <React.StrictMode>
-      <BrowserRouter>
-        <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <RainbowKitProvider theme={darkTheme({})}>
-              <PayPalScriptProvider options={initialPayPalOptions}>
-                <ThemeProvider>
-                  <ModalProvider>
-                    <PlayerProvider>
-                      <App />
-                    </PlayerProvider>
-                  </ModalProvider>
-                </ThemeProvider>
-              </PayPalScriptProvider>
-            </RainbowKitProvider>
-          </WagmiProvider>
-        </QueryClientProvider>
-      </BrowserRouter>
-    </React.StrictMode>
-  );
-};
-
-// --- THIS IS THE FIX ---
+const Root = () => (
+  <React.StrictMode>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <WagmiProvider config={wagmiConfig}>
+          <RainbowKitProvider 
+            theme={darkTheme({
+              accentColor: '#00D4FF', // Cyan Neon
+              accentColorForeground: '#000',
+              borderRadius: 'large',
+              overlayBlur: 'small',
+            })}
+          >
+            <PayPalScriptProvider options={paypalOptions}>
+              <ThemeProvider>
+                <ModalProvider>
+                  <PlayerProvider>
+                    <App />
+                  </PlayerProvider>
+                </ModalProvider>
+              </ThemeProvider>
+            </PayPalScriptProvider>
+          </RainbowKitProvider>
+        </WagmiProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
+  </React.StrictMode>
+);
 
 const container = document.getElementById('root');
-
 if (container) {
-  // Check if a root has already been created.
-  // We check an internal property to avoid this warning in HMR.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let root = (container as any)._reactRootContainer; 
-  
-  if (!root) {
-    // If no root exists, create one and store it.
-    root = ReactDOM.createRoot(container);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (container as any)._reactRootContainer = root;
-  }
-
-  // Call render on the existing or new root.
+  const root = ReactDOM.createRoot(container);
   root.render(<Root />);
-  
 } else {
-  console.error('Failed to find the root element to mount React.');
+  throw new Error('Root element not found');
 }

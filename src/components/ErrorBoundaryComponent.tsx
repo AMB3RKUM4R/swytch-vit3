@@ -1,8 +1,8 @@
 // src/components/ErrorBoundaryComponent.tsx
 import { useState, useEffect, ReactNode, FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertTriangle } from 'lucide-react'; // Use AlertTriangle
-import { SwytchErrorBoundaryProps } from '@/lib/types'; // Import the type
+import { X, AlertTriangle } from 'lucide-react';
+import { SwytchErrorBoundaryProps } from '@/lib/types';
 
 const errorModalVariants = {
   hidden: { opacity: 0, scale: 0.8 },

@@ -4,10 +4,8 @@ import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 import { MEMBERSHIP_TIERS } from '@/lib/types';
-import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
-import { useModal } from '@/components/context/ModalContext'; // Import modal hook
-
-// This component is now self-sufficient and requires no props.
+import { usePlayer } from '@/components/context/PlayerContext';
+import { useModal } from '@/components/context/ModalContext';
 
 const levels = Object.entries(MEMBERSHIP_TIERS).map(([key, tier]) => ({
   ...tier,
@@ -16,13 +14,12 @@ const levels = Object.entries(MEMBERSHIP_TIERS).map(([key, tier]) => ({
   cost: tier.usdAmount,
   reward: 'Exclusive Rewards',
   energyRequired: 'Varies',
-  perks: ['Access to exclusive features', 'Priority support'],
+  perks: ['Access to exclusive features', 'Priority support', 'Enhanced Energy'],
   icon: Sparkles,
   image: `https://placehold.co/150x100/1e293b/94a3b8?text=${tier.name.replace(/\s/g, '+')}`,
 }));
 
 const SwytchLevelsGrid: FC = () => {
-  // Pull data from our global contexts
   const { userId, currentLevel, dataLoading, authLoading } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
   const isPending = dataLoading || authLoading;
@@ -37,7 +34,6 @@ const SwytchLevelsGrid: FC = () => {
       setShowMessage(`ℹ️ You are already at or above ${level.title}.`);
       return;
     }
-    // All purchases are now routed through the PaymentModal
     setShowMessage(`Opening payment options for ${level.title}...`);
     setActiveModal('payment');
   };
@@ -45,7 +41,7 @@ const SwytchLevelsGrid: FC = () => {
   if (authLoading || isPending) {
     return (
       <SwytchCard variant="default" className="p-6 text-center">
-        <p className="text-muted-foreground">Loading levels...</p>
+        <p className="text-muted-foreground">Loading tiers...</p>
       </SwytchCard>
     );
   }
@@ -63,6 +59,7 @@ const SwytchLevelsGrid: FC = () => {
         {levels.map((levelItem) => (
           <motion.div key={levelItem.id} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
             <SwytchCard
+              // Use holographic for the tiers that can be purchased
               variant={levelItem.level <= currentLevel ? "default" : "holographic"}
               className="p-5 h-full flex flex-col"
             >

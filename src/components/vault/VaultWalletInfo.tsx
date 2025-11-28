@@ -1,9 +1,7 @@
 import { FC } from 'react';
 import { Wallet, Link, DollarSign, Activity, HardHat, User, Zap } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { VaultWalletInfoProps } from '@/lib/types'; // Import from types
-
-// This component receives props from its parent page (Vault.tsx)
+import { VaultWalletInfoProps } from '@/lib/types';
 
 const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
   isConnected,
@@ -14,6 +12,13 @@ const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
   gasPrice,
   usdtBalance,
 }) => {
+    
+  // Helper to format large numbers like Block Number and Gas Price
+  const formatBigInt = (value: bigint | null | undefined, unit: string = '') => {
+      if (value === null || value === undefined) return 'N/A';
+      return `${value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${unit}`;
+  }
+  
   return (
     <SwytchCard variant="default" className="p-6">
       <h2 className="text-2xl font-bold text-foreground font-poppins mb-6 text-center">
@@ -63,7 +68,8 @@ const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
             <HardHat className="w-5 h-5 text-orange-400" />
             <div>
               <p className="text-sm text-muted-foreground">Current Block</p>
-              <p className="font-semibold">{blockNumber.toString()}</p>
+              {/* FIX: Use helper function for readability */}
+              <p className="font-semibold">{formatBigInt(blockNumber)}</p>
             </div>
           </div>
         )}
@@ -73,6 +79,7 @@ const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
             <Zap className="w-5 h-5 text-red-400" />
             <div>
               <p className="text-sm text-muted-foreground">Gas Price</p>
+              {/* FIX: Use helper function for readability */}
               <p className="font-semibold">{(Number(gasPrice) / 1e9).toFixed(2)} Gwei</p>
             </div>
           </div>

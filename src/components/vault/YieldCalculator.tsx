@@ -1,10 +1,10 @@
 // src/components/vault/YieldCalculator.tsx
-import { FC, useState } from 'react';
+import { FC, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calculator, Zap, TrendingUp, AlertTriangle } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
-import { useModal } from '@/components/context/ModalContext'; // Import modal hook
+import { usePlayer } from '@/components/context/PlayerContext';
+import { useModal } from '@/components/context/ModalContext';
 
 // This component is now self-sufficient and requires no props.
 
@@ -16,50 +16,58 @@ interface Tier {
 }
 
 const tiers: Tier[] = [
-  { level: 1, title: 'Bronze Tier', minDeposit: 100, monthlyYieldRate: 0.01 }, // 1%
-  { level: 2, title: 'Silver Tier', minDeposit: 500, monthlyYieldRate: 0.015 }, // 1.5%
-  { level: 3, title: 'Gold Tier', minDeposit: 1000, monthlyYieldRate: 0.02 }, // 2%
-  { level: 4, title: 'Platinum Tier', minDeposit: 5000, monthlyYieldRate: 0.025 }, // 2.5%
+  { level: 1, title: 'Bronze Tier (1%)', minDeposit: 100, monthlyYieldRate: 0.01 },
+  { level: 2, title: 'Silver Tier (1.5%)', minDeposit: 500, monthlyYieldRate: 0.015 },
+  { level: 3, title: 'Gold Tier (2%)', minDeposit: 1000, monthlyYieldRate: 0.02 },
+  { level: 4, title: 'Platinum Tier (2.5%)', minDeposit: 5000, monthlyYieldRate: 0.025 },
 ];
 
+interface YieldResult {
+  tier: Tier | null;
+  monthlyReward: number;
+  annualReward: number;
+  fiveYearProjection: number;
+}
+
 const YieldCalculator: FC = () => {
-  // Pull data from our global contexts
   const { userId } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
 
-  const [depositAmount, setDepositAmount] = useState<number | ''>('');
-  const [calculatedYield, setCalculatedYield] = useState<{
-    tier: Tier | null;
-    monthlyReward: number;
-    annualReward: number;
-    fiveYearProjection: number;
-  } | null>(null);
+  // FIX: State initialization for input should be consistent (string)
+  const [depositAmountInput, setDepositAmountInput] = useState<string>('');
+  const [calculatedYield, setCalculatedYield] = useState<YieldResult | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const calculateReward = () => {
+  const parsedDepositAmount = parseFloat(depositAmountInput);
+
+  const calculateReward = useCallback(() => {
     setLocalError(null);
-    if (typeof depositAmount !== 'number' || depositAmount <= 0) {
+
+    // 1. Basic validation
+    if (isNaN(parsedDepositAmount) || parsedDepositAmount <= 0) {
       setLocalError('Please enter a valid deposit amount.');
       return;
     }
-    if (depositAmount < tiers[0].minDeposit) {
+    if (parsedDepositAmount < tiers[0].minDeposit) {
       setLocalError(`Minimum deposit is $${tiers[0].minDeposit}.`);
       return;
     }
 
-    const tier = tiers.slice().reverse().find(t => depositAmount >= t.minDeposit) || null;
+    // 2. Determine the highest qualifying tier (tiers must be sorted ascending by minDeposit)
+    const tier = tiers.slice().reverse().find(t => parsedDepositAmount >= t.minDeposit) || null;
 
     if (!tier) {
-      setLocalError('No tier found for this deposit amount.');
+      setLocalError('Calculation failed: No tier found.');
       return;
     }
 
-    const monthlyReward = depositAmount * tier.monthlyYieldRate;
+    // 3. Simple Calculation
+    const monthlyReward = parsedDepositAmount * tier.monthlyYieldRate;
     const annualReward = monthlyReward * 12;
 
-    // Simple compounding for 5 years
-    let projection = depositAmount;
-    for (let i = 0; i < 60; i++) { // 60 months = 5 years
+    // 4. Compounding Projection (5 years = 60 months)
+    let projection = parsedDepositAmount;
+    for (let i = 0; i < 60; i++) {
       projection += projection * tier.monthlyYieldRate;
     }
 
@@ -70,7 +78,7 @@ const YieldCalculator: FC = () => {
       fiveYearProjection: parseFloat(projection.toFixed(2)),
     });
     setShowMessage(`✅ Yield calculated for ${tier.title}!`);
-  };
+  }, [parsedDepositAmount, setShowMessage]);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +87,7 @@ const YieldCalculator: FC = () => {
       setActiveModal('auth');
       return;
     }
-    calculateReward(); // Perform local calculation
+    calculateReward();
   };
 
   return (
@@ -99,8 +107,10 @@ const YieldCalculator: FC = () => {
           <input
             id="deposit-amount"
             type="number"
-            value={depositAmount}
-            onChange={(e) => setDepositAmount(parseFloat(e.target.value) || '')}
+            // FIX: Use depositAmountInput string state for input value
+            value={depositAmountInput}
+            // FIX: Update state with the raw string/number
+            onChange={(e) => setDepositAmountInput(e.target.value)} 
             placeholder={`Min $${tiers[0].minDeposit}`}
             className="input w-full"
             min={tiers[0].minDeposit}
@@ -110,6 +120,8 @@ const YieldCalculator: FC = () => {
         <motion.button
           type="submit"
           className="btn-primary w-full flex items-center justify-center gap-2"
+          // Disable calculation button if input is invalid or less than minimum
+          disabled={isNaN(parsedDepositAmount) || parsedDepositAmount < tiers[0].minDeposit} 
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -139,9 +151,9 @@ const YieldCalculator: FC = () => {
               <TrendingUp className="w-6 h-6 text-green-400" /> Your Projection
             </h3>
             <p className="text-muted-foreground font-inter">Tier: <span className="font-semibold text-primary">{calculatedYield.tier?.title || 'N/A'}</span></p>
-            <p className="text-muted-foreground font-inter">Monthly Reward: <span className="font-semibold text-foreground">${calculatedYield.monthlyReward}</span></p>
-            <p className="text-muted-foreground font-inter">Annual Reward: <span className="font-semibold text-foreground">${calculatedYield.annualReward}</span></p>
-            <p className="text-muted-foreground font-inter">Projection in 5 Years: <span className="font-bold text-yellow-400">${calculatedYield.fiveYearProjection}</span></p>
+            <p className="text-muted-foreground font-inter">Monthly Reward: <span className="font-semibold text-foreground">${calculatedYield.monthlyReward.toLocaleString()}</span></p>
+            <p className="text-muted-foreground font-inter">Annual Reward: <span className="font-semibold text-foreground">${calculatedYield.annualReward.toLocaleString()}</span></p>
+            <p className="text-muted-foreground font-inter">Projection in 5 Years (Compounded): <span className="font-bold text-yellow-400">${calculatedYield.fiveYearProjection.toLocaleString()}</span></p>
             <p className="text-xs text-muted-foreground/70 mt-2 font-inter">
               *Projections are estimates and do not guarantee future returns. Subject to terms and conditions.
             </p>

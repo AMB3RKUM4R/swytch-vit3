@@ -12,14 +12,12 @@ export const MEMBERSHIP_TIERS = {
 } as const;
 
 export type SupportedCurrency = 'ETH' | 'JOULES' | 'USDT' | 'INR';
-export type TransactionType = 'membership' | 'deposit' | 'withdraw' | 'level-purchase' | 'quest-reward' | 'payout' | 'connect' | 'disconnect' | 'item-purchase' | 'item-sale' | 'crypto-swap';
-export type TransactionStatus = 'success' | 'pending' | 'failed' | 'approved' | 'completed' | 'rejected';
+export type TransactionType = 'membership' | 'deposit' | 'withdraw' | 'level-purchase' | 'quest-reward' | 'payout' | 'connect' | 'disconnect' | 'item-purchase' | 'item-sale' | 'crypto-swap' | 'ad_reward' | 'loot_drop' | 'game_reward';
+export type TransactionStatus = 'success' | 'pending' | 'failed' | 'approved' | 'completed' | 'rejected' | 'withdrawal_processing' | 'withdrawal_pending' | 'withdrawal_failed';
 
-// FIX: This interface was incorrectly defined in the user's version, causing conflicts.
-// This is the clean, correct definition.
 export interface InventoryItem {
   itemId: string;
-  acquiredAt: Timestamp;
+  acquiredAt: Timestamp | FieldValue; // Use FieldValue for consistency in Functions
   isListed?: boolean;
 }
 export interface ItemDefinition {
@@ -29,9 +27,9 @@ export interface ItemDefinition {
   rarity: 'E-Rank' | 'D-Rank' | 'C-Rank' | 'B-Rank' | 'A-Rank' | 'S-Rank';
   description: string;
   levelRequirement?: number;
-  stats?: { [key: string]: number };
-  visuals?: { prefabName: string; iconName: string; };
-  price?: { [key in SupportedCurrency]?: number } & { USD?: number };
+  stats?: {[key: string]: number};
+  visuals?: {prefabName: string; iconName: string;};
+  price?: {[key in SupportedCurrency]?: number} & {USD?: number};
 }
 export interface PlayerData {
   userId: string;
@@ -49,36 +47,38 @@ export interface PlayerData {
   updatedAt: Timestamp | FieldValue;
   energy: number;
   mana: number;
-  character: { selectedID: string; skin: string; } | null;
+  character: {selectedID: string; skin: string;} | null;
   inventory: {
-    equipped: { weapon: string | null; armor: string | null; };
-    items: { [instanceId: string]: InventoryItem; };
+    equipped: {weapon: string | null; armor: string | null;};
+    items: {[instanceId: string]: InventoryItem;};
   } | null;
-  profilePictureUrl?: string | null; // <-- FIX: Added for 2D Avatar
+  profilePictureUrl?: string | null;
+  session?: { // Optional on server, but typically defined on create
+    webToken: string | null;
+    webTokenCreatedAt: Timestamp | FieldValue | null;
+  }
 }
 
-// FIX: This interface was incorrectly defined, causing type conflicts.
-// This is the clean, correct definition.
 export interface Transaction {
-  id?: string; // Optional doc ID
+  id?: string;
   transactionId: string;
   userId: string;
   amount: number;
-  currency: SupportedCurrency | 'USD';
+  currency: SupportedCurrency | 'USD' | 'INR';
   transactionType: TransactionType;
   status: TransactionStatus;
   timestamp: Timestamp | FieldValue;
   itemId?: string | null;
   paymentGatewayId?: string | null;
   smartContractAddress?: string;
-  transactionHash?: `0x${string}`;
+  transactionHash?: string; // Changed to string for server-side compatibility
 }
 export interface Quest {
   id: string;
   title: string;
   progress: number;
   goal: number;
-  rewardJOULES: number; // <-- FIX: Corrected typo
+  rewardJOULES: number;
   rewardXP: number;
   completed: boolean;
 }
@@ -103,7 +103,6 @@ export interface LeaderboardEntry {
   joules: number;
   avatar: string;
 }
-// FIX: Added ChatMessage and ShopListing types
 export interface ChatMessage {
   id?: string;
   userId: string;
@@ -116,7 +115,7 @@ export interface ShopListing {
   priceInJoules: number;
   type: ReactNode;
   id?: string;
-  itemId: string; // The ID from ItemDefinitions
+  itemId: string;
   name: string;
   description: string;
   imageUrl: string;
@@ -128,20 +127,17 @@ export interface ShopListing {
 
 
 // ==========================================================
-// Component & Page Prop Interfaces (Alphabetized)
+// Component & Page Prop Interfaces (Excluded from Functions build, but defined for completeness)
 // ==========================================================
-// Most of these are now empty as components are self-sufficient.
 
-export interface ActionButtonsPanelProps {} // No props needed
-export interface AuthModalProps {
-  setShowMessage: (message: string) => void;
-}
-export interface BottomNavProps {} // No props needed
-export interface CommunityFeaturesProps {} // No props needed
-export interface CommunityHeroProps {} // No props needed
-export interface CommunityRankingsProps {} // No props needed
-export interface CoreFeaturesShowcaseProps {} // No props needed
-export interface FeaturedCardsProps {} // No props needed
+export interface ActionButtonsPanelProps {} 
+export interface AuthModalProps { setShowMessage: (message: string) => void; }
+export interface BottomNavProps {} 
+export interface CommunityFeaturesProps {} 
+export interface CommunityHeroProps {} 
+export interface CommunityRankingsProps {} 
+export interface CoreFeaturesShowcaseProps {} 
+export interface FeaturedCardsProps {} 
 export interface InventoryItemCardProps {
   instance: InventoryItem;
   definition: ItemDefinition;
@@ -150,7 +146,7 @@ export interface InventoryItemCardProps {
   onUseConsumable: () => void;
   isEquipped: boolean;
   isListed: boolean;
-  instanceId: string; // Need this to pass to modal
+  instanceId: string; 
 }
 export interface ListForSaleModalProps {
   itemInstance: InventoryItem;
@@ -159,24 +155,19 @@ export interface ListForSaleModalProps {
   onClose: () => void;
   onSuccess: (instanceId: string) => void;
 }
-export interface LoadingScreenProps {
-  message: string;
-}
-export interface LoadingSpinnerProps {
-  message?: string; fullScreen?: boolean;
-}
+export interface LoadingScreenProps { message: string; }
+export interface LoadingSpinnerProps { message?: string; fullScreen?: boolean; }
 export interface MembershipBenefitsProps {}
-export interface MembershipStatusOverviewProps {} // No props needed
-export interface MessageDisplayProps {} // No props needed
-export interface PageProps {} // This is now empty, all pages use hooks
+export interface MembershipStatusOverviewProps {} 
+export interface MessageDisplayProps {} 
+export interface PageProps {} 
 export interface PaymentModalProps {
-  // We can add props here if we want to pass a specific item to buy
   defaultAmount?: number;
   defaultItemId?: string;
   defaultDepositType?: TransactionType;
 }
-export interface QuickAccessGamesProps {} // No props needed
-export interface RecentPurchasesProps {} // No props needed
+export interface QuickAccessGamesProps {} 
+export interface RecentPurchasesProps {} 
 export interface SwytchCardProps {
   children: ReactNode;
   variant: 'default' | 'holographic';
@@ -188,16 +179,16 @@ export interface SwytchErrorBoundaryProps {
   setShowMessage: Dispatch<SetStateAction<string>>;
   setActiveModal: Dispatch<SetStateAction<string | null>>;
 }
-export interface SwytchLevelsGridProps {} // No props needed
-export interface TopNavProps {} // No props needed
-export interface TrustMarketHeroProps {} // No props needed
-export interface TrustProgressionProps {} // No props needed
-export interface TrustMarketCTAProps {} // No props needed
+export interface SwytchLevelsGridProps {} 
+export interface TopNavProps {} 
+export interface TrustMarketHeroProps {} 
+export interface TrustProgressionProps {} 
+export interface TrustMarketCTAProps {} 
 export interface TrustRewardTiersProps {}
-export interface UserInventoryDisplayProps {} // No props needed
-export interface UserOverviewCardProps {} // No props needed
+export interface UserInventoryDisplayProps {} 
+export interface UserOverviewCardProps {} 
 export interface VaultMembershipBenefitsProps {}
-export interface VaultMembershipPackagesProps {} // No props needed
+export interface VaultMembershipPackagesProps {} 
 export interface VaultRulesProps {}
 export interface VaultWalletInfoProps {
   isConnected: boolean;
@@ -206,7 +197,6 @@ export interface VaultWalletInfoProps {
   ensName: string | null;
   blockNumber: bigint | null;
   gasPrice: bigint | undefined;
-  // FIX: Added symbol and decimals to fix the error
   usdtBalance: {
     formatted: string;
     value: bigint;
@@ -214,6 +204,5 @@ export interface VaultWalletInfoProps {
     decimals: number;
   } | undefined;
 }
-export interface WalletSwapFormsProps {} // No props needed
-export interface YieldCalculatorProps {} // No props needed
-
+export interface WalletSwapFormsProps {} 
+export interface YieldCalculatorProps {}

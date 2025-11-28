@@ -6,7 +6,7 @@ import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
 import SwytchCard from '@/components/SwytchCard';
-import FeaturedCards from '@/components/FeaturedCards'; // Re-using this component
+import FeaturedCards from '@/components/FeaturedCards';
 
 // Animation variants
 const containerVariants = {
@@ -38,13 +38,12 @@ const LandingPage: FC = () => {
       >
         <div className="relative z-10 max-w-7xl mx-auto pt-24 pb-32 px-4 sm:px-6 lg:px-8">
           
-          {/* --- 1. HERO SECTION --- */}
+          {/* --- 1. HERO SECTION (Restored: text-glow-primary) --- */}
           <motion.section 
             variants={sectionVariants} 
             className="text-center p-8 mb-20"
           >
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 260, damping: 20 }}>
-              {/* You can replace this with your actual logo component or image */}
               <Gamepad2 className="mx-auto w-24 h-24 text-primary text-glow-primary mb-6" />
             </motion.div>
             <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-6 text-glow-primary tracking-tight">
@@ -66,7 +65,7 @@ const LandingPage: FC = () => {
             </motion.button>
           </motion.section>
 
-          {/* --- 2. THE PSYCHOLOGICAL SHIFT (CALLOUT) --- */}
+          {/* --- 2. THE PSYCHOLOGICAL SHIFT (CALLOUT - Restored: holographic-card) --- */}
           <motion.section variants={sectionVariants} className="mb-20">
             <SwytchCard variant="holographic" className="p-8 lg:p-12">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
@@ -89,7 +88,7 @@ const LandingPage: FC = () => {
             </SwytchCard>
           </motion.section>
 
-          {/* --- 3. CORE FEATURES SECTION (Using existing component) --- */}
+          {/* --- 3. CORE FEATURES SECTION (Restored: text-glow-secondary) --- */}
           <motion.section variants={sectionVariants} className="mb-20">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-secondary tracking-tight">
               A New Order
@@ -97,23 +96,23 @@ const LandingPage: FC = () => {
             <FeaturedCards />
           </motion.section>
 
-          {/* --- 4. THE ECONOMIC FLOW (CALLOUT) --- */}
+          {/* --- 4. THE ECONOMIC FLOW (CALLOUT - Restored: holographic-card in subsections) --- */}
           <motion.section variants={sectionVariants} className="mb-20">
             <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-secondary tracking-tight">
               The Economic Flow
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-              <SwytchCard variant="default" className="p-6">
+              <SwytchCard variant="holographic" className="p-6">
                 <Gamepad2 className="w-12 h-12 text-primary mx-auto mb-4" />
                 <h3 className="text-2xl font-semibold font-poppins text-foreground mb-2">1. Play & Earn</h3>
                 <p className="text-muted-foreground">You play Swytch games, earn Energy. Energy is your proof-of-participation.</p>
               </SwytchCard>
-              <SwytchCard variant="default" className="p-6">
+              <SwytchCard variant="holographic" className="p-6">
                 <DollarSign className="w-12 h-12 text-green-400 mx-auto mb-4" />
                 <h3 className="text-2xl font-semibold font-poppins text-foreground mb-2">2. Convert to Value</h3>
                 <p className="text-muted-foreground">Your Energy converts to Swytch Stablecoin, tied to USDT, liquid, and tradable.</p>
               </SwytchCard>
-              <SwytchCard variant="default" className="p-6">
+              <SwytchCard variant="holographic" className="p-6">
                 <Lock className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
                 <h3 className="text-2xl font-semibold font-poppins text-foreground mb-2">3. Join & Withdraw</h3>
                 <p className="text-muted-foreground">A $10 SPM unlocks the ecosystem. You own your data, control your wallet, and live on your terms.</p>
@@ -154,7 +153,7 @@ const LandingPage: FC = () => {
             </SwytchCard>
           </motion.section>
 
-          {/* --- 6. FINAL CTA --- */}
+          {/* --- 6. FINAL CTA (Restored: text-glow-primary) --- */}
           <motion.section variants={sectionVariants} className="text-center">
             <h2 className="text-4xl font-bold text-foreground font-russo mb-6 text-glow-primary">
               Your New Identity Awaits.

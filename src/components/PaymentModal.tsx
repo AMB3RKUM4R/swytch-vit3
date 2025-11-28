@@ -44,8 +44,12 @@ const PaymentModal: FC = () => {
   // ── UPI Payment Handler ────────────────
   const handleUpiPayment = useCallback(() => {
     setError(null);
-    if (!userId || !amount || parseFloat(amount) <= 0) {
-      setError('Please log in and enter a valid amount.');
+    if (!userId) {
+      setError('Please log in before initiating a payment.');
+      return;
+    }
+    if (!amount || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount.');
       return;
     }
 
@@ -56,21 +60,17 @@ const PaymentModal: FC = () => {
 
     // 1. Log Transaction as Pending (Crucial for Admin Approval)
     {
-      // Build a synthetic hex-prefixed ID so the value conforms to the `0x${string}` branded type
-      const upiId = `UPI_INIT_${Date.now()}`;
-      const upiHex = '0x' + Array.from(upiId)
-        .map((c) => c.charCodeAt(0).toString(16).padStart(2, '0'))
-        .join('');
-
+      const transactionId = `UPI_INIT_${Date.now()}_${userId.slice(0, 4)}`;
+      
       logTransaction({
-        userId: userId!,
+        transactionId: transactionId,
+        userId: userId,
         amount: parseFloat(parsedAmount),
         currency: 'INR' as SupportedCurrency,
         transactionType: 'deposit',
         status: 'pending',
         itemId: 'upi-deposit-direct',
         paymentGatewayId: STATIC_UPI_ID,
-        transactionHash: upiHex as `0x${string}`,
       });
     }
 
@@ -87,8 +87,9 @@ const PaymentModal: FC = () => {
   // ── Crypto confirmation handling ─────────────────
   useEffect(() => {
     if (isConfirmed && hash) {
-      setShowMessage('Crypto deposit confirmed! Your balance will be updated shortly (requires manual admin approval).');
+      const transactionId = `ETH_TX_${hash.slice(0, 10)}`;
       logTransaction({
+        transactionId: transactionId,
         userId: userId!,
         amount: parseFloat(amount),
         currency: 'ETH' as SupportedCurrency,
@@ -98,19 +99,16 @@ const PaymentModal: FC = () => {
         paymentGatewayId: RECEIVER_ETH_ADDRESS, 
         transactionHash: hash,
       });
+      setShowMessage('Crypto deposit confirmed! Your balance will be updated shortly (requires manual admin approval).');
       setActiveModal(null);
     }
 
-    const anyError =
-      txError || (hash === null && !isTxPending && sendTransaction)
-        ? new Error('Transaction rejected or failed.')
-        : null;
-    if (anyError) {
-      const msg = anyError.message.includes('User rejected')
-        ? 'Wallet transaction was rejected.'
-        : 'Crypto transaction failed.';
-      setError(msg);
-      setShowMessage(`Warning: ${msg}`);
+    if (txError) { 
+        const msg = (txError.message || '').includes('User rejected')
+          ? 'Wallet transaction was rejected.'
+          : 'Crypto transaction failed.';
+        setError(msg);
+        setShowMessage(`Warning: ${msg}`);
     }
   }, [
     isConfirmed,
@@ -121,15 +119,18 @@ const PaymentModal: FC = () => {
     logTransaction,
     userId,
     amount,
-    isTxPending,
-    sendTransaction,
+    RECEIVER_ETH_ADDRESS 
   ]);
 
   // ── Crypto payment handler ─────────
   const handleCryptoPayment = () => {
     setError(null);
-    if (!userId || !isConnected || !amount || parseFloat(amount) <= 0) {
-      setError('Please connect your wallet and enter a valid amount.');
+    if (!userId || !isConnected) {
+      setError('Please connect your wallet and log in.');
+      return;
+    }
+    if (!amount || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount.');
       return;
     }
     
@@ -174,7 +175,7 @@ const PaymentModal: FC = () => {
               <HandCoins className="w-7 h-7" /> Make a Payment
             </h2>
 
-            {/* Payment method tabs (REARRANGED: PayPal, Crypto, UPI Intent) */}
+            {/* Payment method tabs */}
             <div className="flex items-center justify-center gap-2 mb-4 p-1 bg-black/20 rounded-lg">
               
               {/* 1. PayPal Button */}

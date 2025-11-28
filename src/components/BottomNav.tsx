@@ -17,22 +17,22 @@ const navItems = [
     { path: '/vault', label: 'Vault', icon: HandCoins },
 ];
 
-// --- FIX 1: REMOVED 'color' from the animation ---
-// Framer motion will only handle scale and position
 const iconVariants = {
-    rest: { scale: 1, y: 0 },
-    hover: { scale: 1.2, y: -5, transition: { duration: 0.2, ease: 'easeOut' } },
+    // FIX: Removed 'y' to prevent jumping on hover/tap
+    rest: { scale: 1 }, 
+    hover: { scale: 1.2, transition: { duration: 0.2, ease: 'easeOut' } },
 };
 
 const BottomNav: FC = () => {
-    const { userId, authLoading } = usePlayer();
+    const { userId, authLoading } = usePlayer(); 
     const { setActiveModal, setShowMessage } = useModal();
 
     const navigate = useNavigate();
     const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
 
     const { disconnect } = useAuthUserWagmi();
-    const { signOutUser } = useAuthUserFirebase({ disconnectWagmi: disconnect });
+    // FIX: Passing the disconnect function from Wagmi to Firebase Hook
+    const { signOutUser } = useAuthUserFirebase({ disconnectWagmi: disconnect }); 
 
     const handleSignOut = async () => {
         await signOutUser();
@@ -41,7 +41,8 @@ const BottomNav: FC = () => {
     };
 
     const handleRestrictedNav = (path: string, label: string) => {
-        if (!userId && path !== '/home' && path !== '/') {
+        // Only allow signed-out users on /home and /
+        if (!userId && path !== '/home' && path !== '/') { 
             setShowMessage(`⚠️ Sign in to access ${label}`);
             setActiveModal('auth');
             return false;
@@ -71,10 +72,9 @@ const BottomNav: FC = () => {
                         <motion.div
                             className="relative flex flex-col items-center"
                             variants={iconVariants}
-                            animate={hoveredLabel === label ? 'hover' : 'rest'}
-                            // REMOVED: initial="rest" (was part of the bug)
+                            animate={hoveredLabel === label ? 'hover' : 'rest'} 
                         >
-                            {/* --- FIX 2: Added Tailwind transition classes --- */}
+                            {/* FIX: Added Tailwind transition classes */}
                             <Icon className="w-7 h-7 text-muted-foreground transition-colors group-hover:text-primary" />
                             <span className="text-xs mt-1 font-inter font-medium text-muted-foreground transition-colors group-hover:text-primary">{label}</span>
                         </motion.div>
@@ -98,7 +98,6 @@ const BottomNav: FC = () => {
                             variants={iconVariants}
                             animate={hoveredLabel === 'Sign Out' ? 'hover' : 'rest'}
                         >
-                            {/* --- FIX 3: Apply text-destructive directly --- */}
                             <LogOut className="w-7 h-7 text-destructive" />
                             <span className="text-xs mt-1 font-inter font-medium text-destructive">Sign Out</span>
                         </motion.div>
@@ -115,7 +114,7 @@ const BottomNav: FC = () => {
                             variants={iconVariants}
                             animate={hoveredLabel === 'Sign In' ? 'hover' : 'rest'}
                         >
-                            {/* --- FIX 4: Added Tailwind transition classes --- */}
+                            {/* FIX: Added Tailwind transition classes */}
                             <User className="w-7 h-7 text-muted-foreground transition-colors group-hover:text-primary" />
                             <span className="text-xs mt-1 font-inter font-medium text-muted-foreground transition-colors group-hover:text-primary">Sign In</span>
                         </motion.div>

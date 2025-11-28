@@ -15,8 +15,9 @@ const CommunityChat: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    // FIX: Use optional chaining with check for safety
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
   useEffect(() => {
@@ -33,9 +34,11 @@ const CommunityChat: FC = () => {
       snapshot.forEach(doc => {
         fetchedMessages.push({ id: doc.id, ...doc.data() } as ChatMessage);
       });
-      setMessages(fetchedMessages.reverse()); // Reverse to show oldest first
+      setMessages(fetchedMessages.reverse()); 
       setLoading(false);
-      scrollToBottom();
+      // FIX: Scroll after receiving new messages
+      // Use 'auto' behavior on first load for snappier startup, 'smooth' afterward.
+      scrollToBottom(messages.length === 0 ? "auto" : "smooth"); 
     }, (err) => {
       console.error('Failed to fetch chat:', err);
       setError('Failed to load chat. Please try again.');
@@ -43,11 +46,14 @@ const CommunityChat: FC = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, []); // Dependencies are correct here (empty array)
 
+  // FIX: Removed this redundant and potentially problematic useEffect:
+  /*
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  */
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +66,7 @@ const CommunityChat: FC = () => {
       await addDoc(collection(db, 'CommunityChat'), {
         userId: userId,
         username: playerData.username,
-        profilePictureUrl: playerData.profilePictureUrl || null, // Use new 2D avatar
+        profilePictureUrl: playerData.profilePictureUrl || null,
         text: messageText,
         timestamp: serverTimestamp()
       });

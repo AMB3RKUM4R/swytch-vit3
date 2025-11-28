@@ -45,4 +45,3 @@ export function timeAgo(timestamp: Timestamp): string {
   }
   return Math.floor(seconds) + "s ago";
 }
-

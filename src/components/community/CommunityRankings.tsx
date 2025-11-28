@@ -1,38 +1,33 @@
 // src/components/community/CommunityRankings.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Gem, BarChart, User as UserIcon, Loader2 } from 'lucide-react'; // Added Loader2 and UserIcon
+import { Trophy, Gem, BarChart, User as UserIcon, Loader2 } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 import { PlayerData } from '@/lib/types';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
-import { usePlayer } from '@/components/context/PlayerContext'; // Import usePlayer
+import { usePlayer } from '@/components/context/PlayerContext';
 
-// Define the LeaderboardEntry interface
 interface LeaderboardEntry {
   rank: number;
   name: string;
   level: number;
   joules: number;
-  avatar: string | null; // Avatar can be null
+  avatar: string | null;
 }
 
-// This component is now self-contained and fetches its own data.
-// It no longer requires any props.
-interface CommunityRankingsProps {}
-
-const CommunityRankings: FC<CommunityRankingsProps> = () => {
+const CommunityRankings: FC = () => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { playerData } = usePlayer(); // Get current player data
+  const { playerData } = usePlayer();
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     const q = query(
       collection(db, 'Players'),
-      orderBy('joules', 'desc'), // Rank by JOULES
+      orderBy('joules', 'desc'),
       limit(10)
     );
 
@@ -46,15 +41,14 @@ const CommunityRankings: FC<CommunityRankingsProps> = () => {
           name: data.username || `Hunter-${doc.id.slice(0, 4)}`,
           level: data.level,
           joules: data.joules,
-          avatar: data.profilePictureUrl || null, // Use the new profilePictureUrl
+          avatar: data.profilePictureUrl || null,
         });
       });
       setLeaderboardData(fetchedLeaderboard);
       setLoading(false);
     }, (err) => {
       console.error('Failed to fetch leaderboard:', err);
-      // This can happen if the 'joules' index has not been created in Firestore yet.
-      // Firestore will provide a link in the console error to automatically create it.
+      // NOTE: This will require a Firestore index on 'joules' field.
       setError('Failed to load leaderboard. Check console for index creation link.');
       setLoading(false);
     });
@@ -82,7 +76,7 @@ const CommunityRankings: FC<CommunityRankingsProps> = () => {
             <motion.div
               key={entry.rank}
               className={`bg-gray-800/50 p-3 rounded-lg border flex items-center justify-between
-                ${entry.name === playerData?.username ? 'border-primary' : 'border-gray-700'}`} // Highlight current user
+                ${entry.name === playerData?.username ? 'border-primary' : 'border-gray-700'}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}

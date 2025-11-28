@@ -1,9 +1,8 @@
 // src/components/SwytchCard.tsx
 import { FC, ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils'; // We'll use cn for better class merging
+import { cn } from '@/lib/utils';
 
-// Refactored to be a more flexible and professional component
 interface SwytchCardProps {
   children: ReactNode;
   className?: string;
@@ -21,8 +20,8 @@ const SwytchCard: FC<SwytchCardProps> = ({
     <motion.div
       className={cn(
         "relative p-6 rounded-lg font-inter",
-        variant === 'default' && 'card', // Uses the new .card style from index.css
-        variant === 'holographic' && 'holographic-card', // Uses the new .holographic-card style
+        variant === 'default' && 'card',
+        variant === 'holographic' && 'holographic-card',
         onClick && "cursor-pointer",
         className
       )}
@@ -31,7 +30,6 @@ const SwytchCard: FC<SwytchCardProps> = ({
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       onClick={onClick}
     >
-      {/* Content */}
       <div className="relative z-10">
         {children}
       </div>

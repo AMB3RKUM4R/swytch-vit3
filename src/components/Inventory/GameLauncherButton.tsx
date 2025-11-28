@@ -1,91 +1,74 @@
 // src/components/Inventory/GameLauncherButton.tsx
 import { FC, useState, useCallback } from 'react';
-// import { Button } from '@/components/ui/button'; // --- DELETED THIS LINE ---
 import { Play, Loader2 } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useModal } from '@/components/context/ModalContext';
 
-// --- IMPORTANT ---
-// 1. Place your APK file (e.g., "swytch.apk") in your Next.js /public folder.
-// 2. Change this URL to match your APK file name.
-const APK_DOWNLOAD_URL = '/swytch-game.apk'; // This must match your file in /public
-
-// How long to wait (in ms) before assuming the deep link failed
-const DEEP_LINK_LAUNCH_TIMEOUT = 2500; 
+const APK_DOWNLOAD_URL = '/swytch-game.apk';
+const DEEP_LINK_TIMEOUT = 3000;
 
 const GameLauncherButton: FC = () => {
   const { setShowMessage } = useModal();
-  const [isLaunchingGame, setIsLaunchingGame] = useState(false);
-  const auth = getAuth();
-  const functions = getFunctions();
+  const [isLaunching, setIsLaunching] = useState(false);
 
-  const handlePlayGame = useCallback(async () => {
+  const handleLaunch = useCallback(async () => {
+    const auth = getAuth();
     if (!auth.currentUser) {
-      setShowMessage("Error: You must be logged in to play.");
+      setShowMessage("Please sign in to play");
       return;
     }
-    if (isLaunchingGame) return; // Prevent double-clicks
 
-    setIsLaunchingGame(true);
+    setIsLaunching(true);
 
     try {
-      // 1. Get the secure one-time token from your Firebase Function
-      const generateWebSession = httpsCallable(functions, 'generateWebSession');
-      const result = await generateWebSession();
-      const data = result.data as { token: string };
-      const webToken = data.token;
+      const functions = getFunctions();
+      const generateToken = httpsCallable(functions, 'generateWebSession');
+      const result = await generateToken();
+      const { token } = result.data as { token: string };
 
-      if (!webToken) throw new Error("No token returned from function.");
+      const deepLink = `swytch://play?token=${token}`;
 
-      // 2. Construct the deep link your Unity app will catch
-      const deepLinkUrl = `swytch://play?token=${webToken}`;
-
-      // 3. Set a timer. If the user is still on the page after 2.5s,
-      //    we assume the app isn't installed and start the download.
-      const downloadTimer = setTimeout(() => {
-        // Check if the user is still on the page
+      const timer = setTimeout(() => {
         if (document.hasFocus()) {
-          setShowMessage("Game not installed. Starting download...");
+          setShowMessage("Game not installed. Downloading APK...");
           window.location.href = APK_DOWNLOAD_URL;
         }
-        setIsLaunchingGame(false);
-      }, DEEP_LINK_LAUNCH_TIMEOUT);
+      }, DEEP_LINK_TIMEOUT);
 
-      // 4. Add a one-time listener. If the browser window "blurs" (loses focus),
-      //    it means the app is opening, so we cancel the download timer.
-      const handleBlur = () => {
-        clearTimeout(downloadTimer);
-        window.removeEventListener('blur', handleBlur);
-        setIsLaunchingGame(false); // Reset button
+      const onBlur = () => {
+        clearTimeout(timer);
+        window.removeEventListener('blur', onBlur);
       };
-      window.addEventListener('blur', handleBlur);
+      window.addEventListener('blur', onBlur);
 
-      // 5. Attempt to launch the game
-      window.location.href = deepLinkUrl;
+      window.location.href = deepLink;
 
     } catch (error) {
-      console.error("Failed to generate game session:", error);
-      setShowMessage("Error: Could not launch game. Please try again.");
-      setIsLaunchingGame(false);
+      console.error(error);
+      setShowMessage("Failed to launch game");
+      setIsLaunching(false);
     }
-  }, [auth, functions, isLaunchingGame, setShowMessage]);
+  }, [setShowMessage]);
 
   return (
-    // --- THIS IS THE MODIFIED PART ---
-    <button 
-      onClick={handlePlayGame} 
-      disabled={isLaunchingGame} 
-      className="w-full text-lg py-6 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md flex items-center justify-center font-semibold disabled:opacity-50 transition-colors"
+    <button
+      onClick={handleLaunch}
+      disabled={isLaunching}
+      className="w-full py-8 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-700 hover:to-purple-700 rounded-2xl font-black text-2xl flex items-center justify-center gap-4 disabled:opacity-70 transition-all"
     >
-      {isLaunchingGame ? (
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+      {isLaunching ? (
+        <>
+          <Loader2 className="w-10 h-10 animate-spin" />
+          Launching...
+        </>
       ) : (
-        <Play className="mr-2 h-5 w-5" />
+        <>
+          <Play className="w-10 h-10" />
+          PLAY NOW
+        </>
       )}
-      {isLaunchingGame ? 'Launching...' : 'Play Now'}
     </button>
-    // --- END OF MODIFICATION ---
   );
 };
 

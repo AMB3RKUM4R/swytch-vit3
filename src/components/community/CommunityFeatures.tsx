@@ -3,16 +3,14 @@ import { FC, ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Trophy, ShieldCheck, Lightbulb } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
-import { useModal } from '@/components/context/ModalContext'; // Import modal hook
+import { usePlayer } from '@/components/context/PlayerContext';
+import { useModal } from '@/components/context/ModalContext';
 
 interface FeatureItem {
   icon: ReactNode; 
   title: string;
   description: string;
 }
-
-// This component is now self-sufficient and requires no props.
 
 const features: FeatureItem[] = [
   {
@@ -38,7 +36,6 @@ const features: FeatureItem[] = [
 ];
 
 const CommunityFeatures: FC = () => {
-  // Pull data from our global contexts
   const { userId } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
 
@@ -49,7 +46,6 @@ const CommunityFeatures: FC = () => {
       return;
     }
     setShowMessage(`Exploring: ${title}!`);
-    // Potentially navigate to a specific section or open a modal
   };
 
   return (

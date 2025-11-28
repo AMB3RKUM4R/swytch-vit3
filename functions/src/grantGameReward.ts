@@ -2,25 +2,22 @@
 
 import {getFirestore, FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
-import {Request} from 'firebase-functions/v2/https'; // <-- THE FIX
-import type {Response} from 'express'; // <-- THE FIX
-
-// (Firebase Admin Setup... no changes)
-
+import {Request} from 'firebase-functions/v2/https';
+import type {Response} from 'express';
 
 const GAME_REWARDS: { [key: string]: { baseJoules: number, baseXp: number } } = {
   'coin_collector_level_1': {baseJoules: 50, baseXp: 100},
   'coin_collector_level_2': {baseJoules: 75, baseXp: 150},
 };
 
-export const grantGameRewardHandler = async (request: Request, response: Response) => { // <-- CORRECT TYPES
+export const grantGameRewardHandler = async (request: Request, response: Response) => {
+  const db = getFirestore();
+  const auth = getAuth();
+  
   if (request.method !== 'POST') {
     response.status(405).json({error: 'Method Not Allowed'});
     return;
   }
-  const db = getFirestore();
-  const auth = getAuth();
-  // (Rest of the function is identical)
   const authorization = request.headers.authorization;
   if (!authorization || !authorization.startsWith('Bearer ')) {
     response.status(401).json({error: 'Unauthorized'});
@@ -36,7 +33,7 @@ export const grantGameRewardHandler = async (request: Request, response: Respons
   }
   const userId = decodedToken.uid;
 
-  const {gameId, playerJouleBonus} = request.body;
+  const {gameId, playerJouleBonus = 0} = request.body;
 
   if (!gameId || !GAME_REWARDS[gameId]) {
     console.error(`API: Invalid gameId ${gameId} from user ${userId}`);
@@ -45,7 +42,7 @@ export const grantGameRewardHandler = async (request: Request, response: Respons
   }
 
   const reward = GAME_REWARDS[gameId];
-  const finalJoules = Math.ceil(reward.baseJoules * (1 + (playerJouleBonus || 0)));
+  const finalJoules = Math.ceil(reward.baseJoules * (1 + playerJouleBonus));
   const finalXp = reward.baseXp;
 
   const playerRef = db.collection('Players').doc(userId);

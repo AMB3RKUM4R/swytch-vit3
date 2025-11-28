@@ -3,13 +3,11 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Star, ArrowRight } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { MEMBERSHIP_TIERS } from '../../lib/types'; // Import membership tiers
-import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
-import { useModal } from '@/components/context/ModalContext'; // Import modal hook
+import { MEMBERSHIP_TIERS } from '../../lib/types';
+import { usePlayer } from '@/components/context/PlayerContext';
+import { useModal } from '@/components/context/ModalContext';
 
-// This component is now self-sufficient and requires no props.
 const MembershipStatusOverview: FC = () => {
-  // Pull data from our global contexts
   const { isPETMember, playerData } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
 
@@ -18,9 +16,6 @@ const MembershipStatusOverview: FC = () => {
 
   const handleUpgradeClick = () => {
     setShowMessage('🌟 Explore membership options!');
-    // We navigate to the membership page instead of opening the payment modal directly
-    // This provides a better user experience.
-    // Or, open the payment modal to a specific "membership" tab if you add that feature.
     setActiveModal('payment'); 
   };
 

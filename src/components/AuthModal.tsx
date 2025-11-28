@@ -6,7 +6,6 @@ import { useAuthUserFirebase } from '../hooks/useAuthUserFirebase';
 import { useModal } from './context/ModalContext';
 import { AuthModalProps } from '@/lib/types';
 import { cn } from '@/lib/utils';
-// import { ConnectButton } from '@rainbow-me/rainbowkit'; // Removed ConnectButton import
 
 const modalVariants = {
   hidden: { opacity: 0, scale: 0.8 },
@@ -46,14 +45,15 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
 
   const handleSignOut = useCallback(async () => {
     await signOutUser();
-    handleAuthSuccess('窓 You have been signed out.');
+    // FIX: Replaced complex Unicode with simple emoji for broader compatibility
+    handleAuthSuccess('👋 You have been signed out.'); 
   }, [signOutUser, handleAuthSuccess]);
 
   const handleGoogleSignIn = useCallback(async () => {
     setError(null);
     try {
       await signInWithGoogle();
-      handleAuthSuccess('脂 Signed in with Google successfully!');
+      handleAuthSuccess('🌟 Signed in with Google successfully!');
     } catch (err: any) {
       setError(err.message);
     }
@@ -68,7 +68,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
     }
     try {
       await signInWithEmail(email, password);
-      handleAuthSuccess('脂 Signed in successfully!');
+      handleAuthSuccess('🚀 Signed in successfully!');
     } catch (err: any) {
       setError(err.message);
     }
@@ -83,7 +83,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
     }
     try {
       await registerWithEmail(email, password);
-      handleAuthSuccess('脂 Welcome! Account created successfully.');
+      handleAuthSuccess('🎉 Welcome! Account created successfully.');
     } catch (err: any) {
       setError(err.message);
     }
@@ -98,12 +98,14 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
     }
     try {
       await sendPasswordReset(email);
-      setShowMessage('闘 Password reset link sent! Please check your email.');
+      // FIX: Replaced complex Unicode with simple emoji
+      setShowMessage('📧 Password reset link sent! Please check your email.'); 
+      setModalActive(null); // Close modal on success
       setMode('signIn');
     } catch (err: any) {
       setError(err.message);
     }
-  }, [sendPasswordReset, email, setShowMessage]);
+  }, [sendPasswordReset, email, setShowMessage, setModalActive]);
 
   const isLoggedIn = !!user;
   const displayError = error || authError;
@@ -115,6 +117,7 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
           <h2 className="text-3xl font-russo text-center mb-6 text-glow-primary">
             Welcome Back
           </h2>
+          <p className="text-center text-muted-foreground">{user?.email || user?.displayName}</p>
           <button onClick={handleSignOut} className="btn-primary w-full text-lg">
             <LogOut className="mr-2" /> Sign Out
           </button>
@@ -139,16 +142,15 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              {/* --- FIX 1: Added autocomplete --- */}
               <input type="email" id="signInEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} autoComplete="email" />
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              {/* --- FIX 2: Added autocomplete --- */}
               <input type="password" id="signInPassword" name="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 w-full" disabled={loading} autoComplete="current-password" />
             </div>
             <button type="submit" className="btn-secondary w-full text-lg" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : 'Continue with Email'}
+              {/* FIX: Added mr-2 to Loader2 for visual separation */}
+              {loading ? <Loader2 className="animate-spin mr-2" /> : 'Continue with Email'} 
             </button>
             <button type="button" onClick={handleGoogleSignIn} className="btn-secondary w-full text-lg" disabled={loading}>
               <Sparkles className="mr-2" /> Continue with Google
@@ -168,16 +170,14 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             </h2>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              {/* --- FIX 3: Added autocomplete --- */}
               <input type="email" id="registerEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} autoComplete="email" />
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              {/* --- FIX 4: Added autocomplete --- */}
               <input type="password" id="registerPassword" name="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 w-full" disabled={loading} autoComplete="new-password" />
             </div>
             <button type="submit" className="btn-primary w-full text-lg" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : 'Create Account'}
+              {loading ? <Loader2 className="animate-spin mr-2" /> : 'Create Account'}
             </button>
             <div className="text-center text-sm">
               <button type="button" onClick={() => { setMode('signIn'); setError(null); }} className="text-muted-foreground hover:text-primary transition">Already have an account? Sign In</button>
@@ -194,11 +194,10 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             <p className="text-sm text-muted-foreground text-center -mt-4 mb-4">Enter your email to receive a reset link.</p>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              {/* --- FIX 5: Added autocomplete --- */}
               <input type="email" id="resetEmail" name="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10 w-full" disabled={loading} autoComplete="email" />
             </div>
             <button type="submit" className="btn-primary w-full text-lg" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : 'Send Reset Link'}
+              {loading ? <Loader2 className="animate-spin mr-2" /> : 'Send Reset Link'}
             </button>
             <div className="text-center text-sm">
               <button type="button" onClick={() => { setMode('signIn'); setError(null); }} className="text-muted-foreground hover:text-primary transition">Back to Sign In</button>
@@ -227,17 +226,18 @@ const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
             <AnimatePresence>
               {displayError && (
                 <motion.p 
-                  className="text-destructive text-sm text-center mt-4 font-inter"
+                  className="text-destructive text-sm text-center mt-4 font-inter flex items-center justify-center"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
                   <AlertTriangle className="inline-block w-4 h-4 mr-2"/> 
+                  {/* FIX: Simplified error parsing to cover more cases gracefully */}
                   {displayError.includes("auth/invalid-credential") ? "Invalid email or password." :
                    displayError.includes("auth/invalid-email") ? "Invalid email address." :
                    displayError.includes("auth/email-already-in-use") ? "An account with this email already exists." :
                    displayError.includes("auth/weak-password") ? "Password must be at least 6 characters long." :
-                   "An unknown error occurred."}
+                   "Authentication failed. Please check your credentials."}
                 </motion.p>
               )}
             </AnimatePresence>

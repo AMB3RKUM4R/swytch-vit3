@@ -12,7 +12,6 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
  * Gets the initial theme from localStorage or system preference.
  */
 const getInitialTheme = (): boolean => {
-  // Check if window is defined (for server-side rendering)
   if (typeof window !== 'undefined' && window.localStorage) {
     // 1. Check for a saved preference in localStorage
     const storedPrefs = window.localStorage.getItem('color-theme');
@@ -34,7 +33,6 @@ export const ThemeProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Use the function to set the initial state
   const [isDarkMode, setIsDarkMode] = useState(getInitialTheme);
 
-  // --- THIS IS THE FIX ---
   // This effect hook syncs the React state with the DOM and localStorage
   useEffect(() => {
     const root = document.documentElement; // This is the <html> tag
@@ -46,7 +44,7 @@ export const ThemeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       root.classList.remove('dark');
       window.localStorage.setItem('color-theme', 'light');
     }
-  }, [isDarkMode]); // This effect re-runs whenever 'isDarkMode' changes
+  }, [isDarkMode]);
 
   // This function just needs to toggle the state; the effect will do the rest.
   const toggleTheme = () => {

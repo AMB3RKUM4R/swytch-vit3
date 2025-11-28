@@ -3,22 +3,23 @@ import { FC, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { History, ShoppingCart, Loader2, Star, ArrowUpCircle } from 'lucide-react';
 import SwytchCard from './SwytchCard';
-import { Transaction } from '@/lib/types'; // Import main Transaction type
+import { Transaction } from '@/lib/types';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp, where } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
-import { timeAgo } from '@/lib/utils'; // We'll add this utility function
+import { timeAgo } from '@/lib/utils';
+import { usePlayer } from '@/components/context/PlayerContext'; // Import usePlayer
 
-// This component is now self-sufficient and fetches its own data.
 const RecentPurchases: FC = () => {
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const { userId } = usePlayer(); // Use userId to show generic recent transactions
 
   useEffect(() => {
     setLoading(true);
     // Query for the last 5 successful transactions
     const q = query(
       collection(db, 'Transactions'),
-      where('status', 'in', ['success', 'completed']), // Show successful ones
+      where('status', 'in', ['success', 'completed']),
       orderBy('timestamp', 'desc'),
       limit(5)
     );
@@ -26,7 +27,13 @@ const RecentPurchases: FC = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const transactions: Transaction[] = [];
       snapshot.forEach(doc => {
-        transactions.push({ id: doc.id, ...doc.data() } as unknown as Transaction);
+        const data = doc.data();
+        transactions.push({ 
+            id: doc.id, 
+            ...data,
+            // FIX: Explicitly cast timestamp for the utility function
+            timestamp: data.timestamp as Timestamp 
+        } as Transaction);
       });
       setRecentTransactions(transactions);
       setLoading(false);
@@ -45,6 +52,14 @@ const RecentPurchases: FC = () => {
        case 'deposit': return <ArrowUpCircle className="w-5 h-5 text-green-400" />;
        default: return <History className="w-5 h-5 text-muted-foreground" />;
      }
+  }
+  
+  // Helper to show anonymous user name if it's not the current user
+  const getUsername = (txUserId: string) => {
+      if (userId && txUserId === userId) {
+          return "You";
+      }
+      return `Hunter-${txUserId.slice(0, 4)}...`;
   }
 
   return (
@@ -76,7 +91,7 @@ const RecentPurchases: FC = () => {
                   {tx.transactionType.replace('-', ' ')}
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  {timeAgo(tx.timestamp as Timestamp)} by {tx.userId.slice(0, 6)}...
+                  {timeAgo(tx.timestamp as Timestamp)} by {getUsername(tx.userId)}
                 </p>
               </div>
               <p className="text-primary font-bold text-sm ml-4">

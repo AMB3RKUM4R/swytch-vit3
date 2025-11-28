@@ -1,11 +1,11 @@
 // src/components/FeaturedCards.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { Gem, Lock, DollarSign, Zap, ArrowRight } from 'lucide-react';
+import { Lock, DollarSign, Zap, ArrowRight, Gem } from 'lucide-react';
 import SwytchCard from './SwytchCard';
 import { Link } from 'react-router-dom';
-import { usePlayer } from '@/components/context/PlayerContext'; // Import main hook
-import { useModal } from '@/components/context/ModalContext'; // Import modal hook
+import { usePlayer } from '@/components/context/PlayerContext';
+import { useModal } from '@/components/context/ModalContext';
 
 const features = [
   {
@@ -27,20 +27,18 @@ const features = [
     title: 'Secure & Transparent',
     description: 'Blockchain-backed security ensures fair play and transparent transactions.',
     actionLabel: 'Read Disclosure',
-    actionPath: '/dspet-disclosure', // You will need to create this route
+    actionPath: '/dspet-disclosure',
   },
   {
     icon: Zap,
     title: 'Re-innovate Old Games',
     description: 'Experience classic games with new, real-world economic incentives.',
     actionLabel: 'Explore Games',
-    actionPath: '/games', // You will need to create this route
+    actionPath: '/games',
   },
 ];
 
-// This component is now self-sufficient and requires no props.
 const FeatureCards: FC = () => {
-  // Pull data from our global contexts
   const { userId } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
 
@@ -49,7 +47,7 @@ const FeatureCards: FC = () => {
       {features.map((feature, index) => (
         <motion.div key={index} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
           <SwytchCard
-            variant="holographic" // Use new holographic style
+            variant="holographic"
             className="p-6 text-center h-full flex flex-col items-center justify-center cursor-pointer"
           >
             <feature.icon className="w-12 h-12 text-primary mx-auto mb-4" />
@@ -63,7 +61,7 @@ const FeatureCards: FC = () => {
                 if (restrictedPaths.includes(feature.actionPath) && !userId) {
                     setShowMessage('⚠️ Please sign in to access this feature.');
                     setActiveModal('auth');
-                    e.preventDefault(); // Prevent navigation
+                    e.preventDefault();
                 } else {
                     setShowMessage(`➡️ Navigating to ${feature.actionLabel}!`);
                 }

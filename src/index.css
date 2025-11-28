@@ -9,37 +9,35 @@
 
 @layer base {
   :root {
-    --background: 224 71% 4%; /* Deep, dark blue */
-    --foreground: 210 40% 98%; /* Almost white */
+    /* Deep Space Theme */
+    --background: 224 71% 4%; /* Deep, dark blue/black */
+    --foreground: 210 40% 98%; /* White text */
     
-    --card: 223 47% 11%; /* Dark blue-gray card */
+    --card: 223 47% 11%; /* Dark blue-gray card background */
     --card-foreground: 210 40% 98%;
 
     --popover: 224 71% 4%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 100% 50%; /* Bright, professional blue */
+    --primary: 210 100% 50%; /* Cyan Neon Blue */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 217 33% 17%; /* Muted blue-gray */
     --secondary-foreground: 210 40% 98%;
 
     --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted-foreground: 215 20% 65%; /* Grey text */
 
-    --accent: 210 100% 50%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 84% 60%; /* Bright, clear red */
+    --destructive: 0 84% 60%; /* Bright Red */
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 17%; /* Border color */
-    --input: 217 33% 17%; /* Input background */
-    --ring: 210 100% 50%; /* Focus ring */
+    --border: 217 33% 17%; 
+    --input: 217 33% 17%; 
+    --ring: 210 100% 50%; 
 
-    --radius: 0.5rem; /* Standard border radius */
+    --radius: 0.5rem; 
     
-    /* HSL values for Tailwind CSS opacity modifiers */
+    /* HSL values for Tailwind CSS opacity modifiers (used in custom styles) */
     --background-hsl: 224 71% 4%;
     --foreground-hsl: 210 40% 98%;
     --card-hsl: 223 47% 11%;
@@ -54,11 +52,10 @@
   }
 
   html, body {
-    /* Set the clean, professional fonts */
     @apply min-h-screen font-inter text-foreground antialiased;
     background-color: hsl(var(--background));
     
-    /* A simplified, elegant background animation */
+    /* Neon Background Grid Pattern */
     background-image: 
       radial-gradient(circle at 1px 1px, hsl(var(--primary-hsl) / 0.1) 1px, transparent 0);
     background-size: 20px 20px;
@@ -83,7 +80,7 @@
     @apply bg-card text-card-foreground p-6 rounded-lg shadow-lg border border-white/10;
   }
   
-  /* Primary Button */
+  /* Primary Button (Neon Glow) */
   .btn-primary {
     @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
@@ -92,7 +89,7 @@
            h-10 px-4 py-2;
   }
 
-  /* Secondary Button */
+  /* Secondary Button (Ghost/Outline) */
   .btn-secondary {
      @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
@@ -101,8 +98,17 @@
            h-10 px-4 py-2;
   }
 
-  /* Destructive Button */
+  /* Destructive Button (Red Alert) */
   .btn-destructive {
+     @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50
+           bg-destructive text-destructive-foreground hover:bg-destructive/90
+           h-10 px-4 py-2;
+  }
+  
+  /* Danger Button (Alias for Destructive, used in modals) */
+  .btn-danger {
      @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
            disabled:pointer-events-none disabled:opacity-50
@@ -118,9 +124,8 @@
            focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
-  /* --- UPDATED HOLOGRAPHIC CARD --- */
+  /* --- HOLOGRAPHIC CARD (Dark, semi-transparent, primary border gradient) --- */
   .holographic-card {
-    /* Merged styles from your component and the old class */
     @apply relative overflow-hidden p-8 bg-black/20 rounded-xl border border-[hsl(var(--primary),0.2)] shadow-xl;
   }
   
@@ -131,34 +136,26 @@
     left: 0;
     right: 0;
     bottom: 0;
+    /* Diagonal gradient overlay for holographic effect */
     background: linear-gradient(135deg, hsl(var(--primary-hsl) / 0.1) 0%, transparent 50%, hsl(var(--primary-hsl) / 0.05) 100%);
-    z-index: -1; /* --- FIX: Set to -1 to go BEHIND content --- */
+    z-index: -1;
   }
   
-  /* --- FIX: REMOVED this entire buggy rule --- */
-  /*
-  .holographic-card > * {
-    z-index: 2;
-  }
-  */
-
-  /* Glassy background for modals/navs */
+  /* Glassy background (for fixed navs/modals) */
   .glass-dark {
     @apply bg-card/80 backdrop-blur-md border-b border-white/10;
   }
   
-  /* Text Glows (Simplified) */
+  /* Text Glows (Primary Neon) */
   .text-glow-primary {
     text-shadow: 0 0 8px hsl(var(--primary-hsl) / 0.7);
   }
 }
 
 @layer utilities {
-  /* Removed old, "unusual" fonts */
   .font-inter { font-family: 'Inter', sans-serif; }
   .font-poppins { font-family: 'Poppins', sans-serif; }
 
-  /* Simplified background pan */
   @keyframes background-pan {
     0% { background-position: 0% 0%; }
     100% { background-position: 20px 20px; }

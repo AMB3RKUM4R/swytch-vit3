@@ -4,10 +4,7 @@ import {getAuth} from 'firebase-admin/auth';
 import {Request} from 'firebase-functions/v2/https';
 import type {Response} from 'express';
 
-// OLD: const auth = getAuth(); // REMOVED GLOBAL CALL
-
 export const createCustomTokenHandler = async (request: Request, response: Response) => {
-  // FIX: Initialize Auth inside the handler
   const auth = getAuth();
 
   console.log('API: createCustomToken route hit.');
@@ -41,3 +38,4 @@ export const createCustomTokenHandler = async (request: Request, response: Respo
     response.status(500).json({error: errorMessage});
   }
 };
+// Final EOL added

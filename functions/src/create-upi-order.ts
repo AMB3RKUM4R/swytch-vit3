@@ -1,10 +1,9 @@
 // functions/src/create-upi-order.ts
 import {Buffer} from 'buffer';
-import fetch from 'node-fetch'; // Requires @types/node-fetch
+import fetch from 'node-fetch';
 import {Request} from 'firebase-functions/v2/https';
 import type {Response} from 'express';
 
-// Standardized export name
 export const createUpiOrder = async (request: Request, response: Response) => {
   const RAZORPAY_KEY_ID = process.env.VITE_RAZORPAY_KEY_ID;
   const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -21,7 +20,7 @@ export const createUpiOrder = async (request: Request, response: Response) => {
   }
 
   try {
-    const {amount, currency, userId, depositType, itemId} = request.body;
+    const {amount, currency, userId, depositType = 'deposit', itemId = 'none'} = request.body;
 
     if (!amount || !currency || !userId) {
       response.status(400).json({error: 'Missing required fields (amount, currency, userId)'});
@@ -37,8 +36,8 @@ export const createUpiOrder = async (request: Request, response: Response) => {
       receipt: `receipt_${userId}_${Date.now()}`,
       notes: {
         userId: userId,
-        depositType: depositType || 'deposit',
-        itemId: itemId || 'none',
+        depositType: depositType,
+        itemId: itemId,
       },
     };
 
@@ -72,3 +71,4 @@ export const createUpiOrder = async (request: Request, response: Response) => {
     response.status(500).json({error: errorMessage});
   }
 };
+// Final EOL added

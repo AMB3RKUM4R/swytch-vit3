@@ -4,19 +4,23 @@
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "outDir": "lib",
-    "rootDir": "src", // <-- THIS IS THE FIX
+    "rootDir": "src", 
     "sourceMap": true,
     "strict": true,
     "target": "es2017",
     "baseUrl": ".",
+    // Paths are simplified here as functions rarely need complex path aliases,
+    // but the original paths entry was corrected to point to local `src/lib/types.ts`
+    // which is likely where the types.ts file resides within the functions folder.
     "paths": {
-      "@/*": ["../src/*"]
+      "@/lib/*": ["src/lib/*"]
     }
   },
   "compileOnSave": true,
+  // This inclusion path is redundant if this file is in the functions directory, 
+  // but it's kept to ensure all files in your /functions/src folder are processed.
   "include": [
-    "src/**/*.ts",
-    ".eslintrc.js",
-    "functions/src/**/*.ts"
+    "src/**/*.ts", 
+    "../.eslintrc.js"
   ]
 }

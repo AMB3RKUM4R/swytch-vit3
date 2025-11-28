@@ -3,11 +3,8 @@
 import {getFirestore, FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import type {InventoryItem} from './lib/types';
-import {Request} from 'firebase-functions/v2/https'; // <-- THE FIX
-import type {Response} from 'express'; // <-- THE FIX
-
-// (Firebase Admin Setup... no changes)
-
+import {Request} from 'firebase-functions/v2/https';
+import type {Response} from 'express';
 
 interface EnemyDefinition {
   id: string;
@@ -19,14 +16,14 @@ interface EnemyDefinition {
   }[];
 }
 
-export const grantLootOnKillHandler = async (request: Request, response: Response) => { // <-- CORRECT TYPES
+export const grantLootOnKillHandler = async (request: Request, response: Response) => {
+  const db = getFirestore();
+  const auth = getAuth();
+  
   if (request.method !== 'POST') {
     response.status(405).json({error: 'Method Not Allowed'});
     return;
   }
-  const db = getFirestore();
-  const auth = getAuth();
-  // (Rest of the function is identical)
   const authorization = request.headers.authorization;
   if (!authorization || !authorization.startsWith('Bearer ')) {
     response.status(401).json({error: 'Unauthorized'});
@@ -43,7 +40,7 @@ export const grantLootOnKillHandler = async (request: Request, response: Respons
   }
 
   const userId = decodedToken.uid;
-  const {enemyId, enemyJouleBonus, arenaJouleBonus, playerJouleBonus} = request.body;
+  const {enemyId, enemyJouleBonus = 0, arenaJouleBonus = 0, playerJouleBonus = 0} = request.body;
 
   if (!enemyId) {
     response.status(400).json({error: 'Missing enemyId'});
@@ -63,7 +60,7 @@ export const grantLootOnKillHandler = async (request: Request, response: Respons
     const enemyDef = enemyDefSnap.data() as EnemyDefinition;
     const playerRef = db.collection('Players').doc(userId);
 
-    const totalJouleBonus = (enemyJouleBonus || 0) + (arenaJouleBonus || 0) + (playerJouleBonus || 0);
+    const totalJouleBonus = enemyJouleBonus + arenaJouleBonus + playerJouleBonus;
     const finalJoules = Math.ceil(enemyDef.baseJoules * (1 + totalJouleBonus));
     const finalXp = enemyDef.baseXp;
 

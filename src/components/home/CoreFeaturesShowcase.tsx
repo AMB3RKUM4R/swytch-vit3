@@ -3,11 +3,9 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Gem, Lock, DollarSign, Zap, Sparkles } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
-import { useModal } from '@/components/context/ModalContext'; // Import modal hook
+import { useModal } from '@/components/context/ModalContext';
 
-// This component is now self-sufficient and requires no props.
 const CoreFeaturesShowcase: FC = () => {
-  // Pull data from our global context
   const { setShowMessage } = useModal();
 
   const features = [
@@ -35,8 +33,6 @@ const CoreFeaturesShowcase: FC = () => {
 
   const handleFeatureClick = (title: string) => {
     setShowMessage(`Learn More: ${title}`);
-    // Potentially open a modal with more details
-    // setActiveModal('infoModal');
   };
 
   return (
