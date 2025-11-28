@@ -4,6 +4,7 @@
     "paths": {
       "@/*": ["*"]
     },
+    // Keep essential settings here, but rely on references for actual configuration
     "module": "ESNext",
     "target": "ES2020",
     "moduleResolution": "Bundler",
@@ -12,17 +13,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
+    "noEmit": true, // The root should not emit files
     "isolatedModules": true
   },
   "files": [],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ],
-  // FIX: Removed the conflicting "functions/src/**/*.ts" from the include array.
-  // The client project should not compile the server code.
-  "include": [
-    "src/**/*.ts" 
+    // FIX: These files need composite: true and potentially "declaration": true
+    { "path": "./tsconfig.app.json" }, 
+    { "path": "./tsconfig.node.json" } 
   ]
 }
