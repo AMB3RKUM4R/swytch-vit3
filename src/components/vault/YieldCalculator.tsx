@@ -1,5 +1,5 @@
 // src/components/vault/YieldCalculator.tsx
-import { FC, useState, useCallback, useEffect } from 'react';
+import { FC, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calculator, Zap, TrendingUp, AlertTriangle } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
