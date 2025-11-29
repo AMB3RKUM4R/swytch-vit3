@@ -6,7 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 // Contexts
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
-import { useWebGL } from './components/context/WebglContext'; // FIX: Import useWebGL
+import { useWebGL } from '@/components/context/WebGLContext'; // FIX: Import useWebGL
 
 // Components
 import AuthModal from '@/components/AuthModal';
