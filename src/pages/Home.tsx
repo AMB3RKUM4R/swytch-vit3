@@ -9,12 +9,14 @@ import ActionButtonsPanel from '@/components/home/ActionButtonsPanel';
 import RecentPurchases from '@/components/RecentPurchases';
 import CommunityRankings from '@/components/community/CommunityRankings';
 import CoreFeaturesShowcase from '@/components/home/CoreFeaturesShowcase';
+import AdDisplayPanel from '@/components/AdDisplayPanel';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { useWebGL } from '@/components/context/WebglContext'; // FIX: Import useWebGL
+import { addDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 import { SupportedCurrency, TransactionType, TransactionStatus } from '@/lib/types';
-import { Megaphone, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Megaphone, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SwytchCard from '@/components/SwytchCard';
 
@@ -48,40 +50,35 @@ const HeroCallout: FC = () => {
         <Megaphone className="w-12 h-12 text-primary mr-6 text-glow-primary" />
         <div>
           <h2 className="text-2xl font-bold font-poppins text-foreground">
-            New Event: The 'Cosmic Rift' is Open!
+            Anomaly Warning: Phase 3 Detected!
           </h2>
           <p className="text-muted-foreground text-sm font-inter max-w-lg">
-            A new anomaly has been detected. Jump in now to battle rare creatures and earn exclusive JOULES rewards.
+            The System is allocating resources to battle the breach. Jump in now to earn exclusive JOULES rewards.
           </p>
         </div>
       </div>
       <Link to="/shop" className="btn-primary w-full md:w-auto flex-shrink-0">
-        Jump In <ArrowRight className="w-4 h-4 ml-2" />
+        Access Logistics <ArrowRight className="w-4 h-4 ml-2" />
       </Link>
     </motion.div>
   );
 };
 
-// Manifesto, Economic Flow, and Core Vision components omitted for brevity but remain functional.
 
 const Home: FC = () => {
-  // NOTE: activeGameId and setActiveGameId come from App.tsx via a context or prop if not defined here
-  // Assuming access via context for cleaner state management across App.tsx
-  const { userId } = usePlayer();
+  const { userId, playerData } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
+  const { setActiveGameId } = useWebGL(); // FIX: Retrieve setter here
   
-  // NOTE: You must manage activeGameId state in App.tsx and inject the setter here 
-  // via context or props from the router element wrapper. For demonstration:
   const handleLaunch = useCallback((gameId: string) => {
       setShowMessage(`Loading WebGL build for: ${gameId}...`);
-      // REPLACE THIS ALERT with your actual setActiveGameId setter from App.tsx/Context
-      // Example: setActiveGameId(gameId);
-  }, [setShowMessage]);
+      setActiveGameId(gameId); // FIX: Use the setter from the context
+  }, [setShowMessage, setActiveGameId]);
 
 
   const handleShareOnX = useCallback(async () => {
     if (!userId) {
-      setShowMessage('⚠️ Please sign in to share.');
+      setShowMessage('⚠️ Please synchronize your signature to broadcast the Protocol.');
       setActiveModal('auth');
       return;
     }
@@ -96,7 +93,6 @@ const Home: FC = () => {
         currency: 'JOULES' as SupportedCurrency,
         transactionType: 'quest-reward' as TransactionType,
         status: 'pending' as TransactionStatus,
-        timestamp: serverTimestamp(),
         itemId: 'share-home-quest',
       });
       setShowMessage('🎉 Shared on X! Your reward is pending verification.');
@@ -106,6 +102,7 @@ const Home: FC = () => {
     }
   }, [userId, setShowMessage, setActiveModal]);
 
+  const displayName = playerData?.username || (userId ? `${userId.slice(0, 6)}...` : 'Hunter');
 
   return (
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
@@ -119,17 +116,30 @@ const Home: FC = () => {
         {/* --- 1. HERO CALLOUT --- */}
         <HeroCallout />
 
-        {/* --- 2. MAIN HUB GRID (Spotify Style Layout) --- */}
+        {/* --- 2. PERSONALIZED HEADER --- */}
+        <motion.div className="text-left mb-12" variants={sectionVariant}>
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground font-poppins mb-2 flex items-center">
+             <Zap className="w-10 h-10 mr-3 text-yellow-400" /> System Console
+          </h1>
+          <p className="text-lg text-muted-foreground font-inter">
+            Welcome, {displayName}. Your mission briefing is complete.
+          </p>
+        </motion.div>
+
+        {/* --- 3. MAIN HUB GRID (Spotify Style Layout) --- */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           
-          {/* --- LEFT COLUMN (Overview & Quick Actions) --- */}
+          {/* --- LEFT COLUMN (Overview, Actions, ADVERTISEMENT) --- */}
           <motion.div className="lg:col-span-1 space-y-6" variants={sectionVariant}>
             <UserOverviewCard />
             <ActionButtonsPanel handleShareOnX={handleShareOnX} />
             
+            {/* ADVERTISEMENT PLACEMENT */}
+            <AdDisplayPanel zoneType="banner" /> 
+            
             {/* Secondary rankings/activity */}
             <SwytchCard variant="default" className="p-6">
-                <h3 className="text-xl font-poppins font-semibold text-foreground mb-4">Latest Activity</h3>
+                <h3 className="text-xl font-poppins font-semibold text-foreground mb-4">Rift Activity Ledger</h3>
                 <RecentPurchases />
             </SwytchCard>
           </motion.div>
@@ -137,7 +147,7 @@ const Home: FC = () => {
           {/* --- MAIN CONTENT (Game Discovery & Features) --- */}
           <motion.div className="lg:col-span-3 space-y-12" variants={sectionVariant}>
              
-            {/* Game Discovery Section */}
+            {/* Game Discovery Section - Passes Launch Handler */}
             <QuickAccessGames onGameLaunch={handleLaunch} />
             
             {/* Core Features Showcase */}
@@ -148,7 +158,7 @@ const Home: FC = () => {
             <CoreFeaturesShowcase />
           </motion.div>
 
-          {/* --- FULL-WIDTH SECTIONS (Manifesto, Leaderboard, etc.) --- */}
+          {/* --- FULL-WIDTH SECTIONS (Leaderboard, Recent Activity) --- */}
           <motion.div className="lg:col-span-4 mt-12" variants={sectionVariant}>
             <h2 className="text-2xl font-poppins font-semibold text-muted-foreground mb-6">Global Status</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

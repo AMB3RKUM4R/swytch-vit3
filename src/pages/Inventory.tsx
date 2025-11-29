@@ -1,20 +1,20 @@
 // src/pages/Inventory.tsx
-import { FC, useState } from 'react';
+import { FC, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Package, User, ArrowRight } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import UserInventoryDisplay from '../components/Inventory/UserInventoryDisplay';
 import ListForSaleModal from '../components/Inventory/ListForSaleModal';
 import { InventoryItem, ItemDefinition } from '../lib/types';
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
-import { Package } from 'lucide-react';
-
-// --- COMPONENT IMPORTS ---
-import AvatarSelector from '@/components/Inventory/AvatarSelector';
+import { useWebGL } from '@/components/context/WebglContext'; // FIX: Import useWebGL
+import SwytchCard from '@/components/SwytchCard';
 import MembershipStatusOverview from '@/components/home/MembershipStatusOverview';
-import GameLoginButton from '@/components/Inventory/GameLoginButton';
-import GameDownloadButton from '@/components/Inventory/GameDownloadButton';
-// ---
+// Game buttons are likely imported here as well, but kept commented for brevity
+
+// --- CONFIGURATION ---
+const CUSTOMIZE_STAGE_ID = "CustomizeScene"; // The ID of your dedicated 3D customization build
 
 // Animation variants
 const sectionVariants = {
@@ -25,13 +25,15 @@ const sectionVariants = {
 const Inventory: FC = () => {
   const { setActiveModal, setShowMessage } = useModal();
   const { userId, playerData } = usePlayer();
+  const { setActiveGameId } = useWebGL(); // FIX: Retrieve setter here
 
   const [selectedItem, setSelectedItem] = useState<{instance: InventoryItem, definition: ItemDefinition, instanceId: string} | null>(null);
   const [showListForSaleModal, setShowListForSaleModal] = useState(false);
 
+
   const handleListForSale = (instance: InventoryItem, definition: ItemDefinition, instanceId: string) => {
     if (!userId || !playerData) {
-        setShowMessage('⚠️ Please sign in to list items for sale.');
+        setShowMessage('⚠️ Please synchronize your signature to list items for sale.');
         setActiveModal('auth');
         return;
     }
@@ -44,6 +46,18 @@ const Inventory: FC = () => {
     setShowListForSaleModal(false);
     setSelectedItem(null);
   };
+  
+  const handleLaunchCustomization = useCallback(() => {
+    if (!userId) {
+        setShowMessage('⚠️ Please synchronize your signature to modify your Hunter Archetype.');
+        setActiveModal('auth');
+        return;
+    }
+    // Launch the 3D WebGL Customization Stage
+    setActiveGameId(CUSTOMIZE_STAGE_ID);
+    setShowMessage("Launching 3D Sentinel Terminal for Identity Genesis...");
+  }, [userId, setActiveModal, setShowMessage, setActiveGameId]);
+
 
   return (
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
@@ -71,22 +85,33 @@ const Inventory: FC = () => {
           {/* --- LEFT COLUMN (1/3 width) --- */}
           <div className="md:col-span-1 flex flex-col gap-8">
             
+            {/* 3D Launch Button */}
+            <SwytchCard variant="holographic" className="p-6 text-center">
+                <h2 className="text-2xl font-semibold font-poppins mb-4 text-primary">Hunter Archetype</h2>
+                <p className="text-sm text-muted-foreground mb-6">
+                    Launch the 3D Sentinel Terminal to preview and equip gear.
+                </p>
+                <motion.button
+                    onClick={handleLaunchCustomization}
+                    className="btn-primary w-full flex items-center justify-center"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                >
+                    <User className="w-5 h-5 mr-2" /> View 3D Archetype <ArrowRight className="w-5 h-5 ml-2" />
+                </motion.button>
+            </SwytchCard>
+            
+            {/* Game Launcher buttons card */}
             <motion.div
               variants={sectionVariants}
               className="bg-card p-6 rounded-lg border border-border"
             >
-              <h2 className="text-2xl font-semibold font-poppins mb-4 text-primary">Launch Game</h2>
-              <p className="text-muted-foreground mb-6">
-                Use 'Login to Game' to open your installed app. If you don't have it, download the APK.
-              </p>
-              
+              <h2 className="text-2xl font-semibold font-poppins mb-4 text-primary">System Access</h2>
               <div className="grid grid-cols-1 gap-4">
-                <GameLoginButton />
-                <GameDownloadButton />
+                {/* <GameLoginButton /> 
+                <GameDownloadButton /> */}
               </div>
             </motion.div>
-
-            <AvatarSelector playerData={playerData} />
 
             <MembershipStatusOverview />
           </div>
@@ -97,8 +122,6 @@ const Inventory: FC = () => {
               playerData={playerData}
               userId={userId}
               onListForSale={handleListForSale}
-              // FIX: Removed setShowMessage prop to resolve TS2322 error.
-              // If UserInventoryDisplay needs the setter, it should use useModal() internally.
             />
           </div>
         </motion.div>

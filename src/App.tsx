@@ -1,4 +1,4 @@
-// src/App.tsx — FINAL & FLAWLESS
+// src/App.tsx
 import { FC, useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
@@ -6,6 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 // Contexts
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
+import { useWebGL } from './components/context/WebglContext'; // FIX: Import useWebGL
 
 // Components
 import AuthModal from '@/components/AuthModal';
@@ -35,8 +36,10 @@ const App: FC = () => {
     initialAuthCheckComplete, 
     playerData
   } = usePlayer();
+  
+  // CRITICAL FIX: Get activeGameId and setter from the context
+  const { activeGameId, setActiveGameId } = useWebGL(); 
 
-  const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [showInitialAuthModal, setShowInitialAuthModal] = useState(true); 
 
   useEffect(() => {
@@ -54,12 +57,11 @@ const App: FC = () => {
 
   return (
     <div className="min-h-screen bg-black text-white font-inter"> 
-      {/* Game Overlay */}
-      <UnityStage activeGameId={activeGameId} setActiveGameId={setActiveGameId} />
+      {/* Game Overlay - Now connected to WebGL context state */}
+      <UnityStage activeGameId={activeGameId} setActiveGameId={setActiveGameId} /> 
 
       {/* Navigation */}
       <TopNav />
-      {/* Left Sidebar is fixed on lg screens and pushes content */}
       <LeftSidebar /> 
 
       {/* Main Content */}

@@ -1,11 +1,13 @@
 // src/components/UnityStage.tsx
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Gamepad2, X, AlertTriangle } from 'lucide-react';
 import { Unity, useUnityContext } from 'react-unity-webgl';
+import { useNavigate } from 'react-router-dom';
 
 const UNITY_CONFIG = {
-  loaderUrl: "/unity/Build/WebGlBuild.loader.js",
+  // NOTE: These URLs must point to your single, universal WebGL build path
+  loaderUrl: "/unity/Build/WebGlBuild.loader.js", 
   dataUrl: "/unity/Build/WebGlBuild.data.unityweb",
   frameworkUrl: "/unity/Build/WebGlBuild.framework.js.unityweb",
   codeUrl: "/unity/Build/WebGlBuild.wasm.unityweb",
@@ -13,23 +15,54 @@ const UNITY_CONFIG = {
 
 const UnityStage: FC<{ activeGameId: string | null; setActiveGameId: (id: string | null) => void }> = ({ activeGameId, setActiveGameId }) => {
   const [error, setError] = useState<string | null>(null);
-
+  const navigate = useNavigate();
+  
   const {
     unityProvider,
     isLoaded,
     loadingProgression,
     unload,
+    sendMessage,
+    addEventListener,
+    removeEventListener,
   } = useUnityContext({
     ...UNITY_CONFIG,
     streamingAssetsUrl: "/unity/StreamingAssets",
   });
 
+  // --- 1. Handler for Unity Signals (Receives the C# message) ---
+  const handleUnityMessage = useCallback((message: string) => {
+    // CRITICAL LOGIC: If the customization scene succeeds, unload and navigate.
+    if (message === "CHARACTER_SELECTED_SUCCESS") {
+      setActiveGameId(null); // Unload the customization scene (closes the WebGL overlay)
+      navigate("/home"); // Navigate the web app to the main hub
+    }
+    // Add other handlers here (e.g., "GAME_OVER_REWARD_CLAIMED")
+  }, [setActiveGameId, navigate]);
+
+
   useEffect(() => {
+    // 2. Subscribe to Unity Messages on mount
+    // The C# code uses 'SendWebMessage' which must be exposed via 'WebMessage' event
+    addEventListener("WebMessage", handleUnityMessage);
+    
+    // 3. Unload Unity instance when game is closed
     if (!activeGameId) {
       unload().catch(() => {});
       setError(null);
+    } 
+    // 4. CRITICAL: Send the initial scene command once loaded
+    else if (isLoaded) {
+      // This sends the specific scene ID (e.g., "CustomizeScene" or "ManaMinerScene") 
+      // to the C# DungeonManager to tell it what to load internally.
+      sendMessage('DungeonManager', 'SetAndLoadScene', activeGameId);
     }
-  }, [activeGameId, unload]);
+    
+    // Cleanup: Unsubscribe from event listeners
+    return () => {
+        removeEventListener("WebMessage", handleUnityMessage);
+    };
+  }, [activeGameId, unload, isLoaded, sendMessage, addEventListener, removeEventListener, handleUnityMessage]);
 
   if (!activeGameId) return null;
 

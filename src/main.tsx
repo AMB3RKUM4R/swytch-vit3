@@ -11,6 +11,7 @@ import { PayPalScriptProvider } from '@paypal/react-paypal-js';
 import { ModalProvider } from './components/context/ModalContext';
 import { ThemeProvider } from './components/context/ThemeContext';
 import { PlayerProvider } from './components/context/PlayerContext';
+import { WebGLProvider } from './components/context/WebglContext'; // FIX: Import WebGLProvider
 
 // Config & App
 import { wagmiConfig } from './lib/wagmi';
@@ -47,7 +48,7 @@ const Root = () => (
         <WagmiProvider config={wagmiConfig}>
           <RainbowKitProvider 
             theme={darkTheme({
-              accentColor: '#00D4FF', // Cyan Neon
+              accentColor: '#00D4FF',
               accentColorForeground: '#000',
               borderRadius: 'large',
               overlayBlur: 'small',
@@ -57,7 +58,10 @@ const Root = () => (
               <ThemeProvider>
                 <ModalProvider>
                   <PlayerProvider>
-                    <App />
+                    {/* CRITICAL FIX: Wrap the App with WebGLProvider */}
+                    <WebGLProvider>
+                      <App />
+                    </WebGLProvider>
                   </PlayerProvider>
                 </ModalProvider>
               </ThemeProvider>

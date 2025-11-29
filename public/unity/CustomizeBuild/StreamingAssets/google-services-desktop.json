@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "845433042703",
+    "firebase_url": "https://swytch-pet-default-rtdb.firebaseio.com",
+    "project_id": "swytch-pet",
+    "storage_bucket": "swytch-pet.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:845433042703:android:ad0ec1f9de1a68ab12b07a",
+        "android_client_info": {
+          "package_name": "com.swytchpet.central"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "845433042703-pvr7c3tnqonmep914kct8n5r9i02032f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.swytchpet.central",
+            "certificate_hash": "8529811c84ba64d16364469b39aa80bf40a8ad90"
+          }
+        },
+        {
+          "client_id": "845433042703-hkdleqvasf667lvc5mk78qt68reljrbj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsuKyh9M_g2pK3D4GhygqEB2pfLqBzo7c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "845433042703-hkdleqvasf667lvc5mk78qt68reljrbj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

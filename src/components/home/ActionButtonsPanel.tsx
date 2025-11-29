@@ -2,7 +2,7 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowUpCircle, ArrowDownCircle, Store, MessageCircleHeart } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, MessageCircleHeart, Users, Zap } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
@@ -17,7 +17,7 @@ const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({ handleShareOnX }) => 
 
   const handleRestrictedAction = (action: string, modal: string | null = 'auth') => {
     if (!userId) {
-      setShowMessage(`⚠️ Please sign in to ${action}.`);
+      setShowMessage(`⚠️ Please synchronize your signature to ${action}.`);
       setActiveModal(modal);
       return false;
     }
@@ -26,55 +26,54 @@ const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({ handleShareOnX }) => 
 
   return (
     <SwytchCard variant="default" className="p-6">
-      <h2 className="text-2xl font-bold text-center mb-4 font-poppins">Quick Actions</h2>
+      <h2 className="text-2xl font-bold text-center mb-4 font-poppins flex items-center justify-center gap-2">
+        <Zap className="w-6 h-6 text-primary" /> Logistics Terminal
+      </h2>
       <div className="grid grid-cols-2 gap-4">
         
         {/* Deposit */}
         <motion.button 
           className="btn-primary" 
-          onClick={() => { 
-            if (handleRestrictedAction('deposit')) setActiveModal('payment'); 
-          }}
+          onClick={() => { if (handleRestrictedAction('deposit assets')) setActiveModal('payment'); }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <ArrowUpCircle className="w-5 h-5 mr-2" /> Deposit
+          <ArrowUpCircle className="w-5 h-5 mr-2" /> Inject Yield
         </motion.button>
         
-        {/* Withdraw (Opens Withdraw Modal) */}
+        {/* Withdraw */}
         <motion.button 
-          className="btn-danger" // Using danger style for withdraw
+          className="btn-danger"
           onClick={() => { 
-            if (handleRestrictedAction('withdraw')) setActiveModal('withdraw'); 
+            if (handleRestrictedAction('withdraw energy')) setActiveModal('withdraw'); 
           }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <ArrowDownCircle className="w-5 h-5 mr-2" /> Withdraw
+          <ArrowDownCircle className="w-5 h-5 mr-2" /> Withdraw Energy
         </motion.button>
         
-        {/* Shop Link */}
+        {/* Sentinel Terminal (New Route) */}
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Link 
-            to="/shop" 
+            to="/sentinels" 
             className="btn-secondary w-full" 
             onClick={(e) => {
-              // Only open auth if it's a restricted page (shop is restricted)
-              if (!handleRestrictedAction('visit the shop', null)) e.preventDefault(); 
+              if (!handleRestrictedAction('access the Sentinel Terminal', null)) e.preventDefault();
             }}
           >
-            <Store className="w-5 h-5 mr-2" /> Shop
+            <Users className="w-5 h-5 mr-2" /> Sentinels
           </Link>
         </motion.div>
         
-        {/* Share Button */}
+        {/* Share Button (Protocol Broadcast) */}
         <motion.button 
           className="btn-secondary" 
           onClick={handleShareOnX}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <MessageCircleHeart className="w-5 h-5 mr-2" /> Share
+          <MessageCircleHeart className="w-5 h-5 mr-2" /> Broadcast Protocol
         </motion.button>
 
       </div>
