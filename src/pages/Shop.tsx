@@ -1,21 +1,18 @@
-// src/pages/Shop.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-// FIX 2: Explicitly import Gamepad2 to avoid TS2552 conflict with global Gamepad type
 import { Store, Sparkles, DollarSign, Filter, Loader2, Gamepad2 } from 'lucide-react'; 
-import SwytchErrorBoundary from '@/components/ErrorBoundaryComponent';
-import SwytchCard from '@/components/SwytchCard';
-import { usePlayer } from '@/components/context/PlayerContext';
-import { useModal } from '@/components/context/ModalContext';
+import SwytchErrorBoundary from '../components/ErrorBoundaryComponent'; 
+import SwytchCard from '../components/SwytchCard'; 
+import { usePlayer } from '../components/context/PlayerContext'; 
+import { useModal } from '../components/context/ModalContext'; 
 
-// FIX 1: Import Static Data
-import { staticShopItems, staticBattleArenas } from '@/lib/staticShopData';
+import { staticShopItems, staticBattleArenas } from '../lib/staticShopData'; 
 
-import TrustMarketHero from '@/components/market/TrustMarketHero';
-import TrustProgression from '@/components/market/TrustProgression';
-import TrustRewardTiers from '@/components/market/TrustRewardTiers';
-import TrustMarketCTA from '@/components/market/TrustMarketCTA';
-import { TransactionType, TransactionStatus } from '@/lib/types';
+import TrustMarketHero from '../components/market/TrustMarketHero'; 
+import TrustProgression from '../components/market/TrustProgression'; 
+import TrustRewardTiers from '../components/market/TrustRewardTiers'; 
+import TrustMarketCTA from '../components/market/TrustMarketCTA'; 
+import { TransactionType, TransactionStatus, SupportedCurrency } from '../lib/types'; 
 
 
 // Animation variants
@@ -34,10 +31,9 @@ const Shop: FC = () => {
   const { logTransaction, userId, joulesBalance, authLoading } = usePlayer(); 
 
   // --- STANDARD ACCESSOR MAPS ---
-  // We define a standard, normalized object structure for rendering here.
   const normalizedItems = staticShopItems.map(item => ({
     id: item.id,
-    name: item.itemName, // Use itemName as the standard name field
+    name: item.itemName, 
     priceInJoules: item.priceInJoules,
     priceUSD: item.priceUSD,
     description: item.description,
@@ -49,12 +45,12 @@ const Shop: FC = () => {
   
   const normalizedArenas = staticBattleArenas.map(arena => ({
     id: arena.id,
-    name: arena.name, // Use name as the standard name field
+    name: arena.name, 
     priceInJoules: arena.priceInJoules,
     priceUSD: arena.priceUSD,
     description: arena.description,
-    imageUrl: '', // Arenas might not have an imageUrl field, so we default
-    rarity: 'Common', // Default rarity for consistency
+    imageUrl: '', 
+    rarity: 'Common', 
     category: 'ARENA',
     icon: Gamepad2,
   }));
@@ -69,7 +65,6 @@ const Shop: FC = () => {
       return;
     }
     
-    // Check against standard 'name' field
     if (item.priceInJoules > (joulesBalance ?? 0)) { 
         setShowMessage(`❌ Insufficient JOULES to purchase ${item.name}.`);
         return;
@@ -81,7 +76,7 @@ const Shop: FC = () => {
       transactionId: `PURCHASE_${userId}_${Date.now()}`,
       userId: userId,
       amount: -item.priceInJoules,
-      currency: "JOULES",
+      currency: "JOULES" as SupportedCurrency,
       transactionType: "item-purchase" as TransactionType,
       status: "pending" as TransactionStatus,
       itemId: item.id,

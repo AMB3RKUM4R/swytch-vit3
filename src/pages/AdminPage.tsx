@@ -3,17 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Settings, UserPlus, BarChart2, ShieldAlert, CheckCircle, Loader2, Feather, DollarSign, ListChecks } from 'lucide-react'; 
 import { doc, setDoc, collection, query, where, onSnapshot } from 'firebase/firestore'; 
-import { db } from '@/lib/firebaseConfig'; 
-import { ItemDefinition, Transaction } from '@/lib/types'; 
-import { usePlayer } from '@/components/context/PlayerContext';
-import { useModal } from '@/components/context/ModalContext';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'; // Added Wagmi imports
+import { db } from '../lib/firebaseConfig'; 
+import { ItemDefinition, Transaction } from '../lib/types'; 
+import { usePlayer } from '../components/context/PlayerContext';
+import { useModal } from '../components/context/ModalContext';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'; 
 
-// ────────────────────────────────────────────────────────────────
-// MOCK/HELPER COMPONENT INTERFACES AND IMPORTS
-// ────────────────────────────────────────────────────────────────
-
-// Assuming you have a real ErrorBoundary component import
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent'; 
 
 // Firebase Config
@@ -56,7 +51,6 @@ const CreditUser: FC<CreditUserProps> = ({ adminIdToken }) => {
         
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
-                // FIX: Use the correct function endpoint for admin credit
                 const response = await fetch(`${FUNCTIONS_BASE_URL}/adminCreditUser`, { 
                     method: 'POST',
                     headers: { 
@@ -608,7 +602,6 @@ const AdminPage: FC = () => {
                                 <h3 className="text-2xl font-bold font-russo text-glow-primary text-center">User Accounts & Financial Controls</h3>
 
                                 {/* NEW: Pending Withdrawal List */}
-                                {/* FIX: Pass idToken to the helper components */}
                                 {idToken && <WithdrawalApprovalList adminIdToken={idToken} />}
 
                                 {/* Manual Credit / Approval Tool */}

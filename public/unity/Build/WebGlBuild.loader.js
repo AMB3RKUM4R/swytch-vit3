@@ -52,9 +52,9 @@ function createUnityInstance(canvas, config, onProgress) {
     canvas: canvas,
     webglContextAttributes: {
       preserveDrawingBuffer: false,
-      powerPreference: 2,
+      powerPreference: 0,
     },
-    wasmFileSize: 102704552,
+    wasmFileSize: 103850608,
     cacheControl: function (url) {
       return (url == Module.dataUrl || url.match(/\.bundle/)) ? "must-revalidate" : "no-store";
     },
@@ -455,12 +455,13 @@ Module.readBodyWithProgress = function() {
 
     var compression = response.headers.get("Content-Encoding");
     var contentLength = parseInt(response.headers.get("Content-Length"));
-    
+    var maxContentLength = 512 * 1024 * 1024; // cap initial buffer size to 512 MB
+
     switch (compression) {
     case "br":
-      return Math.round(contentLength * 5);
+      return Math.min(Math.round(contentLength * 2), maxContentLength);
     case "gzip":
-      return Math.round(contentLength * 4);
+      return Math.min(Math.round(contentLength * 1.6), maxContentLength);
     default:
       return contentLength;
     }
@@ -1280,6 +1281,7 @@ Module.UnityCache = function () {
       });
   }
 
+
   function downloadFramework() {
       return new Promise(function (resolve, reject) {
         var script = document.createElement("script");
@@ -1336,20 +1338,15 @@ Module.UnityCache = function () {
   // WebGPU is only available if both navigator.gpu exists,
   // and if requestAdapter returns a non-null adapter.
   function checkForWebGPU() {
-    return new Promise(function (resolve, reject) {
-      if (!navigator.gpu) {
-        resolve(false);
-        return;
-      }
-      navigator.gpu.requestAdapter().then(function (adapter) {
-        Module.SystemInfo.hasWebGPU = !!adapter;
-        resolve(Module.SystemInfo.hasWebGPU);
-      });
-    });
+    // WebGPU support was disabled in the build settings.
+    // Skip initialization of WebGPU context.
+    Module.SystemInfo.hasWebGPU = false;
+    return Promise.resolve(false);
   }
 
   function loadBuild() {
     var codeDownloadTimeStartup = performance.now();
+
     downloadFramework().then(function (unityFramework) {
       Module.webAssemblyTimeStart = performance.now();
       unityFramework(Module);
@@ -1419,9 +1416,11 @@ Module.UnityCache = function () {
       onProgress(0);
       Module.postRun.push(function () {
         onProgress(1);
-        delete Module.startupErrorHandler;
-        resolve(unityInstance);
-        Module.pageStartupTime = performance.now();
+        Module.WebPlayer.WaitForInitialization().then(function () {
+          delete Module.startupErrorHandler;
+          resolve(unityInstance);
+          Module.pageStartupTime = performance.now();
+        });
       });
       // Checking for WebGPU availability is asynchronous, so wait until
       // it has finished checking before loading the build.

@@ -1,12 +1,11 @@
-// src/pages/LandingPage.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Brain, DollarSign, Lock, ArrowRight, FileText, Gamepad2 } from 'lucide-react';
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { usePlayer } from '@/components/context/PlayerContext';
-import { useModal } from '@/components/context/ModalContext';
-import SwytchCard from '@/components/SwytchCard';
-import FeaturedCards from '@/components/FeaturedCards';
+import { usePlayer } from '../components/context/PlayerContext';
+import { useModal } from '../components/context/ModalContext';
+import SwytchCard from '../components/SwytchCard';
+import FeaturedCards from '../components/FeaturedCards';
 
 // Animation variants
 const containerVariants = {

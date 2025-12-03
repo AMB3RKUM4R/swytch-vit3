@@ -1,84 +1,75 @@
-// src/pages/Customize.tsx
-import { FC, useEffect } from 'react'; // Added useEffect
+import { FC, useEffect } from 'react'; 
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { User } from 'lucide-react';
+import { User, Loader2 } from 'lucide-react'; // Added Loader2
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import SwytchCard from '../components/SwytchCard';
-import { usePlayer } from '@/components/context/PlayerContext';
-import { useModal } from '@/components/context/ModalContext';
-import LoadingSpinner from '@/components/LoadingSpinner';
+// FIX: Using relative paths for context imports
+import { usePlayer } from '../components/context/PlayerContext';
+import { useModal } from '../components/context/ModalContext';
+import LoadingSpinner from '../components/LoadingSpinner'; // FIX: Relative path
+import { useWebGL } from '../components/context/WebglContext'; // FIX: Relative path
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.15 } },
-};
-
-const sectionVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } },
-};
-
-const CUSTOMIZE_STAGE_ID = "CustomizeScene"; // Define the specific stage ID
+const CUSTOMIZE_STAGE_ID = "CustomizeScene"; 
 
 const Customize: FC = () => {
   const { setShowMessage, setActiveModal } = useModal();
   const { playerData, dataLoading, authLoading } = usePlayer();
+  // CRITICAL: Get setter and current active state
+  const { activeGameId, setActiveGameId } = useWebGL(); 
   const navigate = useNavigate();
+
+  const isCustomizerActive = activeGameId === CUSTOMIZE_STAGE_ID;
   
-  // NOTE: This component needs access to the activeGameId state management from App.tsx/Context.
-  // Assuming the context provides setActiveGameId.
-  // For demonstration, we assume a context or prop provides this setter:
-  const setActiveGameId = (id: string | null) => { 
-      // Replace this with your actual state setter logic
-      console.log(`Setting active game ID to: ${id}`);
-  };
-
-
-  useEffect(() => {
-    // CRITICAL: On load, launch the dedicated customization stage in the Unity WebGL instance.
-    setActiveGameId(CUSTOMIZE_STAGE_ID);
-    
-    // If the user already has an avatar, redirect them immediately.
-    if (playerData?.character?.selectedID) {
-        navigate('/home', { replace: true });
-    }
-    
-    // Cleanup function when the component unmounts
-    return () => setActiveGameId(null);
-  }, [playerData?.character?.selectedID, navigate, setActiveGameId]);
-
-
+  // Checks if data loading is complete AND player has no avatar selected yet
+  const needsCustomization = !dataLoading && !authLoading && !playerData?.character?.selectedID;
   const isPending = dataLoading || authLoading;
 
-  if (isPending) {
-    return <LoadingSpinner fullScreen message="Checking authorization..." />;
+  useEffect(() => {
+    // 1. If player data is ready and avatar is selected, redirect them home
+    if (!dataLoading && playerData?.character?.selectedID) {
+        navigate('/home', { replace: true });
+        return;
+    }
+    
+    // 2. Automatically launch the dedicated customization stage if needed and not already launched
+    if (needsCustomization && !isCustomizerActive) {
+        setActiveGameId(CUSTOMIZE_STAGE_ID);
+        setShowMessage("Launching 3D Sentinel Terminal for Identity Genesis...");
+    }
+    
+    // NOTE: We do not add cleanup here, as we want the customization to run until finished/closed by the Unity C# script.
+    // The C# script calls CloseGameSession() which calls setActiveGameId(null).
+  }, [dataLoading, playerData?.character?.selectedID, navigate, setActiveGameId, needsCustomization, isCustomizerActive, setShowMessage]);
+
+
+  if (isPending || playerData?.character?.selectedID) {
+    return <LoadingSpinner fullScreen message="Checking authorization and identity status..." />;
   }
-
-  // NOTE: The Continue button logic is now handled by the Unity client signaling the web app.
-  // This React-based component now primarily hosts the WebGL screen.
-
+  
+  // If we reach here, we are waiting for the WebGL client to load the customization scene.
   return (
     <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
       <motion.div
         className="min-h-screen text-foreground max-w-7xl mx-auto py-24 px-4"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
       >
-        <motion.section variants={sectionVariants} className="text-center mb-12">
+        <motion.section className="text-center mb-12">
           <User className="mx-auto w-16 h-16 text-primary text-glow-primary mb-4" />
           <h1 className="text-4xl md:text-5xl font-bold text-foreground font-russo mb-4">
             Identity Genesis
           </h1>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto font-inter">
-            Select your Hunter Archetype in the 3D terminal below.
+            Select your Hunter Archetype in the 3D terminal below. The interface will be full-screen for maximum immersion.
           </p>
         </motion.section>
 
-        {/* The 3D Unity Customization Stage will be rendered via UnityStage.tsx component */}
-        <SwytchCard variant="holographic" className="p-8 h-[600px] flex items-center justify-center">
-            <p className="text-xl text-muted-foreground">3D Customization Stage Loading...</p>
+        {/* This placeholder is shown *behind* the UnityStage overlay while it loads. 
+            It confirms the process is happening. */}
+        <SwytchCard variant="holographic" className="p-8 h-[600px] flex flex-col items-center justify-center">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <p className="text-xl text-muted-foreground">3D Customizer Loading... Please wait for the full-screen terminal.</p>
         </SwytchCard>
 
       </motion.div>

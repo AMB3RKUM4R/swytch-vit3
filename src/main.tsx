@@ -1,4 +1,3 @@
-// src/main.tsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -11,7 +10,7 @@ import { PayPalScriptProvider } from '@paypal/react-paypal-js';
 import { ModalProvider } from './components/context/ModalContext';
 import { ThemeProvider } from './components/context/ThemeContext';
 import { PlayerProvider } from './components/context/PlayerContext';
-import { WebGLProvider } from './components/context/WebglContext'; // FIX: Import WebGLProvider
+import { WebGLProvider } from './components/context/WebglContext'; 
 
 // Config & App
 import { wagmiConfig } from './lib/wagmi';
@@ -33,7 +32,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// PayPal
+// PayPal (Sandbox defaults used if ENV is missing)
 const paypalOptions = {
   clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID || "sb",
   currency: "USD",
@@ -58,7 +57,7 @@ const Root = () => (
               <ThemeProvider>
                 <ModalProvider>
                   <PlayerProvider>
-                    {/* CRITICAL FIX: Wrap the App with WebGLProvider */}
+                    {/* CRITICAL: WebGLProvider MUST wrap the App component to manage the game launch state */}
                     <WebGLProvider>
                       <App />
                     </WebGLProvider>

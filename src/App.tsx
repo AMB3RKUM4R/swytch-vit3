@@ -1,33 +1,32 @@
-// src/App.tsx
 import { FC, useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 
-// Contexts
-import { useModal } from '@/components/context/ModalContext';
-import { usePlayer } from '@/components/context/PlayerContext';
-import { useWebGL } from '@/components/context/WebglContext'; // FIX: Import useWebGL
+// Contexts (FIX: Using relative paths for context imports)
+import { useModal } from './components/context/ModalContext';
+import { usePlayer } from './components/context/PlayerContext';
+import { useWebGL } from './components/context/WebglContext'; 
 
-// Components
-import AuthModal from '@/components/AuthModal';
-import PaymentModal from '@/components/PaymentModal';
-import WithdrawModal from '@/components/WithdrawlModal';
-import TopNav from '@/components/TopNav';
-import BottomNav from '@/components/BottomNav';
-import LoadingScreen from '@/components/LoadingScreen';
-import LeftSidebar from '@/components/LeftSidebar'; 
-import UnityStage from '@/components/UnityStage';
+// Components (FIX: Using relative paths for component imports)
+import AuthModal from './components/AuthModal';
+import PaymentModal from './components/PaymentModal';
+import WithdrawModal from './components/WithdrawlModal';
+import TopNav from './components/TopNav';
+import BottomNav from './components/BottomNav';
+import LoadingScreen from './components/LoadingScreen';
+import LeftSidebar from './components/LeftSidebar'; 
+import UnityStage from './components/UnityStage';
 
-// Pages
-import LandingPage from '@/pages/LandingPage';
-import Home from '@/pages/Home';
-import Customize from '@/pages/Customize';
-import { Vault } from '@/pages/Vault'; // Named import
-import Shop from '@/pages/Shop';
-import Community from '@/pages/Community';
-import Membership from '@/pages/Membership';
-import Inventory from '@/pages/Inventory';
-import AdminPage from '@/pages/AdminPage';
+// Pages (FIX: Using relative paths for page imports)
+import LandingPage from './pages/LandingPage';
+import Home from './pages/Home';
+import Customize from './pages/Customize';
+import { Vault } from './pages/Vault'; 
+import Shop from './pages/Shop';
+import Community from './pages/Community';
+import Membership from './pages/Membership';
+import Inventory from './pages/Inventory';
+import AdminPage from './pages/AdminPage';
 
 const App: FC = () => {
   const { activeModal, setActiveModal, setShowMessage } = useModal(); 
@@ -37,7 +36,7 @@ const App: FC = () => {
     playerData
   } = usePlayer();
   
-  // CRITICAL FIX: Get activeGameId and setter from the context
+  // CRITICAL: Get activeGameId and setter from the context
   const { activeGameId, setActiveGameId } = useWebGL(); 
 
   const [showInitialAuthModal, setShowInitialAuthModal] = useState(true); 
@@ -65,6 +64,7 @@ const App: FC = () => {
       <LeftSidebar /> 
 
       {/* Main Content */}
+      {/* The lg:pl-80 offset accounts for the LeftSidebar */}
       <main className="pt-[70px] pb-24 md:pb-8 md:pl-0 lg:pl-80"> 
         <AnimatePresence mode="wait">
           <Routes>
@@ -72,6 +72,7 @@ const App: FC = () => {
             <Route path="/" element={<LandingPage />} />
 
             {/* Auth Flow */}
+            {/* This route forces new users to the Customizer screen if they have an ID but no avatar */}
             <Route 
               path="/customize" 
               element={userId ? <Customize /> : <Navigate to="/" replace />} 
@@ -87,9 +88,11 @@ const App: FC = () => {
                 <Route path="/membership" element={<Membership />} />
                 <Route path="/inventory" element={<Inventory />} />
                 <Route path="/admin" element={<AdminPage />} />
+                {/* Redirects any invalid path back to the home console */}
                 <Route path="*" element={<Navigate to="/home" replace />} /> 
               </>
             ) : (
+                // Fallback for logged in user without avatar, or logged out user
                 <Route path="*" element={<Navigate to={redirectPath} replace />} />
             )}
           </Routes>

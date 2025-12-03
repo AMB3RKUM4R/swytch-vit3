@@ -16,10 +16,10 @@ import { useModal } from '@/components/context/ModalContext';
 const STATIC_PAYPAL_LINK = 'https://www.paypal.com/ncp/payment/TZ5XEBCG8NFGW';
 
 // 1. Your Wallet Address for direct ETH transfers
-const RECEIVER_ETH_ADDRESS = '0xDE9978913D9a969d799A2ba9381FB82450b92CE0' as `0x${string}`;
+const RECEIVER_ETH_ADDRESS = '0x98d20900a28887b72b0f182a8d3159dad09b49a3' as `0x${string}`;
 
 // 2. Your Static UPI ID for Intent/QR generation
-const STATIC_UPI_ID = 'deamonstillaliv3@icici'; 
+const STATIC_UPI_ID = 'iznoatwork@oksbi'; 
 
 // ────────────────────────────────────────────────────────────────
 // Component

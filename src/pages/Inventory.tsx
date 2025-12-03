@@ -1,20 +1,20 @@
-// src/pages/Inventory.tsx
 import { FC, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, User, ArrowRight } from 'lucide-react';
-import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import UserInventoryDisplay from '../components/Inventory/UserInventoryDisplay';
-import ListForSaleModal from '../components/Inventory/ListForSaleModal';
-import { InventoryItem, ItemDefinition } from '../lib/types';
-import { useModal } from '@/components/context/ModalContext';
-import { usePlayer } from '@/components/context/PlayerContext';
-import { useWebGL } from '@/components/context/WebglContext'; // FIX: Import useWebGL
-import SwytchCard from '@/components/SwytchCard';
-import MembershipStatusOverview from '@/components/home/MembershipStatusOverview';
-// Game buttons are likely imported here as well, but kept commented for brevity
+import SwytchErrorBoundary from '../components/ErrorBoundaryComponent'; 
+import UserInventoryDisplay from '../components/Inventory/UserInventoryDisplay'; 
+import ListForSaleModal from '../components/Inventory/ListForSaleModal'; 
+import { InventoryItem, ItemDefinition } from '../lib/types'; 
+import { useModal } from '../components/context/ModalContext'; 
+import { usePlayer } from '../components/context/PlayerContext'; 
+import { useWebGL } from '../components/context/WebglContext'; 
+import SwytchCard from '../components/SwytchCard'; 
+import MembershipStatusOverview from '../components/home/MembershipStatusOverview'; 
+import GameLoginButton from '../components/Inventory/GameLoginButton'; 
+import GameDownloadButton from '../components/Inventory/GameDownloadButton'; 
 
 // --- CONFIGURATION ---
-const CUSTOMIZE_STAGE_ID = "CustomizeScene"; // The ID of your dedicated 3D customization build
+const CUSTOMIZE_STAGE_ID = "CustomizeScene"; // This ID must match the key in BUILD_MAP in UnityStage.tsx
 
 // Animation variants
 const sectionVariants = {
@@ -25,7 +25,7 @@ const sectionVariants = {
 const Inventory: FC = () => {
   const { setActiveModal, setShowMessage } = useModal();
   const { userId, playerData } = usePlayer();
-  const { setActiveGameId } = useWebGL(); // FIX: Retrieve setter here
+  const { setActiveGameId } = useWebGL();
 
   const [selectedItem, setSelectedItem] = useState<{instance: InventoryItem, definition: ItemDefinition, instanceId: string} | null>(null);
   const [showListForSaleModal, setShowListForSaleModal] = useState(false);
@@ -108,8 +108,8 @@ const Inventory: FC = () => {
             >
               <h2 className="text-2xl font-semibold font-poppins mb-4 text-primary">System Access</h2>
               <div className="grid grid-cols-1 gap-4">
-                {/* <GameLoginButton /> 
-                <GameDownloadButton /> */}
+                <GameLoginButton /> 
+                <GameDownloadButton />
               </div>
             </motion.div>
 

@@ -1,17 +1,16 @@
-// src/pages/Vault.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wallet, Info, Star, SlidersHorizontal, FileText, Brain, Scale } from 'lucide-react';
 import { useAccount, useGasPrice, useBalance, useChainId, useBlockNumber } from 'wagmi';
-import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import VaultWalletInfo from '../components/vault/VaultWalletInfo';
-import VaultMembershipPackages from '../components/vault/VaultMembershipPackages';
-import VaultRules from '../components/vault/VaultRules';
-import YieldCalculator from '../components/vault/YieldCalculator';
-import VaultMembershipBenefits from '../components/vault/VaultMembershipBenefits';
-import { usePlayer } from '@/components/context/PlayerContext';
-import { useModal } from '@/components/context/ModalContext';
-import SwytchCard from '@/components/SwytchCard';
+import SwytchErrorBoundary from '../components/ErrorBoundaryComponent'; 
+import VaultWalletInfo from '../components/vault/VaultWalletInfo'; 
+import VaultMembershipPackages from '../components/vault/VaultMembershipPackages'; 
+import VaultRules from '../components/vault/VaultRules'; 
+import YieldCalculator from '../components/vault/YieldCalculator'; 
+import VaultMembershipBenefits from '../components/vault/VaultMembershipBenefits'; 
+import { usePlayer } from '../components/context/PlayerContext'; 
+import { useModal } from '../components/context/ModalContext'; 
+import SwytchCard from '../components/SwytchCard'; 
 
 // Animation variants
 const containerVariants = {
@@ -39,9 +38,12 @@ export const Vault: FC = () => {
   const chainId = useChainId();
   const { data: gasPrice } = useGasPrice();
   
+  // Hardcoded USDT address for Polygon Mainnet (for mock purposes)
+  const USDT_POLYGON_ADDRESS = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F' as `0x${string}`;
+  
   const { data: usdtBalance } = useBalance({ 
     address, 
-    token: '0xdAC17F958D2ee523a2206206994597C13D831ec7', 
+    token: USDT_POLYGON_ADDRESS, 
     query: { select: (data) => data }
   });
   

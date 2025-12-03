@@ -1,24 +1,24 @@
-// src/pages/Home.tsx
 import { FC, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+// FIX: Using relative paths for all internal components/hooks/contexts
 import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
 import UserOverviewCard from '../components/home/UserOverviewCard';
-import QuickAccessGames from '@/components/home/QuickAccessGames';
-import ActionButtonsPanel from '@/components/home/ActionButtonsPanel';
-import RecentPurchases from '@/components/RecentPurchases';
-import CommunityRankings from '@/components/community/CommunityRankings';
-import CoreFeaturesShowcase from '@/components/home/CoreFeaturesShowcase';
-import AdDisplayPanel from '@/components/AdDisplayPanel';
-import { usePlayer } from '@/components/context/PlayerContext';
-import { useModal } from '@/components/context/ModalContext';
-import { useWebGL } from '@/components/context/WebglContext'; // FIX: Import useWebGL
+import QuickAccessGames from '../components/home/QuickAccessGames';
+import ActionButtonsPanel from '../components/home/ActionButtonsPanel';
+import RecentPurchases from '../components/RecentPurchases';
+import CommunityRankings from '../components/community/CommunityRankings';
+import CoreFeaturesShowcase from '../components/home/CoreFeaturesShowcase';
+import AdDisplayPanel from '../components/AdDisplayPanel';
+import { usePlayer } from '../components/context/PlayerContext';
+import { useModal } from '../components/context/ModalContext';
+import { useWebGL } from '../components/context/WebglContext';
 import { addDoc, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebaseConfig';
-import { SupportedCurrency, TransactionType, TransactionStatus } from '@/lib/types';
+import { db } from '../lib/firebaseConfig';
+import { SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
 import { Megaphone, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import SwytchCard from '@/components/SwytchCard';
+import { cn } from '../lib/utils';
+import SwytchCard from '../components/SwytchCard';
 
 // Animation variants for staggered list items
 const sectionVariant = {
@@ -68,12 +68,19 @@ const HeroCallout: FC = () => {
 const Home: FC = () => {
   const { userId, playerData } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
-  const { setActiveGameId } = useWebGL(); // FIX: Retrieve setter here
+  const { setActiveGameId } = useWebGL(); 
   
   const handleLaunch = useCallback((gameId: string) => {
+      // CRITICAL LAUNCH LOGIC: Pass the gameId to the WebGL Context setter.
+      // UnityStage.tsx will catch this and load the corresponding build folder.
+      if (!userId) {
+          setShowMessage('⚠️ Please sign in to launch a game gate.');
+          setActiveModal('auth');
+          return;
+      }
       setShowMessage(`Loading WebGL build for: ${gameId}...`);
-      setActiveGameId(gameId); // FIX: Use the setter from the context
-  }, [setShowMessage, setActiveGameId]);
+      setActiveGameId(gameId); 
+  }, [setShowMessage, setActiveGameId, userId, setActiveModal]);
 
 
   const handleShareOnX = useCallback(async () => {
@@ -86,6 +93,7 @@ const Home: FC = () => {
     window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
     
     try {
+      // Log reward transaction (quest-reward is secure via Cloud Functions in final version)
       await addDoc(collection(db, 'Transactions'), {
         transactionId: `${userId}_share_home_${Date.now()}`,
         userId,
@@ -158,7 +166,7 @@ const Home: FC = () => {
             <CoreFeaturesShowcase />
           </motion.div>
 
-          {/* --- FULL-WIDTH SECTIONS (Leaderboard, Recent Activity) --- */}
+          {/* --- FULL-WIDTH SECTIONS (Manifesto, Leaderboard, etc.) --- */}
           <motion.div className="lg:col-span-4 mt-12" variants={sectionVariant}>
             <h2 className="text-2xl font-poppins font-semibold text-muted-foreground mb-6">Global Status</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

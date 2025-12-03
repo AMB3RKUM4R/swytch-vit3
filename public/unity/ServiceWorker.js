@@ -1,9 +1,9 @@
 const cacheName = "swytch-PETVerse-0.1";
 const contentToCache = [
-    "Build/WebGLBuild.loader.js",
-    "Build/WebGLBuild.framework.js",
-    "Build/WebGLBuild.data",
-    "Build/WebGLBuild.wasm",
+    "Build/WebGlBuild.loader.js",
+    "Build/WebGlBuild.framework.js",
+    "Build/WebGlBuild.data",
+    "Build/WebGlBuild.wasm",
     "TemplateData/style.css"
 
 ];
