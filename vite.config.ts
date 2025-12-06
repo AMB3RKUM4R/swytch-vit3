@@ -20,6 +20,16 @@ export default defineConfig({
   },
   server: {
     port: 3000, // Kept as is for local development
+    
+    // --- ADDED FIX FOR UNITY WEBGL WASM ERRORS ---
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
+    fs: {
+      strict: false,
+    },
+    // ---------------------------------------------
   },
   css: {
     postcss: './postcss.config.js', // Added to ensure Tailwind works
