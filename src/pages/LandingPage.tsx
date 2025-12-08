@@ -7,10 +7,10 @@ import { usePlayer } from '@/components/context/PlayerContext';
 import GameTile, { FeedItem } from '@/components/GameTile';
 
 // ────────────────────────────────────────────────────────────────
-// CONTENT DATABASE (JPG UPDATE)
+// CONTENT DATABASE
 // ────────────────────────────────────────────────────────────────
 
-// GAMES (KEEP AS VIDEOS FOR IMMERSION)
+// GAMES
 const gamesList = [
   { id: "mana_miner", name: "Mana Miner", level: 1, type: "Extraction", videoUrl: "/videos/games/mana_miner.mp4" },
   { id: "gatekeeper", name: "Gatekeeper", level: 5, type: "Defense", videoUrl: "/videos/games/gatekeeper.mp4" },
@@ -29,7 +29,7 @@ const gamesList = [
   { id: "new_eden_mine", name: "New Eden Mine", level: 100, type: "Tycoon", videoUrl: "/videos/games/new_eden_mine.mp4" },
 ];
 
-// ITEMS (UPDATED TO .JPG)
+// ITEMS
 const itemList = [
   { id: "d-rank-pickaxe", name: "D-Rank Pickaxe", rarity: "D-Rank", type: "WEAPON", price: 500, imageUrl: "/items/weapons/pickaxe_d.jpg" },
   { id: "plasma-rifle", name: "Plasma Rifle", rarity: "B-Rank", type: "WEAPON", price: 2500, imageUrl: "/items/weapons/plasma_rifle.jpg" },
@@ -48,7 +48,7 @@ const itemList = [
   { id: "data-key", name: "Encrypted Data Key", rarity: "S-Rank", type: "ARTIFACT", price: 12000, imageUrl: "/items/artifacts/data_key.jpg" },
 ];
 
-// AVATARS (UPDATED TO .JPG)
+// AVATARS
 const avatarList = [
     { id: "cyber_samurai", name: "Cyber Samurai", rarity: "Legendary", price: 20000, imageUrl: "/avatars/cyber_samurai.jpg" },
     { id: "neon_assassin", name: "Neon Assassin", rarity: "Epic", price: 12000, imageUrl: "/avatars/neon_assassin.jpg" },
@@ -57,7 +57,7 @@ const avatarList = [
     { id: "solar_vanguard", name: "Solar Vanguard", rarity: "Legendary", price: 25000, imageUrl: "/avatars/solar_vanguard.jpg" },
 ];
 
-// ARENAS (KEEP AS VIDEOS)
+// ARENAS
 const arenaList = [
     { id: "arena_void_pit", name: "The Void Pit", type: "Deathmatch", level: 10, videoUrl: "/videos/arenas/void_pit.mp4" },
     { id: "arena_neon_city", name: "Neon City Outskirts", type: "Team Control", level: 20, videoUrl: "/videos/arenas/neon_city.mp4" },
@@ -124,11 +124,14 @@ const LandingPage: FC = () => {
         <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth">
             <HeroSection />
             {feedData.map((item, index) => (
-                <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black">
-                    <GameTile 
-                        game={item} 
-                        onGameLaunch={handleLaunch} 
-                    />
+                <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black py-4">
+                    {/* SIZE CONSTRAINT: 450x800 CONTAINER */}
+                    <div className="w-full max-w-[450px] h-[800px] max-h-[90vh] shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                        <GameTile 
+                            game={item} 
+                            onGameLaunch={handleLaunch} 
+                        />
+                    </div>
                 </div>
             ))}
             <div className="snap-start w-full h-[20vh] flex items-center justify-center text-white/20 text-xs font-mono">
