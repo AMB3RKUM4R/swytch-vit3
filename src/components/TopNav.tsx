@@ -8,7 +8,7 @@ import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase';
 import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi'; 
 import { usePlayer } from '@/components/context/PlayerContext'; 
 import { useModal } from '@/components/context/ModalContext'; 
-import CurrencyHUD from '@/components/CurrencyHUD'; //
+import CurrencyHUD from '@/components/CurrencyHUD'; 
 import { cn } from '@/lib/utils';
 
 // MOCK STATUS CHECK
@@ -98,8 +98,8 @@ const TopNav: FC = () => {
             </span>
         </Link>
 
-        {/* Desktop Nav Links */}
-        <div className="hidden lg:flex items-center gap-1 ml-8">
+        {/* Desktop Nav Links - FIXED: Changed lg:flex to md:flex and added responsive margin */}
+        <div className="hidden md:flex items-center gap-1 ml-4 lg:ml-8">
             {navItems.map(({ path, label, icon }) => (
             <Link
                 key={path}
@@ -143,11 +143,11 @@ const TopNav: FC = () => {
           </Link>
         )}
 
-        {/* --- MODIFIED: USER STATS & CURRENCY HUD --- */}
+        {/* --- USER STATS & CURRENCY HUD --- */}
         {isLoggedIn && playerData && (
           <div className="flex items-center gap-3">
             
-            {/* 1. Currency HUD (Replaces manual balance) */}
+            {/* 1. Currency HUD */}
             <CurrencyHUD />
 
             {/* 2. User Identity */}
