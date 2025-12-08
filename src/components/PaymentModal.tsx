@@ -14,7 +14,7 @@ const STATIC_UPI_ID = 'iznoatwork@oksbi';
 
 const PaymentModal: FC = () => {
   const { userId, logTransaction } = usePlayer();
-  const { activeModal, setActiveModal, setShowMessage } = useModal();
+  const { setActiveModal, setShowMessage } = useModal();
   const { isConnected } = useAccount();
 
   const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'paypal' | 'upi'>('paypal');

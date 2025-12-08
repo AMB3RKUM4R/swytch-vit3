@@ -1,6 +1,5 @@
 import { useState, useEffect, ReactNode, FC } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { SwytchErrorBoundaryProps } from '@/lib/types';
 
 const SwytchErrorBoundary: FC<SwytchErrorBoundaryProps> = ({ children, setShowMessage }) => {

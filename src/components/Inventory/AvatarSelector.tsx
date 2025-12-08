@@ -1,5 +1,4 @@
 import { FC, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Loader2, Check, Lock } from 'lucide-react';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { PlayerData } from '@/lib/types';

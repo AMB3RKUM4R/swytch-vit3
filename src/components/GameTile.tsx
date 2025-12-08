@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { Gamepad2, Play, Share2, Heart, DollarSign, Shield, User, Info, Map, Swords } from 'lucide-react';
+import { Gamepad2, Play, Share2, Heart, DollarSign, Shield, User, Info, Map } from 'lucide-react';
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'; 

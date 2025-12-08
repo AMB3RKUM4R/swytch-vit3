@@ -1,6 +1,6 @@
 import { FC, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calculator, Zap, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Zap, TrendingUp, AlertTriangle } from 'lucide-react';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
 

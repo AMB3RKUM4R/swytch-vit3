@@ -1,6 +1,5 @@
-import { FC, useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle, Clock, Loader2, Zap } from 'lucide-react';
+import { FC, useState, useCallback } from 'react';
+import { Zap } from 'lucide-react';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
 import { Quest, SupportedCurrency, TransactionType, TransactionStatus } from '@/lib/types';

@@ -1,6 +1,6 @@
 import { FC, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, DollarSign, Tag, Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, DollarSign, Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { ListForSaleModalProps, SupportedCurrency } from '@/lib/types'; 
 import { usePlayer } from '@/components/context/PlayerContext';
@@ -14,7 +14,7 @@ const ListForSaleModal: FC<ListForSaleModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { userId, playerData } = usePlayer();
+  const { userId } = usePlayer();
   const { setShowMessage } = useModal();
   const { address } = useAccount();
 

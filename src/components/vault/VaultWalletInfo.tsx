@@ -6,7 +6,6 @@ const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
   isConnected,
   address,
   chainId,
-  ensName,
   blockNumber,
   gasPrice,
   usdtBalance,

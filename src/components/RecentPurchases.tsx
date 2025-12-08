@@ -1,5 +1,4 @@
 import { FC, useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { History, ShoppingCart, Loader2, Star, ArrowUpCircle } from 'lucide-react';
 import { Transaction } from '@/lib/types';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp, where } from 'firebase/firestore';

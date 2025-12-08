@@ -2,15 +2,15 @@ import { FC } from 'react';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
 import UserInventoryDisplay from '@/components/Inventory/UserInventoryDisplay';
-import { Package, Shield, Share2 } from 'lucide-react';
+import { Package, Shield } from 'lucide-react';
 import { InventoryItem, ItemDefinition } from '@/lib/types'; // Ensure types are imported
 
 const Inventory: FC = () => {
   const { playerData } = usePlayer();
-  const { setShowMessage, setActiveModal } = useModal();
+  const { setShowMessage } = useModal();
 
   // Connected List Logic (Mocked in UI, but ready for real function)
-  const handleList = (instance: InventoryItem, def: ItemDefinition, id: string) => {
+  const handleList = (_instance: InventoryItem, def: ItemDefinition) => {
       // In a real scenario, this would open ListForSaleModal
       // For now, adhering to "Updated Scripts" only, we simulate the action or use existing modal if available.
       setShowMessage(`📝 Listing ${def.itemName} for sale...`);

@@ -1,5 +1,5 @@
 import { FC, useState, useCallback } from 'react';
-import { Play, Loader2, Smartphone } from 'lucide-react';
+import { Loader2, Smartphone } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useModal } from '@/components/context/ModalContext';

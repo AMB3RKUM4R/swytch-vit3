@@ -1,7 +1,7 @@
 import { FC, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Settings, UserPlus, BarChart2, ShieldAlert, CheckCircle, Loader2, Feather, DollarSign, ListChecks, ShieldCheck, Activity, Users, Database } from 'lucide-react'; 
+import { Settings, UserPlus, ShieldAlert, CheckCircle, Loader2, Feather, DollarSign, ListChecks, Activity, Users, Database } from 'lucide-react'; 
 import { doc, setDoc, collection, query, where, onSnapshot } from 'firebase/firestore'; 
 import { db } from '../lib/firebaseConfig'; 
 import { ItemDefinition, Transaction } from '../lib/types'; 

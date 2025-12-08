@@ -1,18 +1,16 @@
 // src/components/TopNav.tsx
 import { FC, useCallback, useState, useEffect } from 'react'; 
 import { motion } from 'framer-motion';
-import { Sparkles, Settings, HandCoins, Users, Package, ShoppingCart, LogOut, LoaderCircle, Gem, BellRing, User } from 'lucide-react'; 
+import { Sparkles, Settings, Gem, User, LogOut, LoaderCircle, ShoppingCart, Package, HandCoins, Users } from 'lucide-react'; 
 import { Link, useLocation } from 'react-router-dom'; 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase'; // Fixed path
-import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi'; // Fixed path
+import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase'; 
+import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi'; 
 import { usePlayer } from '@/components/context/PlayerContext'; 
 import { useModal } from '@/components/context/ModalContext'; 
 import { cn } from '@/lib/utils';
 
-// ────────────────────────────────────────────────────────────────
-// MOCK API & CONFIGURATION (Status Check)
-// ────────────────────────────────────────────────────────────────
+// MOCK STATUS CHECK
 const MOCK_FETCH_PENDING_TX = async (): Promise<number> => {
     return new Promise(resolve => setTimeout(() => resolve(
         (localStorage.getItem('isAdmin') === 'true') ? 3 : 0
@@ -39,8 +37,9 @@ const TopNav: FC = () => {
   const isUserAdmin = isLoggedIn && isAdmin();
   
   const [pendingTxCount, setPendingTxCount] = useState<number>(0);
-  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [, setIsCheckingStatus] = useState(false);
 
+  // Admin Check Logic
   const checkPendingTxStatus = useCallback(async () => {
       if (!isUserAdmin) {
           setPendingTxCount(0);
@@ -64,18 +63,18 @@ const TopNav: FC = () => {
       return () => clearInterval(interval);
   }, [checkPendingTxStatus]);
 
-  const handleRestrictedNav = useCallback(( label: string) => {
+  const handleRestrictedNav = useCallback((label: string) => {
     if (!isLoggedIn) {
-      setShowMessage(`⚠️ ACCESS DENIED: LOGIN REQUIRED FOR ${label}`);
+      setShowMessage(`⚠️ LOGIN REQUIRED: ${label}`);
       setActiveModal('auth');
       return false;
     }
     return true;
   }, [isLoggedIn, setShowMessage, setActiveModal]);
   
-  const handleAdminNav = useCallback((path: string) => {
+  const handleAdminNav = useCallback(() => {
     if (!isUserAdmin) {
-      setShowMessage(`🚫 ROOT ACCESS REQUIRED FOR ${path}`);
+      setShowMessage(`🚫 ROOT ACCESS REQUIRED`);
       return false;
     }
     return true;
@@ -86,19 +85,19 @@ const TopNav: FC = () => {
 
   return (
     <motion.nav
-      className="fixed top-0 left-0 w-full z-50 h-[70px] bg-black/90 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-4 font-inter"
+      className="fixed top-0 left-0 w-full z-50 h-[70px] bg-black/95 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-3 md:px-4 font-inter"
       initial={{ y: -100 }} animate={{ y: 0 }} transition={{ duration: 0.5 }}
     >
-      {/* 1. BRAND */}
+      {/* 1. LEFT SIDE: BRAND */}
       <div className="flex items-center gap-4">
         <Link to="/home" className="flex items-center gap-2 group">
             <Sparkles className="text-primary w-6 h-6 group-hover:animate-spin" />
-            <span className="text-xl font-bold font-russo text-white tracking-tighter uppercase hidden sm:block group-hover:text-primary transition-colors">
+            <span className="text-lg md:text-xl font-bold font-russo text-white tracking-tighter uppercase hidden sm:block group-hover:text-primary transition-colors">
               PETverse
             </span>
         </Link>
 
-        {/* Desktop Nav Links (Text + Icon) */}
+        {/* Desktop Nav Links */}
         <div className="hidden lg:flex items-center gap-1 ml-8">
             {navItems.map(({ path, label, icon }) => (
             <Link
@@ -119,22 +118,21 @@ const TopNav: FC = () => {
         </div>
       </div>
 
-      {/* 2. USER ACTIONS */}
-      <div className="flex items-center gap-4">
+      {/* 2. RIGHT SIDE: USER INFO & ACTIONS */}
+      <div className="flex items-center gap-2 md:gap-4">
         
-        {/* Admin Bell */}
+        {/* Admin Alert Bell */}
         {isLoggedIn && isUserAdmin && (
            <Link
             to="/admin"
-            onClick={(e) => { if (!handleAdminNav("/admin")) e.preventDefault(); }}
+            onClick={(e) => { if (!handleAdminNav()) e.preventDefault(); }}
             className={cn(
-                "relative p-2 transition-colors",
+                "relative p-2 transition-colors hidden sm:block",
                 location.pathname === '/admin' ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
             )}
             title="Command Center"
           >
             <Settings className="w-5 h-5" />
-            
             {pendingTxCount > 0 && (
                 <span className="absolute top-0 right-0 flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -144,40 +142,49 @@ const TopNav: FC = () => {
           </Link>
         )}
 
-        {/* User Stats (Desktop) */}
+        {/* USER STATS (VISIBLE ON MOBILE NOW) */}
         {isLoggedIn && playerData && (
-          <div className="hidden md:flex items-center gap-4 bg-white/5 px-4 py-1.5 border border-white/10">
+          <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 border border-white/10 rounded-full md:rounded-none">
+            
+            {/* User Identity */}
             <div className="flex items-center gap-2">
                 {profileImageUrl ? (
-                <img src={profileImageUrl} alt="Avatar" className="w-6 h-6 object-cover border border-white/20" />
+                  <img src={profileImageUrl} alt="Avatar" className="w-5 h-5 md:w-6 md:h-6 object-cover rounded-full border border-white/20" />
                 ) : (
-                <User className="text-primary w-4 h-4" />
+                  <User className="text-primary w-4 h-4 md:w-5 md:h-5" />
                 )}
-                <span className="text-xs font-mono font-bold text-white uppercase max-w-[100px] truncate">
-                {displayName}
+                {/* Username hidden on very small screens, shown on mobile+ */}
+                <span className="text-[10px] md:text-xs font-mono font-bold text-white uppercase max-w-[60px] md:max-w-[100px] truncate">
+                  {displayName}
                 </span>
             </div>
-            <div className="w-px h-4 bg-white/20"></div>
-            <div className="flex items-center gap-1.5">
-              <Gem className="text-primary w-3 h-3" />
-              <span className="text-xs font-mono text-primary">{joulesBalance.toFixed(0)}</span>
+
+            {/* Divider */}
+            <div className="w-px h-3 md:h-4 bg-white/20"></div>
+
+            {/* Balance */}
+            <div className="flex items-center gap-1">
+              <Gem className="text-primary w-3 h-3 md:w-4 md:h-4" />
+              <span className="text-[10px] md:text-xs font-mono text-primary font-bold">
+                {joulesBalance >= 1000 ? (joulesBalance / 1000).toFixed(1) + 'k' : joulesBalance.toFixed(0)}
+              </span>
             </div>
           </div>
         )}
 
-        {/* Wallet & Auth */}
+        {/* Wallet / Auth Actions */}
         {authLoading ? (
-          <LoaderCircle className="w-6 h-6 animate-spin text-primary" />
+          <LoaderCircle className="w-5 h-5 animate-spin text-primary" />
         ) : (
           <div className="flex items-center gap-2">
-            <ConnectButton
-              chainStatus="none"
-              showBalance={false}
-              accountStatus={{
-                smallScreen: 'avatar',
-                largeScreen: 'full',
-              }}
-            />
+            {/* RainbowKit Button (Hidden on tiny screens to save space) */}
+            <div className="hidden sm:block">
+                <ConnectButton
+                chainStatus="none"
+                showBalance={false}
+                accountStatus="avatar"
+                />
+            </div>
             
             {isLoggedIn ? (
               <button 
@@ -185,7 +192,7 @@ const TopNav: FC = () => {
                   signOutUser(); 
                   setShowMessage("SYSTEM DISCONNECTED");
                 }} 
-                className="w-10 h-10 flex items-center justify-center border border-white/10 hover:bg-red-900/20 hover:border-red-500 hover:text-red-500 transition-all text-white/50"
+                className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center border border-white/10 hover:bg-red-900/20 hover:border-red-500 hover:text-red-500 transition-all text-white/50 rounded-md"
                 title="Disconnect" 
               >
                 <LogOut className="w-4 h-4" />
@@ -193,7 +200,7 @@ const TopNav: FC = () => {
             ) : (
               <button 
                 onClick={() => setActiveModal('auth')}
-                className="btn-primary h-9 px-4 text-xs" 
+                className="btn-primary h-8 px-3 text-[10px] md:text-xs font-bold" 
               >
                 CONNECT
               </button>

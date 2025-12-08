@@ -1,6 +1,6 @@
 import { FC, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertTriangle, Maximize2, Loader2, Gamepad2 } from 'lucide-react';
+import { X, Maximize2, Gamepad2 } from 'lucide-react';
 import { Unity, useUnityContext } from 'react-unity-webgl';
 import { usePlayer } from "./context/PlayerContext"; 
 import { staticShopItems } from "@/lib/staticShopData";
@@ -37,7 +37,7 @@ interface UnityStageProps {
 }
 
 const UnityStage: FC<UnityStageProps> = ({ activeGameId, setActiveGameId }) => {
-  const [error, setError] = useState<string | null>(null);
+  const [] = useState<string | null>(null);
   const { playerData, userId } = usePlayer();
 
   // DYNAMIC CONFIGURATION

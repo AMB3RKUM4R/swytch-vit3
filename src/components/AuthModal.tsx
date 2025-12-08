@@ -1,6 +1,6 @@
 import { FC, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, LogOut, Mail, Lock, Loader2, AlertTriangle, Play } from 'lucide-react';
+import { X, Sparkles, LogOut, Mail, Lock, Loader2, AlertTriangle } from 'lucide-react';
 import { useAuthUserFirebase } from '../hooks/useAuthUserFirebase';
 import { useModal } from './context/ModalContext';
 import { AuthModalProps } from '@/lib/types';
