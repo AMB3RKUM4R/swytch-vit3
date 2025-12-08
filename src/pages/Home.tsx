@@ -6,7 +6,7 @@ import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import GameTile, { FeedItem } from '@/components/GameTile';
 
-// DATA LISTS DUPLICATED FOR CONSISTENCY (Same lists as LandingPage)
+// DUPLICATE DATA LISTS HERE (Same as LandingPage)
 const gamesList = [
   { id: "mana_miner", name: "Mana Miner", level: 1, type: "Extraction", videoUrl: "/videos/games/mana_miner.mp4" },
   { id: "gatekeeper", name: "Gatekeeper", level: 5, type: "Defense", videoUrl: "/videos/games/gatekeeper.mp4" },
@@ -14,7 +14,7 @@ const gamesList = [
   { id: "tech_assault", name: "Tech Assault", level: 20, type: "Shooter", videoUrl: "/videos/games/tech_assault.mp4" },
   { id: "rift_defense", name: "Rift Defense", level: 25, type: "Tower Defense", videoUrl: "/videos/games/rift_defense.mp4" },
 ];
-// ... (Include other lists: itemList, avatarList, arenaList here if you want full content in Home too)
+// ... (itemList, avatarList, arenaList)
 
 const HeroSection: FC = () => (
     <div className="relative w-full h-[50vh] md:h-[60vh] shrink-0 snap-start bg-black overflow-hidden border-b border-white/10">
@@ -49,7 +49,6 @@ const Home: FC = () => {
       const feed: FeedItem[] = [];
       const getGame = (g: any) => ({ type: 'game' as const, id: g.id, title: g.name, subtitle: `LVL ${g.level} // ${g.type.toUpperCase()}`, videoUrl: g.videoUrl, data: g });
       
-      // Simple merge for Home (expand this if you want items mixed in here too)
       for(let i=0; i<gamesList.length; i++) {
           if(gamesList[i]) feed.push(getGame(gamesList[i]));
       }
@@ -70,9 +69,8 @@ const Home: FC = () => {
         <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth">
             <HeroSection />
             {feedData.map((item, index) => (
-                <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black py-4">
-                    {/* SIZE CONSTRAINT: 450x800 */}
-                    <div className="w-full max-w-[450px] h-[800px] max-h-[90vh] shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black">
+                    <div className="w-full h-full md:w-full md:h-full relative shadow-2xl">
                         <GameTile game={item} onGameLaunch={handleLaunch} />
                     </div>
                 </div>

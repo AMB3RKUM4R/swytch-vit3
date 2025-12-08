@@ -6,16 +6,12 @@ import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import GameTile, { FeedItem } from '@/components/GameTile';
 
-// ────────────────────────────────────────────────────────────────
-// CONTENT DATABASE
-// ────────────────────────────────────────────────────────────────
-
-// GAMES
+// --- DATA LISTS (Games, Items, Avatars, Arenas) ---
+// (Paste your lists here from previous step, keeping them as is)
 const gamesList = [
   { id: "mana_miner", name: "Mana Miner", level: 1, type: "Extraction", videoUrl: "/videos/games/mana_miner.mp4" },
   { id: "gatekeeper", name: "Gatekeeper", level: 5, type: "Defense", videoUrl: "/videos/games/gatekeeper.mp4" },
   { id: "shadow_fix", name: "Shadow Fix", level: 10, type: "Puzzle", videoUrl: "/videos/games/shadow_fix.mp4" },
-  { id: "crypt_crawler", name: "Crypt Crawler", level: 15, type: "RPG", videoUrl: "/videos/games/crypt_crawler.mp4" },
   { id: "tech_assault", name: "Tech Assault", level: 20, type: "Shooter", videoUrl: "/videos/games/tech_assault.mp4" },
   { id: "rift_defense", name: "Rift Defense", level: 25, type: "Tower Defense", videoUrl: "/videos/games/rift_defense.mp4" },
   { id: "glitch_hacker", name: "Glitch Hacker", level: 30, type: "Arcade", videoUrl: "/videos/games/glitch_hacker.mp4" },
@@ -29,7 +25,6 @@ const gamesList = [
   { id: "new_eden_mine", name: "New Eden Mine", level: 100, type: "Tycoon", videoUrl: "/videos/games/new_eden_mine.mp4" },
 ];
 
-// ITEMS
 const itemList = [
   { id: "d-rank-pickaxe", name: "D-Rank Pickaxe", rarity: "D-Rank", type: "WEAPON", price: 500, imageUrl: "/items/weapons/pickaxe_d.jpg" },
   { id: "plasma-rifle", name: "Plasma Rifle", rarity: "B-Rank", type: "WEAPON", price: 2500, imageUrl: "/items/weapons/plasma_rifle.jpg" },
@@ -48,7 +43,6 @@ const itemList = [
   { id: "data-key", name: "Encrypted Data Key", rarity: "S-Rank", type: "ARTIFACT", price: 12000, imageUrl: "/items/artifacts/data_key.jpg" },
 ];
 
-// AVATARS
 const avatarList = [
     { id: "cyber_samurai", name: "Cyber Samurai", rarity: "Legendary", price: 20000, imageUrl: "/avatars/cyber_samurai.jpg" },
     { id: "neon_assassin", name: "Neon Assassin", rarity: "Epic", price: 12000, imageUrl: "/avatars/neon_assassin.jpg" },
@@ -57,7 +51,6 @@ const avatarList = [
     { id: "solar_vanguard", name: "Solar Vanguard", rarity: "Legendary", price: 25000, imageUrl: "/avatars/solar_vanguard.jpg" },
 ];
 
-// ARENAS
 const arenaList = [
     { id: "arena_void_pit", name: "The Void Pit", type: "Deathmatch", level: 10, videoUrl: "/videos/arenas/void_pit.mp4" },
     { id: "arena_neon_city", name: "Neon City Outskirts", type: "Team Control", level: 20, videoUrl: "/videos/arenas/neon_city.mp4" },
@@ -121,12 +114,19 @@ const LandingPage: FC = () => {
 
   return (
     <div className="w-full h-full bg-black">
+        {/* INFINITE SCROLL */}
         <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth">
+            
             <HeroSection />
+
             {feedData.map((item, index) => (
-                <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black py-4">
-                    {/* SIZE CONSTRAINT: 450x800 CONTAINER */}
-                    <div className="w-full max-w-[450px] h-[800px] max-h-[90vh] shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black">
+                    
+                    {/* RESPONSIVE CONTAINER LOGIC:
+                        Mobile: w-full h-full (Full Screen, effectively 450x800 aspect on phones)
+                        Desktop: w-full (Fills Column) max-w-none (No narrow constraint)
+                    */}
+                    <div className="w-full h-full md:w-full md:h-full relative shadow-2xl">
                         <GameTile 
                             game={item} 
                             onGameLaunch={handleLaunch} 
@@ -134,6 +134,7 @@ const LandingPage: FC = () => {
                     </div>
                 </div>
             ))}
+            
             <div className="snap-start w-full h-[20vh] flex items-center justify-center text-white/20 text-xs font-mono">
                 // END OF FEED //
             </div>
