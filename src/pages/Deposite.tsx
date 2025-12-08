@@ -2,8 +2,11 @@ import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Zap } from 'lucide-react';
 import SwytchCard from '@/components/SwytchCard';
+import { useModal } from '@/components/context/ModalContext'; //
 
 const Deposit: FC = () => {
+  const { setActiveModal } = useModal();
+
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-6">
       <SwytchCard variant="holographic" className="max-w-2xl w-full p-16 border-8 border-yellow-500/80 shadow-2xl">
@@ -19,6 +22,7 @@ const Deposit: FC = () => {
         </div>
 
         <motion.button
+          onClick={() => setActiveModal('payment')} // TRIGGER GOLD STORE
           className="w-full text-5xl py-16 bg-green-600 hover:bg-green-700 font-black rounded-3xl shadow-2xl"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}

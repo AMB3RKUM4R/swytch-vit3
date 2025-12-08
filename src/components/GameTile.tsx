@@ -5,7 +5,7 @@ import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'; 
 import { db } from '@/lib/firebaseConfig'; 
-import CurrencyHUD from '@/components/CurrencyHUD'; //
+import CurrencyHUD from '@/components/CurrencyHUD'; 
 
 export interface FeedItem {
     type: 'game' | 'item' | 'avatar' | 'arena';
@@ -25,12 +25,14 @@ interface GameTileProps {
 }
 
 const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
-    const { setShowMessage } = useModal();
-    const { userId, playerData } = usePlayer();
+    const { setShowMessage, setActiveModal } = useModal(); 
+    const { userId, playerData, goldBalance } = usePlayer(); 
+    
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const handleAction = async (actionType: string) => {
+    // FIX: Removed unused 'actionType' parameter
+    const handleAction = async () => {
         setIsProcessing(true);
         await new Promise(r => setTimeout(r, 500));
 
@@ -38,7 +40,21 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
             onGameLaunch(game.id);
             setTimeout(() => setIsProcessing(false), 3000); 
         } else {
-            setShowMessage(`🛒 OPENING MARKET: ${game.title}`);
+            if (!userId) {
+                setShowMessage("⚠️ LOGIN REQUIRED TO ACQUIRE ASSETS");
+                setActiveModal('auth'); 
+                setIsProcessing(false);
+                return;
+            }
+
+            if (game.price && game.price > goldBalance) {
+                setShowMessage("⚠️ INSUFFICIENT GOLD! PLEASE TOP UP.");
+                setActiveModal('payment'); 
+                setIsProcessing(false);
+                return;
+            }
+
+            setShowMessage(`🛒 ACQUIRING ASSET: ${game.title}`);
             setIsProcessing(false);
         }
     };
@@ -78,12 +94,10 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
             whileInView={{ opacity: 1 }}
             viewport={{ once: false, amount: 0.1 }}
         >
-            {/* --- MODIFIED: Absolute HUD for Feed View --- */}
             <div className="absolute top-4 right-4 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <CurrencyHUD className="bg-black/60 backdrop-blur p-2 rounded-lg border border-white/10" />
             </div>
 
-            {/* 1. MEDIA LAYER */}
             <div className="absolute inset-0 z-0 bg-black flex items-center justify-center">
                 {isVideo ? (
                     <video
@@ -107,7 +121,6 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
             </div>
 
-            {/* 2. SIDEBAR ACTIONS */}
             <div className="absolute right-4 bottom-32 z-20 flex flex-col items-center gap-6">
                 <div className="flex flex-col items-center gap-1">
                     <button className="p-3 bg-black/40 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all group">
@@ -123,7 +136,6 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
                 </div>
             </div>
 
-            {/* 3. CONTENT INFO */}
             <div className="relative z-20 p-6 pb-8 w-full pr-20">
                 <div className="flex items-center gap-2 mb-2">
                     <div className="px-2 py-1 bg-primary/20 border border-primary/50 rounded-sm backdrop-blur-md flex items-center gap-1">
@@ -133,7 +145,7 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
                     {game.price && (
                         <div className="px-2 py-1 bg-yellow-500/20 border border-yellow-500/50 rounded-sm backdrop-blur-md">
                             <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider">
-                                {game.price} J
+                                {game.price} G 
                             </span>
                         </div>
                     )}
@@ -147,7 +159,7 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
                 </p>
 
                 <button 
-                    onClick={() => handleAction('main_click')}
+                    onClick={handleAction} // No args passed now
                     disabled={isProcessing} 
                     className="w-full btn-primary h-14 text-lg flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,255,65,0.3)] hover:scale-[1.02] transition-transform disabled:opacity-80 disabled:cursor-not-allowed"
                 >

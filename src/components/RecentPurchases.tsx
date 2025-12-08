@@ -4,13 +4,12 @@ import { Transaction } from '@/lib/types';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp, where } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 import { timeAgo } from '@/lib/utils';
-import { usePlayer } from '@/components/context/PlayerContext';
-import CurrencyHUD from '@/components/CurrencyHUD'; //
+// FIX: Removed usePlayer import since userId wasn't used in this view
+import CurrencyHUD from '@/components/CurrencyHUD'; 
 
 const RecentPurchases: FC = () => {
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const { userId } = usePlayer();
 
   useEffect(() => {
     setLoading(true);
@@ -52,7 +51,6 @@ const RecentPurchases: FC = () => {
 
   return (
     <div className="flex flex-col gap-4">
-        {/* --- MODIFIED: Added Currency Header --- */}
         <div className="flex items-center justify-between pb-4 border-b border-white/10">
             <h3 className="text-sm font-russo text-white uppercase">Wallet & History</h3>
             <CurrencyHUD className="scale-90 origin-right" />

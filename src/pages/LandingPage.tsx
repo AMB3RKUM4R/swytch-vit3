@@ -1,13 +1,14 @@
 import { FC, useMemo } from 'react';
 import { motion } from 'framer-motion'; 
 import { ChevronDown, Sparkles } from 'lucide-react';
-import { useWebGL } from '@/components/context/WebglContext'; 
-import { useModal } from '@/components/context/ModalContext';
-import { usePlayer } from '@/components/context/PlayerContext';
-import GameTile, { FeedItem } from '@/components/GameTile';
+import { useWebGL } from '@/components/context/WebglContext'; //
+import { useModal } from '@/components/context/ModalContext'; //
+import { usePlayer } from '@/components/context/PlayerContext'; //
+import GameTile, { FeedItem } from '@/components/GameTile'; //
+import CurrencyHUD from '@/components/CurrencyHUD'; //
 
-// --- DATA LISTS (Games, Items, Avatars, Arenas) ---
-// (Paste your lists here from previous step, keeping them as is)
+// --- 1. FULL ORIGINAL DATA LISTS (RESTORED) ---
+
 const gamesList = [
   { id: "mana_miner", name: "Mana Miner", level: 1, type: "Extraction", videoUrl: "/videos/games/mana_miner.mp4" },
   { id: "gatekeeper", name: "Gatekeeper", level: 5, type: "Defense", videoUrl: "/videos/games/gatekeeper.mp4" },
@@ -57,6 +58,8 @@ const arenaList = [
     { id: "arena_cyber_col", name: "Cyber Colosseum", type: "1v1 Duel", level: 50, videoUrl: "/videos/arenas/cyber_colosseum.mp4" },
 ];
 
+// --- 2. HERO COMPONENT ---
+
 const HeroSection: FC = () => (
     <div className="relative w-full h-[50vh] md:h-[60vh] shrink-0 snap-start bg-black overflow-hidden border-b border-white/10">
         <video 
@@ -68,7 +71,7 @@ const HeroSection: FC = () => (
         <div className="absolute bottom-0 left-0 w-full p-8 text-center pb-16">
             <Sparkles className="w-12 h-12 text-primary mx-auto mb-4 animate-pulse" />
             <h1 className="text-4xl md:text-6xl font-black font-russo text-white uppercase tracking-tighter text-glow-primary">
-                FEED LIVE
+                Swytch PETVerse
             </h1>
         </div>
         <motion.div 
@@ -81,11 +84,14 @@ const HeroSection: FC = () => (
     </div>
 );
 
+// --- 3. MAIN LANDING PAGE COMPONENT ---
+
 const LandingPage: FC = () => {
   const { setActiveGameId } = useWebGL();
   const { userId } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
 
+  // MERGE ALL LISTS INTO ONE FEED (Using original data)
   const feedData: FeedItem[] = useMemo(() => {
       const feed: FeedItem[] = [];
       const getGame = (g: any) => ({ type: 'game' as const, id: g.id, title: g.name, subtitle: `LVL ${g.level} // ${g.type.toUpperCase()}`, videoUrl: g.videoUrl, data: g });
@@ -93,7 +99,9 @@ const LandingPage: FC = () => {
       const getAvatar = (a: any) => ({ type: 'avatar' as const, id: a.id, title: a.name, subtitle: `SKIN // ${a.rarity}`, imageUrl: a.imageUrl, price: a.price, data: a });
       const getArena = (a: any) => ({ type: 'arena' as const, id: a.id, title: a.name, subtitle: `ARENA // ${a.type}`, videoUrl: a.videoUrl, data: a });
 
-      const maxLen = Math.max(gamesList.length, itemList.length);
+      const maxLen = Math.max(gamesList.length, itemList.length, avatarList.length, arenaList.length);
+      
+      // Interleave lists for a mixed feed
       for(let i=0; i<maxLen; i++) {
           if(gamesList[i]) feed.push(getGame(gamesList[i]));
           if(itemList[i]) feed.push(getItem(itemList[i]));
@@ -114,6 +122,13 @@ const LandingPage: FC = () => {
 
   return (
     <div className="w-full h-full bg-black">
+        {/* Floating HUD for Feed */}
+        <div className="fixed top-20 right-4 z-40 pointer-events-none">
+             <div className="pointer-events-auto">
+                <CurrencyHUD className="bg-black/50 backdrop-blur-md p-2 rounded-lg border border-white/10" />
+             </div>
+        </div>
+
         {/* INFINITE SCROLL */}
         <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth">
             
@@ -121,11 +136,6 @@ const LandingPage: FC = () => {
 
             {feedData.map((item, index) => (
                 <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black">
-                    
-                    {/* RESPONSIVE CONTAINER LOGIC:
-                        Mobile: w-full h-full (Full Screen, effectively 450x800 aspect on phones)
-                        Desktop: w-full (Fills Column) max-w-none (No narrow constraint)
-                    */}
                     <div className="w-full h-full md:w-full md:h-full relative shadow-2xl">
                         <GameTile 
                             game={item} 

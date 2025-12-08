@@ -5,7 +5,6 @@ import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wa
 import { parseEther } from 'viem';
 
 //
-import { SupportedCurrency } from '@/lib/types'; 
 //
 import { usePlayer } from '@/components/context/PlayerContext';
 //
