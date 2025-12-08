@@ -1,14 +1,15 @@
 import { FC, useMemo } from 'react';
 import { motion } from 'framer-motion'; 
 import { ChevronDown, Sparkles } from 'lucide-react';
-import { useWebGL } from '@/components/context/WebglContext'; //
-import { useModal } from '@/components/context/ModalContext'; //
-import { usePlayer } from '@/components/context/PlayerContext'; //
-import GameTile, { FeedItem } from '@/components/GameTile'; //
-import CurrencyHUD from '@/components/CurrencyHUD'; //
+import { useWebGL } from '@/components/context/WebglContext'; 
+import { useModal } from '@/components/context/ModalContext'; 
+import { usePlayer } from '@/components/context/PlayerContext'; 
+import GameTile, { FeedItem } from '@/components/GameTile'; 
+import CurrencyHUD from '@/components/CurrencyHUD'; 
+import AdDisplayPanel from '@/components/AdDisplayPanel'; //
+import { staticShopItems } from '@/lib/staticShopData'; 
 
-// --- 1. FULL ORIGINAL DATA LISTS (RESTORED) ---
-
+// --- 1. ORIGINAL DATA LISTS (RESTORED) ---
 const gamesList = [
   { id: "mana_miner", name: "Mana Miner", level: 1, type: "Extraction", videoUrl: "/videos/games/mana_miner.mp4" },
   { id: "gatekeeper", name: "Gatekeeper", level: 5, type: "Defense", videoUrl: "/videos/games/gatekeeper.mp4" },
@@ -26,24 +27,8 @@ const gamesList = [
   { id: "new_eden_mine", name: "New Eden Mine", level: 100, type: "Tycoon", videoUrl: "/videos/games/new_eden_mine.mp4" },
 ];
 
-const itemList = [
-  { id: "d-rank-pickaxe", name: "D-Rank Pickaxe", rarity: "D-Rank", type: "WEAPON", price: 500, imageUrl: "/items/weapons/pickaxe_d.jpg" },
-  { id: "plasma-rifle", name: "Plasma Rifle", rarity: "B-Rank", type: "WEAPON", price: 2500, imageUrl: "/items/weapons/plasma_rifle.jpg" },
-  { id: "gravity-hammer", name: "Gravity Hammer", rarity: "C-Rank", type: "WEAPON", price: 1200, imageUrl: "/items/weapons/gravity_hammer.jpg" },
-  { id: "void-blade", name: "Void Blade", rarity: "A-Rank", type: "WEAPON", price: 8000, imageUrl: "/items/weapons/void_blade.jpg" },
-  { id: "neural-whip", name: "Neural Whip", rarity: "B-Rank", type: "WEAPON", price: 3000, imageUrl: "/items/weapons/neural_whip.jpg" },
-  { id: "quantum-bow", name: "Quantum Bow", rarity: "S-Rank", type: "WEAPON", price: 15000, imageUrl: "/items/weapons/quantum_bow.jpg" },
-  { id: "s-rank-shield", name: "S-Rank Kinetic Shield", rarity: "S-Rank", type: "ARMOR", price: 10000, imageUrl: "/items/armor/shield_s.jpg" },
-  { id: "stealth-cloak", name: "Stealth Cloak", rarity: "A-Rank", type: "ARMOR", price: 4000, imageUrl: "/items/armor/stealth_cloak.jpg" },
-  { id: "nano-suit", name: "Nano-Weave Suit", rarity: "B-Rank", type: "ARMOR", price: 3000, imageUrl: "/items/armor/nano_suit.jpg" },
-  { id: "heavy-plate", name: "Titanium Plate", rarity: "C-Rank", type: "ARMOR", price: 1500, imageUrl: "/items/armor/heavy_plate.jpg" },
-  { id: "core-booster", name: "Core Energy Booster", rarity: "B-Rank", type: "CONSUMABLE", price: 800, imageUrl: "/items/consumables/core_booster.jpg" },
-  { id: "health-injector", name: "Health Injector", rarity: "D-Rank", type: "CONSUMABLE", price: 100, imageUrl: "/items/consumables/health_injector.jpg" },
-  { id: "xp-tome", name: "Tome of Knowledge", rarity: "A-Rank", type: "CONSUMABLE", price: 5000, imageUrl: "/items/consumables/xp_tome.jpg" },
-  { id: "void-badge", name: "Badge of the Void", rarity: "A-Rank", type: "ARTIFACT", price: 5000, imageUrl: "/items/artifacts/void_badge.jpg" },
-  { id: "data-key", name: "Encrypted Data Key", rarity: "S-Rank", type: "ARTIFACT", price: 12000, imageUrl: "/items/artifacts/data_key.jpg" },
-];
-
+// Reusing staticShopItems for Items to ensure data consistency
+// Avatar/Arena lists kept if you have specific data for them not in staticShopItems
 const avatarList = [
     { id: "cyber_samurai", name: "Cyber Samurai", rarity: "Legendary", price: 20000, imageUrl: "/avatars/cyber_samurai.jpg" },
     { id: "neon_assassin", name: "Neon Assassin", rarity: "Epic", price: 12000, imageUrl: "/avatars/neon_assassin.jpg" },
@@ -51,14 +36,11 @@ const avatarList = [
     { id: "void_walker", name: "Void Walker", rarity: "Epic", price: 11000, imageUrl: "/avatars/void_walker.jpg" },
     { id: "solar_vanguard", name: "Solar Vanguard", rarity: "Legendary", price: 25000, imageUrl: "/avatars/solar_vanguard.jpg" },
 ];
-
 const arenaList = [
     { id: "arena_void_pit", name: "The Void Pit", type: "Deathmatch", level: 10, videoUrl: "/videos/arenas/void_pit.mp4" },
     { id: "arena_neon_city", name: "Neon City Outskirts", type: "Team Control", level: 20, videoUrl: "/videos/arenas/neon_city.mp4" },
     { id: "arena_cyber_col", name: "Cyber Colosseum", type: "1v1 Duel", level: 50, videoUrl: "/videos/arenas/cyber_colosseum.mp4" },
 ];
-
-// --- 2. HERO COMPONENT ---
 
 const HeroSection: FC = () => (
     <div className="relative w-full h-[50vh] md:h-[60vh] shrink-0 snap-start bg-black overflow-hidden border-b border-white/10">
@@ -71,7 +53,7 @@ const HeroSection: FC = () => (
         <div className="absolute bottom-0 left-0 w-full p-8 text-center pb-16">
             <Sparkles className="w-12 h-12 text-primary mx-auto mb-4 animate-pulse" />
             <h1 className="text-4xl md:text-6xl font-black font-russo text-white uppercase tracking-tighter text-glow-primary">
-                Swytch PETVerse
+                FEED LIVE
             </h1>
         </div>
         <motion.div 
@@ -84,27 +66,34 @@ const HeroSection: FC = () => (
     </div>
 );
 
-// --- 3. MAIN LANDING PAGE COMPONENT ---
-
 const LandingPage: FC = () => {
   const { setActiveGameId } = useWebGL();
   const { userId } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
 
-  // MERGE ALL LISTS INTO ONE FEED (Using original data)
   const feedData: FeedItem[] = useMemo(() => {
       const feed: FeedItem[] = [];
       const getGame = (g: any) => ({ type: 'game' as const, id: g.id, title: g.name, subtitle: `LVL ${g.level} // ${g.type.toUpperCase()}`, videoUrl: g.videoUrl, data: g });
-      const getItem = (i: any) => ({ type: 'item' as const, id: i.id, title: i.name, subtitle: `${i.rarity} // ${i.type}`, imageUrl: i.imageUrl, price: i.price, data: i });
+      
+      // Use staticShopItems logic
+      const getItem = (i: any) => ({ 
+          type: 'item' as const, 
+          id: i.id, 
+          title: i.itemName, 
+          subtitle: `${i.rarity} // ${i.itemType}`, 
+          imageUrl: i.visuals?.iconName, 
+          price: i.price?.USD ? i.price.USD * 100 : (i.price?.JOULES ? Math.floor(i.price.JOULES/10) : 100), 
+          data: i 
+      });
+
       const getAvatar = (a: any) => ({ type: 'avatar' as const, id: a.id, title: a.name, subtitle: `SKIN // ${a.rarity}`, imageUrl: a.imageUrl, price: a.price, data: a });
       const getArena = (a: any) => ({ type: 'arena' as const, id: a.id, title: a.name, subtitle: `ARENA // ${a.type}`, videoUrl: a.videoUrl, data: a });
 
-      const maxLen = Math.max(gamesList.length, itemList.length, avatarList.length, arenaList.length);
+      const maxLen = Math.max(gamesList.length, staticShopItems.length, avatarList.length, arenaList.length);
       
-      // Interleave lists for a mixed feed
       for(let i=0; i<maxLen; i++) {
           if(gamesList[i]) feed.push(getGame(gamesList[i]));
-          if(itemList[i]) feed.push(getItem(itemList[i]));
+          if(staticShopItems[i]) feed.push(getItem(staticShopItems[i]));
           if(i < avatarList.length) feed.push(getAvatar(avatarList[i]));
           if(i < arenaList.length) feed.push(getArena(arenaList[i]));
       }
@@ -122,7 +111,7 @@ const LandingPage: FC = () => {
 
   return (
     <div className="w-full h-full bg-black">
-        {/* Floating HUD for Feed */}
+        {/* Floating HUD */}
         <div className="fixed top-20 right-4 z-40 pointer-events-none">
              <div className="pointer-events-auto">
                 <CurrencyHUD className="bg-black/50 backdrop-blur-md p-2 rounded-lg border border-white/10" />
@@ -135,13 +124,22 @@ const LandingPage: FC = () => {
             <HeroSection />
 
             {feedData.map((item, index) => (
-                <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black">
+                <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black relative">
+                    
+                    {/* Content */}
                     <div className="w-full h-full md:w-full md:h-full relative shadow-2xl">
                         <GameTile 
                             game={item} 
                             onGameLaunch={handleLaunch} 
                         />
                     </div>
+
+                    {/* ADSTERRA INJECTION: Every 5th item */}
+                    {index > 0 && index % 5 === 0 && (
+                        <div className="absolute bottom-0 left-0 w-full z-50 bg-black/90 border-t border-primary/20 backdrop-blur-md p-2 animate-fade-in-up">
+                            <AdDisplayPanel zoneType="native" />
+                        </div>
+                    )}
                 </div>
             ))}
             

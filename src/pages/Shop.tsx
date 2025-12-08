@@ -1,14 +1,14 @@
 import { FC, useState } from 'react';
 import GetGoldButton from '@/components/GetGoldButton';
 import { ShoppingBag, Shield } from 'lucide-react';
-import { staticShopItems } from '@/lib/staticShopData'; //
-import GameTile from '@/components/GameTile'; //
-import CurrencyHUD from '@/components/CurrencyHUD'; //
+import { staticShopItems } from '@/lib/staticShopData'; 
+import GameTile from '@/components/GameTile'; 
+import CurrencyHUD from '@/components/CurrencyHUD'; 
+import AdDisplayPanel from '@/components/AdDisplayPanel'; //
 
 const Shop: FC = () => {
   const [filter, setFilter] = useState('ALL');
 
-  // Filter Logic for the "Black Market" items
   const filteredItems = staticShopItems.filter(item => 
     filter === 'ALL' || item.itemType.toUpperCase() === filter
   );
@@ -21,7 +21,7 @@ const Shop: FC = () => {
          <CurrencyHUD />
       </div>
 
-      {/* --- SECTION 1: GOLD STORE (Buy Gold) --- */}
+      {/* --- SECTION 1: GOLD STORE --- */}
       <div className="text-center mb-12 animate-fade-in-down">
         <h1 className="text-5xl font-russo text-white mb-4 uppercase flex items-center justify-center gap-4">
             <ShoppingBag className="text-yellow-500 w-12 h-12" /> The Exchange
@@ -61,7 +61,7 @@ const Shop: FC = () => {
           </div>
       </div>
 
-      {/* --- SECTION 2: THE BLACK MARKET (Spend Gold) --- */}
+      {/* --- SECTION 2: THE BLACK MARKET --- */}
       <div className="max-w-7xl w-full border-t border-white/10 pt-12">
           <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
               <div>
@@ -71,7 +71,6 @@ const Shop: FC = () => {
                   <p className="text-gray-500 text-sm">Spend Gold to acquire superior weaponry.</p>
               </div>
               
-              {/* Filter Tabs */}
               <div className="flex gap-2">
                   {['ALL', 'WEAPON', 'ARMOR', 'CONSUMABLE'].map(f => (
                       <button 
@@ -89,10 +88,9 @@ const Shop: FC = () => {
               </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
               {filteredItems.map((item) => (
                   <div key={item.id} className="aspect-[3/4]">
-                      {/* Reuse GameTile logic to handle "Insufficient Gold" check */}
                       <GameTile 
                           game={{
                               type: 'item',
@@ -100,14 +98,20 @@ const Shop: FC = () => {
                               title: item.itemName,
                               subtitle: item.rarity,
                               imageUrl: item.visuals?.iconName,
-                              // IMPORTANT: We use the defined price, or fallback to 100 Gold if strictly JOULES
-                              price: item.price?.USD ? item.price.USD * 100 : (item.price?.JOULES ? Math.floor(item.price.JOULES / 10) : 100),
+                              price: item.price?.USD ? item.price.USD * 100 : (item.price?.JOULES ? Math.floor(item.price.JOULES/10) : 100),
                               data: item
                           }}
                           onGameLaunch={() => {}} 
                       />
                   </div>
               ))}
+          </div>
+
+          {/* --- ADSTERRA BANNER --- */}
+          <div className="w-full flex justify-center py-8 border-t border-white/5">
+               <div className="w-full max-w-4xl">
+                   <AdDisplayPanel zoneType="banner" />
+               </div>
           </div>
       </div>
 
