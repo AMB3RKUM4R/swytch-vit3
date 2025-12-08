@@ -1,4 +1,4 @@
-import { FC, useState } from 'react';
+import { FC, useState, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 
@@ -13,7 +13,6 @@ import PaymentModal from './components/PaymentModal';
 import WithdrawModal from './components/WithdrawlModal';
 import TopNav from './components/TopNav'; 
 import BottomNav from './components/BottomNav'; 
-import LeftSidebar from './components/LeftSidebar'; 
 import SplashScreen from './components/SplashScreen'; 
 import UnityStage from './components/UnityStage';
 import CommunityChat from './components/community/CommunityChat'; 
@@ -28,38 +27,43 @@ import Inventory from './pages/Inventory';
 import AdminPage from './pages/AdminPage';
 
 const App: FC = () => {
-  const { activeModal, setShowMessage } = useModal(); 
+  const { activeModal, setActiveModal, setShowMessage } = useModal(); 
   const { userId } = usePlayer();
   const { activeGameId, setActiveGameId } = useWebGL(); 
   
   const [showSplash, setShowSplash] = useState(true);
   const showNav = !activeGameId;
 
+  // --- NEW: Handle Splash Screen Completion ---
+  const handleSplashComplete = useCallback(() => {
+    setShowSplash(false);
+    // If user is NOT logged in, open the Auth Modal immediately
+    if (!userId) {
+      setActiveModal('auth');
+    }
+  }, [setShowSplash, userId, setActiveModal]);
+
   return (
     <div className="min-h-screen bg-black text-white font-inter overflow-hidden selection:bg-primary/30"> 
       
+      {/* 1. SPLASH SCREEN (Gatekeeper) */}
       <AnimatePresence>
-        {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+        {showSplash && (
+          <SplashScreen onComplete={handleSplashComplete} />
+        )}
       </AnimatePresence>
 
       <UnityStage activeGameId={activeGameId} setActiveGameId={setActiveGameId} /> 
 
       <div className={`h-screen flex flex-col ${activeGameId ? 'hidden' : 'flex'}`}>
          
-         <div className="lg:hidden">
-            {showNav && <TopNav />}
-         </div>
+         {/* TOP NAV ALWAYS VISIBLE */}
+         {showNav && <TopNav />}
 
-         <div className="flex-grow flex overflow-hidden relative pt-[70px] lg:pt-0 pb-[60px] md:pb-0">
+         <div className="flex-grow flex overflow-hidden relative pt-[70px]">
              
-             {/* LEFT: NAV */}
-             <aside className="hidden lg:flex w-[280px] border-r border-white/10 bg-black flex-col z-30 flex-shrink-0">
-                 <LeftSidebar />
-             </aside>
-
-             {/* CENTER: FEED (FULL WIDTH NOW) */}
+             {/* CENTER: FEED */}
              <main className="flex-1 overflow-y-auto relative z-10 bg-black scrollbar-thin scrollbar-thumb-primary">
-                 {/* Removed max-w-2xl restriction here */}
                  <div className="w-full h-full"> 
                      <AnimatePresence mode="wait">
                       <Routes>
@@ -98,12 +102,14 @@ const App: FC = () => {
              </aside>
          </div>
 
+         {/* MOBILE BOTTOM NAV */}
          <div className="lg:hidden">
             {showNav && <BottomNav />}
          </div>
 
       </div>
 
+      {/* MODALS */}
       <AnimatePresence>
         {activeModal === 'auth' && <AuthModal setShowMessage={setShowMessage} />} 
         {(activeModal === 'payment' || activeModal === 'deposit') && <PaymentModal />} 

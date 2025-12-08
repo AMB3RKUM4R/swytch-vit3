@@ -156,7 +156,7 @@ const TopNav: FC = () => {
             </div>
 
             {/* User Identity */}
-            <div className="hidden lg:flex items-center gap-2 bg-white/5 px-3 py-1.5 border border-white/10 rounded-full">
+            <div className="lg:flex items-center gap-2 bg-white/5 px-3 py-1.5 border border-white/10 rounded-full">
                 {profileImageUrl ? (
                   <img src={profileImageUrl} alt="Avatar" className="w-5 h-5 object-cover rounded-full border border-white/20" />
                 ) : (
