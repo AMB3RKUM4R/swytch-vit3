@@ -9,7 +9,7 @@ const Shop: FC = () => {
   const { setActiveModal, setShowMessage } = useModal();
   const { userId } = usePlayer();
 
-  const handlePurchase = (id?: string) => {
+  const handlePurchase = () => {
     if(!userId) {
         setShowMessage("⚠️ AUTH REQUIRED");
         setActiveModal('auth');
