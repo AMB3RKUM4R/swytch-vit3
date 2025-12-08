@@ -1,6 +1,6 @@
-import { FC, useRef } from 'react';
+import { FC, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Gamepad2, Play, Share2, Heart, DollarSign, Shield, User, Info, Map } from 'lucide-react';
+import { Gamepad2, Play, Share2, Heart, DollarSign, Shield, User, Info, Map, Loader2 } from 'lucide-react'; // Added Loader2
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'; 
@@ -11,8 +11,8 @@ export interface FeedItem {
     id: string;
     title: string;
     subtitle: string;
-    videoUrl?: string; // Optional: For Games/Arenas
-    imageUrl?: string; // Optional: For Items/Avatars
+    videoUrl?: string; 
+    imageUrl?: string; 
     price?: number; 
     locked?: boolean;
     data?: any; 
@@ -27,12 +27,22 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
     const { setShowMessage } = useModal();
     const { userId, playerData } = usePlayer();
     const videoRef = useRef<HTMLVideoElement>(null);
+    const [isProcessing, setIsProcessing] = useState(false); // NEW LOCAL STATE
 
-    const handleAction = () => {
+    const handleAction = async (actionType: string) => {
+        setIsProcessing(true); // Start Spinner
+        
+        // Small artificial delay to let animation play before heavy load
+        await new Promise(r => setTimeout(r, 500));
+
         if (game.type === 'game' || game.type === 'arena') {
             onGameLaunch(game.id);
+            // We don't turn off processing here because the Unity Modal takes over
+            // It will reset when the component remounts or via parent
+            setTimeout(() => setIsProcessing(false), 3000); // Timeout fallback
         } else {
             setShowMessage(`🛒 OPENING MARKET: ${game.title}`);
+            setIsProcessing(false);
         }
     };
 
@@ -61,39 +71,42 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
         }
     }
 
+    // Determine Media Source
+    const mediaSrc = game.videoUrl || game.imageUrl;
+    const isVideo = !!game.videoUrl;
+
     return (
         <motion.div 
-            className="relative w-full h-full max-w-lg mx-auto bg-black border-x border-white/10 overflow-hidden flex flex-col justify-end snap-start"
+            className="relative w-full h-full bg-black border-x border-white/10 overflow-hidden flex flex-col justify-end snap-start"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            viewport={{ once: false, amount: 0.3 }}
+            viewport={{ once: false, amount: 0.1 }}
         >
-            {/* 1. MEDIA LAYER (Video OR Image) */}
+            {/* 1. MEDIA LAYER */}
             <div className="absolute inset-0 z-0 bg-black flex items-center justify-center">
-                {game.videoUrl ? (
+                {isVideo ? (
                     <video
                         ref={videoRef}
-                        src={game.videoUrl}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
+                        src={mediaSrc}
+                        autoPlay loop muted playsInline
                         className="w-full h-full object-cover opacity-60"
-                        poster={`https://placehold.co/600x900/000/44D62C?text=${game.title}`} 
+                        poster={`https://placehold.co/450x800/000/44D62C?text=${game.title}`} 
                     />
                 ) : (
                     <img 
-                        src={game.imageUrl} 
+                        src={mediaSrc} 
                         alt={game.title}
                         className="w-full h-full object-cover opacity-80"
-                        onError={(e) => e.currentTarget.src = `https://placehold.co/600x900/111/44D62C?text=${game.title}`}
+                        onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = `https://placehold.co/450x800/222/555?text=NO+IMAGE`;
+                        }}
                     />
                 )}
-                {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
             </div>
 
-            {/* 2. ACTIONS */}
+            {/* 2. SIDEBAR ACTIONS */}
             <div className="absolute right-4 bottom-32 z-20 flex flex-col items-center gap-6">
                 <div className="flex flex-col items-center gap-1">
                     <button className="p-3 bg-black/40 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all group">
@@ -109,8 +122,8 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
                 </div>
             </div>
 
-            {/* 3. INFO & BUTTON */}
-            <div className="relative z-20 p-6 pb-24 md:pb-8 w-full pr-20">
+            {/* 3. CONTENT INFO */}
+            <div className="relative z-20 p-6 pb-8 w-full pr-20">
                 <div className="flex items-center gap-2 mb-2">
                     <div className="px-2 py-1 bg-primary/20 border border-primary/50 rounded-sm backdrop-blur-md flex items-center gap-1">
                         {getTypeIcon()}
@@ -133,13 +146,19 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
                 </p>
 
                 <button 
-                    onClick={() => handleAction()}
-                    className="w-full btn-primary h-14 text-lg flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,255,65,0.3)] hover:scale-[1.02] transition-transform"
+                    onClick={() => handleAction('main_click')}
+                    disabled={isProcessing} // Prevent double clicks
+                    className="w-full btn-primary h-14 text-lg flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,255,65,0.3)] hover:scale-[1.02] transition-transform disabled:opacity-80 disabled:cursor-not-allowed"
                 >
-                    {(game.type === 'game' || game.type === 'arena') ? (
+                    {isProcessing ? (
+                        <>
+                            <Loader2 className="w-6 h-6 animate-spin text-black" />
+                            <span>INITIALIZING...</span>
+                        </>
+                    ) : (game.type === 'game' || game.type === 'arena') ? (
                         <>
                             <Play className="w-6 h-6 fill-black stroke-black" /> 
-                            {game.type === 'arena' ? 'ENTER ARENA' : 'LAUNCH SIMULATION'}
+                            {game.type === 'arena' ? 'ENTER ARENA' : 'PLAY NOW'}
                         </>
                     ) : (
                         <>
