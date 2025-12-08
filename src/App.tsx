@@ -1,107 +1,118 @@
-import { FC, useEffect, useState } from 'react';
+import { FC, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 
-// Contexts (FIX: Using relative paths for context imports)
+// Contexts
 import { useModal } from './components/context/ModalContext';
 import { usePlayer } from './components/context/PlayerContext';
 import { useWebGL } from './components/context/WebglContext'; 
 
-// Components (FIX: Using relative paths for component imports)
+// Components
 import AuthModal from './components/AuthModal';
 import PaymentModal from './components/PaymentModal';
 import WithdrawModal from './components/WithdrawlModal';
-import TopNav from './components/TopNav';
-import BottomNav from './components/BottomNav';
-import LoadingScreen from './components/LoadingScreen';
-import LeftSidebar from './components/LeftSidebar'; 
+import TopNav from './components/TopNav'; // Mobile Top Bar
+import BottomNav from './components/BottomNav'; // Mobile Bottom Bar
+import LeftSidebar from './components/LeftSidebar'; // Desktop Left Rail
+import SplashScreen from './components/SplashScreen'; 
 import UnityStage from './components/UnityStage';
+import CommunityChat from './components/community/CommunityChat'; 
+import CommunityRankings from './components/community/CommunityRankings';
 
-// Pages (FIX: Using relative paths for page imports)
+// Pages
 import LandingPage from './pages/LandingPage';
-import Home from './pages/Home';
 import Customize from './pages/Customize';
 import { Vault } from './pages/Vault'; 
 import Shop from './pages/Shop';
-import Community from './pages/Community';
-import Membership from './pages/Membership';
 import Inventory from './pages/Inventory';
 import AdminPage from './pages/AdminPage';
 
 const App: FC = () => {
-  const { activeModal, setActiveModal, setShowMessage } = useModal(); 
-  const { 
-    userId, 
-    initialAuthCheckComplete, 
-    playerData
-  } = usePlayer();
-  
-  // CRITICAL: Get activeGameId and setter from the context
+  const { activeModal, setShowMessage } = useModal(); 
+  const { userId } = usePlayer();
   const { activeGameId, setActiveGameId } = useWebGL(); 
+  
+  const [showSplash, setShowSplash] = useState(true);
 
-  const [showInitialAuthModal, setShowInitialAuthModal] = useState(true); 
-
-  useEffect(() => {
-    if (initialAuthCheckComplete && !userId && showInitialAuthModal) {
-      setShowInitialAuthModal(false); 
-    }
-  }, [initialAuthCheckComplete, userId, showInitialAuthModal, setActiveModal]);
-
-  if (!initialAuthCheckComplete) {
-    return <LoadingScreen message="Initializing PETverse..." />;
-  }
-
-  const hasAvatar = !!playerData?.character?.selectedID;
-  const redirectPath = userId ? (hasAvatar ? '/home' : '/customize') : '/';
+  // Layout Logic
+  const showNav = !activeGameId;
 
   return (
-    <div className="min-h-screen bg-black text-white font-inter"> 
-      {/* Game Overlay - Now connected to WebGL context state */}
+    <div className="min-h-screen bg-black text-white font-inter overflow-hidden selection:bg-primary/30"> 
+      
+      {/* 1. CINEMATIC SPLASH */}
+      <AnimatePresence>
+        {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+      </AnimatePresence>
+
+      {/* 2. GAME LAYER (Unity Overlay) */}
       <UnityStage activeGameId={activeGameId} setActiveGameId={setActiveGameId} /> 
 
-      {/* Navigation */}
-      <TopNav />
-      <LeftSidebar /> 
+      {/* 3. MAIN APP LAYER */}
+      <div className={`h-screen flex flex-col ${activeGameId ? 'hidden' : 'flex'}`}>
+         
+         {/* MOBILE TOP NAV (Hidden on Desktop) */}
+         <div className="lg:hidden">
+            {showNav && <TopNav />}
+         </div>
 
-      {/* Main Content */}
-      {/* The lg:pl-80 offset accounts for the LeftSidebar */}
-      <main className="pt-[70px] pb-24 md:pb-8 md:pl-0 lg:pl-80"> 
-        <AnimatePresence mode="wait">
-          <Routes>
-            {/* Public */}
-            <Route path="/" element={<LandingPage />} />
+         {/* 3-COLUMN DESKTOP LAYOUT */}
+         <div className="flex-grow flex overflow-hidden relative pt-[60px] lg:pt-0 pb-[60px] md:pb-0">
+             
+             {/* LEFT COLUMN: NAVIGATION (Desktop Only) */}
+             <aside className="hidden lg:flex w-[280px] border-r border-white/10 bg-black flex-col z-30">
+                 <LeftSidebar />
+             </aside>
 
-            {/* Auth Flow */}
-            {/* This route forces new users to the Customizer screen if they have an ID but no avatar */}
-            <Route 
-              path="/customize" 
-              element={userId ? <Customize /> : <Navigate to="/" replace />} 
-            />
+             {/* CENTER COLUMN: FEED / CONTENT (Scrollable) */}
+             <main className="flex-1 overflow-y-auto relative z-10 bg-black scrollbar-thin scrollbar-thumb-primary">
+                 <div className="max-w-2xl mx-auto w-full"> {/* Center Constraints */}
+                     <AnimatePresence mode="wait">
+                      <Routes>
+                        <Route path="/" element={<LandingPage />} />
+                        <Route path="/home" element={<LandingPage />} />
+                        
+                        {/* Protected Pages */}
+                        <Route path="/customize" element={userId ? <Customize /> : <Navigate to="/" />} />
+                        <Route path="/vault" element={userId ? <Vault /> : <Navigate to="/" />} />
+                        <Route path="/shop" element={<Shop />} />
+                        <Route path="/inventory" element={<Inventory />} />
+                        <Route path="/admin" element={<AdminPage />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </AnimatePresence>
+                 </div>
+             </main>
 
-            {/* Protected Routes (Requires login and Avatar selection) */}
-            {(userId && hasAvatar) ? (
-              <>
-                <Route path="/home" element={<Home />} />
-                <Route path="/vault" element={<Vault />} />
-                <Route path="/shop" element={<Shop />} />
-                <Route path="/community" element={<Community />} />
-                <Route path="/membership" element={<Membership />} />
-                <Route path="/inventory" element={<Inventory />} />
-                <Route path="/admin" element={<AdminPage />} />
-                {/* Redirects any invalid path back to the home console */}
-                <Route path="*" element={<Navigate to="/home" replace />} /> 
-              </>
-            ) : (
-                // Fallback for logged in user without avatar, or logged out user
-                <Route path="*" element={<Navigate to={redirectPath} replace />} />
-            )}
-          </Routes>
-        </AnimatePresence>
-      </main>
+             {/* RIGHT COLUMN: SOCIAL / STATS (Desktop Only) */}
+             <aside className="hidden xl:flex w-[380px] border-l border-white/10 bg-black/50 backdrop-blur-sm flex-col z-20">
+                 <div className="h-1/2 flex flex-col border-b border-white/10">
+                    <div className="p-3 bg-white/5 border-b border-white/5 font-mono text-[10px] text-primary tracking-widest uppercase">
+                        // GLOBAL_CHAT_RELAY
+                    </div>
+                    <div className="flex-grow overflow-hidden">
+                        <CommunityChat />
+                    </div>
+                 </div>
+                 <div className="h-1/2 flex flex-col">
+                    <div className="p-3 bg-white/5 border-b border-white/5 font-mono text-[10px] text-white/50 tracking-widest uppercase">
+                        // ELITE_OPERATORS
+                    </div>
+                    <div className="flex-grow overflow-y-auto p-4">
+                        <CommunityRankings />
+                    </div>
+                 </div>
+             </aside>
+         </div>
 
-      <BottomNav />
+         {/* MOBILE BOTTOM NAV */}
+         <div className="lg:hidden">
+            {showNav && <BottomNav />}
+         </div>
 
-      {/* MODALS */}
+      </div>
+
+      {/* MODAL LAYER */}
       <AnimatePresence>
         {activeModal === 'auth' && <AuthModal setShowMessage={setShowMessage} />} 
         {(activeModal === 'payment' || activeModal === 'deposit') && <PaymentModal />} 

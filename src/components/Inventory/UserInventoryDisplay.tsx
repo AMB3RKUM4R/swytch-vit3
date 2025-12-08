@@ -1,8 +1,6 @@
-// src/components/Inventory/UserInventoryDisplay.tsx
 import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Loader2, AlertTriangle } from 'lucide-react';
-import SwytchCard from '../SwytchCard';
+import { Package, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import InventoryItemCard from './InventoryItemCard';
 import { ItemDefinition, UserInventoryDisplayProps } from '@/lib/types';
 import { collection, getDocs } from 'firebase/firestore';
@@ -17,7 +15,6 @@ const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
   const [itemDefinitions, setItemDefinitions] = useState<Record<string, ItemDefinition>>({});
   const [loading, setLoading] = useState(true);
 
-  // Fetch Item Blueprints on component mount
   useEffect(() => {
     const fetchItemDefinitions = async () => {
       try {
@@ -29,7 +26,7 @@ const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
         setItemDefinitions(definitions);
       } catch (error) {
         console.error("Error fetching item definitions:", error);
-        setShowMessage("Failed to load item data");
+        setShowMessage("FAILED TO LOAD BLUEPRINTS");
       } finally {
         setLoading(false);
       }
@@ -39,10 +36,10 @@ const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
   
   if (!playerData) {
       return (
-        <SwytchCard className="p-10 text-center">
-            <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-6" />
-            <p className="text-xl text-muted-foreground">Loading Player Data...</p>
-        </SwytchCard>
+        <div className="bg-black border border-white/10 p-12 text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-sm font-mono text-white/50 uppercase">Syncing Player Data...</p>
+        </div>
       );
   }
 
@@ -51,37 +48,39 @@ const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
 
   if (loading) {
     return (
-      <SwytchCard className="p-10 text-center">
-        <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-6" />
-        <p className="text-xl text-muted-foreground">Fetching Item Blueprints...</p>
-      </SwytchCard>
+      <div className="bg-black border border-white/10 p-12 text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+        <p className="text-sm font-mono text-white/50 uppercase">Loading Assets...</p>
+      </div>
     );
   }
 
   if (inventoryEntries.length === 0) {
     return (
-      <SwytchCard className="p-10 text-center">
-        <Package className="w-20 h-20 text-gray-500 mx-auto mb-6" />
-        <p className="text-2xl text-gray-400">Your inventory is empty</p>
-        <p className="text-gray-500 mt-2">Play games to earn items!</p>
-      </SwytchCard>
+      <div className="bg-black border border-white/10 p-12 text-center">
+        <Package className="w-16 h-16 text-white/10 mx-auto mb-6" />
+        <p className="text-lg font-russo text-white uppercase mb-2">Empty Storage</p>
+        <p className="text-xs font-mono text-gray-500">ACQUIRE ASSETS FROM THE BLACK MARKET</p>
+      </div>
     );
   }
   
   if (Object.keys(itemDefinitions).length === 0) {
       return (
-        <SwytchCard className="p-10 text-center text-rose-400">
-            <AlertTriangle className="w-10 h-10 mx-auto mb-6" />
-            <p className="text-xl">Error: Item blueprints failed to load.</p>
-        </SwytchCard>
+        <div className="bg-black border border-red-500/30 p-12 text-center">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-sm font-mono text-red-400">DATABASE CONNECTION ERROR</p>
+            <button onClick={() => window.location.reload()} className="mt-4 btn-secondary text-xs">
+                <RefreshCw className="w-3 h-3 mr-2" /> RETRY
+            </button>
+        </div>
       );
   }
 
-
   return (
-    <SwytchCard className="p-6">
+    <div className="bg-black border border-white/10 p-6">
       <motion.div
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ staggerChildren: 0.05 }}
@@ -89,7 +88,6 @@ const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
         <AnimatePresence>
           {inventoryEntries.map(([instanceId, instance]) => {
             const definition = itemDefinitions[instance.itemId];
-            
             if (!definition) return null; 
 
             const isEquipped =
@@ -99,16 +97,16 @@ const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
             return (
               <motion.div
                 key={instanceId}
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                whileHover={{ y: -8 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                layout
               >
                 <InventoryItemCard
                   instance={instance}
                   definition={definition}
                   isEquipped={isEquipped}
-                  onEquipToggle={() => {}}
+                  onEquipToggle={() => {}} // Hook up actual logic if needed
                   onListForSale={() => onListForSale(instance, definition, instanceId)}
                   onUseConsumable={() => {}}
                   isListed={instance.isListed || false}
@@ -119,7 +117,7 @@ const UserInventoryDisplay: FC<UserInventoryDisplayProps> = ({
           })}
         </AnimatePresence>
       </motion.div>
-    </SwytchCard>
+    </div>
   );
 };
 

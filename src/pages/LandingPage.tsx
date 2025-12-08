@@ -1,181 +1,125 @@
-import { FC } from 'react';
-import { motion } from 'framer-motion';
-import { Users, Brain, DollarSign, Lock, ArrowRight, FileText, Gamepad2 } from 'lucide-react';
-import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import { usePlayer } from '../components/context/PlayerContext';
-import { useModal } from '../components/context/ModalContext';
-import SwytchCard from '../components/SwytchCard';
-import FeaturedCards from '../components/FeaturedCards';
+import { FC, useMemo } from 'react';
+import { useWebGL } from '@/components/context/WebglContext'; 
+import { useModal } from '@/components/context/ModalContext';
+import { usePlayer } from '@/components/context/PlayerContext';
+import GameTile, { FeedItem } from '@/components/GameTile';
 
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.15 } },
-};
+// ────────────────────────────────────────────────────────────────
+// MASTER CONTENT DATABASE
+// ────────────────────────────────────────────────────────────────
 
-const sectionVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } },
-};
+// 1. GAMES (15)
+const gamesList = [
+  { id: "mana_miner", name: "Mana Miner", level: 1, type: "Extraction", imageUrl: "/game_covers/mana_miner.webp" },
+  { id: "gatekeeper", name: "Gatekeeper", level: 5, type: "Defense", imageUrl: "/game_covers/gatekeeper.webp" },
+  { id: "shadow_fix", name: "Shadow Fix", level: 10, type: "Puzzle", imageUrl: "/game_covers/shadow_fix.webp" },
+  { id: "crypt_crawler", name: "Crypt Crawler", level: 15, type: "RPG", imageUrl: "/game_covers/crypt_crawler.webp" },
+  { id: "tech_assault", name: "Tech Assault", level: 20, type: "Shooter", imageUrl: "/game_covers/tech_assault.webp" },
+  { id: "rift_defense", name: "Rift Defense", level: 25, type: "Tower Defense", imageUrl: "/game_covers/rift_defense.webp" },
+  { id: "glitch_hacker", name: "Glitch Hacker", level: 30, type: "Arcade", imageUrl: "/game_covers/glitch_hacker.webp" },
+  { id: "void_hunter", name: "Void Hunter", level: 35, type: "Survival", imageUrl: "/game_covers/void_hunter.webp" },
+  { id: "chrono_dash", name: "Chrono Dash", level: 40, type: "Racing", imageUrl: "/game_covers/chrono_dash.webp" },
+  { id: "star_sentry", name: "Star Sentry", level: 45, type: "Space Sim", imageUrl: "/game_covers/star_sentry.webp" },
+  { id: "fractal_maze", name: "Fractal Maze", level: 50, type: "Exploration", imageUrl: "/game_covers/fractal_maze.webp" },
+  { id: "omega_strike", name: "Omega Strike", level: 60, type: "Boss Rush", imageUrl: "/game_covers/omega_strike.webp" },
+  { id: "pet_arena", name: "PET Arena", level: 75, type: "PVP", imageUrl: "/game_covers/pet_arena.webp" },
+  { id: "governance_sim", name: "Governance Sim", level: 90, type: "Strategy", imageUrl: "/game_covers/governance_sim.webp" },
+  { id: "new_eden_mine", name: "New Eden Mine", level: 100, type: "Tycoon", imageUrl: "/game_covers/new_eden_mine.webp" },
+];
 
-const buttonVariants = {
-  hover: { scale: 1.05, boxShadow: '0 0 20px hsl(var(--primary), 0.5)' },
-  tap: { scale: 0.95 },
-};
+// 2. ITEMS (10)
+const itemList = [
+  { id: "d-rank-pickaxe", name: "D-Rank Pickaxe", rarity: "D-Rank", type: "WEAPON", price: 500, imageUrl: "/items/weapons/pickaxe_d.png" },
+  { id: "s-rank-shield", name: "S-Rank Kinetic Shield", rarity: "S-Rank", type: "ARMOR", price: 10000, imageUrl: "/items/armor/shield_s.png" },
+  { id: "core-booster", name: "Core Energy Booster", rarity: "B-Rank", type: "CONSUMABLE", price: 800, imageUrl: "/items/consumables/energy_booster.png" },
+  { id: "void-badge", name: "Badge of the Void", rarity: "A-Rank", type: "ARTIFACT", price: 5000, imageUrl: "/items/artifacts/void_badge.png" },
+  { id: "plasma-rifle", name: "Plasma Rifle", rarity: "B-Rank", type: "WEAPON", price: 2500, imageUrl: "/items/weapons/plasma_rifle.png" },
+  { id: "stealth-cloak", name: "Stealth Cloak", rarity: "A-Rank", type: "ARMOR", price: 4000, imageUrl: "/items/armor/stealth_cloak.png" },
+  { id: "health-injector", name: "Health Injector", rarity: "D-Rank", type: "CONSUMABLE", price: 100, imageUrl: "/items/consumables/health_injector.png" },
+  { id: "data-key", name: "Encrypted Data Key", rarity: "S-Rank", type: "ARTIFACT", price: 15000, imageUrl: "/items/artifacts/data_key.png" },
+  { id: "gravity-hammer", name: "Gravity Hammer", rarity: "C-Rank", type: "WEAPON", price: 1200, imageUrl: "/items/weapons/gravity_hammer.png" },
+  { id: "nano-suit", name: "Nano-Weave Suit", rarity: "B-Rank", type: "ARMOR", price: 3000, imageUrl: "/items/armor/nano_suit.png" },
+];
+
+// 3. AVATARS (5)
+const avatarList = [
+    { id: "cyber_samurai", name: "Cyber Samurai", rarity: "Legendary", price: 20000, imageUrl: "/avatars/cyber_samurai.webp" },
+    { id: "neon_assassin", name: "Neon Assassin", rarity: "Epic", price: 12000, imageUrl: "/avatars/neon_assassin.webp" },
+    { id: "quantum_knight", name: "Quantum Knight", rarity: "Rare", price: 8000, imageUrl: "/avatars/quantum_knight.webp" },
+    { id: "void_walker", name: "Void Walker", rarity: "Epic", price: 11000, imageUrl: "/avatars/void_walker.webp" },
+    { id: "solar_vanguard", name: "Solar Vanguard", rarity: "Legendary", price: 25000, imageUrl: "/avatars/solar_vanguard.webp" },
+];
+
+// 4. ARENAS (3)
+const arenaList = [
+    { id: "arena_void_pit", name: "The Void Pit", type: "Deathmatch", level: 10, imageUrl: "/arenas/void_pit.webp" },
+    { id: "arena_neon_city", name: "Neon City Outskirts", type: "Team Control", level: 20, imageUrl: "/arenas/neon_city.webp" },
+    { id: "arena_cyber_col", name: "Cyber Colosseum", type: "1v1 Duel", level: 50, imageUrl: "/arenas/cyber_colosseum.webp" },
+];
 
 const LandingPage: FC = () => {
-  usePlayer();
-  const { setActiveModal } = useModal();
+  const { setActiveGameId } = useWebGL();
+  const { userId } = usePlayer();
+  const { setActiveModal, setShowMessage } = useModal();
+
+  // MERGE & SHUFFLE CONTENT ALGORITHM
+  const feedData: FeedItem[] = useMemo(() => {
+      const feed: FeedItem[] = [];
+
+      // Helper generators
+      const getGame = (g: any) => ({ type: 'game' as const, id: g.id, title: g.name, subtitle: `LVL ${g.level} // ${g.type.toUpperCase()}`, imageUrl: g.imageUrl, data: g });
+      const getItem = (i: any) => ({ type: 'item' as const, id: i.id, title: i.name, subtitle: `${i.rarity} // ${i.type}`, imageUrl: i.imageUrl, price: i.price, data: i });
+      const getAvatar = (a: any) => ({ type: 'avatar' as const, id: a.id, title: a.name, subtitle: `${a.rarity.toUpperCase()} // SKIN`, imageUrl: a.imageUrl, price: a.price, data: a });
+      const getArena = (a: any) => ({ type: 'arena' as const, id: a.id, title: a.name, subtitle: `LVL ${a.level} // ${a.type.toUpperCase()}`, imageUrl: a.imageUrl, data: a });
+
+      // We want a mix. Let's loop through the max length and inject variety.
+      // Pattern: Game -> Item -> Game -> Avatar/Arena -> Repeat
+      
+      const maxLen = Math.max(gamesList.length, itemList.length);
+      
+      for(let i=0; i<maxLen; i++) {
+          // 1. Add Game
+          if(gamesList[i]) feed.push(getGame(gamesList[i]));
+          
+          // 2. Add Item
+          if(itemList[i]) feed.push(getItem(itemList[i]));
+
+          // 3. Inject Special (Avatar or Arena) every 2nd or 3rd cycle
+          if(i < avatarList.length) feed.push(getAvatar(avatarList[i]));
+          if(i < arenaList.length) feed.push(getArena(arenaList[i]));
+      }
+
+      return feed;
+  }, []);
+
+  const handleLaunch = (id: string) => {
+      if (!userId) {
+          setShowMessage("⚠️ CONNECT WALLET TO ENTER");
+          setActiveModal('auth');
+      } else {
+          setActiveGameId(id);
+      }
+  };
 
   return (
-    <SwytchErrorBoundary setShowMessage={() => {}} setActiveModal={setActiveModal}>
-      <motion.div
-        className="min-h-screen text-foreground font-inter bg-noise overflow-x-hidden"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <div className="relative z-10 max-w-7xl mx-auto pt-24 pb-32 px-4 sm:px-6 lg:px-8">
-          
-          {/* --- 1. HERO SECTION (Restored: text-glow-primary) --- */}
-          <motion.section 
-            variants={sectionVariants} 
-            className="text-center p-8 mb-20"
-          >
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 260, damping: 20 }}>
-              <Gamepad2 className="mx-auto w-24 h-24 text-primary text-glow-primary mb-6" />
-            </motion.div>
-            <h1 className="text-5xl lg:text-7xl font-extrabold text-foreground font-russo mb-6 text-glow-primary tracking-tight">
-              THE Petaverse OF PURPOSE, POWER & PROOF.
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-3xl mx-auto font-inter mb-10 leading-relaxed">
-              You're not here by accident. You're here because the old world isn't enough.
-              Swytch isn't a game. It's a psychological awakening, a socio-economic rebellion, and a self-sustaining ecosystem.
-            </p>
-            <motion.button
-              className="btn-primary text-xl font-russo mx-auto block w-fit px-10 py-4"
-              onClick={() => setActiveModal('auth')}
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
-              aria-label="Enter the PETverse"
-            >
-              Enter the PETverse <ArrowRight className="ml-3 w-6 h-6" />
-            </motion.button>
-          </motion.section>
-
-          {/* --- 2. THE PSYCHOLOGICAL SHIFT (CALLOUT - Restored: holographic-card) --- */}
-          <motion.section variants={sectionVariants} className="mb-20">
-            <SwytchCard variant="holographic" className="p-8 lg:p-12">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
-                <div className="lg:col-span-1 text-center lg:text-left">
-                  <Brain className="w-16 h-16 text-primary text-glow-primary mx-auto lg:mx-0" />
+    <div className="w-full h-full bg-black">
+        {/* INFINITE SCROLL CONTAINER (Snap Enabled) */}
+        <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth">
+            {feedData.map((item, index) => (
+                <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black">
+                    <GameTile 
+                        game={item} 
+                        onGameLaunch={handleLaunch} 
+                    />
                 </div>
-                <div className="lg:col-span-2 text-center lg:text-left">
-                  <h2 className="text-3xl font-bold font-poppins text-foreground mb-4">
-                    The Psychological Shift
-                  </h2>
-                  <p className="text-lg text-muted-foreground leading-relaxed">
-                    In Swytch, you're not just playing. You're participating in the rebirth of identity.
-                    The second you log in, you are no longer a passive player. You are a **Beneficiary**.
-                  </p>
-                  <p className="text-lg text-muted-foreground leading-relaxed mt-4">
-                    Not a customer. Not an investor. **You’re entitled to earn** — because you participate in value creation.
-                  </p>
-                </div>
-              </div>
-            </SwytchCard>
-          </motion.section>
-
-          {/* --- 3. CORE FEATURES SECTION (Restored: text-glow-secondary) --- */}
-          <motion.section variants={sectionVariants} className="mb-20">
-            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-secondary tracking-tight">
-              A New Order
-            </h2>
-            <FeaturedCards />
-          </motion.section>
-
-          {/* --- 4. THE ECONOMIC FLOW (CALLOUT - Restored: holographic-card in subsections) --- */}
-          <motion.section variants={sectionVariants} className="mb-20">
-            <h2 className="text-4xl font-bold text-foreground font-russo text-center mb-10 text-glow-secondary tracking-tight">
-              The Economic Flow
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-              <SwytchCard variant="holographic" className="p-6">
-                <Gamepad2 className="w-12 h-12 text-primary mx-auto mb-4" />
-                <h3 className="text-2xl font-semibold font-poppins text-foreground mb-2">1. Play & Earn</h3>
-                <p className="text-muted-foreground">You play Swytch games, earn Energy. Energy is your proof-of-participation.</p>
-              </SwytchCard>
-              <SwytchCard variant="holographic" className="p-6">
-                <DollarSign className="w-12 h-12 text-green-400 mx-auto mb-4" />
-                <h3 className="text-2xl font-semibold font-poppins text-foreground mb-2">2. Convert to Value</h3>
-                <p className="text-muted-foreground">Your Energy converts to Swytch Stablecoin, tied to USDT, liquid, and tradable.</p>
-              </SwytchCard>
-              <SwytchCard variant="holographic" className="p-6">
-                <Lock className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-                <h3 className="text-2xl font-semibold font-poppins text-foreground mb-2">3. Join & Withdraw</h3>
-                <p className="text-muted-foreground">A $10 SPM unlocks the ecosystem. You own your data, control your wallet, and live on your terms.</p>
-              </SwytchCard>
+            ))}
+            
+            {/* Footer Spacer */}
+            <div className="snap-start w-full h-[20vh] flex items-center justify-center text-white/20 text-xs font-mono">
+                // END OF TRANSMISSION //
             </div>
-          </motion.section>
-
-          {/* --- 5. SOCIAL ARCHITECTURE & VISION (CALLOUT) --- */}
-          <motion.section variants={sectionVariants} className="mb-20">
-            <SwytchCard variant="default" className="p-8 lg:p-12">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <div>
-                  <h3 className="text-3xl font-bold font-poppins text-primary mb-4 flex items-center">
-                    <Users className="w-8 h-8 mr-3" />
-                    The Social Architecture
-                  </h3>
-                  <p className="text-lg text-muted-foreground leading-relaxed mb-4">
-                    Every PET member is linked through the Community Panel. Here, members vote, propose, share, and evolve.
-                    No hierarchy — only earned trust.
-                  </p>
-                  <p className="text-lg text-muted-foreground leading-relaxed">
-                    You don’t need to fight for a seat at the table — **you build the table.**
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-3xl font-bold font-poppins text-primary mb-4 flex items-center">
-                    <FileText className="w-8 h-8 mr-3" />
-                    Our Vision
-                  </h3>
-                  <p className="text-lg text-muted-foreground leading-relaxed mb-4">
-                    We are merging psychology, economy, governance, and technology into one loop. This is a generational-level movement.
-                  </p>
-                  <p className="text-lg text-muted-foreground leading-relaxed">
-                    We are setting **the new norm** for how digital ecosystems should operate.
-                  </p>
-                </div>
-              </div>
-            </SwytchCard>
-          </motion.section>
-
-          {/* --- 6. FINAL CTA (Restored: text-glow-primary) --- */}
-          <motion.section variants={sectionVariants} className="text-center">
-            <h2 className="text-4xl font-bold text-foreground font-russo mb-6 text-glow-primary">
-              Your New Identity Awaits.
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-              Once you’re in, you’re not alone, and you’re not public. You’re PET.
-              And in Swytch, PETs run the future.
-            </p>
-            <motion.button
-              className="btn-primary text-xl font-russo mx-auto block w-fit px-10 py-4"
-              onClick={() => setActiveModal('auth')}
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
-              aria-label="Begin the Swytch"
-            >
-              Begin the Swytch
-            </motion.button>
-          </motion.section>
-
         </div>
-      </motion.div>
-    </SwytchErrorBoundary>
+    </div>
   );
 };
 

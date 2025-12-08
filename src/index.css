@@ -1,6 +1,4 @@
 /* src/index.css */
-
-/* Import Google Fonts: Poppins (headings), Inter (body), and Russo One (brand) */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;700&family=Russo+One&display=swap');
 
 @tailwind base;
@@ -9,42 +7,32 @@
 
 @layer base {
   :root {
-    /* Deep Space Theme */
-    --background: 224 71% 4%; /* Deep, dark blue/black */
-    --foreground: 210 40% 98%; /* White text */
+    /* RAZOR THEME */
+    --background: 0 0% 0%; 
+    --foreground: 0 0% 95%; 
     
-    --card: 223 47% 11%; /* Dark blue-gray card background */
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 5%; 
+    --card-foreground: 0 0% 95%;
 
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 210 100% 50%; /* Cyan Neon Blue */
-    --primary-foreground: 210 40% 98%;
+    --primary: 135 100% 50%; /* #00FF41 */
+    --primary-foreground: 0 0% 0%; 
 
-    --secondary: 217 33% 17%; /* Muted blue-gray */
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 12%; 
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%; /* Grey text */
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%; 
 
-    --destructive: 0 84% 60%; /* Bright Red */
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%; 
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217 33% 17%; 
-    --input: 217 33% 17%; 
-    --ring: 210 100% 50%; 
-
-    --radius: 0.5rem; 
-    
-    /* HSL values for Tailwind CSS opacity modifiers (used in custom styles) */
-    --background-hsl: 224 71% 4%;
-    --foreground-hsl: 210 40% 98%;
-    --card-hsl: 223 47% 11%;
-    --primary-hsl: 210 100% 50%;
-    --secondary-hsl: 217 33% 17%;
-    --muted-hsl: 217 33% 17%;
-    --destructive-hsl: 0 84% 60%;
+    --border: 0 0% 20%; 
+    --input: 0 0% 15%; 
+    --ring: 135 100% 50%; 
+    --radius: 0.0rem; 
   }
 
   * {
@@ -53,111 +41,80 @@
 
   html, body {
     @apply min-h-screen font-inter text-foreground antialiased;
-    background-color: hsl(var(--background));
-    
-    /* Neon Background Grid Pattern */
-    background-image: 
-      radial-gradient(circle at 1px 1px, hsl(var(--primary-hsl) / 0.1) 1px, transparent 0);
-    background-size: 20px 20px;
-    animation: background-pan 60s linear infinite;
+    background-color: black;
+    background-image: linear-gradient(to right, #111 1px, transparent 1px),
+                      linear-gradient(to bottom, #111 1px, transparent 1px);
+    background-size: 40px 40px;
     overflow-x: hidden;
   }
 
-  /* Use Poppins for all headings */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-poppins font-semibold tracking-tight;
+    @apply font-poppins font-bold tracking-tight text-white;
+  }
+  
+  .font-russo { font-family: 'Russo One', sans-serif; }
+
+  /* --- RAZOR SCROLLBARS --- */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #1a1a1a; /* Dark Grey Track */
+    border-left: 1px solid #333;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--primary); /* Neon Green Thumb */
+    border-radius: 0;
   }
 
-  /* Use Russo One for the logo/brand font (if needed) */
-  .font-russo {
-     font-family: 'Russo One', sans-serif;
+  ::-webkit-scrollbar-thumb:hover {
+    background: #00cc33; /* Slightly darker green on hover */
+    box-shadow: 0 0 10px var(--primary); /* Glow effect */
+  }
+
+  /* Utility to hide scrollbar but keep functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
 @layer components {
-  /* Base card style */
-  .card {
-    @apply bg-card text-card-foreground p-6 rounded-lg shadow-lg border border-white/10;
-  }
+  .card { @apply bg-card text-card-foreground p-0 rounded-none border border-white/10; }
   
-  /* Primary Button (Neon Glow) */
   .btn-primary {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-           disabled:pointer-events-none disabled:opacity-50
-           bg-primary text-primary-foreground hover:bg-primary/90
-           h-10 px-4 py-2;
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-none text-sm font-bold uppercase tracking-wider
+           transition-all duration-200
+           bg-primary text-black border border-primary
+           hover:bg-black hover:text-primary hover:shadow-[0_0_15px_rgba(0,255,65,0.4)]
+           h-12 px-6 py-3;
   }
 
-  /* Secondary Button (Ghost/Outline) */
   .btn-secondary {
-     @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-           disabled:pointer-events-none disabled:opacity-50
-           border border-input bg-background hover:bg-accent hover:text-accent-foreground
-           h-10 px-4 py-2;
+     @apply inline-flex items-center justify-center whitespace-nowrap rounded-none text-sm font-bold uppercase tracking-wider
+           transition-colors
+           border border-white/20 bg-black text-white
+           hover:bg-white/10
+           h-12 px-6 py-3;
   }
 
-  /* Destructive Button (Red Alert) */
   .btn-destructive {
-     @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-           disabled:pointer-events-none disabled:opacity-50
-           bg-destructive text-destructive-foreground hover:bg-destructive/90
-           h-10 px-4 py-2;
+     @apply inline-flex items-center justify-center whitespace-nowrap rounded-none text-sm font-bold uppercase
+           bg-red-600 text-white hover:bg-red-700
+           h-12 px-6 py-3;
   }
   
-  /* Danger Button (Alias for Destructive, used in modals) */
-  .btn-danger {
-     @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-           disabled:pointer-events-none disabled:opacity-50
-           bg-destructive text-destructive-foreground hover:bg-destructive/90
-           h-10 px-4 py-2;
-  }
-
-  /* Base input style */
   .input {
-    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm
-           ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium
-           placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2
-           focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex h-12 w-full rounded-none border border-white/20 bg-black px-4 py-2 text-sm text-white
+           placeholder:text-gray-600 focus-visible:outline-none focus-visible:border-primary;
   }
 
-  /* --- HOLOGRAPHIC CARD (Dark, semi-transparent, primary border gradient) --- */
-  .holographic-card {
-    @apply relative overflow-hidden p-8 bg-black/20 rounded-xl border border-[hsl(var(--primary),0.2)] shadow-xl;
-  }
-  
-  .holographic-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    /* Diagonal gradient overlay for holographic effect */
-    background: linear-gradient(135deg, hsl(var(--primary-hsl) / 0.1) 0%, transparent 50%, hsl(var(--primary-hsl) / 0.05) 100%);
-    z-index: -1;
-  }
-  
-  /* Glassy background (for fixed navs/modals) */
-  .glass-dark {
-    @apply bg-card/80 backdrop-blur-md border-b border-white/10;
-  }
-  
-  /* Text Glows (Primary Neon) */
-  .text-glow-primary {
-    text-shadow: 0 0 8px hsl(var(--primary-hsl) / 0.7);
-  }
-}
-
-@layer utilities {
-  .font-inter { font-family: 'Inter', sans-serif; }
-  .font-poppins { font-family: 'Poppins', sans-serif; }
-
-  @keyframes background-pan {
-    0% { background-position: 0% 0%; }
-    100% { background-position: 20px 20px; }
-  }
+  .glass-dark { @apply bg-black/90 border-l border-white/10 backdrop-blur-md; }
+  .text-glow-primary { text-shadow: 0 0 10px rgba(0, 255, 65, 0.5); }
 }

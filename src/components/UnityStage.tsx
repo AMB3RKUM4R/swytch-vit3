@@ -1,29 +1,17 @@
-// src/components/UnityStage.tsx
 import { FC, useEffect, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Gamepad2, X, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, AlertTriangle, Maximize2, Loader2, Gamepad2 } from 'lucide-react';
 import { Unity, useUnityContext } from 'react-unity-webgl';
-import { useNavigate } from 'react-router-dom';
 import { usePlayer } from "./context/PlayerContext"; 
 import { staticShopItems } from "@/lib/staticShopData";
 import { PlayerData } from "@/lib/types";
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'; 
 import { db } from '@/lib/firebaseConfig'; 
 
-const UNITY_CONFIG = {
-  // Ensure these match your actual build output folder
-  loaderUrl: "/unity/Build/WebGlBuild.loader.js", 
-  dataUrl: "/unity/Build/WebGlBuild.data.unityweb",
-  frameworkUrl: "/unity/Build/WebGlBuild.framework.js.unityweb",
-  codeUrl: "/unity/Build/WebGlBuild.wasm.unityweb",
-};
-
-// --- HELPER: SANITIZE DATA FOR UNITY ---
-// Converts Firestore Timestamps to Numbers so Unity doesn't crash
+// HELPER: Convert Firestore Data for Unity C#
 const sanitizeForUnity = (data: PlayerData | null) => {
   if (!data) return null;
   const clean = JSON.parse(JSON.stringify(data));
-
   const toMillis = (val: any) => {
     if (!val) return 0;
     if (typeof val === 'number') return val; 
@@ -31,12 +19,9 @@ const sanitizeForUnity = (data: PlayerData | null) => {
     if (val.seconds) return val.seconds * 1000; 
     return 0;
   };
-
   if (clean.createdAt) clean.createdAt = toMillis(clean.createdAt);
   if (clean.updatedAt) clean.updatedAt = toMillis(clean.updatedAt);
-  if (clean.session?.webTokenCreatedAt) {
-     clean.session.webTokenCreatedAt = toMillis(clean.session.webTokenCreatedAt);
-  }
+  if (clean.session?.webTokenCreatedAt) clean.session.webTokenCreatedAt = toMillis(clean.session.webTokenCreatedAt);
   if (clean.inventory?.items) {
     Object.keys(clean.inventory.items).forEach(key => {
       const item = clean.inventory.items[key];
@@ -46,12 +31,24 @@ const sanitizeForUnity = (data: PlayerData | null) => {
   return clean;
 };
 
-const UnityStage: FC<{ activeGameId: string | null; setActiveGameId: (id: string | null) => void }> = ({ activeGameId, setActiveGameId }) => {
+interface UnityStageProps {
+    activeGameId: string | null;
+    setActiveGameId: (id: string | null) => void;
+}
+
+const UnityStage: FC<UnityStageProps> = ({ activeGameId, setActiveGameId }) => {
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
-  
-  // Get Player Data & ID for transactions
   const { playerData, userId } = usePlayer();
+
+  // DYNAMIC CONFIGURATION
+  // This expects your public folder to have: /games/[id]/Build/[id].loader.js
+  const unityConfig = {
+    loaderUrl: `/games/${activeGameId}/Build/${activeGameId}.loader.js`,
+    dataUrl: `/games/${activeGameId}/Build/${activeGameId}.data.unityweb`,
+    frameworkUrl: `/games/${activeGameId}/Build/${activeGameId}.framework.js.unityweb`,
+    codeUrl: `/games/${activeGameId}/Build/${activeGameId}.wasm.unityweb`,
+    streamingAssetsUrl: `/games/${activeGameId}/StreamingAssets`,
+  };
 
   const {
     unityProvider,
@@ -61,31 +58,19 @@ const UnityStage: FC<{ activeGameId: string | null; setActiveGameId: (id: string
     sendMessage,
     addEventListener,
     removeEventListener,
-  } = useUnityContext({
-    ...UNITY_CONFIG,
-    streamingAssetsUrl: "/unity/StreamingAssets",
-  });
+  } = useUnityContext(unityConfig);
 
-  // --- 1. HANDLE MESSAGES FROM UNITY ---
+  // HANDLE MESSAGES FROM UNITY
   const handleUnityMessage = useCallback(async (messageStr: string) => {
-    console.log("Unity Message Received:", messageStr);
-
-    // A. Character Customizer Exit
+    console.log("Unity Msg:", messageStr);
+    
     if (messageStr === "CHARACTER_SELECTED_SUCCESS") {
       setActiveGameId(null); 
-      navigate("/home"); 
-    }
-    
-    // B. Gameplay Result (Win/Loss) from UniversalLevelManager
+    } 
     else if (messageStr.startsWith("GAME_COMPLETE")) {
         try {
-            // Message format: "GAME_COMPLETE|{JSON_DATA}"
             const payloadStr = messageStr.split("|")[1];
             const data = JSON.parse(payloadStr);
-
-            console.log("Game Result Data:", data);
-
-            // If Victory AND User is Logged In -> Create Transaction
             if (data.victory && data.joulesEarned > 0 && userId) {
                 await addDoc(collection(db, 'Transactions'), {
                     transactionId: `GAME_${activeGameId}_${Date.now()}`,
@@ -93,103 +78,106 @@ const UnityStage: FC<{ activeGameId: string | null; setActiveGameId: (id: string
                     amount: data.joulesEarned,
                     currency: 'JOULES',
                     transactionType: 'game_reward',
-                    status: 'pending', // The new Cloud Function will see this and approve it
+                    status: 'pending',
                     timestamp: serverTimestamp(),
-                    itemId: activeGameId // Tracks which game (e.g. "mana_miner") paid out
+                    itemId: activeGameId 
                 });
-                console.log(`Transaction logged for ${data.joulesEarned} JOULES`);
             }
-            
-            // Close the Game Window regardless of Win/Loss
             setActiveGameId(null);
-            navigate("/home");
-
         } catch (e) {
-            console.error("Error processing game result:", e);
-            setActiveGameId(null); // Force close so user isn't stuck
+            console.error(e);
+            setActiveGameId(null); 
         }
     }
-  }, [setActiveGameId, navigate, userId, activeGameId]);
-
+  }, [setActiveGameId, userId, activeGameId]);
 
   useEffect(() => {
-    // 2. Subscribe to Unity Messages
+    // Only bind listeners if a game is active
+    if (!activeGameId) return;
+
     addEventListener("WebMessage", handleUnityMessage);
     
-    // 3. Unload Unity instance when game is closed
-    if (!activeGameId) {
-      unload().catch(() => {});
-      setError(null);
-    } 
-    // 4. INJECT DATA WHEN UNITY IS READY
-    else if (isLoaded) {
-      console.log(`Launching Scene: ${activeGameId}`);
+    if (isLoaded) {
+      // 1. Send Ready Signal (Optional, depending on your C# setup)
+      // sendMessage('GameManager', 'GameReady');
 
-      // A. Load the Specific Scene (e.g., "mana_miner", "gatekeeper")
-      // CRITICAL: Target is 'GameManager', Function is 'SetAndLoadScene'
-      sendMessage('GameManager', 'SetAndLoadScene', activeGameId);
-
-      // B. Inject Player Data (Skins, Stats)
+      // 2. Inject Player Data
       if (playerData) {
-          const cleanData = sanitizeForUnity(playerData);
-          sendMessage('AuthManager', 'ReceivePlayerData', JSON.stringify(cleanData));
+          sendMessage('AuthManager', 'ReceivePlayerData', JSON.stringify(sanitizeForUnity(playerData)));
       }
 
-      // C. Inject Item Database (Prices, Stats)
+      // 3. Inject Shop Data
       sendMessage('EquipmentManager', 'ReceiveItemDefinitions', JSON.stringify(staticShopItems));
     }
-    
+
     return () => {
         removeEventListener("WebMessage", handleUnityMessage);
     };
-  }, [activeGameId, unload, isLoaded, sendMessage, addEventListener, removeEventListener, handleUnityMessage, playerData]);
+  }, [activeGameId, isLoaded, sendMessage, addEventListener, removeEventListener, handleUnityMessage, playerData]);
+
+  // Clean up when closing
+  useEffect(() => {
+      if (!activeGameId) {
+          // Attempt to unload cleanly to free memory
+          unload().catch((e) => console.log("Unity unload cleanup:", e));
+      }
+  }, [activeGameId, unload]);
 
   if (!activeGameId) return null;
 
-  if (error) {
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-red-950 flex items-center justify-center">
-        <div className="text-center p-12">
-          <AlertTriangle className="w-32 h-32 text-red-500 mx-auto mb-8" />
-          <h2 className="text-6xl font-black text-red-500 mb-8">CONNECTION LOST</h2>
-          <button onClick={() => setActiveGameId(null)} className="px-16 py-8 bg-red-600 rounded-3xl text-4xl font-black">
-            RETURN TO HUB
-          </button>
-        </div>
-      </motion.div>
-    );
-  }
-
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-40 bg-black">
-      {!isLoaded && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-purple-900 to-black z-10">
-          <Gamepad2 className="w-32 h-32 text-cyan-400 animate-pulse mb-12" />
-          <div className="w-96 h-6 bg-white/20 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-cyan-400 to-purple-600"
-              initial={{ width: 0 }}
-              animate={{ width: `${loadingProgression * 100}%` }}
-              transition={{ ease: "easeOut", duration: 0.5 }}
-            />
-          </div>
-          <p className="text-4xl mt-8 text-white font-bold">{(loadingProgression * 100).toFixed(0)}%</p>
-          <p className="text-sm mt-4 text-muted-foreground">Initializing Simulation...</p>
-        </div>
-      )}
+    <AnimatePresence>
+        <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+        >
+            <motion.div 
+                initial={{ scale: 0.9, y: 50 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 50 }}
+                className="relative w-full max-w-[450px] aspect-[9/16] max-h-[90vh] bg-black border border-primary shadow-[0_0_50px_rgba(0,255,65,0.2)] rounded-sm overflow-hidden flex flex-col"
+            >
+                <div className="h-10 bg-black border-b border-white/10 flex items-center justify-between px-3">
+                    <div className="flex items-center gap-2">
+                         <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                         <span className="text-xs font-mono text-primary tracking-widest uppercase">
+                             NET_LINK: {activeGameId}
+                         </span>
+                    </div>
+                    <button onClick={() => setActiveGameId(null)} className="text-white hover:text-red-500">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
 
-      <Unity unityProvider={unityProvider} className="w-full h-full" />
+                <div className="flex-1 relative bg-gray-900">
+                    {!isLoaded && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10">
+                            <Gamepad2 className="w-16 h-16 text-primary animate-bounce mb-6" />
+                            <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+                                <motion.div 
+                                    className="h-full bg-primary"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${loadingProgression * 100}%` }}
+                                />
+                            </div>
+                            <p className="text-xs text-primary font-mono mt-4">LOADING ASSETS... {(loadingProgression * 100).toFixed(0)}%</p>
+                        </div>
+                    )}
+                    
+                    <Unity unityProvider={unityProvider} className="w-full h-full" />
+                </div>
 
-      {/* Emergency Exit Button */}
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        onClick={() => setActiveGameId(null)}
-        className="absolute top-8 right-8 z-50 p-6 bg-red-600/90 backdrop-blur rounded-full hover:bg-red-700 transition-all border border-white/20"
-      >
-        <X className="w-8 h-8 text-white" />
-      </motion.button>
-    </motion.div>
+                <div className="h-12 bg-black border-t border-white/10 flex items-center justify-center gap-6">
+                     <span className="text-[10px] text-gray-500 font-mono">CONTROLS: TOUCH / MOUSE</span>
+                     <button className="text-white/50 hover:text-white" title="Fullscreen">
+                        <Maximize2 className="w-4 h-4" />
+                     </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    </AnimatePresence>
   );
 };
 

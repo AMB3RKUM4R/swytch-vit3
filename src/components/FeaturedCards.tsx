@@ -1,8 +1,6 @@
-// src/components/FeaturedCards.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, DollarSign, Zap, ArrowRight, Gem } from 'lucide-react';
-import SwytchCard from './SwytchCard';
 import { Link } from 'react-router-dom';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
@@ -10,31 +8,31 @@ import { useModal } from '@/components/context/ModalContext';
 const features = [
   {
     icon: Gem,
-    title: 'True Item Ownership',
-    description: 'Your in-game items become real, tradable assets on the blockchain.',
-    actionLabel: 'Explore Inventory',
+    title: 'TRUE OWNERSHIP',
+    description: 'Items are minted as real, tradable assets on the blockchain.',
+    actionLabel: 'OPEN ARMORY',
     actionPath: '/inventory',
   },
   {
     icon: DollarSign,
-    title: 'Crypto & Fiat Vault',
-    description: 'Convert your in-game earnings (JOULES) into crypto or fiat currency.',
-    actionLabel: 'Visit Vault',
+    title: 'CRYPTO VAULT',
+    description: 'Convert JOULES earnings into crypto or fiat instantly.',
+    actionLabel: 'ACCESS VAULT',
     actionPath: '/vault',
   },
   {
     icon: Lock,
-    title: 'Secure & Transparent',
-    description: 'Blockchain-backed security ensures fair play and transparent transactions.',
-    actionLabel: 'Read Disclosure',
-    actionPath: '/dspet-disclosure',
+    title: 'SECURE PROTOCOL',
+    description: 'Blockchain-backed security ensures fair play and transparency.',
+    actionLabel: 'VIEW STATUS',
+    actionPath: '/community',
   },
   {
     icon: Zap,
-    title: 'Re-innovate Old Games',
-    description: 'Experience classic games with new, real-world economic incentives.',
-    actionLabel: 'Explore Games',
-    actionPath: '/games',
+    title: 'LEGACY REBOOT',
+    description: 'Classic gameplay loops re-engineered for the new economy.',
+    actionLabel: 'START SIM',
+    actionPath: '/', // Redirects to Feed
   },
 ];
 
@@ -43,33 +41,29 @@ const FeatureCards: FC = () => {
   const { setActiveModal, setShowMessage } = useModal();
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {features.map((feature, index) => (
-        <motion.div key={index} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-          <SwytchCard
-            variant="holographic"
-            className="p-6 text-center h-full flex flex-col items-center justify-center cursor-pointer"
-          >
-            <feature.icon className="w-12 h-12 text-primary mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mt-4 font-poppins">{feature.title}</h3>
-            <p className="text-sm text-muted-foreground mt-2 flex-grow">{feature.description}</p>
+        <motion.div key={index} whileHover={{ y: -5 }}>
+          <div className="bg-black border border-white/10 p-6 h-full flex flex-col items-start hover:border-primary/50 transition-colors group">
+            <feature.icon className="w-8 h-8 text-white mb-4 group-hover:text-primary transition-colors" />
+            <h3 className="text-lg font-bold text-white font-russo uppercase mb-2">{feature.title}</h3>
+            <p className="text-xs text-gray-500 font-mono mb-6 flex-grow leading-relaxed">{feature.description}</p>
+            
             <Link
               to={feature.actionPath}
-              className="btn-secondary flex items-center justify-center mt-4 w-full"
+              className="w-full flex items-center justify-between text-xs font-bold text-white uppercase border-t border-white/10 pt-4 group-hover:text-primary"
               onClick={(e) => {
-                const restrictedPaths = ['/inventory', '/vault', '/games', '/shop', '/community'];
+                const restrictedPaths = ['/inventory', '/vault', '/community'];
                 if (restrictedPaths.includes(feature.actionPath) && !userId) {
-                    setShowMessage('⚠️ Please sign in to access this feature.');
+                    setShowMessage('⚠️ ACCESS DENIED: LOGIN REQUIRED');
                     setActiveModal('auth');
                     e.preventDefault();
-                } else {
-                    setShowMessage(`➡️ Navigating to ${feature.actionLabel}!`);
                 }
               }}
             >
-              {feature.actionLabel} <ArrowRight className="w-4 h-4 ml-2" />
+              {feature.actionLabel} <ArrowRight className="w-3 h-3" />
             </Link>
-          </SwytchCard>
+          </div>
         </motion.div>
       ))}
     </div>

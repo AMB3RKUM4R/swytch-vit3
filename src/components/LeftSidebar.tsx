@@ -1,82 +1,85 @@
 // src/components/LeftSidebar.tsx
 import { FC } from 'react';
-import { motion } from 'framer-motion';
-import { Home, Package, ShoppingCart, HandCoins, Users, Star, Settings } from 'lucide-react';
+import { Home, ShoppingBag, Package, User, Crown, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
-import { cn } from '@/lib/utils'; // Import cn
+import { usePlayer } from '@/components/context/PlayerContext';
+import { cn } from '@/lib/utils'; // Ensure you have your utils
 
 const LeftSidebar: FC = () => {
   const { userId, isAdmin } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
   const location = useLocation();
 
-  const requireAuth = (path: string) => {
-    if (!userId && path !== '/home' && path !== '/') {
-      setShowMessage("Sign in to access this area");
-      setActiveModal('auth');
-      return false;
-    }
-    return true;
+  const handleAction = (path: string, label: string) => {
+      if (!userId && path !== '/') {
+          setShowMessage(`⚠️ LOGIN REQUIRED: ${label}`);
+          setActiveModal('auth');
+          return false;
+      }
+      return true;
   };
 
   const navItems = [
-    { path: '/home', icon: Home, label: 'Console' },
-    { path: '/inventory', icon: Package, label: 'Avatar' },
-    { path: '/shop', icon: ShoppingCart, label: 'Market' },
-    { path: '/vault', icon: HandCoins, label: 'Vault' },
-    { path: '/community', icon: Users, label: 'Community' },
-    { path: '/membership', icon: Star, label: 'PET Tier' },
+    { path: '/', label: 'FEED', icon: Home },
+    { path: '/shop', label: 'MARKET', icon: ShoppingBag },
+    { path: '/inventory', label: 'ARMORY', icon: Package },
+    { path: '/vault', label: 'VAULT', icon: User },
+    { path: '/membership', label: 'ELITE', icon: Crown },
   ];
 
   return (
-    <motion.div
-      initial={{ x: -300 }}
-      animate={{ x: 0 }}
-      // FIX: Applied glass-dark style and fixed border
-      className="fixed left-0 top-0 h-full w-80 glass-dark border-r border-white/10 hidden lg:block pt-24 z-30" 
-    >
-      <div className="p-8 space-y-4">
-        {navItems.map(({ path, icon: Icon, label }) => (
-          <Link
-            key={path}
-            to={path}
-            onClick={(e) => !requireAuth(path) && e.preventDefault()}
-            className={cn(
-              "flex items-center gap-6 p-4 rounded-xl text-xl font-semibold transition-all",
-              // Style active link differently
-              location.pathname === path 
-                ? "bg-primary/20 text-primary border border-primary" 
-                : "bg-white/5 hover:bg-white/10 text-foreground"
-            )}
-          >
-            <Icon className="w-8 h-8" />
-            {label}
-          </Link>
-        ))}
+    <div className="h-full w-[80px] flex flex-col items-center py-6 bg-black border-r border-white/10 z-30">
+      
+      {/* NAVIGATION ICONS */}
+      <nav className="flex-1 flex flex-col gap-4 w-full">
+        {navItems.map(({ path, label, icon: Icon }) => {
+            const isActive = location.pathname === path || (path === '/' && location.pathname === '/home');
+            return (
+                <Link
+                    key={path}
+                    to={path}
+                    onClick={(e) => { if (!handleAction(path, label)) e.preventDefault(); }}
+                    className="group relative w-full flex justify-center py-3"
+                >
+                    <div className={cn(
+                        "w-12 h-12 flex items-center justify-center transition-all duration-200",
+                        isActive 
+                            ? "bg-white/10 text-primary border-l-2 border-primary" 
+                            : "text-gray-500 hover:text-white hover:bg-white/5"
+                    )}>
+                        <Icon className="w-6 h-6" />
+                    </div>
+                    
+                    {/* Tooltip (Visible on Hover) */}
+                    <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-primary text-black text-[10px] font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        {label}
+                    </span>
+                </Link>
+            );
+        })}
 
+        {/* ADMIN ICON (Conditional) */}
         {isAdmin() && (
-          <Link 
-            to="/admin" 
-            // FIX: Applied destructive style for admin panel
-            className="flex items-center gap-6 p-4 rounded-xl bg-destructive/80 hover:bg-destructive text-white text-xl font-bold transition-all mt-6"
-          >
-            <Settings className="w-8 h-8" />
-            ADMIN PANEL
-          </Link>
-        )}
-        
-        {!userId && (
-           <button 
-                onClick={() => setActiveModal('auth')}
-                className="btn-primary w-full text-xl mt-6"
+             <Link
+                to="/admin"
+                className="group relative w-full flex justify-center py-3 mt-auto"
             >
-                Login
-            </button>
+                <div className={cn(
+                    "w-12 h-12 flex items-center justify-center transition-all duration-200",
+                    location.pathname === '/admin'
+                        ? "bg-red-900/20 text-red-500 border-l-2 border-red-500" 
+                        : "text-gray-500 hover:text-red-500 hover:bg-white/5"
+                )}>
+                    <Settings className="w-6 h-6" />
+                </div>
+                <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-red-600 text-white text-[10px] font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    ROOT_ACCESS
+                </span>
+            </Link>
         )}
-      </div>
-    </motion.div>
+      </nav>
+    </div>
   );
 };
 

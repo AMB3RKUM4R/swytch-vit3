@@ -1,33 +1,30 @@
 // src/components/TopNav.tsx
 import { FC, useCallback, useState, useEffect } from 'react'; 
 import { motion } from 'framer-motion';
-import { Sparkles, User, Settings, Star, HandCoins, Users, Package, ShoppingCart, LogOut, LoaderCircle, Gem, BellRing } from 'lucide-react'; 
+import { Sparkles, Settings, HandCoins, Users, Package, ShoppingCart, LogOut, LoaderCircle, Gem, BellRing, User } from 'lucide-react'; 
 import { Link, useLocation } from 'react-router-dom'; 
-import Tilt from 'react-parallax-tilt';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAuthUserFirebase } from '../hooks/useAuthUserFirebase';
-import { useAuthUserWagmi } from '../hooks/useAuthUserWagmi';
+import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase'; // Fixed path
+import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi'; // Fixed path
 import { usePlayer } from '@/components/context/PlayerContext'; 
 import { useModal } from '@/components/context/ModalContext'; 
 import { cn } from '@/lib/utils';
 
 // ────────────────────────────────────────────────────────────────
-// MOCK API & CONFIGURATION (for the status check)
+// MOCK API & CONFIGURATION (Status Check)
 // ────────────────────────────────────────────────────────────────
 const MOCK_FETCH_PENDING_TX = async (): Promise<number> => {
     return new Promise(resolve => setTimeout(() => resolve(
         (localStorage.getItem('isAdmin') === 'true') ? 3 : 0
     ), 500));
 };
-// ────────────────────────────────────────────────────────────────
 
 const navItems = [
-  { path: '/home', label: 'Home', icon: <Sparkles className="w-5 h-5" /> },
-  { path: '/inventory', label: 'Inventory', icon: <Package className="w-5 h-5" /> },
-  { path: '/shop', label: 'Shop', icon: <ShoppingCart className="w-5 h-5" /> },
-  { path: '/vault', label: 'Vault', icon: <HandCoins className="w-5 h-5" /> },
-  { path: '/community', label: 'Community', icon: <Users className="w-5 h-5" /> },
-  { path: '/membership', label: 'Membership', icon: <Star className="w-5 h-5" /> },
+  { path: '/home', label: 'FEED', icon: <Sparkles className="w-5 h-5" /> },
+  { path: '/inventory', label: 'ARMORY', icon: <Package className="w-5 h-5" /> },
+  { path: '/shop', label: 'MARKET', icon: <ShoppingCart className="w-5 h-5" /> },
+  { path: '/vault', label: 'VAULT', icon: <HandCoins className="w-5 h-5" /> },
+  { path: '/community', label: 'NET', icon: <Users className="w-5 h-5" /> },
 ];
 
 const TopNav: FC = () => {
@@ -49,7 +46,6 @@ const TopNav: FC = () => {
           setPendingTxCount(0);
           return;
       }
-
       setIsCheckingStatus(true);
       try {
           const count = await MOCK_FETCH_PENDING_TX();
@@ -64,16 +60,13 @@ const TopNav: FC = () => {
 
   useEffect(() => {
       checkPendingTxStatus();
-
       const interval = setInterval(checkPendingTxStatus, 30000); 
-
       return () => clearInterval(interval);
   }, [checkPendingTxStatus]);
 
-
   const handleRestrictedNav = useCallback(( label: string) => {
     if (!isLoggedIn) {
-      setShowMessage(`⚠️ Please sign in to access the ${label} page.`);
+      setShowMessage(`⚠️ ACCESS DENIED: LOGIN REQUIRED FOR ${label}`);
       setActiveModal('auth');
       return false;
     }
@@ -82,163 +75,130 @@ const TopNav: FC = () => {
   
   const handleAdminNav = useCallback((path: string) => {
     if (!isUserAdmin) {
-      setShowMessage(`🚫 Access to ${path} is restricted to Admins.`);
+      setShowMessage(`🚫 ROOT ACCESS REQUIRED FOR ${path}`);
       return false;
     }
     return true;
   }, [isUserAdmin, setShowMessage]);
 
-
   const profileImageUrl = playerData?.profilePictureUrl;
-  const displayName = playerData?.username || (userId ? `${userId.slice(0, 6)}...` : 'Guest');
+  const displayName = playerData?.username || (userId ? `OP-${userId.slice(0, 4)}` : 'GUEST');
 
   return (
     <motion.nav
-      // FIX: Applied glass-dark style to navigation background
-      className="fixed top-0 left-0 w-full z-50 py-3 px-4 md:px-6 flex items-center justify-between glass-dark font-inter"
+      className="fixed top-0 left-0 w-full z-50 h-[70px] bg-black/90 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-4 font-inter"
       initial={{ y: -100 }} animate={{ y: 0 }} transition={{ duration: 0.5 }}
     >
-      {/* Logo/Brand */}
-      <div className="flex items-center gap-2">
-        <Link to="/home" className="flex items-center gap-2">
-          <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8}>
-            <Sparkles className="text-primary w-6 h-6 md:w-7 md:h-7 text-glow-primary" />
-          </Tilt>
-          <span className="text-xl md:text-2xl font-bold text-foreground font-poppins hidden sm:block">
-            PETverse
-          </span>
+      {/* 1. BRAND */}
+      <div className="flex items-center gap-4">
+        <Link to="/home" className="flex items-center gap-2 group">
+            <Sparkles className="text-primary w-6 h-6 group-hover:animate-spin" />
+            <span className="text-xl font-bold font-russo text-white tracking-tighter uppercase hidden sm:block group-hover:text-primary transition-colors">
+              PETverse
+            </span>
         </Link>
+
+        {/* Desktop Nav Links (Text + Icon) */}
+        <div className="hidden lg:flex items-center gap-1 ml-8">
+            {navItems.map(({ path, label, icon }) => (
+            <Link
+                key={path}
+                to={path}
+                onClick={(e) => { if (!handleRestrictedNav(label)) e.preventDefault(); }}
+                className={cn(
+                    "flex items-center gap-2 text-xs font-bold px-3 py-2 uppercase transition-all",
+                    location.pathname === path 
+                        ? 'text-primary border-b-2 border-primary' 
+                        : 'text-gray-500 hover:text-white hover:bg-white/5'
+                )}
+            >
+                {icon}
+                <span>{label}</span>
+            </Link>
+            ))}
+        </div>
       </div>
 
-      {/* Center Nav Links */}
-      <div className="hidden md:flex flex-grow justify-center items-center gap-4">
-        {navItems.map(({ path, label, icon }) => (
-          <Link
-            key={path}
-            to={path}
-            onClick={(e) => { if (!handleRestrictedNav(label)) e.preventDefault(); }}
-            className={cn(
-                "flex items-center gap-2 text-sm font-medium p-2 rounded-md transition-colors",
-                location.pathname === path ? 'text-primary' : 'text-muted-foreground hover:text-primary'
-            )}
-            title={label}
-          >
-            {icon}
-            <span className="hidden lg:block">{label}</span>
-          </Link>
-        ))}
+      {/* 2. USER ACTIONS */}
+      <div className="flex items-center gap-4">
         
-        {/* Admin Link and Payment Status Alert */}
+        {/* Admin Bell */}
         {isLoggedIn && isUserAdmin && (
            <Link
             to="/admin"
             onClick={(e) => { if (!handleAdminNav("/admin")) e.preventDefault(); }}
             className={cn(
-                "flex items-center gap-2 text-sm font-medium p-2 rounded-md transition-colors relative",
-                location.pathname === '/admin' ? 'text-destructive' : 'text-muted-foreground hover:text-destructive',
-                pendingTxCount > 0 && 'font-bold text-destructive hover:text-destructive/80'
+                "relative p-2 transition-colors",
+                location.pathname === '/admin' ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
             )}
-            title="Admin Command Center"
+            title="Command Center"
           >
             <Settings className="w-5 h-5" />
-            <span className="hidden lg:block">Admin</span>
             
-            {/* Payment Status Badge */}
             {pendingTxCount > 0 && (
-                <motion.div 
-                    className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-yellow-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold text-black border border-background animate-pulse"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    title={`${pendingTxCount} pending payment approvals`}
-                >
-                    {pendingTxCount}
-                </motion.div>
-            )}
-            {/* Status Indicator when checking */}
-            {isCheckingStatus && pendingTxCount === 0 && (
-                <LoaderCircle className="w-3 h-3 animate-spin text-muted-foreground absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2" />
+                <span className="absolute top-0 right-0 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                </span>
             )}
           </Link>
         )}
-      </div>
 
-      {/* Right-side User Area */}
-      <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+        {/* User Stats (Desktop) */}
         {isLoggedIn && playerData && (
-          <div className="hidden lg:flex items-center gap-3 bg-black/20 p-2 rounded-md border border-border">
-            {/* Profile Info */}
-            {profileImageUrl ? (
-              <img src={profileImageUrl} alt="Avatar" className="w-6 h-6 rounded-full object-cover" />
-            ) : (
-              <User className="text-primary w-5 h-5" />
-            )}
-            <span className="text-sm font-medium text-foreground truncate max-w-[100px]" title={playerData.email || userId!}>
-              {displayName}
-            </span>
-            {/* JOULES Balance */}
-            <div className="flex items-center gap-1.5" title="JOULES Balance">
-              <Gem className="text-yellow-400 w-5 h-5" />
-              <span className="text-sm font-bold text-foreground">{joulesBalance.toFixed(0)}</span>
+          <div className="hidden md:flex items-center gap-4 bg-white/5 px-4 py-1.5 border border-white/10">
+            <div className="flex items-center gap-2">
+                {profileImageUrl ? (
+                <img src={profileImageUrl} alt="Avatar" className="w-6 h-6 object-cover border border-white/20" />
+                ) : (
+                <User className="text-primary w-4 h-4" />
+                )}
+                <span className="text-xs font-mono font-bold text-white uppercase max-w-[100px] truncate">
+                {displayName}
+                </span>
+            </div>
+            <div className="w-px h-4 bg-white/20"></div>
+            <div className="flex items-center gap-1.5">
+              <Gem className="text-primary w-3 h-3" />
+              <span className="text-xs font-mono text-primary">{joulesBalance.toFixed(0)}</span>
             </div>
           </div>
         )}
-        
-        {/* Wallet Connection Status for Mobile/Small Screens */}
-        <div className='flex items-center'>
-            {isLoggedIn && isUserAdmin && pendingTxCount > 0 && (
-                <Link
-                    to="/admin"
-                    title={`${pendingTxCount} pending payment approvals`}
-                    className="md:hidden relative p-1.5 rounded-full mr-2 bg-yellow-500/10 hover:bg-yellow-500/20 transition-colors"
-                    onClick={(e) => { if (!handleAdminNav("/admin")) e.preventDefault(); }}
-                >
-                    <BellRing className="w-6 h-6 text-yellow-500" />
-                    <span className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full w-3 h-3 border border-background animate-ping" />
-                </Link>
-            )}
-        </div>
 
-
+        {/* Wallet & Auth */}
         {authLoading ? (
           <LoaderCircle className="w-6 h-6 animate-spin text-primary" />
         ) : (
-          <>
-            {/* Wallet Connect Button */}
+          <div className="flex items-center gap-2">
             <ConnectButton
-              chainStatus="icon"
+              chainStatus="none"
               showBalance={false}
               accountStatus={{
                 smallScreen: 'avatar',
                 largeScreen: 'full',
               }}
             />
-            {/* Sign Out Button (Desktop) */}
-            {isLoggedIn && (
-              <motion.button 
+            
+            {isLoggedIn ? (
+              <button 
                 onClick={() => {
                   signOutUser(); 
-                  setShowMessage("👋 You have been signed out.");
+                  setShowMessage("SYSTEM DISCONNECTED");
                 }} 
-                // FIX: Use btn-destructive for sign out
-                className="btn-destructive p-2 h-10 w-10 hidden md:flex" 
-                title="Sign Out" 
-                whileHover={{ scale: 1.05 }} 
-                whileTap={{ scale: 0.95 }}
+                className="w-10 h-10 flex items-center justify-center border border-white/10 hover:bg-red-900/20 hover:border-red-500 hover:text-red-500 transition-all text-white/50"
+                title="Disconnect" 
               >
-                <LogOut className="w-5 h-5" />
-              </motion.button>
-            )}
-            {/* Sign In Button (Mobile) */}
-            {!isLoggedIn && (
-              <motion.button 
+                <LogOut className="w-4 h-4" />
+              </button>
+            ) : (
+              <button 
                 onClick={() => setActiveModal('auth')}
-                className="btn-primary p-2 h-10 w-10 md:hidden" 
-                title="Sign In"
+                className="btn-primary h-9 px-4 text-xs" 
               >
-                <User className="w-5 h-5" />
-              </motion.button>
+                CONNECT
+              </button>
             )}
-          </>
+          </div>
         )}
       </div>
     </motion.nav>

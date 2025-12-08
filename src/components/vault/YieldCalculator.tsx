@@ -1,25 +1,21 @@
-// src/components/vault/YieldCalculator.tsx
 import { FC, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calculator, Zap, TrendingUp, AlertTriangle } from 'lucide-react';
-import SwytchCard from '../SwytchCard';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
-
-// This component is now self-sufficient and requires no props.
 
 interface Tier {
   level: number;
   title: string;
   minDeposit: number;
-  monthlyYieldRate: number; // e.g., 0.01 for 1%
+  monthlyYieldRate: number;
 }
 
 const tiers: Tier[] = [
-  { level: 1, title: 'Bronze Tier (1%)', minDeposit: 100, monthlyYieldRate: 0.01 },
-  { level: 2, title: 'Silver Tier (1.5%)', minDeposit: 500, monthlyYieldRate: 0.015 },
-  { level: 3, title: 'Gold Tier (2%)', minDeposit: 1000, monthlyYieldRate: 0.02 },
-  { level: 4, title: 'Platinum Tier (2.5%)', minDeposit: 5000, monthlyYieldRate: 0.025 },
+  { level: 1, title: 'BRONZE (1%)', minDeposit: 100, monthlyYieldRate: 0.01 },
+  { level: 2, title: 'SILVER (1.5%)', minDeposit: 500, monthlyYieldRate: 0.015 },
+  { level: 3, title: 'GOLD (2%)', minDeposit: 1000, monthlyYieldRate: 0.02 },
+  { level: 4, title: 'PLATINUM (2.5%)', minDeposit: 5000, monthlyYieldRate: 0.025 },
 ];
 
 interface YieldResult {
@@ -33,7 +29,6 @@ const YieldCalculator: FC = () => {
   const { userId } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
 
-  // FIX: State initialization for input should be consistent (string)
   const [depositAmountInput, setDepositAmountInput] = useState<string>('');
   const [calculatedYield, setCalculatedYield] = useState<YieldResult | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -42,34 +37,22 @@ const YieldCalculator: FC = () => {
 
   const calculateReward = useCallback(() => {
     setLocalError(null);
-
-    // 1. Basic validation
     if (isNaN(parsedDepositAmount) || parsedDepositAmount <= 0) {
-      setLocalError('Please enter a valid deposit amount.');
+      setLocalError('INVALID AMOUNT');
       return;
     }
     if (parsedDepositAmount < tiers[0].minDeposit) {
-      setLocalError(`Minimum deposit is $${tiers[0].minDeposit}.`);
+      setLocalError(`MIN DEPOSIT: $${tiers[0].minDeposit}`);
       return;
     }
 
-    // 2. Determine the highest qualifying tier (tiers must be sorted ascending by minDeposit)
     const tier = tiers.slice().reverse().find(t => parsedDepositAmount >= t.minDeposit) || null;
+    if (!tier) { setLocalError('ERROR: NO TIER'); return; }
 
-    if (!tier) {
-      setLocalError('Calculation failed: No tier found.');
-      return;
-    }
-
-    // 3. Simple Calculation
     const monthlyReward = parsedDepositAmount * tier.monthlyYieldRate;
     const annualReward = monthlyReward * 12;
-
-    // 4. Compounding Projection (5 years = 60 months)
     let projection = parsedDepositAmount;
-    for (let i = 0; i < 60; i++) {
-      projection += projection * tier.monthlyYieldRate;
-    }
+    for (let i = 0; i < 60; i++) { projection += projection * tier.monthlyYieldRate; }
 
     setCalculatedYield({
       tier,
@@ -77,13 +60,13 @@ const YieldCalculator: FC = () => {
       annualReward: parseFloat(annualReward.toFixed(2)),
       fiveYearProjection: parseFloat(projection.toFixed(2)),
     });
-    setShowMessage(`✅ Yield calculated for ${tier.title}!`);
+    setShowMessage(`✅ YIELD CALCULATED`);
   }, [parsedDepositAmount, setShowMessage]);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) {
-      setShowMessage('⚠️ Please sign in to calculate rewards!');
+      setShowMessage('⚠️ LOGIN REQUIRED');
       setActiveModal('auth');
       return;
     }
@@ -91,76 +74,71 @@ const YieldCalculator: FC = () => {
   };
 
   return (
-    <SwytchCard variant="default" className="p-6">
-      <h2 className="text-2xl font-bold text-foreground font-poppins mb-4 text-center flex items-center justify-center gap-2">
-        <Calculator className="w-7 h-7 text-primary" /> Yield Calculator
-      </h2>
-      <p className="text-lg text-muted-foreground text-center mb-6 font-inter">
-        Estimate your potential JOULES earnings based on your deposit.
-      </p>
-
-      <form onSubmit={handleFormSubmit} className="space-y-4 max-w-md mx-auto">
+    <div className="h-full flex flex-col">
+      <form onSubmit={handleFormSubmit} className="space-y-4 mb-4">
         <div>
-          <label htmlFor="deposit-amount" className="block text-sm font-medium text-muted-foreground mb-1 font-inter">
+          <label className="block text-[10px] font-mono text-gray-500 mb-1 uppercase">
             Deposit Amount (USD)
           </label>
-          <input
-            id="deposit-amount"
-            type="number"
-            // FIX: Use depositAmountInput string state for input value
-            value={depositAmountInput}
-            // FIX: Update state with the raw string/number
-            onChange={(e) => setDepositAmountInput(e.target.value)} 
-            placeholder={`Min $${tiers[0].minDeposit}`}
-            className="input w-full"
-            min={tiers[0].minDeposit}
-            aria-label="Deposit amount"
-          />
+          <div className="relative">
+              <input
+                type="number"
+                value={depositAmountInput}
+                onChange={(e) => setDepositAmountInput(e.target.value)}
+                placeholder={`Min $${tiers[0].minDeposit}`}
+                className="input w-full font-mono"
+                min={tiers[0].minDeposit}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs font-mono">USD</span>
+          </div>
         </div>
         <motion.button
           type="submit"
-          className="btn-primary w-full flex items-center justify-center gap-2"
-          // Disable calculation button if input is invalid or less than minimum
-          disabled={isNaN(parsedDepositAmount) || parsedDepositAmount < tiers[0].minDeposit} 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          className="btn-primary w-full flex items-center justify-center gap-2 text-xs"
+          disabled={isNaN(parsedDepositAmount) || parsedDepositAmount < tiers[0].minDeposit}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
-          <Zap className="w-5 h-5" /> Calculate Yield
+          <Zap className="w-4 h-4" /> CALCULATE
         </motion.button>
       </form>
 
       <AnimatePresence>
         {localError && (
-          <motion.p
-            className="text-destructive text-sm text-center mt-4 font-inter flex items-center justify-center gap-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-3 bg-red-900/20 border border-red-500/50 text-red-500 text-xs font-mono text-center flex items-center justify-center gap-2">
             <AlertTriangle className="w-4 h-4" /> {localError}
-          </motion.p>
+          </motion.div>
         )}
         {calculatedYield && (
           <motion.div
-            className="mt-6 p-4 bg-black/20 rounded-lg border border-border space-y-2"
+            className="mt-auto p-4 bg-white/5 border border-primary/30 space-y-2 relative overflow-hidden"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
           >
-            <h3 className="text-xl font-bold text-foreground flex items-center gap-2 font-poppins">
-              <TrendingUp className="w-6 h-6 text-green-400" /> Your Projection
+            <div className="absolute top-0 right-0 p-2 opacity-10">
+                <TrendingUp className="w-16 h-16 text-green-500" />
+            </div>
+            <h3 className="text-sm font-bold text-white font-russo uppercase border-b border-white/10 pb-2 mb-2">
+              Projection Result
             </h3>
-            <p className="text-muted-foreground font-inter">Tier: <span className="font-semibold text-primary">{calculatedYield.tier?.title || 'N/A'}</span></p>
-            <p className="text-muted-foreground font-inter">Monthly Reward: <span className="font-semibold text-foreground">${calculatedYield.monthlyReward.toLocaleString()}</span></p>
-            <p className="text-muted-foreground font-inter">Annual Reward: <span className="font-semibold text-foreground">${calculatedYield.annualReward.toLocaleString()}</span></p>
-            <p className="text-muted-foreground font-inter">Projection in 5 Years (Compounded): <span className="font-bold text-yellow-400">${calculatedYield.fiveYearProjection.toLocaleString()}</span></p>
-            <p className="text-xs text-muted-foreground/70 mt-2 font-inter">
-              *Projections are estimates and do not guarantee future returns. Subject to terms and conditions.
-            </p>
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-gray-400">
+                <div>TIER</div>
+                <div className="text-right text-white font-bold">{calculatedYield.tier?.title}</div>
+                
+                <div>MONTHLY</div>
+                <div className="text-right text-green-400">${calculatedYield.monthlyReward.toLocaleString()}</div>
+                
+                <div>ANNUAL</div>
+                <div className="text-right text-green-400">${calculatedYield.annualReward.toLocaleString()}</div>
+            </div>
+            <div className="pt-2 mt-2 border-t border-white/10">
+                <p className="text-[10px] text-gray-500 uppercase">5YR COMPOUND</p>
+                <p className="text-lg font-bold text-yellow-400 font-mono">${calculatedYield.fiveYearProjection.toLocaleString()}</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </SwytchCard>
+    </div>
   );
 };
 

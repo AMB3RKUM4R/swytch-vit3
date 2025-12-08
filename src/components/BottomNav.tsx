@@ -1,125 +1,56 @@
-// src/components/BottomNav.tsx
-import { FC, useState } from 'react';
-import { Home, LogOut, User, ShoppingCart, Package, Users, HandCoins, LoaderCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { FC } from 'react';
+import { Home, User, ShoppingBag, PlusCircle } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { useModal } from '@/components/context/ModalContext';
-import { motion } from 'framer-motion';
 import { usePlayer } from '@/components/context/PlayerContext';
-import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase';
-import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi';
-import { cn } from '@/lib/utils';
-
-const navItems = [
-    { path: '/home', label: 'Home', icon: Home },
-    { path: '/shop', label: 'Shop', icon: ShoppingCart },
-    { path: '/inventory', label: 'Inventory', icon: Package },
-    { path: '/community', label: 'Community', icon: Users },
-    { path: '/vault', label: 'Vault', icon: HandCoins },
-];
-
-const iconVariants = {
-    // FIX: Removed 'y' to prevent jumping on hover/tap
-    rest: { scale: 1 }, 
-    hover: { scale: 1.2, transition: { duration: 0.2, ease: 'easeOut' } },
-};
 
 const BottomNav: FC = () => {
-    const { userId, authLoading } = usePlayer(); 
-    const { setActiveModal, setShowMessage } = useModal();
+    const { userId } = usePlayer(); 
+    const { setActiveModal } = useModal();
+    const location = useLocation();
 
-    const navigate = useNavigate();
-    const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
-
-    const { disconnect } = useAuthUserWagmi();
-    // FIX: Passing the disconnect function from Wagmi to Firebase Hook
-    const { signOutUser } = useAuthUserFirebase({ disconnectWagmi: disconnect }); 
-
-    const handleSignOut = async () => {
-        await signOutUser();
-        setShowMessage('✅ Signed out successfully!');
-        navigate('/');
-    };
-
-    const handleRestrictedNav = (path: string, label: string) => {
-        // Only allow signed-out users on /home and /
-        if (!userId && path !== '/home' && path !== '/') { 
-            setShowMessage(`⚠️ Sign in to access ${label}`);
+    const handleAction = (path: string) => {
+        if (!userId && path !== '/') {
             setActiveModal('auth');
             return false;
         }
         return true;
     };
 
+    const navItems = [
+        { path: '/', label: 'Feed', icon: Home },
+        { path: '/shop', label: 'Market', icon: ShoppingBag },
+        { path: '/vault', label: 'Profile', icon: User },
+    ];
+
     return (
-        <nav className="fixed bottom-0 left-0 w-full z-40 p-2 md:hidden">
-            <div 
-                className={cn(
-                    "flex items-center justify-around w-full max-w-lg mx-auto p-2 rounded-xl shadow-lg",
-                    "glass-dark border border-primary/20"
-                )}
-            >
-                {navItems.map(({ path, label, icon: Icon }) => (
-                    <Link
-                        key={path}
-                        to={path}
-                        onClick={(e) => {
-                            if (!handleRestrictedNav(path, label)) e.preventDefault();
-                        }}
-                        className="flex flex-col items-center justify-center text-sm group w-14 h-14"
-                        onMouseEnter={() => setHoveredLabel(label)}
-                        onMouseLeave={() => setHoveredLabel(null)}
-                    >
-                        <motion.div
-                            className="relative flex flex-col items-center"
-                            variants={iconVariants}
-                            animate={hoveredLabel === label ? 'hover' : 'rest'} 
-                        >
-                            {/* FIX: Added Tailwind transition classes */}
-                            <Icon className="w-7 h-7 text-muted-foreground transition-colors group-hover:text-primary" />
-                            <span className="text-xs mt-1 font-inter font-medium text-muted-foreground transition-colors group-hover:text-primary">{label}</span>
-                        </motion.div>
-                    </Link>
-                ))}
+        <nav className="fixed bottom-0 left-0 w-full z-40 bg-black border-t border-white/10 pb-safe md:hidden">
+            <div className="flex items-center justify-around h-[60px] px-2">
                 
-                {authLoading ? (
-                    <div className="flex flex-col items-center justify-center text-sm w-14 h-14">
-                        <LoaderCircle className="w-7 h-7 animate-spin text-primary" />
-                        <span className="text-xs mt-1 font-inter font-medium text-muted-foreground">Loading...</span>
-                    </div>
-                ) : userId ? (
-                    <button
-                        onClick={handleSignOut}
-                        className="flex flex-col items-center justify-center text-sm group w-14 h-14"
-                        onMouseEnter={() => setHoveredLabel('Sign Out')}
-                        onMouseLeave={() => setHoveredLabel(null)}
-                    >
-                        <motion.div
-                            className="relative flex flex-col items-center"
-                            variants={iconVariants}
-                            animate={hoveredLabel === 'Sign Out' ? 'hover' : 'rest'}
+                {navItems.map(({ path, label, icon: Icon }) => {
+                    const isActive = location.pathname === path || (path === '/' && location.pathname === '/home');
+                    return (
+                        <Link
+                            key={label}
+                            to={path}
+                            onClick={(e) => { if (!handleAction(path)) e.preventDefault(); }}
+                            className="flex flex-col items-center justify-center w-16 h-full space-y-1"
                         >
-                            <LogOut className="w-7 h-7 text-destructive" />
-                            <span className="text-xs mt-1 font-inter font-medium text-destructive">Sign Out</span>
-                        </motion.div>
-                    </button>
-                ) : (
-                    <button
-                        onClick={() => setActiveModal('auth')}
-                        className="flex flex-col items-center justify-center text-sm group w-14 h-14"
-                        onMouseEnter={() => setHoveredLabel('Sign In')}
-                        onMouseLeave={() => setHoveredLabel(null)}
-                    >
-                        <motion.div
-                            className="relative flex flex-col items-center"
-                            variants={iconVariants}
-                            animate={hoveredLabel === 'Sign In' ? 'hover' : 'rest'}
-                        >
-                            {/* FIX: Added Tailwind transition classes */}
-                            <User className="w-7 h-7 text-muted-foreground transition-colors group-hover:text-primary" />
-                            <span className="text-xs mt-1 font-inter font-medium text-muted-foreground transition-colors group-hover:text-primary">Sign In</span>
-                        </motion.div>
-                    </button>
-                )}
+                            <Icon className={`w-6 h-6 ${isActive ? 'text-primary' : 'text-gray-500'}`} />
+                            {/* Dot indicator for active state */}
+                            {isActive && <div className="w-1 h-1 bg-primary rounded-full" />}
+                        </Link>
+                    );
+                })}
+                
+                {/* Floating Action Button (Center) - e.g., Quick Deposit or Play */}
+                <button 
+                    onClick={() => setActiveModal('payment')}
+                    className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-primary rounded-full border-4 border-black flex items-center justify-center shadow-[0_0_20px_rgba(0,255,65,0.3)]"
+                >
+                    <PlusCircle className="w-8 h-8 text-black" />
+                </button>
+
             </div>
         </nav>
     );

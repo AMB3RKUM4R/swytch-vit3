@@ -1,6 +1,5 @@
 import { FC } from 'react';
 import { Wallet, Link, DollarSign, Activity, HardHat, User, Zap } from 'lucide-react';
-import SwytchCard from '../SwytchCard';
 import { VaultWalletInfoProps } from '@/lib/types';
 
 const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
@@ -13,95 +12,74 @@ const VaultWalletInfo: FC<VaultWalletInfoProps> = ({
   usdtBalance,
 }) => {
     
-  // Helper to format large numbers like Block Number and Gas Price
   const formatBigInt = (value: bigint | null | undefined, unit: string = '') => {
       if (value === null || value === undefined) return 'N/A';
       return `${value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${unit}`;
   }
   
   return (
-    <SwytchCard variant="default" className="p-6">
-      <h2 className="text-2xl font-bold text-foreground font-poppins mb-6 text-center">
-        <Wallet className="inline-block w-7 h-7 mr-2 text-primary" /> Your Crypto Wallet
-      </h2>
-      <div className="space-y-4 text-foreground font-inter">
-        <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
-          <Link className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-sm text-muted-foreground">Status</p>
-            <p className="font-semibold">{isConnected ? <span className="text-green-400">Connected</span> : <span className="text-red-400">Disconnected</span>}</p>
+    <div className="bg-black border border-white/10 p-0">
+      <div className="p-4 border-b border-white/10 flex items-center gap-2 bg-white/5">
+        <Wallet className="w-5 h-5 text-primary" /> 
+        <h2 className="font-bold text-white text-sm uppercase tracking-wider">Crypto Wallet Link</h2>
+      </div>
+      
+      <div className="p-6 space-y-3 font-mono">
+        <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10">
+          <div className="flex items-center gap-2 text-gray-500 text-xs uppercase">
+              <Link className="w-4 h-4" /> STATUS
+          </div>
+          <div className="font-bold text-xs">
+              {isConnected ? <span className="text-green-500">CONNECTED</span> : <span className="text-red-500">DISCONNECTED</span>}
           </div>
         </div>
         
         {isConnected && address && (
-          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
-            <User className="w-5 h-5 text-primary" />
-            <div>
-              <p className="text-sm text-muted-foreground">Address</p>
-              <p className="font-mono text-sm break-all">{address}</p>
+          <div className="p-3 bg-white/5 border border-white/10 space-y-1">
+            <div className="flex items-center gap-2 text-gray-500 text-xs uppercase">
+                <User className="w-4 h-4" /> ADDRESS
             </div>
-          </div>
-        )}
-        
-        {isConnected && ensName && (
-          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
-            <User className="w-5 h-5 text-yellow-400" />
-            <div>
-              <p className="text-sm text-muted-foreground">ENS Name</p>
-              <p className="font-semibold">{ensName}</p>
-            </div>
+            <p className="text-[10px] text-white break-all">{address}</p>
           </div>
         )}
 
-        {isConnected && chainId && (
-          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
-            <Activity className="w-5 h-5 text-purple-400" />
-            <div>
-              <p className="text-sm text-muted-foreground">Chain ID</p>
-              <p className="font-semibold">{chainId}</p>
+        {/* Grid Stats */}
+        {isConnected && (
+            <div className="grid grid-cols-2 gap-3">
+                {chainId && (
+                    <div className="p-3 bg-white/5 border border-white/10">
+                        <p className="text-[10px] text-gray-500 mb-1 flex items-center gap-1"><Activity className="w-3 h-3" /> CHAIN ID</p>
+                        <p className="text-sm font-bold text-white">{chainId}</p>
+                    </div>
+                )}
+                {usdtBalance && (
+                    <div className="p-3 bg-white/5 border border-white/10">
+                        <p className="text-[10px] text-gray-500 mb-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> USDT</p>
+                        <p className="text-sm font-bold text-green-500">{Number(usdtBalance.formatted).toFixed(2)}</p>
+                    </div>
+                )}
+                {gasPrice !== undefined && (
+                    <div className="p-3 bg-white/5 border border-white/10">
+                        <p className="text-[10px] text-gray-500 mb-1 flex items-center gap-1"><Zap className="w-3 h-3" /> GAS</p>
+                        <p className="text-sm font-bold text-white">{(Number(gasPrice) / 1e9).toFixed(2)} Gwei</p>
+                    </div>
+                )}
+                {blockNumber !== null && (
+                    <div className="p-3 bg-white/5 border border-white/10">
+                        <p className="text-[10px] text-gray-500 mb-1 flex items-center gap-1"><HardHat className="w-3 h-3" /> BLOCK</p>
+                        <p className="text-sm font-bold text-white">{formatBigInt(blockNumber)}</p>
+                    </div>
+                )}
             </div>
-          </div>
-        )}
-        
-        {isConnected && blockNumber !== null && blockNumber !== undefined && (
-          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
-            <HardHat className="w-5 h-5 text-orange-400" />
-            <div>
-              <p className="text-sm text-muted-foreground">Current Block</p>
-              {/* FIX: Use helper function for readability */}
-              <p className="font-semibold">{formatBigInt(blockNumber)}</p>
-            </div>
-          </div>
-        )}
-
-        {isConnected && gasPrice !== undefined && gasPrice !== null && (
-          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
-            <Zap className="w-5 h-5 text-red-400" />
-            <div>
-              <p className="text-sm text-muted-foreground">Gas Price</p>
-              {/* FIX: Use helper function for readability */}
-              <p className="font-semibold">{(Number(gasPrice) / 1e9).toFixed(2)} Gwei</p>
-            </div>
-          </div>
-        )}
-
-        {isConnected && usdtBalance && (
-          <div className="flex items-center gap-3 p-3 bg-black/20 rounded-md border border-border">
-            <DollarSign className="w-5 h-5 text-green-400" />
-            <div>
-              <p className="text-sm text-muted-foreground">USDT Balance</p>
-              <p className="font-semibold">{Number(usdtBalance.formatted).toFixed(2)} {usdtBalance.symbol}</p>
-            </div>
-          </div>
         )}
 
         {!isConnected && (
-          <p className="text-sm text-muted-foreground text-center pt-4">
-            Connect your wallet to see your on-chain assets and network status.
+          <p className="text-xs text-gray-500 text-center pt-4 uppercase">
+            CONNECT WALLET TO VIEW ON-CHAIN DATA
           </p>
         )}
       </div>
-    </SwytchCard>
+    </div>
   );
 };
 

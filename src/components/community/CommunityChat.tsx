@@ -1,7 +1,6 @@
-// src/components/community/CommunityChat.tsx
 import { FC, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send } from 'lucide-react';
+import { Send, Terminal, Shield } from 'lucide-react';
 import { db } from '@/lib/firebaseConfig';
 import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { usePlayer } from '@/components/context/PlayerContext';
@@ -11,18 +10,13 @@ const CommunityChat: FC = () => {
   const { userId, playerData } = usePlayer();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-    // FIX: Use optional chaining with check for safety
-    messagesEndRef.current?.scrollIntoView({ behavior });
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
     const q = query(
       collection(db, 'CommunityChat'),
       orderBy('timestamp', 'desc'),
@@ -35,32 +29,18 @@ const CommunityChat: FC = () => {
         fetchedMessages.push({ id: doc.id, ...doc.data() } as ChatMessage);
       });
       setMessages(fetchedMessages.reverse()); 
-      setLoading(false);
-      // FIX: Scroll after receiving new messages
-      // Use 'auto' behavior on first load for snappier startup, 'smooth' afterward.
-      scrollToBottom(messages.length === 0 ? "auto" : "smooth"); 
-    }, (err) => {
-      console.error('Failed to fetch chat:', err);
-      setError('Failed to load chat. Please try again.');
-      setLoading(false);
+      setTimeout(scrollToBottom, 100); // Small delay to ensure render
     });
 
     return () => unsubscribe();
-  }, []); // Dependencies are correct here (empty array)
-
-  // FIX: Removed this redundant and potentially problematic useEffect:
-  /*
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-  */
+  }, []);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId || !playerData || newMessage.trim() === "") return;
 
     const messageText = newMessage;
-    setNewMessage(""); // Clear input immediately
+    setNewMessage(""); 
 
     try {
       await addDoc(collection(db, 'CommunityChat'), {
@@ -72,38 +52,51 @@ const CommunityChat: FC = () => {
       });
     } catch (err) {
       console.error("Error sending message: ", err);
-      setError("Failed to send message.");
-      setNewMessage(messageText); // Put message back on error
+      setNewMessage(messageText); 
     }
   };
 
   return (
-    <div className="flex flex-col h-[600px] bg-gray-900/50 rounded-lg border border-gray-700">
-      {/* Message Display Area */}
-      <div className="flex-grow p-4 space-y-4 overflow-y-auto">
-        {loading && <p className="text-center text-gray-400">Loading chat...</p>}
-        {error && <p className="text-center text-rose-400">{error}</p>}
-        <AnimatePresence>
+    <div className="flex flex-col h-full bg-black border-l border-white/10 font-inter">
+      
+      {/* Messages Area */}
+      <div className="flex-grow p-4 space-y-4 overflow-y-auto no-scrollbar">
+        <AnimatePresence initial={false}>
           {messages.map((msg) => (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className={`flex items-start gap-3 ${msg.userId === userId ? 'justify-end' : ''}`}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className={`flex items-start gap-3 ${msg.userId === userId ? 'flex-row-reverse' : ''}`}
             >
               {/* Avatar */}
-              <img
-                src={msg.profilePictureUrl || `https://placehold.co/40x40/7e22ce/FFFFFF?text=${msg.username.charAt(0)}`}
-                alt={msg.username}
-                className={`w-10 h-10 rounded-full object-cover ${msg.userId === userId ? 'order-2' : 'order-1'}`}
-              />
-              {/* Bubble */}
-              <div className={`p-3 rounded-lg max-w-xs ${msg.userId === userId ? 'order-1 bg-primary/20' : 'order-2 bg-gray-800'}`}>
-                <p className={`text-sm font-bold ${msg.userId === userId ? 'text-primary' : 'text-cyan-400'}`}>
-                  {msg.username}
-                </p>
-                <p className="text-white text-md break-words">{msg.text}</p>
+              <div className={`w-8 h-8 rounded-none border border-white/20 flex-shrink-0 bg-black overflow-hidden ${msg.userId === userId ? 'border-primary' : ''}`}>
+                  {msg.profilePictureUrl ? (
+                      <img src={msg.profilePictureUrl} alt={msg.username} className="w-full h-full object-cover" />
+                  ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-white/5">
+                          <span className="text-[10px] text-white/50">{msg.username.charAt(0)}</span>
+                      </div>
+                  )}
+              </div>
+
+              {/* Message Bubble */}
+              <div className={`max-w-[80%] space-y-1 ${msg.userId === userId ? 'items-end text-right' : 'items-start'}`}>
+                <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold font-mono uppercase ${msg.userId === userId ? 'text-primary' : 'text-gray-500'}`}>
+                        {msg.username}
+                    </span>
+                    {/* Admin/Verified Badge Logic Mock */}
+                    {msg.username.includes("Admin") && <Shield className="w-3 h-3 text-red-500" />}
+                </div>
+                
+                <div className={`p-3 text-xs leading-relaxed border ${
+                    msg.userId === userId 
+                    ? 'bg-primary/10 border-primary/30 text-white' 
+                    : 'bg-white/5 border-white/10 text-gray-300'
+                }`}>
+                    {msg.text}
+                </div>
               </div>
             </motion.div>
           ))}
@@ -111,26 +104,29 @@ const CommunityChat: FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input Area */}
-      <form onSubmit={handleSendMessage} className="flex items-center p-4 border-t border-gray-700">
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={userId ? "Type your message..." : "Sign in to chat"}
-          className="input flex-grow bg-gray-800"
-          disabled={!userId || !playerData}
-        />
-        <motion.button
-          type="submit"
-          className="btn-primary ml-2"
-          disabled={!userId || !playerData || newMessage.trim() === ""}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Send className="w-5 h-5" />
-        </motion.button>
-      </form>
+      {/* Input Area (Pinned to Bottom) */}
+      <div className="p-3 border-t border-white/10 bg-black">
+        <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
+            <div className="relative flex-grow">
+                <Terminal className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder={userId ? "TRANSMIT MESSAGE..." : "LOGIN TO CHAT"}
+                    className="w-full bg-white/5 border border-white/10 py-3 pl-10 pr-4 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-primary transition-colors font-mono"
+                    disabled={!userId}
+                />
+            </div>
+            <button
+                type="submit"
+                disabled={!userId || !newMessage.trim()}
+                className="btn-primary w-12 h-full flex items-center justify-center border-l-0"
+            >
+                <Send className="w-4 h-4" />
+            </button>
+        </form>
+      </div>
     </div>
   );
 };

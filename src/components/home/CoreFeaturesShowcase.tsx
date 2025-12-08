@@ -1,8 +1,6 @@
-// src/components/home/CoreFeaturesShowcase.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Gem, Lock, DollarSign, Zap, Sparkles } from 'lucide-react';
-import SwytchCard from '../SwytchCard';
 import { useModal } from '@/components/context/ModalContext';
 
 const CoreFeaturesShowcase: FC = () => {
@@ -10,48 +8,49 @@ const CoreFeaturesShowcase: FC = () => {
 
   const features = [
     {
-      icon: <Gem className="w-10 h-10 text-primary" />,
-      title: 'Real Item Ownership',
-      description: 'Truly own your in-game items as NFTs, tradable on the blockchain.',
+      icon: <Gem className="w-8 h-8 text-primary" />,
+      title: 'TRUE OWNERSHIP',
+      description: 'Items minted as NFTs. Tradable. Permanent.',
     },
     {
-      icon: <DollarSign className="w-10 h-10 text-green-400" />,
-      title: 'Crypto & Fiat Economy',
-      description: 'Convert your in-game earnings to crypto or fiat (PayPal, UPI).',
+      icon: <DollarSign className="w-8 h-8 text-green-500" />,
+      title: 'CRYPTO ECONOMY',
+      description: 'Convert JOULES to Fiat/Crypto instantly.',
     },
     {
-      icon: <Lock className="w-10 h-10 text-red-400" />,
-      title: 'Secure & Transparent',
-      description: 'Blockchain-backed security ensures fair play and transparent transactions.',
+      icon: <Lock className="w-8 h-8 text-red-500" />,
+      title: 'SECURE PROTOCOL',
+      description: 'Blockchain-backed security ensures fair play.',
     },
     {
-      icon: <Zap className="w-10 h-10 text-yellow-400" />,
-      title: 'Cross-Game Assets',
-      description: 'Experience classic games with new, real-world economic incentives.',
+      icon: <Zap className="w-8 h-8 text-yellow-500" />,
+      title: 'CROSS-GAME ASSETS',
+      description: 'One inventory across all simulated realities.',
     },
   ];
 
   const handleFeatureClick = (title: string) => {
-    setShowMessage(`Learn More: ${title}`);
+    setShowMessage(`INFO: ${title}`);
   };
 
   return (
     <>
-      <h2 className="text-3xl font-bold text-foreground flex items-center justify-center gap-3 font-poppins mb-8">
-        <Sparkles className="w-8 h-8 text-primary" /> Key Features
+      <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-3 font-russo mb-8 uppercase tracking-widest">
+        <Sparkles className="w-6 h-6 text-primary" /> SYSTEM PROTOCOLS
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {features.map((feature, index) => (
-          <motion.div key={index} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-            <SwytchCard
-              variant="holographic"
-              className="p-6 text-center h-full flex flex-col items-center justify-center"
+          <motion.div key={index} whileHover={{ y: -5 }} whileTap={{ scale: 0.98 }}>
+            <div
+              className="bg-black border border-white/10 p-6 h-full flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary/50 transition-colors group"
               onClick={() => handleFeatureClick(feature.title)}
             >
-              {feature.icon}
-              <h3 className="text-2xl font-semibold text-foreground mt-4 mb-2 font-poppins">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground mt-2">{feature.description}</p>
-            </SwytchCard>
+              <div className="mb-4 p-3 bg-white/5 rounded-none border border-white/10 group-hover:border-primary/30 transition-colors">
+                  {feature.icon}
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2 font-russo uppercase">{feature.title}</h3>
+              <p className="text-xs text-gray-500 font-mono leading-relaxed">{feature.description}</p>
+            </div>
           </motion.div>
         ))}
       </div>

@@ -1,4 +1,3 @@
-// src/pages/Deposit.tsx
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Zap } from 'lucide-react';
@@ -16,7 +15,7 @@ const Deposit: FC = () => {
         </p>
 
         <div className="text-9xl font-black text-center mb-12 text-yellow-400 drop-shadow-2xl">
-          ₹999
+          ₹299
         </div>
 
         <motion.button

@@ -1,182 +1,105 @@
-import { FC, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-// FIX: Using relative paths for all internal components/hooks/contexts
-import SwytchErrorBoundary from '../components/ErrorBoundaryComponent';
-import UserOverviewCard from '../components/home/UserOverviewCard';
-import QuickAccessGames from '../components/home/QuickAccessGames';
-import ActionButtonsPanel from '../components/home/ActionButtonsPanel';
-import RecentPurchases from '../components/RecentPurchases';
-import CommunityRankings from '../components/community/CommunityRankings';
-import CoreFeaturesShowcase from '../components/home/CoreFeaturesShowcase';
-import AdDisplayPanel from '../components/AdDisplayPanel';
-import { usePlayer } from '../components/context/PlayerContext';
-import { useModal } from '../components/context/ModalContext';
-import { useWebGL } from '../components/context/WebglContext';
-import { addDoc, collection } from 'firebase/firestore';
-import { db } from '../lib/firebaseConfig';
-import { SupportedCurrency, TransactionType, TransactionStatus } from '../lib/types';
-import { Megaphone, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
-import { cn } from '../lib/utils';
-import SwytchCard from '../components/SwytchCard';
+import { FC, useMemo } from 'react';
+import { useWebGL } from '@/components/context/WebglContext'; 
+import { useModal } from '@/components/context/ModalContext';
+import { usePlayer } from '@/components/context/PlayerContext';
+import GameTile, { FeedItem } from '@/components/GameTile';
 
-// Animation variants for staggered list items
-const sectionVariant = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: {
-      type: "spring",
-      stiffness: 100,
-      damping: 15,
-    }
-  }
-};
+// DATA ARRAYS (Copied for consistency, normally would be in a shared lib)
+const gamesList = [
+  { id: "mana_miner", name: "Mana Miner", level: 1, type: "Extraction", imageUrl: "/game_covers/mana_miner.webp" },
+  { id: "gatekeeper", name: "Gatekeeper", level: 5, type: "Defense", imageUrl: "/game_covers/gatekeeper.webp" },
+  { id: "shadow_fix", name: "Shadow Fix", level: 10, type: "Puzzle", imageUrl: "/game_covers/shadow_fix.webp" },
+  { id: "crypt_crawler", name: "Crypt Crawler", level: 15, type: "RPG", imageUrl: "/game_covers/crypt_crawler.webp" },
+  { id: "tech_assault", name: "Tech Assault", level: 20, type: "Shooter", imageUrl: "/game_covers/tech_assault.webp" },
+  { id: "rift_defense", name: "Rift Defense", level: 25, type: "Tower Defense", imageUrl: "/game_covers/rift_defense.webp" },
+  { id: "glitch_hacker", name: "Glitch Hacker", level: 30, type: "Arcade", imageUrl: "/game_covers/glitch_hacker.webp" },
+  { id: "void_hunter", name: "Void Hunter", level: 35, type: "Survival", imageUrl: "/game_covers/void_hunter.webp" },
+  { id: "chrono_dash", name: "Chrono Dash", level: 40, type: "Racing", imageUrl: "/game_covers/chrono_dash.webp" },
+  { id: "star_sentry", name: "Star Sentry", level: 45, type: "Space Sim", imageUrl: "/game_covers/star_sentry.webp" },
+  { id: "fractal_maze", name: "Fractal Maze", level: 50, type: "Exploration", imageUrl: "/game_covers/fractal_maze.webp" },
+  { id: "omega_strike", name: "Omega Strike", level: 60, type: "Boss Rush", imageUrl: "/game_covers/omega_strike.webp" },
+  { id: "pet_arena", name: "PET Arena", level: 75, type: "PVP", imageUrl: "/game_covers/pet_arena.webp" },
+  { id: "governance_sim", name: "Governance Sim", level: 90, type: "Strategy", imageUrl: "/game_covers/governance_sim.webp" },
+  { id: "new_eden_mine", name: "New Eden Mine", level: 100, type: "Tycoon", imageUrl: "/game_covers/new_eden_mine.webp" },
+];
 
-/**
- * Full-width promotional hero banner.
- */
-const HeroCallout: FC = () => {
-  return (
-    <motion.div 
-      className={cn(
-        "holographic-card",
-        "flex flex-col md:flex-row items-center justify-between p-8 mb-8"
-      )}
-      variants={sectionVariant}
-    >
-      <div className="flex items-center mb-4 md:mb-0">
-        <Megaphone className="w-12 h-12 text-primary mr-6 text-glow-primary" />
-        <div>
-          <h2 className="text-2xl font-bold font-poppins text-foreground">
-            Anomaly Warning: Phase 3 Detected!
-          </h2>
-          <p className="text-muted-foreground text-sm font-inter max-w-lg">
-            The System is allocating resources to battle the breach. Jump in now to earn exclusive JOULES rewards.
-          </p>
-        </div>
-      </div>
-      <Link to="/shop" className="btn-primary w-full md:w-auto flex-shrink-0">
-        Access Logistics <ArrowRight className="w-4 h-4 ml-2" />
-      </Link>
-    </motion.div>
-  );
-};
+const itemList = [
+  { id: "d-rank-pickaxe", name: "D-Rank Pickaxe", rarity: "D-Rank", type: "WEAPON", price: 500, imageUrl: "/items/weapons/pickaxe_d.png" },
+  { id: "s-rank-shield", name: "S-Rank Kinetic Shield", rarity: "S-Rank", type: "ARMOR", price: 10000, imageUrl: "/items/armor/shield_s.png" },
+  { id: "core-booster", name: "Core Energy Booster", rarity: "B-Rank", type: "CONSUMABLE", price: 800, imageUrl: "/items/consumables/energy_booster.png" },
+  { id: "void-badge", name: "Badge of the Void", rarity: "A-Rank", type: "ARTIFACT", price: 5000, imageUrl: "/items/artifacts/void_badge.png" },
+  { id: "plasma-rifle", name: "Plasma Rifle", rarity: "B-Rank", type: "WEAPON", price: 2500, imageUrl: "/items/weapons/plasma_rifle.png" },
+  { id: "stealth-cloak", name: "Stealth Cloak", rarity: "A-Rank", type: "ARMOR", price: 4000, imageUrl: "/items/armor/stealth_cloak.png" },
+  { id: "health-injector", name: "Health Injector", rarity: "D-Rank", type: "CONSUMABLE", price: 100, imageUrl: "/items/consumables/health_injector.png" },
+  { id: "data-key", name: "Encrypted Data Key", rarity: "S-Rank", type: "ARTIFACT", price: 15000, imageUrl: "/items/artifacts/data_key.png" },
+  { id: "gravity-hammer", name: "Gravity Hammer", rarity: "C-Rank", type: "WEAPON", price: 1200, imageUrl: "/items/weapons/gravity_hammer.png" },
+  { id: "nano-suit", name: "Nano-Weave Suit", rarity: "B-Rank", type: "ARMOR", price: 3000, imageUrl: "/items/armor/nano_suit.png" },
+];
 
+const avatarList = [
+    { id: "cyber_samurai", name: "Cyber Samurai", rarity: "Legendary", price: 20000, imageUrl: "/avatars/cyber_samurai.webp" },
+    { id: "neon_assassin", name: "Neon Assassin", rarity: "Epic", price: 12000, imageUrl: "/avatars/neon_assassin.webp" },
+    { id: "quantum_knight", name: "Quantum Knight", rarity: "Rare", price: 8000, imageUrl: "/avatars/quantum_knight.webp" },
+    { id: "void_walker", name: "Void Walker", rarity: "Epic", price: 11000, imageUrl: "/avatars/void_walker.webp" },
+    { id: "solar_vanguard", name: "Solar Vanguard", rarity: "Legendary", price: 25000, imageUrl: "/avatars/solar_vanguard.webp" },
+];
+
+const arenaList = [
+    { id: "arena_void_pit", name: "The Void Pit", type: "Deathmatch", level: 10, imageUrl: "/arenas/void_pit.webp" },
+    { id: "arena_neon_city", name: "Neon City Outskirts", type: "Team Control", level: 20, imageUrl: "/arenas/neon_city.webp" },
+    { id: "arena_cyber_col", name: "Cyber Colosseum", type: "1v1 Duel", level: 50, imageUrl: "/arenas/cyber_colosseum.webp" },
+];
 
 const Home: FC = () => {
-  const { userId, playerData } = usePlayer();
+  const { setActiveGameId } = useWebGL();
+  const { userId } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
-  const { setActiveGameId } = useWebGL(); 
-  
-  const handleLaunch = useCallback((gameId: string) => {
-      // CRITICAL LAUNCH LOGIC: Pass the gameId to the WebGL Context setter.
-      // UnityStage.tsx will catch this and load the corresponding build folder.
-      if (!userId) {
-          setShowMessage('⚠️ Please sign in to launch a game gate.');
-          setActiveModal('auth');
-          return;
+
+  const feedData: FeedItem[] = useMemo(() => {
+      const feed: FeedItem[] = [];
+      const getGame = (g: any) => ({ type: 'game' as const, id: g.id, title: g.name, subtitle: `LVL ${g.level} // ${g.type.toUpperCase()}`, imageUrl: g.imageUrl, data: g });
+      const getItem = (i: any) => ({ type: 'item' as const, id: i.id, title: i.name, subtitle: `${i.rarity} // ${i.type}`, imageUrl: i.imageUrl, price: i.price, data: i });
+      const getAvatar = (a: any) => ({ type: 'avatar' as const, id: a.id, title: a.name, subtitle: `${a.rarity.toUpperCase()} // SKIN`, imageUrl: a.imageUrl, price: a.price, data: a });
+      const getArena = (a: any) => ({ type: 'arena' as const, id: a.id, title: a.name, subtitle: `LVL ${a.level} // ${a.type.toUpperCase()}`, imageUrl: a.imageUrl, data: a });
+
+      const maxLen = Math.max(gamesList.length, itemList.length);
+      for(let i=0; i<maxLen; i++) {
+          if(gamesList[i]) feed.push(getGame(gamesList[i]));
+          if(itemList[i]) feed.push(getItem(itemList[i]));
+          if(i < avatarList.length) feed.push(getAvatar(avatarList[i]));
+          if(i < arenaList.length) feed.push(getArena(arenaList[i]));
       }
-      setShowMessage(`Loading WebGL build for: ${gameId}...`);
-      setActiveGameId(gameId); 
-  }, [setShowMessage, setActiveGameId, userId, setActiveModal]);
+      return feed;
+  }, []);
 
-
-  const handleShareOnX = useCallback(async () => {
-    if (!userId) {
-      setShowMessage('⚠️ Please synchronize your signature to broadcast the Protocol.');
-      setActiveModal('auth');
-      return;
-    }
-    const shareText = encodeURIComponent("Exploring the PETverse! Join me at swytch.io! #SwytchPETverse #web3gaming");
-    window.open(`https://x.com/intent/tweet?text=${shareText}`, "_blank");
-    
-    try {
-      // Log reward transaction (quest-reward is secure via Cloud Functions in final version)
-      await addDoc(collection(db, 'Transactions'), {
-        transactionId: `${userId}_share_home_${Date.now()}`,
-        userId,
-        amount: 10,
-        currency: 'JOULES' as SupportedCurrency,
-        transactionType: 'quest-reward' as TransactionType,
-        status: 'pending' as TransactionStatus,
-        itemId: 'share-home-quest',
-      });
-      setShowMessage('🎉 Shared on X! Your reward is pending verification.');
-    } catch (err) {
-      console.error('Failed to log share transaction:', err);
-      setShowMessage('❌ Failed to log reward transaction.'); 
-    }
-  }, [userId, setShowMessage, setActiveModal]);
-
-  const displayName = playerData?.username || (userId ? `${userId.slice(0, 6)}...` : 'Hunter');
+  const handleLaunch = (id: string) => {
+      if (!userId) {
+          setShowMessage("⚠️ CONNECT WALLET TO ENTER");
+          setActiveModal('auth');
+      } else {
+          setActiveGameId(id);
+      }
+  };
 
   return (
-    <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
-      <motion.div 
-        className="min-h-screen text-foreground max-w-7xl mx-auto pt-12 pb-24 px-4"
-        initial="hidden"
-        animate="visible"
-        transition={{ staggerChildren: 0.1 }}
-      >
-        
-        {/* --- 1. HERO CALLOUT --- */}
-        <HeroCallout />
-
-        {/* --- 2. PERSONALIZED HEADER --- */}
-        <motion.div className="text-left mb-12" variants={sectionVariant}>
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground font-poppins mb-2 flex items-center">
-             <Zap className="w-10 h-10 mr-3 text-yellow-400" /> System Console
-          </h1>
-          <p className="text-lg text-muted-foreground font-inter">
-            Welcome, {displayName}. Your mission briefing is complete.
-          </p>
-        </motion.div>
-
-        {/* --- 3. MAIN HUB GRID (Spotify Style Layout) --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          
-          {/* --- LEFT COLUMN (Overview, Actions, ADVERTISEMENT) --- */}
-          <motion.div className="lg:col-span-1 space-y-6" variants={sectionVariant}>
-            <UserOverviewCard />
-            <ActionButtonsPanel handleShareOnX={handleShareOnX} />
+    <div className="w-full h-full bg-black">
+        {/* INFINITE SCROLL CONTAINER */}
+        <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth">
+            {feedData.map((item, index) => (
+                <div key={`${item.type}-${item.id}-${index}`} className="snap-start w-full h-full flex items-center justify-center bg-black">
+                    <GameTile 
+                        game={item} 
+                        onGameLaunch={handleLaunch} 
+                    />
+                </div>
+            ))}
             
-            {/* ADVERTISEMENT PLACEMENT */}
-            <AdDisplayPanel zoneType="banner" /> 
-            
-            {/* Secondary rankings/activity */}
-            <SwytchCard variant="default" className="p-6">
-                <h3 className="text-xl font-poppins font-semibold text-foreground mb-4">Rift Activity Ledger</h3>
-                <RecentPurchases />
-            </SwytchCard>
-          </motion.div>
-
-          {/* --- MAIN CONTENT (Game Discovery & Features) --- */}
-          <motion.div className="lg:col-span-3 space-y-12" variants={sectionVariant}>
-             
-            {/* Game Discovery Section - Passes Launch Handler */}
-            <QuickAccessGames onGameLaunch={handleLaunch} />
-            
-            {/* Core Features Showcase */}
-            <h2 className="text-3xl font-poppins font-semibold text-foreground flex items-center gap-3">
-              <ShieldCheck className="w-7 h-7 mr-2 text-primary" />
-              The System Protocol
-            </h2>
-            <CoreFeaturesShowcase />
-          </motion.div>
-
-          {/* --- FULL-WIDTH SECTIONS (Manifesto, Leaderboard, etc.) --- */}
-          <motion.div className="lg:col-span-4 mt-12" variants={sectionVariant}>
-            <h2 className="text-2xl font-poppins font-semibold text-muted-foreground mb-6">Global Status</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CommunityRankings />
+            <div className="snap-start w-full h-[20vh] flex items-center justify-center text-white/20 text-xs font-mono">
+                // END OF TRANSMISSION //
             </div>
-          </motion.div>
-          
         </div>
-      </motion.div>
-    </SwytchErrorBoundary>
+    </div>
   );
 };
+
 export default Home;

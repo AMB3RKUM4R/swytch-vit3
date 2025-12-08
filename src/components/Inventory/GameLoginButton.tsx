@@ -1,6 +1,5 @@
-// src/components/Inventory/GameLoginButton.tsx
 import { FC, useState, useCallback } from 'react';
-import { Play, Loader2 } from 'lucide-react';
+import { Play, Loader2, Smartphone } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useModal } from '@/components/context/ModalContext';
@@ -13,7 +12,7 @@ const GameLoginButton: FC = () => {
 
   const handleLoginToGame = useCallback(async () => {
     if (!auth.currentUser) {
-      setShowMessage("Error: You must be logged in to play.");
+      setShowMessage("⚠️ ERROR: AUTHENTICATION REQUIRED");
       return;
     }
     if (isLaunchingGame) return; 
@@ -24,20 +23,14 @@ const GameLoginButton: FC = () => {
       const generateWebSession = httpsCallable(functions, 'generateWebSession');
       const result = await generateWebSession();
       const data = result.data as { token: string };
-      const webToken = data.token;
-
-      if (!webToken) throw new Error("No token returned from function.");
-
-      // Deep link schema for the Unity client to catch
-      const deepLinkUrl = `swytch://play?token=${webToken}`;
       
-      window.location.href = deepLinkUrl;
-
-      setShowMessage("Attempting to launch game... If nothing happens, make sure the game is installed.");
+      // Deep link to external app
+      window.location.href = `swytch://play?token=${data.token}`;
+      setShowMessage("🚀 HANDOFF INITIATED. CHECK DEVICE.");
 
     } catch (error) {
-      console.error("Failed to generate game session:", error);
-      setShowMessage("Error: Could not launch game. Please try again.");
+      console.error(error);
+      setShowMessage("❌ HANDOFF FAILED");
     } finally {
       setTimeout(() => setIsLaunchingGame(false), 2000);
     }
@@ -47,14 +40,10 @@ const GameLoginButton: FC = () => {
     <button 
       onClick={handleLoginToGame} 
       disabled={isLaunchingGame} 
-      className="btn-primary w-full text-lg py-6 flex items-center justify-center font-semibold disabled:opacity-50 transition-colors"
+      className="btn-primary w-full py-4 flex items-center justify-center gap-3 text-sm font-bold uppercase tracking-wider disabled:opacity-50"
     >
-      {isLaunchingGame ? (
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-      ) : (
-        <Play className="mr-2 h-5 w-5" />
-      )}
-      {isLaunchingGame ? 'Launching...' : 'Login to Game'}
+      {isLaunchingGame ? <Loader2 className="w-5 h-5 animate-spin" /> : <Smartphone className="w-5 h-5" />}
+      {isLaunchingGame ? 'CONNECTING...' : 'OPEN IN APP'}
     </button>
   );
 };

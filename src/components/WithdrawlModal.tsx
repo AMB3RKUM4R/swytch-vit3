@@ -1,21 +1,15 @@
-// src/components/WithdrawModal.tsx
 import { FC, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Landmark, AlertTriangle, Send } from 'lucide-react';
+import { X, ArrowDownLeft, AlertTriangle, Send, Loader2 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { isAddress } from 'viem';
 
-import { cn } from '@/lib/utils';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { useModal } from '@/components/context/ModalContext';
 
-// ────────────────────────────────────────────────────────────────
 // CONFIGURATION
-// ────────────────────────────────────────────────────────────────
-// The API endpoint that hits your Firebase Cloud Function (redeemJoules.ts)
 const REQUEST_WITHDRAWAL_API = '/api/redeemJoules'; 
 const MIN_WITHDRAWAL_AMOUNT = 10;
-// ────────────────────────────────────────────────────────────────
 
 const WithdrawModal: FC = () => {
   const { userId, idToken, joulesBalance } = usePlayer();
@@ -30,31 +24,27 @@ const WithdrawModal: FC = () => {
   const parsedAmount = parseFloat(amount);
   const isValidAmount = !isNaN(parsedAmount) && parsedAmount >= MIN_WITHDRAWAL_AMOUNT;
   const hasEnoughJoules = parsedAmount <= joulesBalance;
-  
-  // FIX: Also check if it's empty, as empty is technically not an address
   const isValidAddress = targetAddress.length > 0 && isAddress(targetAddress);
 
-  // Auto-populate connected wallet address on modal open
   useEffect(() => { 
     if (activeModal === 'withdraw' && connectedWalletAddress && !targetAddress) {
         setTargetAddress(connectedWalletAddress);
     }
   }, [activeModal, connectedWalletAddress, targetAddress]);
 
-
   const handleWithdrawalRequest = useCallback(async () => {
     setError(null);
 
     if (!userId || !idToken) {
-        setError('Authentication required to process withdrawal.');
+        setError('AUTHENTICATION REQUIRED');
         return;
     }
     if (!isValidAmount || !hasEnoughJoules) {
-      setError(`Invalid amount. Must be at least ${MIN_WITHDRAWAL_AMOUNT} and not exceed your ${joulesBalance} JOULES balance.`);
+      setError(`INVALID AMOUNT (MIN ${MIN_WITHDRAWAL_AMOUNT})`);
       return;
     }
     if (!isValidAddress) {
-      setError('Please provide a valid recipient crypto address (0x...).');
+      setError('INVALID CRYPTO ADDRESS');
       return;
     }
 
@@ -68,7 +58,6 @@ const WithdrawModal: FC = () => {
           'Authorization': `Bearer ${idToken}`, 
         },
         body: JSON.stringify({
-          // The Cloud Function (redeemJoules.ts) expects 'amount' as the JOULES to redeem
           amount: parsedAmount, 
           targetAddress: targetAddress, 
         }),
@@ -77,127 +66,99 @@ const WithdrawModal: FC = () => {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // The Cloud Function handles the deduction and logging on its side.
-        setShowMessage(`✅ Withdrawal request submitted! JOULES deducted and crypto withdrawal initiated. TxHash: ${result.txHash || 'Pending'}.`);
+        setShowMessage(`✅ WITHDRAWAL REQUESTED. TX: ${result.txHash?.slice(0,8)}...`);
         setActiveModal(null);
       } else {
-        // Error from the server (e.g., insuffient Joules, token issue)
-        throw new Error(result.error || 'Withdrawal failed due to server error.');
+        throw new Error(result.error || 'SERVER DENIED REQUEST');
       }
     } catch (err: any) {
-      console.error('Withdrawal request error:', err);
-      setError(err.message || 'An unexpected network error occurred.');
-      setShowMessage(`❌ Withdrawal failed: ${err.message}`);
+      console.error('Withdrawal error:', err);
+      setError(err.message || 'NETWORK ERROR');
     } finally {
       setLoading(false);
     }
   }, [userId, idToken, parsedAmount, targetAddress, joulesBalance, isValidAmount, isValidAddress, setActiveModal, setShowMessage]);
 
-
   return (
-    <AnimatePresence>
-      {activeModal === 'withdraw' && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md bg-noise"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm">
+        <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }} 
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-sm bg-black border border-red-600 p-0 shadow-[0_0_30px_rgba(220,38,38,0.2)]"
         >
-          <motion.div
-            className="relative modal glass-dark p-6 rounded-lg max-w-sm w-full mx-4 border border-red-400/20"
-            initial={{ scale: 0.8, y: 50 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.8, y: 50 }}
-          >
-            <button
-              className="absolute top-4 right-4 text-foreground"
-              onClick={() => setActiveModal(null)}
-              aria-label="Close Modal"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            <h2 className="text-2xl font-bold font-poppins text-red-400 mb-4 flex items-center justify-center gap-2">
-              <Landmark className="w-7 h-7" /> Request Withdrawal
-            </h2>
-
-            <p className="text-sm text-center text-muted-foreground mb-4">
-                Current JOULES Balance: <span className="font-bold text-foreground">{joulesBalance.toFixed(2)}</span>
-            </p>
-
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="withdrawAmount" className="text-gray-300 text-sm">
-                  Amount in JOULES (Min {MIN_WITHDRAWAL_AMOUNT}):
-                </label>
-                <input
-                  id="withdrawAmount"
-                  type="number"
-                  step="1"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Enter JOULES amount"
-                  className={cn("input flex-grow", hasEnoughJoules ? '' : 'border-red-500/50')}
-                  disabled={loading}
-                />
-                {!hasEnoughJoules && parsedAmount > 0 && (
-                    <p className="text-xs text-red-400">Insufficient JOULES balance.</p>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="targetAddress" className="text-gray-300 text-sm">
-                  Recipient Crypto Address (0x...):
-                </label>
-                <input
-                  id="targetAddress"
-                  type="text"
-                  value={targetAddress}
-                  onChange={(e) => setTargetAddress(e.target.value)}
-                  placeholder="e.g., 0x..."
-                  className={cn("input flex-grow", targetAddress && !isValidAddress ? 'border-red-500/50' : '')}
-                  disabled={loading}
-                />
-              </div>
-
-              <motion.button
-                className="btn-danger w-full"
-                onClick={handleWithdrawalRequest}
-                disabled={loading || !isValidAmount || !hasEnoughJoules || !isValidAddress}
-              >
-                {loading ? (
-                    <div className="flex items-center justify-center gap-2">
-                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
-                            <Send className="w-5 h-5" />
-                        </motion.div> 
-                        Processing Request...
-                    </div>
-                ) : 'Request Withdrawal'}
-              </motion.button>
-              
-              <p className="text-xs text-muted-foreground text-center pt-2">
-                Withdrawals are automatically processed by smart contract upon request.
-              </p>
+            <div className="p-4 border-b border-white/10 flex justify-between items-center bg-red-900/10">
+                <h2 className="text-lg font-bold font-russo text-red-500 uppercase flex items-center gap-2">
+                    <ArrowDownLeft className="w-5 h-5" /> EXTRACT VALUE
+                </h2>
+                <button onClick={() => setActiveModal(null)} className="text-white/50 hover:text-white"><X /></button>
             </div>
 
-            {/* Error message */}
-            <AnimatePresence>
-              {error && (
-                <motion.p
-                  className="text-rose-400 text-sm text-center mt-4 font-inter flex items-center justify-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+            <div className="p-6 space-y-6">
+                
+                {/* Balance Display */}
+                <div className="bg-white/5 p-4 border border-white/10 text-center">
+                    <span className="text-[10px] text-gray-500 font-mono block mb-1">AVAILABLE BALANCE</span>
+                    <span className="text-3xl font-black text-white">{joulesBalance.toFixed(0)} J</span>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-[10px] text-red-500 font-mono mb-1 block uppercase">Withdraw Amount</label>
+                        <input 
+                            type="number" 
+                            className={`input border-red-900/50 focus:border-red-500 text-lg ${!hasEnoughJoules && parsedAmount > 0 ? 'border-red-500 text-red-500' : ''}`}
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="0"
+                            disabled={loading}
+                        />
+                        {!hasEnoughJoules && parsedAmount > 0 && (
+                            <p className="text-[10px] text-red-500 mt-1 font-mono">INSUFFICIENT FUNDS</p>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] text-red-500 font-mono mb-1 block uppercase">Recipient Address (Polygon)</label>
+                        <input 
+                            type="text" 
+                            className="input border-red-900/50 focus:border-red-500 text-xs font-mono" 
+                            value={targetAddress}
+                            onChange={(e) => setTargetAddress(e.target.value)}
+                            placeholder="0x..."
+                            disabled={loading}
+                        />
+                    </div>
+                </div>
+
+                <button 
+                    onClick={handleWithdrawalRequest} 
+                    disabled={loading || !isValidAmount || !hasEnoughJoules || !isValidAddress}
+                    className="btn-destructive w-full flex items-center justify-center gap-2"
                 >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  {error}
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </motion.div>
+                    {loading ? (
+                        <>
+                            <Loader2 className="animate-spin w-4 h-4" /> PROCESSING...
+                        </>
+                    ) : (
+                        <>
+                            <Send className="w-4 h-4" /> CONFIRM EXTRACTION
+                        </>
+                    )}
+                </button>
+
+                <AnimatePresence>
+                    {error && (
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                            className="p-3 bg-red-900/20 border border-red-500/50 text-red-500 text-xs font-mono text-center flex items-center justify-center gap-2"
+                        >
+                            <AlertTriangle className="w-4 h-4" /> {error}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
         </motion.div>
-      )}
-    </AnimatePresence>
+    </div>
   );
 };
 

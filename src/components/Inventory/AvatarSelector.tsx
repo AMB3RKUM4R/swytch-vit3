@@ -1,7 +1,6 @@
-// src/components/Inventory/AvatarSelector.tsx
 import { FC, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2, Check, Lock } from 'lucide-react';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { PlayerData } from '@/lib/types';
 
@@ -9,11 +8,10 @@ interface AvatarSelectorProps {
   playerData: PlayerData | null;
 }
 
-// UPDATE: Using dedicated image paths for the Avatar Selector
 const avatars = [
-  { id: "rukha_001", name: "Cyber Samurai", image: "/avatars/samurai_full.webp" },
-  { id: "rukha_002", name: "Neon Assassin", image: "/avatars/assassin_full.webp" },
-  { id: "rukha_003", name: "Quantum Knight", image: "/avatars/knight_full.webp" },
+  { id: "rukha_001", name: "Cyber Samurai", image: "/avatars/samurai_full.webp", locked: false },
+  { id: "rukha_002", name: "Neon Assassin", image: "/avatars/assassin_full.webp", locked: false },
+  { id: "rukha_003", name: "Quantum Knight", image: "/avatars/knight_full.webp", locked: true }, // Example locked item
 ];
 
 const AvatarSelector: FC<AvatarSelectorProps> = ({ playerData }) => {
@@ -27,7 +25,6 @@ const AvatarSelector: FC<AvatarSelectorProps> = ({ playerData }) => {
         await updatePlayerCharacter(id);
     } catch (error) {
         console.error("Failed to update character:", error);
-        // In a real app, you'd use setShowMessage() here.
     } finally {
         setLoading(null);
     }
@@ -36,41 +33,55 @@ const AvatarSelector: FC<AvatarSelectorProps> = ({ playerData }) => {
   const selectedAvatarId = playerData?.character?.selectedID;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {avatars.map((a) => {
         const selected = selectedAvatarId === a.id;
         const currentLoading = loading === a.id;
 
         return (
-          <motion.button
+          <button
             key={a.id}
-            onClick={() => handleSelect(a.id)}
-            disabled={currentLoading || selected}
-            whileHover={!selected && !currentLoading ? { scale: 1.05 } : {}}
-            className={`relative rounded-xl overflow-hidden border-4 transition-all ${
-              selected ? 'border-primary shadow-2xl shadow-primary/50' : 'border-white/20 hover:border-primary/50'
-            } bg-black/50`}
+            onClick={() => !a.locked && handleSelect(a.id)}
+            disabled={currentLoading || selected || a.locked}
+            className={`relative group h-[300px] border transition-all duration-300 overflow-hidden ${
+              selected 
+              ? 'border-primary bg-primary/5' 
+              : a.locked 
+                ? 'border-white/5 opacity-50 cursor-not-allowed grayscale' 
+                : 'border-white/10 hover:border-white/50 bg-black'
+            }`}
           >
-            <div className="w-full aspect-square object-cover flex items-center justify-center bg-gray-900">
-                <img src={a.image} alt={a.name} className="w-full h-full object-cover" />
+            {/* Image */}
+            <div className="w-full h-full">
+                <img src={a.image} alt={a.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
             </div>
             
+            {/* Overlay UI */}
+            <div className="absolute inset-0 p-4 flex flex-col justify-end bg-gradient-to-t from-black via-black/50 to-transparent">
+                <h3 className={`text-lg font-bold font-russo uppercase ${selected ? 'text-primary' : 'text-white'}`}>{a.name}</h3>
+                <div className="h-1 w-10 bg-current mt-2" />
+            </div>
+
+            {/* Status Indicators */}
             {currentLoading && (
-              <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                <Loader2 className="w-16 h-16 animate-spin text-cyan-400" />
+              <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             )}
             
             {selected && (
-              <div className="absolute top-3 right-3 bg-primary rounded-full p-2">
-                <CheckCircle className="w-6 h-6 text-black" />
+              <div className="absolute top-2 right-2 bg-primary text-black p-1">
+                <Check className="w-4 h-4" />
               </div>
             )}
-            
-            <div className="p-4 bg-black/80">
-              <h3 className="text-xl font-bold font-poppins text-foreground">{a.name}</h3>
-            </div>
-          </motion.button>
+
+            {a.locked && (
+               <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center backdrop-blur-[2px]">
+                   <Lock className="w-8 h-8 text-white/50 mb-2" />
+                   <span className="text-[10px] font-mono text-white/50 uppercase tracking-widest">LOCKED</span>
+               </div>
+            )}
+          </button>
         );
       })}
     </div>

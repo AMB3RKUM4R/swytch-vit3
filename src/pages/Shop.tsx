@@ -1,199 +1,59 @@
 import { FC } from 'react';
-import { motion } from 'framer-motion';
-import { Store, Sparkles, DollarSign, Filter, Loader2, Gamepad2 } from 'lucide-react'; 
-import SwytchErrorBoundary from '../components/ErrorBoundaryComponent'; 
-import SwytchCard from '../components/SwytchCard'; 
-import { usePlayer } from '../components/context/PlayerContext'; 
-import { useModal } from '../components/context/ModalContext'; 
-
-import { staticShopItems, staticBattleArenas } from '../lib/staticShopData'; 
-
-import TrustMarketHero from '../components/market/TrustMarketHero'; 
-import TrustProgression from '../components/market/TrustProgression'; 
-import TrustRewardTiers from '../components/market/TrustRewardTiers'; 
-import TrustMarketCTA from '../components/market/TrustMarketCTA'; 
-import { TransactionType, TransactionStatus, SupportedCurrency } from '../lib/types'; 
-
-
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-
-const sectionVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } },
-};
+import { staticShopItems } from '@/lib/staticShopData';
+import GameTile from '@/components/GameTile';
+import { ShoppingBag, Search } from 'lucide-react';
+import { useModal } from '@/components/context/ModalContext';
+import { usePlayer } from '@/components/context/PlayerContext';
 
 const Shop: FC = () => {
-  const { setShowMessage, setActiveModal } = useModal();
-  const { logTransaction, userId, joulesBalance, authLoading } = usePlayer(); 
+  const { setActiveModal, setShowMessage } = useModal();
+  const { userId } = usePlayer();
 
-  // --- STANDARD ACCESSOR MAPS ---
-  const normalizedItems = staticShopItems.map(item => ({
-    id: item.id,
-    name: item.itemName, 
-    priceInJoules: item.priceInJoules,
-    priceUSD: item.priceUSD,
-    description: item.description,
-    imageUrl: item.imageUrl,
-    rarity: item.rarity,
-    category: 'ITEM',
-    icon: Sparkles,
-  }));
-  
-  const normalizedArenas = staticBattleArenas.map(arena => ({
-    id: arena.id,
-    name: arena.name, 
-    priceInJoules: arena.priceInJoules,
-    priceUSD: arena.priceUSD,
-    description: arena.description,
-    imageUrl: '', 
-    rarity: 'Common', 
-    category: 'ARENA',
-    icon: Gamepad2,
-  }));
-
-  const listings = [...normalizedItems, ...normalizedArenas];
-  
-  const loading = authLoading; 
-
-  const handlePurchase = (item: typeof listings[0]) => {
-    if (!userId) {
-      setActiveModal('auth');
-      return;
+  const handlePurchase = (itemId: string) => {
+    if(!userId) {
+        setShowMessage("⚠️ AUTH REQUIRED");
+        setActiveModal('auth');
+    } else {
+        // Here we simulate opening the Payment/Buy flow
+        setShowMessage("🛒 INITIATING PURCHASE PROTOCOL (AD LOADING...)");
+        setActiveModal('payment'); 
     }
-    
-    if (item.priceInJoules > (joulesBalance ?? 0)) { 
-        setShowMessage(`❌ Insufficient JOULES to purchase ${item.name}.`);
-        return;
-    }
-    
-    setShowMessage(`Purchasing ${item.name}...`);
-    
-    logTransaction({
-      transactionId: `PURCHASE_${userId}_${Date.now()}`,
-      userId: userId,
-      amount: -item.priceInJoules,
-      currency: "JOULES" as SupportedCurrency,
-      transactionType: "item-purchase" as TransactionType,
-      status: "pending" as TransactionStatus,
-      itemId: item.id,
-    });
-    
-    setShowMessage(`✅ Purchase request for ${item.name} initiated. Item fulfillment pending verification.`);
   };
 
-
   return (
-    <SwytchErrorBoundary setShowMessage={setShowMessage} setActiveModal={setActiveModal}>
-      <motion.div 
-        className="max-w-7xl mx-auto py-24 px-4"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        
-        {loading ? (
-            <div className="flex justify-center items-center h-screen -mt-24">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+    <div className="w-full min-h-screen bg-black pb-24">
+      {/* HEADER */}
+      <div className="p-6 border-b border-white/10 bg-black/80 backdrop-blur sticky top-0 z-30 flex justify-between items-center">
+        <div>
+            <div className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-primary" />
+                <h1 className="text-xl font-russo uppercase text-white">Black Market</h1>
             </div>
-        ) : (
-        <>
-            {/* --- 1. NEW HERO SECTION --- */}
-            <motion.section variants={sectionVariants} className="mb-12">
-              <TrustMarketHero />
-            </motion.section>
+            <p className="text-[10px] text-gray-500 font-mono mt-1">// UNREGULATED ASSETS</p>
+        </div>
+        <button className="w-10 h-10 border border-white/10 flex items-center justify-center hover:bg-white/5">
+            <Search className="w-4 h-4 text-white" />
+        </button>
+      </div>
 
-            {/* --- 2. MAIN MARKET GRID --- */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              
-              {/* --- SIDEBAR --- */}
-              <motion.div className="lg:col-span-1 space-y-8" variants={sectionVariants}>
-                <div>
-                  <h2 className="text-2xl font-poppins font-semibold text-foreground mb-4">Market Trust</h2>
-                  <TrustProgression />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-poppins font-semibold text-foreground mb-4">Trust Tiers</h2>
-                  <TrustRewardTiers />
-                </div>
-              </motion.div>
-
-              {/* --- ITEM LISTINGS --- */}
-              <motion.div className="lg:col-span-3" variants={sectionVariants}>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-3xl font-poppins font-semibold text-foreground flex items-center gap-3">
-                    <Store className="w-8 h-8" /> Active Listings
-                  </h2>
-                  <button className="btn-secondary hidden md:flex items-center gap-2">
-                    <Filter className="w-4 h-4" /> Filters
-                  </button>
-                </div>
-
-                {(listings.length === 0) ? (
-                  <SwytchCard variant="default" className="text-center py-12">
-                    <p className="text-muted-foreground">{userId ? "No shop listings found." : "Please sign in to view the shop."}</p>
-                  </SwytchCard>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                      {listings.map((item) => (
-                          <div key={item.id}>
-                            <SwytchCard variant="default" className="p-4 flex flex-col h-full">
-                              <div className="relative w-full h-48 bg-card rounded-md overflow-hidden mb-4">
-                                <img
-                                  src={item.imageUrl || `https://placehold.co/300x200/1e293b/FFFFFF?text=${item.category}`}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => e.currentTarget.src = `https://placehold.co/300x200/1e293b/FFFFFF?text=Item`}
-                                />
-                                <span className="absolute top-2 left-2 bg-black/50 text-white text-xs font-bold px-2 py-1 rounded-full capitalize">
-                                  {item.category}
-                                </span>
-                              </div>
-                              <h3 className="text-xl font-bold text-foreground font-poppins mb-1 truncate" title={item.name}>{item.name}</h3>
-                              <p className="text-sm font-semibold text-primary mb-2">{item.rarity}</p>
-                              
-                              <div className="flex-grow mb-3">
-                                <p className="text-sm text-muted-foreground">{item.description}</p>
-                              </div>
-
-                              <div className="flex items-center justify-between mt-auto">
-                                <p className="text-lg font-bold text-primary flex items-center gap-1">
-                                  <Sparkles className="w-5 h-5 text-yellow-400" /> {item.priceInJoules.toLocaleString()}
-                                </p>
-                                <motion.button
-                                  onClick={() => handlePurchase(item)}
-                                  className="btn-primary py-2 px-4 text-sm"
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  disabled={!userId || (item.priceInJoules > (joulesBalance ?? 0))}
-                                >
-                                  <DollarSign className="w-4 h-4 mr-1" /> 
-                                  {item.priceInJoules > (joulesBalance ?? 0) ? 'Insufficient JOULES' : 'Buy'}
-                                </motion.button>
-                              </div>
-                            </SwytchCard>
-                          </div>
-                        ))}
-                    </div>
-                )}
-
-                <div className="text-center mt-12">
-                  <p className="text-muted-foreground">The System is currently in Calibration Mode (Pilot). All listings visible.</p>
-                </div>
-              </motion.div>
-            </div>
-            
-            {/* --- 3. FINAL CTA --- */}
-            <motion.section variants={sectionVariants} className="mt-20">
-              <TrustMarketCTA />
-            </motion.section>
-        </>
-        )}
-      </motion.div>
-    </SwytchErrorBoundary>
+      {/* FEED GRID */}
+      <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        {staticShopItems.map((item) => (
+            <GameTile 
+                key={item.id}
+                game={{
+                    type: 'item',
+                    id: item.id,
+                    title: item.itemName,
+                    subtitle: `${item.rarity} // ${item.priceInJoules} J`,
+                    imageUrl: item.imageUrl,
+                    price: item.priceInJoules
+                }}
+                onGameLaunch={() => handlePurchase(item.id)}
+            />
+        ))}
+      </div>
+    </div>
   );
 };
 
