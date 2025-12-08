@@ -1,16 +1,45 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, HandCoins, AlertTriangle, CreditCard, Droplet, QrCode, Loader2 } from 'lucide-react'; 
+import { X, HandCoins, AlertTriangle, CreditCard, Droplet, QrCode, Loader2, Zap } from 'lucide-react'; 
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther, isAddress } from 'viem';
+import { parseEther } from 'viem';
 
-import { SupportedCurrency } from '@/lib/types';
+//
+import { SupportedCurrency } from '@/lib/types'; 
+//
 import { usePlayer } from '@/components/context/PlayerContext';
+//
 import { useModal } from '@/components/context/ModalContext';
 
-const STATIC_PAYPAL_LINK = 'https://www.paypal.com/ncp/payment/TZ5XEBCG8NFGW';
-const RECEIVER_ETH_ADDRESS = '0x98d20900a28887b72b0f182a8d3159dad09b49a3' as `0x${string}`;
+// --- CONFIGURATION ---
 const STATIC_UPI_ID = 'iznoatwork@oksbi'; 
+const RECEIVER_ETH_ADDRESS = '0x98d20900a28887b72b0f182a8d3159dad09b49a3';
+
+// The 3 Gold Tiers
+const GOLD_PACKAGES = [
+  { 
+    id: 'GP_SMALL', 
+    gold: 100, 
+    cost: { usd: 1.00, inr: 90, eth: '0.0005' }, 
+    label: 'STARTER PACK',
+    paypalLink: 'https://www.paypal.com/ncp/payment/LINK_FOR_1_DOLLAR' 
+  },
+  { 
+    id: 'GP_MED',   
+    gold: 600, 
+    cost: { usd: 5.00, inr: 450, eth: '0.0025' }, 
+    label: 'MOST POPULAR', 
+    popular: true,
+    paypalLink: 'https://www.paypal.com/ncp/payment/LINK_FOR_5_DOLLAR'
+  },
+  { 
+    id: 'GP_WHALE', 
+    gold: 1500, 
+    cost: { usd: 10.00, inr: 900, eth: '0.005' }, 
+    label: 'WHALE STATUS',
+    paypalLink: 'https://www.paypal.com/ncp/payment/LINK_FOR_10_DOLLAR'
+  },
+];
 
 const PaymentModal: FC = () => {
   const { userId, logTransaction } = usePlayer();
@@ -18,93 +47,132 @@ const PaymentModal: FC = () => {
   const { isConnected } = useAccount();
 
   const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'paypal' | 'upi'>('paypal');
-  const [amount, setAmount] = useState<string>('10.00');
+  const [selectedPack, setSelectedPack] = useState(GOLD_PACKAGES[1]); 
   const [error, setError] = useState<string | null>(null);
-  
-  // CRYPTO LOGIC
-  const ethValue = isNaN(parseFloat(amount)) || parseFloat(amount) <= 0 ? 0n : parseEther(amount);
+
+  const currentCost = paymentMethod === 'crypto' ? selectedPack.cost.eth 
+                    : paymentMethod === 'upi' ? selectedPack.cost.inr.toString() 
+                    : selectedPack.cost.usd.toString();
+
+  // --- CRYPTO LOGIC (Wagmi) ---
+  const ethValue = parseEther(selectedPack.cost.eth);
   const { data: hash, sendTransaction, isPending: isTxPending } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({ hash });
 
-  // UPI HANDLER
+  // --- UPI HANDLER ---
   const handleUpiPayment = useCallback(() => {
     setError(null);
     if (!userId) { setError('LOGIN REQUIRED'); return; }
-    if (!amount || parseFloat(amount) <= 0) { setError('INVALID AMOUNT'); return; }
 
-    const parsedAmount = parseFloat(amount).toFixed(2);
-    const intentUrl = `upi://pay?pa=${STATIC_UPI_ID}&pn=SwytchPETverse&am=${parsedAmount}&cu=INR&tn=Deposit%20User%20${userId}`;
+    const intentUrl = `upi://pay?pa=${STATIC_UPI_ID}&pn=SwytchPETverse&am=${currentCost}&cu=INR&tn=Buy_${selectedPack.id}_${userId}`;
 
+    // - Using strict types
     logTransaction({
-        transactionId: `UPI_INIT_${Date.now()}_${userId.slice(0, 4)}`,
+        transactionId: `UPI_${selectedPack.id}_${Date.now()}`,
         userId: userId,
-        amount: parseFloat(parsedAmount),
-        currency: 'INR' as SupportedCurrency,
-        transactionType: 'deposit',
+        amount: parseFloat(currentCost),
+        currency: 'INR', 
+        transactionType: 'deposit', 
         status: 'pending',
-        itemId: 'upi-deposit-direct',
+        itemId: selectedPack.id,
         paymentGatewayId: STATIC_UPI_ID,
     });
 
-    setShowMessage(`✅ UPI INTENT LAUNCHED. COMPLETE IN APP.`);
+    setShowMessage(`✅ UPI LAUNCHED. CONFIRM ₹${currentCost}`);
     window.location.href = intentUrl; 
     setActiveModal(null);
-  }, [userId, amount, logTransaction, setActiveModal, setShowMessage]);
+  }, [userId, selectedPack, currentCost, logTransaction, setActiveModal, setShowMessage]);
 
-  // CRYPTO HANDLER
+  // --- CRYPTO HANDLER ---
   const handleCryptoPayment = () => {
     setError(null);
     if (!userId || !isConnected) { setError('WALLET DISCONNECTED'); return; }
-    if (!amount || parseFloat(amount) <= 0) { setError('INVALID AMOUNT'); return; }
-    if (!isAddress(RECEIVER_ETH_ADDRESS)) { setError('CONFIG ERROR: INVALID RECEIVER'); return; }
     
-    sendTransaction({ to: RECEIVER_ETH_ADDRESS, value: ethValue });
+    sendTransaction({ to: RECEIVER_ETH_ADDRESS as `0x${string}`, value: ethValue });
   };
 
+  // --- CRYPTO SUCCESS LISTENER ---
   useEffect(() => {
     if (isConfirmed && hash) {
       logTransaction({
         transactionId: `ETH_TX_${hash.slice(0, 10)}`,
         userId: userId!,
-        amount: parseFloat(amount),
-        currency: 'ETH' as SupportedCurrency,
+        amount: parseFloat(selectedPack.cost.eth),
+        currency: 'ETH', 
         transactionType: 'deposit',
         status: 'pending',
-        itemId: 'eth-deposit-direct',
-        paymentGatewayId: RECEIVER_ETH_ADDRESS, 
+        itemId: selectedPack.id,
         transactionHash: hash,
+        paymentGatewayId: RECEIVER_ETH_ADDRESS,
       });
-      setShowMessage('✅ CRYPTO DEPOSIT CONFIRMED. PENDING ADMIN REVIEW.');
+      setShowMessage('✅ CRYPTO SENT. GOLD ARRIVING SOON.');
       setActiveModal(null);
     }
     if (txError) setError('TRANSACTION FAILED');
-  }, [isConfirmed, txError, hash, logTransaction, userId, amount, setShowMessage, setActiveModal]);
+  }, [isConfirmed, txError, hash, logTransaction, userId, selectedPack, setShowMessage, setActiveModal]);
 
   const isLoading = isTxPending || isConfirming;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
         <motion.div 
             initial={{ scale: 0.9, opacity: 0 }} 
             animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-sm bg-black border border-primary p-0 shadow-[0_0_50px_rgba(0,255,65,0.1)] relative"
+            className="w-full max-w-md bg-[#0a0a0a] border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.15)] relative rounded-lg overflow-hidden"
         >
             {/* Header */}
             <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
-                <h2 className="text-lg font-bold font-russo text-white uppercase flex items-center gap-2">
-                    <HandCoins className="w-5 h-5 text-primary" /> INJECT ASSETS
+                <h2 className="text-xl font-bold font-russo text-yellow-500 uppercase flex items-center gap-2">
+                    <HandCoins className="w-6 h-6" /> GOLD STORE
                 </h2>
                 <button onClick={() => setActiveModal(null)} className="text-white/50 hover:text-white"><X /></button>
             </div>
 
             <div className="p-6">
-                {/* Tabs */}
+                {/* 1. Select Package */}
+                <div className="mb-6 space-y-3">
+                    <label className="text-[10px] text-gray-500 font-mono block uppercase tracking-widest">Select Package</label>
+                    {GOLD_PACKAGES.map((pkg) => (
+                        <button
+                            key={pkg.id}
+                            onClick={() => setSelectedPack(pkg)}
+                            className={`w-full flex justify-between items-center p-4 border rounded-md transition-all duration-200 group ${
+                                selectedPack.id === pkg.id 
+                                ? 'border-yellow-500 bg-yellow-500/10' 
+                                : 'border-white/10 hover:border-white/30 bg-black'
+                            }`}
+                        >
+                            <div className="text-left flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${selectedPack.id === pkg.id ? 'bg-yellow-500 text-black' : 'bg-gray-800 text-gray-400'}`}>
+                                    <Zap className="w-4 h-4 fill-current" />
+                                </div>
+                                <div>
+                                    <div className={`font-russo text-lg ${selectedPack.id === pkg.id ? 'text-white' : 'text-gray-400'}`}>{pkg.gold} GOLD</div>
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-wider">{pkg.label}</div>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-yellow-500 font-mono font-bold text-lg">
+                                    {paymentMethod === 'crypto' ? 'Ξ' : paymentMethod === 'upi' ? '₹' : '$'}
+                                    {paymentMethod === 'crypto' ? pkg.cost.eth : paymentMethod === 'upi' ? pkg.cost.inr : pkg.cost.usd}
+                                </div>
+                                {pkg.popular && <span className="text-[9px] bg-yellow-500 text-black px-1.5 py-0.5 rounded font-bold">HOT</span>}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+
+                {/* 2. Select Method */}
                 <div className="grid grid-cols-3 gap-2 mb-6">
                     {['paypal', 'crypto', 'upi'].map((m) => (
                         <button 
                             key={m}
                             onClick={() => { setPaymentMethod(m as any); setError(null); }}
-                            className={`p-3 border flex flex-col items-center gap-1 transition-colors ${paymentMethod === m ? 'border-primary bg-primary/10 text-primary' : 'border-white/10 text-gray-600 hover:border-white/30'}`}
+                            className={`p-3 border rounded flex flex-col items-center gap-2 transition-colors ${
+                                paymentMethod === m 
+                                ? 'border-yellow-500 bg-yellow-500/10 text-yellow-500' 
+                                : 'border-white/10 text-gray-600 hover:border-white/30 hover:text-gray-400'
+                            }`}
                         >
                             {m === 'upi' && <QrCode className="w-5 h-5" />}
                             {m === 'paypal' && <CreditCard className="w-5 h-5" />}
@@ -114,43 +182,28 @@ const PaymentModal: FC = () => {
                     ))}
                 </div>
 
-                {/* Amount */}
-                <div className="mb-6">
-                    <label className="text-[10px] text-gray-500 font-mono mb-2 block uppercase">
-                        Amount ({paymentMethod === 'crypto' ? 'ETH' : paymentMethod === 'upi' ? 'INR' : 'USD'})
-                    </label>
-                    <input 
-                        type="number" 
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="input text-2xl font-russo h-14 pl-4" 
-                        disabled={isLoading}
-                    />
-                </div>
-
-                {/* Actions */}
+                {/* 3. Action Buttons */}
                 {paymentMethod === 'paypal' && (
-                    <a href={STATIC_PAYPAL_LINK} target="_blank" rel="noopener noreferrer" className="btn-primary w-full flex items-center justify-center">
-                        PROCEED TO PAYPAL
+                    <a href={selectedPack.paypalLink} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-yellow-600 hover:bg-yellow-500 text-black font-russo uppercase rounded flex items-center justify-center gap-2 transition-colors">
+                        <CreditCard className="w-5 h-5" /> PAY ${selectedPack.cost.usd}
                     </a>
                 )}
                 
                 {paymentMethod === 'crypto' && (
-                    <button onClick={handleCryptoPayment} disabled={isLoading || !isConnected} className="btn-primary w-full">
-                        {isLoading ? <Loader2 className="animate-spin" /> : `TRANSFER ${amount} ETH`}
+                    <button onClick={handleCryptoPayment} disabled={isLoading || !isConnected} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-russo uppercase rounded flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
+                        {isLoading ? <Loader2 className="animate-spin" /> : <><Droplet className="w-5 h-5" /> SEND {selectedPack.cost.eth} ETH</>}
                     </button>
                 )}
 
                 {paymentMethod === 'upi' && (
-                    <button onClick={handleUpiPayment} className="btn-primary w-full">
-                        LAUNCH UPI INTENT
+                    <button onClick={handleUpiPayment} className="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-russo uppercase rounded flex items-center justify-center gap-2 transition-colors">
+                        <QrCode className="w-5 h-5" /> PAY ₹{selectedPack.cost.inr}
                     </button>
                 )}
 
-                {/* Errors */}
                 <AnimatePresence>
                     {error && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 p-3 border border-red-500/50 bg-red-900/10 flex items-center gap-3">
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 border border-red-500/50 bg-red-900/10 flex items-center gap-3 rounded">
                             <AlertTriangle className="w-4 h-4 text-red-500" />
                             <p className="text-xs text-red-500 font-mono">{error}</p>
                         </motion.div>

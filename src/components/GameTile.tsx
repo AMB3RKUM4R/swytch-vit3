@@ -1,10 +1,11 @@
 import { FC, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Gamepad2, Play, Share2, Heart, DollarSign, Shield, User, Info, Map, Loader2 } from 'lucide-react'; // Added Loader2
+import { Gamepad2, Play, Share2, Heart, DollarSign, Shield, User, Info, Map, Loader2 } from 'lucide-react'; 
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'; 
 import { db } from '@/lib/firebaseConfig'; 
+import CurrencyHUD from '@/components/CurrencyHUD'; //
 
 export interface FeedItem {
     type: 'game' | 'item' | 'avatar' | 'arena';
@@ -27,19 +28,15 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
     const { setShowMessage } = useModal();
     const { userId, playerData } = usePlayer();
     const videoRef = useRef<HTMLVideoElement>(null);
-    const [isProcessing, setIsProcessing] = useState(false); // NEW LOCAL STATE
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const handleAction = async (actionType: string) => {
-        setIsProcessing(true); // Start Spinner
-        
-        // Small artificial delay to let animation play before heavy load
+        setIsProcessing(true);
         await new Promise(r => setTimeout(r, 500));
 
         if (game.type === 'game' || game.type === 'arena') {
             onGameLaunch(game.id);
-            // We don't turn off processing here because the Unity Modal takes over
-            // It will reset when the component remounts or via parent
-            setTimeout(() => setIsProcessing(false), 3000); // Timeout fallback
+            setTimeout(() => setIsProcessing(false), 3000); 
         } else {
             setShowMessage(`🛒 OPENING MARKET: ${game.title}`);
             setIsProcessing(false);
@@ -71,17 +68,21 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
         }
     }
 
-    // Determine Media Source
     const mediaSrc = game.videoUrl || game.imageUrl;
     const isVideo = !!game.videoUrl;
 
     return (
         <motion.div 
-            className="relative w-full h-full bg-black border-x border-white/10 overflow-hidden flex flex-col justify-end snap-start"
+            className="relative w-full h-full bg-black border-x border-white/10 overflow-hidden flex flex-col justify-end snap-start group"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: false, amount: 0.1 }}
         >
+            {/* --- MODIFIED: Absolute HUD for Feed View --- */}
+            <div className="absolute top-4 right-4 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <CurrencyHUD className="bg-black/60 backdrop-blur p-2 rounded-lg border border-white/10" />
+            </div>
+
             {/* 1. MEDIA LAYER */}
             <div className="absolute inset-0 z-0 bg-black flex items-center justify-center">
                 {isVideo ? (
@@ -147,7 +148,7 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
 
                 <button 
                     onClick={() => handleAction('main_click')}
-                    disabled={isProcessing} // Prevent double clicks
+                    disabled={isProcessing} 
                     className="w-full btn-primary h-14 text-lg flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,255,65,0.3)] hover:scale-[1.02] transition-transform disabled:opacity-80 disabled:cursor-not-allowed"
                 >
                     {isProcessing ? (

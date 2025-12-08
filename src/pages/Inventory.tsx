@@ -1,62 +1,110 @@
-import { FC } from 'react';
-import { usePlayer } from '@/components/context/PlayerContext';
-import { useModal } from '@/components/context/ModalContext';
-import UserInventoryDisplay from '@/components/Inventory/UserInventoryDisplay';
-import { Package, Shield } from 'lucide-react';
-import { InventoryItem, ItemDefinition } from '@/lib/types'; // Ensure types are imported
+import { FC, useMemo } from 'react';
+import { usePlayer } from '@/components/context/PlayerContext'; //
+import { staticShopItems } from '@/lib/staticShopData'; //
+import CurrencyHUD from '@/components/CurrencyHUD'; //
+import { Package, Shield, Search, Filter } from 'lucide-react';
+import { cn } from '@/lib/utils'; //
 
-const Inventory: FC = () => {
-  const { playerData } = usePlayer();
-  const { setShowMessage } = useModal();
+const InventoryPage: FC = () => {
+  const { playerData, userId } = usePlayer();
 
-  // Connected List Logic (Mocked in UI, but ready for real function)
-  const handleList = (_instance: InventoryItem, def: ItemDefinition) => {
-      // In a real scenario, this would open ListForSaleModal
-      // For now, adhering to "Updated Scripts" only, we simulate the action or use existing modal if available.
-      setShowMessage(`📝 Listing ${def.itemName} for sale...`);
-      // You would set active modal to 'list-item' and pass data here.
-  };
+  // 1. Merge User Inventory with Item Definitions
+  const myItems = useMemo(() => {
+    if (!playerData?.inventory?.items) return [];
+
+    return Object.entries(playerData.inventory.items).map(([instanceId, itemData]) => {
+      // Find the static definition (stats, image, name) for this item ID
+      const definition = staticShopItems.find(def => def.id === itemData.itemId);
+      return {
+        instanceId,
+        ...itemData,
+        definition, // Attach definition for display
+      };
+    }).filter(item => item.definition); // Remove glitched items with no definition
+  }, [playerData]);
+
+  if (!userId) {
+    return <div className="pt-32 text-center text-gray-500 font-mono">PLEASE LOGIN TO ACCESS ARMORY</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-black p-4 pb-24">
-        <div className="mb-8 flex items-center justify-between border-b border-white/10 pb-4">
-            <div>
-                <h1 className="text-3xl font-russo text-white uppercase">Armory</h1>
-                <p className="text-xs font-mono text-primary">// MANAGE DIGITAL ASSETS</p>
-            </div>
-            <Package className="w-8 h-8 text-white/20" />
+    <div className="min-h-screen pt-24 px-4 pb-12 max-w-7xl mx-auto">
+      
+      {/* --- HEADER WITH HUD --- */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 border-b border-white/10 pb-6">
+        <div>
+            <h1 className="text-4xl font-russo text-white uppercase flex items-center gap-3">
+                <Package className="text-primary w-8 h-8" /> 
+                ARMORY
+            </h1>
+            <p className="text-gray-400 font-mono text-sm mt-1">
+                Manage your equipment and assets.
+            </p>
         </div>
+        
+        {/* THE HUD: Placed here so players check balance while gearing up */}
+        <CurrencyHUD />
+      </div>
 
-        {/* Loadout Status */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <div className="bg-card border border-white/10 p-4 flex items-center gap-4">
-                <div className="w-12 h-12 bg-black border border-white/20 flex items-center justify-center">
-                    <Shield className="w-6 h-6 text-gray-400" />
-                </div>
-                <div>
-                    <p className="text-[10px] text-gray-500 font-mono uppercase">Active Operator</p>
-                    <p className="text-white font-bold">{playerData?.character?.selectedID || 'DEFAULT'}</p>
-                </div>
-            </div>
-            <div className="bg-card border border-white/10 p-4 flex items-center justify-between">
-                 <div>
-                    <p className="text-[10px] text-gray-500 font-mono uppercase">Inventory Slots</p>
-                    <p className="text-white font-bold">{Object.keys(playerData?.inventory?.items || {}).length} / 50</p>
-                 </div>
-                 <button className="btn-secondary h-8 text-xs" onClick={() => setShowMessage("📡 Syncing blockchain data...")}>
-                    FORCE SYNC
-                 </button>
-            </div>
+      {/* --- FILTERS & STATS (Placeholder) --- */}
+      <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+         {['ALL', 'WEAPONS', 'ARMOR', 'CONSUMABLES'].map((filter, i) => (
+             <button key={filter} className={cn(
+                 "px-4 py-2 rounded border text-xs font-bold transition-all",
+                 i === 0 ? "bg-primary/20 border-primary text-primary" : "border-white/10 text-gray-500 hover:border-white/30"
+             )}>
+                 {filter}
+             </button>
+         ))}
+      </div>
+
+      {/* --- INVENTORY GRID --- */}
+      {myItems.length === 0 ? (
+        <div className="text-center py-20 border border-dashed border-white/10 rounded-xl">
+            <Shield className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+            <p className="text-gray-500 font-russo text-lg uppercase">Inventory Empty</p>
+            <p className="text-gray-600 text-sm mb-6">Visit the market to gear up.</p>
+            <a href="/shop" className="btn-primary inline-flex px-6 py-2">OPEN MARKET</a>
         </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {myItems.map((item) => (
+                <div key={item.instanceId} className="bg-black border border-white/10 p-3 rounded-lg group hover:border-primary/50 transition-all relative">
+                    
+                    {/* Rarity Badge */}
+                    <div className={cn(
+                        "absolute top-2 left-2 text-[10px] font-bold px-1.5 rounded bg-gray-800 text-white",
+                        item.definition?.rarity === 'S-Rank' && "bg-yellow-500 text-black",
+                        item.definition?.rarity === 'A-Rank' && "bg-purple-500 text-white",
+                        item.definition?.rarity === 'B-Rank' && "bg-blue-500 text-white",
+                    )}>
+                        {item.definition?.rarity}
+                    </div>
 
-        {/* The Real Inventory Component */}
-        <UserInventoryDisplay 
-            playerData={playerData} 
-            userId={playerData?.userId || null} 
-            onListForSale={handleList} 
-        />
+                    {/* Image Area */}
+                    <div className="aspect-square bg-white/5 mb-3 rounded flex items-center justify-center overflow-hidden">
+                        {/* Placeholder image logic since we don't have real assets loaded in this context */}
+                        <img 
+                           src={item.definition?.visuals?.iconName || '/placeholder_item.png'} 
+                           className="w-full h-full object-cover opacity-70 group-hover:scale-110 transition-transform"
+                           alt={item.definition?.itemName}
+                        />
+                    </div>
+
+                    {/* Info */}
+                    <h3 className="text-white font-bold text-sm truncate">{item.definition?.itemName}</h3>
+                    <p className="text-gray-500 text-[10px] uppercase mb-3">{item.definition?.itemType}</p>
+
+                    {/* Action */}
+                    <button className="w-full py-1.5 bg-white/5 hover:bg-primary hover:text-black text-gray-400 text-xs font-bold transition-colors rounded">
+                        EQUIP
+                    </button>
+                </div>
+            ))}
+        </div>
+      )}
     </div>
   );
 };
 
-export default Inventory;
+export default InventoryPage;

@@ -1,13 +1,14 @@
 // src/components/TopNav.tsx
 import { FC, useCallback, useState, useEffect } from 'react'; 
 import { motion } from 'framer-motion';
-import { Sparkles, Settings, Gem, User, LogOut, LoaderCircle, ShoppingCart, Package, HandCoins, Users } from 'lucide-react'; 
+import { Sparkles, Settings, User, LogOut, LoaderCircle, ShoppingCart, Package, HandCoins, Users } from 'lucide-react'; 
 import { Link, useLocation } from 'react-router-dom'; 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase'; 
 import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi'; 
 import { usePlayer } from '@/components/context/PlayerContext'; 
 import { useModal } from '@/components/context/ModalContext'; 
+import CurrencyHUD from '@/components/CurrencyHUD'; //
 import { cn } from '@/lib/utils';
 
 // MOCK STATUS CHECK
@@ -26,7 +27,7 @@ const navItems = [
 ];
 
 const TopNav: FC = () => {
-  const { userId, playerData, authLoading, joulesBalance } = usePlayer();
+  const { userId, playerData, authLoading } = usePlayer();
   const { setShowMessage, setActiveModal } = useModal();
   const location = useLocation(); 
 
@@ -142,32 +143,23 @@ const TopNav: FC = () => {
           </Link>
         )}
 
-        {/* USER STATS (VISIBLE ON MOBILE NOW) */}
+        {/* --- MODIFIED: USER STATS & CURRENCY HUD --- */}
         {isLoggedIn && playerData && (
-          <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 border border-white/10 rounded-full md:rounded-none">
+          <div className="flex items-center gap-3">
             
-            {/* User Identity */}
-            <div className="flex items-center gap-2">
+            {/* 1. Currency HUD (Replaces manual balance) */}
+            <CurrencyHUD />
+
+            {/* 2. User Identity */}
+            <div className="hidden md:flex items-center gap-2 bg-white/5 px-3 py-1.5 border border-white/10 rounded-full">
                 {profileImageUrl ? (
-                  <img src={profileImageUrl} alt="Avatar" className="w-5 h-5 md:w-6 md:h-6 object-cover rounded-full border border-white/20" />
+                  <img src={profileImageUrl} alt="Avatar" className="w-5 h-5 object-cover rounded-full border border-white/20" />
                 ) : (
-                  <User className="text-primary w-4 h-4 md:w-5 md:h-5" />
+                  <User className="text-primary w-4 h-4" />
                 )}
-                {/* Username hidden on very small screens, shown on mobile+ */}
-                <span className="text-[10px] md:text-xs font-mono font-bold text-white uppercase max-w-[60px] md:max-w-[100px] truncate">
+                <span className="text-xs font-mono font-bold text-white uppercase max-w-[100px] truncate">
                   {displayName}
                 </span>
-            </div>
-
-            {/* Divider */}
-            <div className="w-px h-3 md:h-4 bg-white/20"></div>
-
-            {/* Balance */}
-            <div className="flex items-center gap-1">
-              <Gem className="text-primary w-3 h-3 md:w-4 md:h-4" />
-              <span className="text-[10px] md:text-xs font-mono text-primary font-bold">
-                {joulesBalance >= 1000 ? (joulesBalance / 1000).toFixed(1) + 'k' : joulesBalance.toFixed(0)}
-              </span>
             </div>
           </div>
         )}
@@ -177,7 +169,6 @@ const TopNav: FC = () => {
           <LoaderCircle className="w-5 h-5 animate-spin text-primary" />
         ) : (
           <div className="flex items-center gap-2">
-            {/* RainbowKit Button (Hidden on tiny screens to save space) */}
             <div className="hidden sm:block">
                 <ConnectButton
                 chainStatus="none"
