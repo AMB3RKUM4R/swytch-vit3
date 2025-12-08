@@ -1,9 +1,6 @@
-import {Dispatch, SetStateAction, ReactNode} from 'react';
-import {Timestamp, FieldValue} from 'firebase/firestore';
+// src/lib/types.ts
+import { Timestamp, FieldValue } from 'firebase/firestore';
 
-// ==========================================================
-// Core & Firestore Types
-// ==========================================================
 export type MembershipTier = 'ecosystem' | 'gamers' | 'gold' | 'none';
 export const MEMBERSHIP_TIERS = {
   ecosystem: {level: 1, name: 'Ecosystem Explorer', usdAmount: 10, contentRoute: '/ecosystem-content'},
@@ -20,6 +17,7 @@ export interface InventoryItem {
   acquiredAt: Timestamp | FieldValue;
   isListed?: boolean;
 }
+
 export interface ItemDefinition {
   id: string;
   itemName: string;
@@ -28,9 +26,14 @@ export interface ItemDefinition {
   description: string;
   levelRequirement?: number;
   stats?: { [key: string]: number };
-  visuals?: { prefabName: string; iconName: string; };
+  // CRITICAL: This structure matches what InventoryItemCard.tsx expects
+  visuals?: { 
+      prefabName: string; 
+      iconName: string; // This holds the path e.g., "/items/weapons/pickaxe_d.png"
+  };
   price?: { [key in SupportedCurrency]?: number } & { USD?: number };
 }
+
 export interface PlayerData {
   userId: string;
   username: string;
@@ -73,6 +76,7 @@ export interface Transaction {
   smartContractAddress?: string;
   transactionHash?: `0x${string}`;
 }
+
 export interface Quest {
   id: string;
   title: string;
@@ -82,6 +86,7 @@ export interface Quest {
   rewardXP: number;
   completed: boolean;
 }
+
 export interface ChatMessage {
   id?: string;
   userId: string;
@@ -89,27 +94,16 @@ export interface ChatMessage {
   profilePictureUrl: string | null;
   text: string;
   timestamp: Timestamp | FieldValue;
-}
-export interface ShopListing {
-  priceInJoules: number;
-  type: ReactNode;
-  id?: string;
-  itemId: string;
-  name: string;
-  description: string;
-  imageUrl: string;
-  priceUSD: number;
-  itemType: string;
-  rarity: string;
-  createdAt: Timestamp | FieldValue;
+  // Optional attachment for Rich Chat
+  attachment?: {
+      type: 'game' | 'item' | 'avatar' | 'arena';
+      id: string;
+      title: string;
+      image?: string;
+  };
 }
 
-
-// ==========================================================
-// Component & Page Prop Interfaces
-// ==========================================================
-
-// FIX: Restoring missing interface for ListForSaleModal (TS2305 fix)
+// COMPONENT PROPS
 export interface ListForSaleModalProps {
   itemDefinition: ItemDefinition;
   itemInstance: InventoryItem;
@@ -127,14 +121,17 @@ export interface UserInventoryDisplayProps {
 export interface AuthModalProps {
   setShowMessage: (message: string) => void;
 }
+
 export interface LoadingSpinnerProps {
   message?: string; fullScreen?: boolean;
 }
+
 export interface SwytchErrorBoundaryProps {
   children: React.ReactNode;
-  setShowMessage: Dispatch<SetStateAction<string>>;
-  setActiveModal: Dispatch<SetStateAction<string | null>>;
+  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
+  setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
 }
+
 export interface VaultWalletInfoProps {
   isConnected: boolean;
   address: `0x${string}` | undefined;
@@ -148,7 +145,4 @@ export interface VaultWalletInfoProps {
     symbol: string;
     decimals: number;
   } | undefined;
-}
-export interface ActionButtonsPanelProps {
-  handleShareOnX: () => Promise<void>;
 }

@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { FC, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Gamepad2, Play, Share2, Heart, DollarSign, Shield, User, Info, Map } from 'lucide-react';
 import { useModal } from '@/components/context/ModalContext';
@@ -11,7 +11,8 @@ export interface FeedItem {
     id: string;
     title: string;
     subtitle: string;
-    imageUrl: string;
+    videoUrl?: string; // Optional: For Games/Arenas
+    imageUrl?: string; // Optional: For Items/Avatars
     price?: number; 
     locked?: boolean;
     data?: any; 
@@ -25,46 +26,31 @@ interface GameTileProps {
 const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
     const { setShowMessage } = useModal();
     const { userId, playerData } = usePlayer();
+    const videoRef = useRef<HTMLVideoElement>(null);
 
-    // --- MONETIZATION ACTION ---
-    const handleAction = (actionType: string) => {
-        console.log(`[ADSTERRA] Popunder Triggered: ${actionType}`);
-        
+    const handleAction = () => {
         if (game.type === 'game' || game.type === 'arena') {
             onGameLaunch(game.id);
-        } else if (game.type === 'item' || game.type === 'avatar') {
+        } else {
             setShowMessage(`🛒 OPENING MARKET: ${game.title}`);
         }
     };
 
-    // --- BROADCAST LOGIC ---
     const handleBroadcast = async () => {
-        if (!userId || !playerData) {
-            setShowMessage("⚠️ LOGIN TO SHARE");
-            return;
-        }
+        if (!userId) { setShowMessage("⚠️ LOGIN TO SHARE"); return; }
         setShowMessage("📡 BROADCASTING...");
         try {
              await addDoc(collection(db, 'CommunityChat'), {
                 userId: userId,
-                username: playerData.username,
-                profilePictureUrl: playerData.profilePictureUrl || null,
+                username: playerData?.username || 'Hunter',
                 text: `Check out [${game.title}]!`,
                 timestamp: serverTimestamp(),
-                attachment: {
-                    type: game.type,
-                    id: game.id,
-                    title: game.title,
-                    image: game.imageUrl
-                }
+                attachment: { type: game.type, id: game.id, title: game.title }
             });
-            setShowMessage("✅ SHARED TO FEED");
-        } catch (e) {
-            setShowMessage("❌ SHARE FAILED");
-        }
+            setShowMessage("✅ SHARED");
+        } catch (e) { setShowMessage("❌ FAILED"); }
     };
 
-    // Helper for Icons
     const getTypeIcon = () => {
         switch(game.type) {
             case 'game': return <Gamepad2 className="w-3 h-3" />;
@@ -82,27 +68,39 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
             whileInView={{ opacity: 1 }}
             viewport={{ once: false, amount: 0.3 }}
         >
-            {/* 1. FULL BACKGROUND IMAGE */}
-            <div className="absolute inset-0 z-0">
-                <img 
-                    src={game.imageUrl} 
-                    alt={game.title} 
-                    className="w-full h-full object-cover opacity-60"
-                    onError={(e) => e.currentTarget.src = `https://placehold.co/600x900/111/44D62C?text=${game.title.replace(' ', '+')}`}
-                />
+            {/* 1. MEDIA LAYER (Video OR Image) */}
+            <div className="absolute inset-0 z-0 bg-black flex items-center justify-center">
+                {game.videoUrl ? (
+                    <video
+                        ref={videoRef}
+                        src={game.videoUrl}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover opacity-60"
+                        poster={`https://placehold.co/600x900/000/44D62C?text=${game.title}`} 
+                    />
+                ) : (
+                    <img 
+                        src={game.imageUrl} 
+                        alt={game.title}
+                        className="w-full h-full object-cover opacity-80"
+                        onError={(e) => e.currentTarget.src = `https://placehold.co/600x900/111/44D62C?text=${game.title}`}
+                    />
+                )}
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
             </div>
 
-            {/* 2. SIDEBAR ACTIONS (Right Side) */}
+            {/* 2. ACTIONS */}
             <div className="absolute right-4 bottom-32 z-20 flex flex-col items-center gap-6">
                 <div className="flex flex-col items-center gap-1">
                     <button className="p-3 bg-black/40 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all group">
                         <Heart className="w-6 h-6 text-white group-hover:text-red-500" />
                     </button>
-                    <span className="text-[10px] font-bold text-white shadow-black drop-shadow-md">1.2k</span>
+                    <span className="text-[10px] font-bold text-white shadow-black drop-shadow-md">2.4k</span>
                 </div>
-
                 <div className="flex flex-col items-center gap-1">
                     <button onClick={handleBroadcast} className="p-3 bg-black/40 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all group">
                         <Share2 className="w-6 h-6 text-white group-hover:text-primary" />
@@ -111,43 +109,37 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
                 </div>
             </div>
 
-            {/* 3. CONTENT INFO (Bottom Left) */}
+            {/* 3. INFO & BUTTON */}
             <div className="relative z-20 p-6 pb-24 md:pb-8 w-full pr-20">
-                
-                {/* Type Badge */}
                 <div className="flex items-center gap-2 mb-2">
-                    <div className="px-2 py-1 bg-primary/20 border border-primary/50 rounded-sm backdrop-blur-md">
-                        <span className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1">
-                            {getTypeIcon()}
-                            {game.type}
-                        </span>
+                    <div className="px-2 py-1 bg-primary/20 border border-primary/50 rounded-sm backdrop-blur-md flex items-center gap-1">
+                        {getTypeIcon()}
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{game.type}</span>
                     </div>
                     {game.price && (
                         <div className="px-2 py-1 bg-yellow-500/20 border border-yellow-500/50 rounded-sm backdrop-blur-md">
                             <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider">
-                                {game.price} JOULES
+                                {game.price} J
                             </span>
                         </div>
                     )}
                 </div>
 
-                {/* Title & Subtitle */}
-                <h2 className="text-3xl md:text-4xl font-black font-russo text-white uppercase leading-none mb-2 drop-shadow-lg text-glow-primary">
+                <h2 className="text-3xl md:text-4xl font-black font-russo text-white uppercase leading-none mb-2 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] text-glow-primary">
                     {game.title}
                 </h2>
-                <p className="text-sm text-white/80 font-mono mb-6 line-clamp-2 drop-shadow-md">
+                <p className="text-sm text-white/90 font-mono mb-6 line-clamp-2 drop-shadow-md">
                     {game.subtitle}
                 </p>
 
-                {/* Primary Action Button */}
                 <button 
-                    onClick={() => handleAction('main_click')}
+                    onClick={() => handleAction()}
                     className="w-full btn-primary h-14 text-lg flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,255,65,0.3)] hover:scale-[1.02] transition-transform"
                 >
                     {(game.type === 'game' || game.type === 'arena') ? (
                         <>
                             <Play className="w-6 h-6 fill-black stroke-black" /> 
-                            {game.type === 'arena' ? 'ENTER BATTLEFIELD' : 'LAUNCH SIMULATION'}
+                            {game.type === 'arena' ? 'ENTER ARENA' : 'LAUNCH SIMULATION'}
                         </>
                     ) : (
                         <>
