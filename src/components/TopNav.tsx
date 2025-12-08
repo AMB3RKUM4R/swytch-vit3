@@ -86,41 +86,44 @@ const TopNav: FC = () => {
 
   return (
     <motion.nav
-      className="fixed top-0 left-0 w-full z-50 h-[70px] bg-black/95 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-3 md:px-4 font-inter"
+      className="fixed top-0 left-0 w-full z-50 h-[70px] bg-black/95 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-2 md:px-4 font-inter"
       initial={{ y: -100 }} animate={{ y: 0 }} transition={{ duration: 0.5 }}
     >
-      {/* 1. LEFT SIDE: BRAND */}
-      <div className="flex items-center gap-4">
-        <Link to="/home" className="flex items-center gap-2 group">
+      {/* 1. LEFT SIDE: BRAND & NAV */}
+      <div className="flex items-center gap-2 md:gap-4 flex-1 overflow-hidden">
+        {/* Brand Icon - Text hidden on small mobile to save space for icons */}
+        <Link to="/home" className="flex items-center gap-2 group shrink-0">
             <Sparkles className="text-primary w-6 h-6 group-hover:animate-spin" />
-            <span className="text-lg md:text-xl font-bold font-russo text-white tracking-tighter uppercase hidden sm:block group-hover:text-primary transition-colors">
+            <span className="text-lg md:text-xl font-bold font-russo text-white tracking-tighter uppercase hidden lg:block group-hover:text-primary transition-colors">
               PETverse
             </span>
         </Link>
 
-        {/* Desktop Nav Links - FIXED: Changed lg:flex to md:flex and added responsive margin */}
-        <div className="hidden md:flex items-center gap-1 ml-4 lg:ml-8">
+        {/* NAVIGATION LINKS - ALWAYS VISIBLE (Icons only on mobile) */}
+        <div className="flex items-center gap-1 ml-1 md:ml-4 overflow-x-auto no-scrollbar mask-gradient-right">
             {navItems.map(({ path, label, icon }) => (
             <Link
                 key={path}
                 to={path}
                 onClick={(e) => { if (!handleRestrictedNav(label)) e.preventDefault(); }}
                 className={cn(
-                    "flex items-center gap-2 text-xs font-bold px-3 py-2 uppercase transition-all",
+                    "flex items-center gap-2 text-xs font-bold px-2 md:px-3 py-2 uppercase transition-all whitespace-nowrap rounded-md",
                     location.pathname === path 
-                        ? 'text-primary border-b-2 border-primary' 
+                        ? 'text-primary bg-white/5 border-b-2 border-primary' 
                         : 'text-gray-500 hover:text-white hover:bg-white/5'
                 )}
+                title={label}
             >
                 {icon}
-                <span>{label}</span>
+                {/* Text Hidden on Mobile, Visible on Medium+ Screens */}
+                <span className="hidden md:block">{label}</span>
             </Link>
             ))}
         </div>
       </div>
 
       {/* 2. RIGHT SIDE: USER INFO & ACTIONS */}
-      <div className="flex items-center gap-2 md:gap-4">
+      <div className="flex items-center gap-2 md:gap-4 shrink-0">
         
         {/* Admin Alert Bell */}
         {isLoggedIn && isUserAdmin && (
@@ -145,13 +148,15 @@ const TopNav: FC = () => {
 
         {/* --- USER STATS & CURRENCY HUD --- */}
         {isLoggedIn && playerData && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             
-            {/* 1. Currency HUD */}
-            <CurrencyHUD />
+            {/* Currency HUD - Hidden on very small screens to prioritize Nav Icons */}
+            <div className="hidden sm:block">
+               <CurrencyHUD />
+            </div>
 
-            {/* 2. User Identity */}
-            <div className="hidden md:flex items-center gap-2 bg-white/5 px-3 py-1.5 border border-white/10 rounded-full">
+            {/* User Identity */}
+            <div className="hidden lg:flex items-center gap-2 bg-white/5 px-3 py-1.5 border border-white/10 rounded-full">
                 {profileImageUrl ? (
                   <img src={profileImageUrl} alt="Avatar" className="w-5 h-5 object-cover rounded-full border border-white/20" />
                 ) : (
