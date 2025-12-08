@@ -1,59 +1,55 @@
-import { FC, useCallback, useState } from 'react';
-import { DollarSign, Eye, RefreshCw, X } from 'lucide-react';
-import { useModal } from '@/components/context/ModalContext';
+// src/components/AdDisplayPanel.tsx
+import { FC, useEffect, useRef } from 'react';
 
-// --- ADSTERRA REAL CONFIGURATION ---
-const ADSTERRA_ZONE_ID = "28043416"; 
-const CONTAINER_ID = `adsterra-zone-${ADSTERRA_ZONE_ID}`; 
-
-interface AdDisplayPanelProps {
-    zoneType: 'banner' | 'native' | 'popunder';
+interface AdPanelProps {
+  zoneType: 'native' | 'banner';
 }
 
-const AdDisplayPanel: FC<AdDisplayPanelProps> = ({ }) => {
-    const { setShowMessage } = useModal();
-    const [isVisible, setIsVisible] = useState(true);
+const AdDisplayPanel: FC<AdPanelProps> = ({ zoneType }) => {
+  const adContainerRef = useRef<HTMLDivElement>(null);
 
-    const handleAdRefresh = useCallback(() => {
-        setIsVisible(false);
-        setTimeout(() => {
-            setIsVisible(true);
-            setShowMessage(`AD_ZONE REFRESHED: ${ADSTERRA_ZONE_ID}`);
-        }, 500);
-    }, [setShowMessage]);
-    
-    if (!isVisible) return null;
+  useEffect(() => {
+    if (!adContainerRef.current) return;
 
-    return (
-        <div className="bg-black border border-white/10 p-0 relative mb-6">
-            <div className="flex items-center justify-between p-2 bg-white/5 border-b border-white/10">
-                <h3 className="text-[10px] font-mono text-primary flex items-center gap-1 uppercase tracking-widest">
-                    <DollarSign className="w-3 h-3" /> SPONSORED_CONTENT
-                </h3>
-                <button onClick={() => setIsVisible(false)} className="text-white/50 hover:text-red-500">
-                    <X className="w-3 h-3" />
-                </button>
-            </div>
-            
-            {/* --- AD EMBED AREA CONTAINER --- */}
-            <div 
-                id={CONTAINER_ID} 
-                className="w-full h-32 bg-black flex flex-col items-center justify-center text-center text-xs text-white/30 overflow-hidden font-mono"
-                data-ad-network="Adsterra"
-                data-zone-id={ADSTERRA_ZONE_ID}
-            >
-                <p>
-                    ZONE: {ADSTERRA_ZONE_ID}<br/>
-                    <Eye className="w-3 h-3 inline-block mt-1 mr-1" />
-                    AWAITING SCRIPT INJECTION...
-                </p>
-            </div>
-            
-            <button onClick={handleAdRefresh} className="w-full py-1 text-[10px] text-white/20 hover:text-primary hover:bg-white/5 transition-colors font-mono uppercase border-t border-white/10">
-                <RefreshCw className="w-3 h-3 inline-block mr-1" /> FORCE REFRESH CYCLE
-            </button>
-        </div>
-    );
+    // 1. CLEAR previous ads so they don't stack up
+    adContainerRef.current.innerHTML = '';
+
+    // 2. CREATE the script element
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.async = true;
+
+    // ---------------------------------------------------------
+    // 🔴 PASTE YOUR ADSTERRA LINKS BELOW
+    // ---------------------------------------------------------
+    if (zoneType === 'native') {
+        // NATIVE BANNER (For Feed)
+        // script.src = '//pl253456.pestlo.com/44/1a/bc/441abc...js'; 
+        console.log("Loading Native Ad...");
+    } else {
+        // STANDARD BANNER (For Shop)
+        // script.src = '//pl253456.pestlo.com/99/88/77/998877...js';
+        console.log("Loading Banner Ad...");
+    }
+    // ---------------------------------------------------------
+
+    // 3. INJECT the script into the div
+    // NOTE: Only uncomment the appendChild line below once you have added your URLs above!
+    // adContainerRef.current.appendChild(script);
+
+  }, [zoneType]);
+
+  return (
+    <div 
+        ref={adContainerRef} 
+        className="w-full flex justify-center items-center min-h-[100px] bg-white/5 rounded-lg overflow-hidden border border-white/5"
+    >
+        {/* Placeholder text so you can see where ads SHOULD be */}
+        <span className="text-xs text-white/20 font-mono uppercase">
+            [ ADSTERRA: {zoneType.toUpperCase()} ZONE ]
+        </span>
+    </div>
+  );
 };
 
 export default AdDisplayPanel;
