@@ -31,7 +31,9 @@ interface FirebaseAuthHook {
   isAdmin: () => boolean;
 }
 
-// Ensure this local function matches the logic in PlayerContext for new users
+const ADMIN_UID = '0CfobCbXnPZsJwT662H4OhDrXk33';
+
+// Helper to generate the initial player state
 const createNewPlayerData = (user: User, walletAddress?: `0x${string}` | null): PlayerData => {
   const now = Timestamp.now();
   return {
@@ -48,8 +50,6 @@ const createNewPlayerData = (user: User, walletAddress?: `0x${string}` | null): 
     isPETMember: true,
     membership: 'ecosystem',
     walletAddress: walletAddress || null,
-    
-    // FIX 1 & 2: Initial data structures for character and inventory
     character: { 
       selectedID: "Hunter", 
       skin: "default" 
@@ -58,20 +58,15 @@ const createNewPlayerData = (user: User, walletAddress?: `0x${string}` | null): 
       equipped: { weapon: null, armor: null }, 
       items: {} 
     },
-    
     createdAt: now,
     updatedAt: now,
     profilePictureUrl: '',
-    
-    // FIX 3: Add the session map
     session: {
       webToken: null,
       webTokenCreatedAt: null
     },
   };
 };
-
-const ADMIN_UID = '0CfobCbXnPZsJwT662H4OhDrXk33';
 
 export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps = {}): FirebaseAuthHook => {
   const [user, setUser] = useState<User | null>(null);
@@ -80,16 +75,18 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
 
   const googleProvider = new GoogleAuthProvider();
 
+  // 1. SYNC AUTH STATE
+  // This is still needed for page reloads / session restoration
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (u) => {
       setLoading(true);
       if (u) {
+        // Safety check: Ensure DB doc exists on reload
         const userRef = doc(db, 'Players', u.uid);
         const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) {
-          // This logic is critical for new sign-ups (Google or Email)
-          const newPlayerData = createNewPlayerData(u, null);
-          await setDoc(userRef, newPlayerData);
+          // If missing on reload, create it
+          await setDoc(userRef, createNewPlayerData(u, null));
         }
         setUser(u);
       } else {
@@ -101,11 +98,21 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
     return () => unsubscribe();
   }, []);
 
+  // 2. GOOGLE SIGN IN (Fixed Race Condition)
   const signInWithGoogle = async () => {
     setLoading(true);
     setError(null);
     try {
-      await signInWithPopup(firebaseAuth, googleProvider);
+      const result = await signInWithPopup(firebaseAuth, googleProvider);
+      
+      // FIX: Explicitly check/create DB Doc BEFORE resolving
+      const userRef = doc(db, 'Players', result.user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        await setDoc(userRef, createNewPlayerData(result.user, null));
+      }
+      
     } catch (err: any) {
       setError(err.message);
       throw err;
@@ -114,11 +121,18 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
     }
   };
   
+  // 3. EMAIL REGISTRATION (Fixed Race Condition)
   const registerWithEmail = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
     try {
-      await createUserWithEmailAndPassword(firebaseAuth, email, password);
+      const result = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+      
+      // FIX: Explicitly create DB Doc BEFORE resolving
+      // We don't need to check if it exists; we just created the Auth User, so it's new.
+      const userRef = doc(db, 'Players', result.user.uid);
+      await setDoc(userRef, createNewPlayerData(result.user, null));
+      
     } catch (err: any) {
       setError(err.message);
       throw err;
@@ -170,7 +184,6 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
   }, [disconnectWagmi]);
 
   const isAuthenticated = useCallback(() => !!user, [user]);
-
   const isAdmin = useCallback(() => isAuthenticated() && user?.uid === ADMIN_UID, [user, isAuthenticated]);
 
   return {
