@@ -1,11 +1,10 @@
 const cacheName = "swytch-PETVerse-0.1";
 const contentToCache = [
-    "Build/WebGlBuild.loader.js",
-    "Build/WebGlBuild.framework.js",
-    "Build/WebGlBuild.data",
-    "Build/WebGlBuild.wasm",
+    "Build/mana_miner.loader.js",
+    "Build/mana_miner.framework.js.unityweb", // Note the .unityweb extension if compressed
+    "Build/mana_miner.data.unityweb",
+    "Build/mana_miner.wasm.unityweb",
     "TemplateData/style.css"
-
 ];
 
 self.addEventListener('install', function (e) {
