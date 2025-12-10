@@ -112,7 +112,7 @@ const ActiveGameSession: FC<ActiveGameSessionProps> = ({ gameId, onClose }) => {
             initial={{ scale: 0.9, y: 50 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: 50 }}
-            className="relative w-full max-w-[450px] aspect-[9/16] max-h-[80vh] bg-black border border-primary shadow-[0_0_50px_rgba(0,255,65,0.2)] rounded-sm overflow-hidden flex flex-col"
+            className="relative w-full max-w-[450px] aspect-[9/16] max-h-[70vh] bg-black border border-primary shadow-[0_0_50px_rgba(0,255,65,0.2)] rounded-sm overflow-hidden flex flex-col"
         >
             {/* Header */}
             <div className="h-10 bg-black border-b border-white/10 flex items-center justify-between px-3">
