@@ -110,7 +110,7 @@ export default function WallBall() {
         </div>
       )}
 
-      <style jsx>{`
+      <style >{`
         @keyframes grid-slow { 0% { background-position: 0 0; } 100% { background-position: 0 100px; } }
         @keyframes float-deep { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-12px);} }
         @keyframes float-fast { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-20px);} }

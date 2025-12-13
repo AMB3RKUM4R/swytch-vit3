@@ -139,7 +139,7 @@ export default function VoidShooter() {
         </div>
       )}
 
-      <style jsx>{`
+      <style >{`
         @keyframes grid-med { 0% { background-position: 0 0; } 100% { background-position: 120px 120px; } }
         @keyframes float-deep { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-16px);} }
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
