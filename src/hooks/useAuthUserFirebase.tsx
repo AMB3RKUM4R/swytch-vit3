@@ -34,13 +34,12 @@ interface FirebaseAuthHook {
 const ADMIN_UID = '0CfobCbXnPZsJwT662H4OhDrXk33';
 
 // Helper to generate the initial player state
-const createNewPlayerData = (user: User, walletAddress?: `0x${string}` | null): PlayerData => {
+const createNewPlayerData = (user: User, walletAddress?: string | null): PlayerData => {
   const now = Timestamp.now();
   return {
     userId: user.uid,
     username: user.displayName || user.email?.split('@')[0] || `Hunter${Math.floor(1000 + Math.random() * 9000)}`,
-    email: user.email,
-    phoneNumber: user.phoneNumber || null,
+    email: user.email || "no-email@system.com", // FIX: Fallback string
     joules: 0,
     gold: 0,
     level: 1,
@@ -49,22 +48,21 @@ const createNewPlayerData = (user: User, walletAddress?: `0x${string}` | null): 
     mana: 100,
     isPETMember: true,
     membership: 'ecosystem',
-    walletAddress: walletAddress || null,
+    walletAddress: walletAddress || undefined, // FIX: Use undefined for optional string
     character: { 
-      selectedID: "Hunter", 
-      skin: "default" 
-    },
+      selectedID: "cyber_samurai", 
+      unlocked: ["cyber_samurai"] 
+    }, // FIX: Removed 'skin', strictly matching interface
     inventory: { 
-      equipped: { weapon: null, armor: null }, 
+      equipped: {}, // FIX: Empty object implies undefined properties, which is valid
       items: {} 
     },
+    stats: {},
+    achievements: [],
     createdAt: now,
     updatedAt: now,
-    profilePictureUrl: '',
-    session: {
-      webToken: null,
-      webTokenCreatedAt: null
-    },
+    lastActive: now,
+    profilePictureUrl: user.photoURL || undefined,
   };
 };
 
@@ -76,7 +74,6 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
   const googleProvider = new GoogleAuthProvider();
 
   // 1. SYNC AUTH STATE
-  // This is still needed for page reloads / session restoration
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (u) => {
       setLoading(true);
@@ -98,14 +95,13 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
     return () => unsubscribe();
   }, []);
 
-  // 2. GOOGLE SIGN IN (Fixed Race Condition)
+  // 2. GOOGLE SIGN IN
   const signInWithGoogle = async () => {
     setLoading(true);
     setError(null);
     try {
       const result = await signInWithPopup(firebaseAuth, googleProvider);
       
-      // FIX: Explicitly check/create DB Doc BEFORE resolving
       const userRef = doc(db, 'Players', result.user.uid);
       const userSnap = await getDoc(userRef);
       
@@ -121,15 +117,13 @@ export const useAuthUserFirebase = ({ disconnectWagmi }: FirebaseAuthHookProps =
     }
   };
   
-  // 3. EMAIL REGISTRATION (Fixed Race Condition)
+  // 3. EMAIL REGISTRATION
   const registerWithEmail = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
     try {
       const result = await createUserWithEmailAndPassword(firebaseAuth, email, password);
       
-      // FIX: Explicitly create DB Doc BEFORE resolving
-      // We don't need to check if it exists; we just created the Auth User, so it's new.
       const userRef = doc(db, 'Players', result.user.uid);
       await setDoc(userRef, createNewPlayerData(result.user, null));
       

@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { usePlayer } from '@/components/context/PlayerContext';
 import GetGoldButton from '@/components/GetGoldButton';
-import CurrencyHUD from '@/components/CurrencyHUD'; //
+import CurrencyHUD from '@/components/CurrencyHUD'; 
 import { Wallet, Coins, Zap } from 'lucide-react';
 import RecentPurchases from '@/components/RecentPurchases';
 
@@ -12,43 +12,44 @@ const WalletPage: FC = () => {
   const joules = playerData?.joules || 0;
 
   return (
-    <div className="min-h-screen pt-24 px-4 max-w-4xl mx-auto">
-      <div className="flex justify-between items-start mb-8">
-          <h1 className="text-4xl font-russo text-white flex items-center gap-3">
-            <Wallet className="text-primary" /> ASSET VAULT
+    <div className="min-h-screen pt-24 px-4 max-w-5xl mx-auto bg-black font-mono text-white">
+      <div className="flex justify-between items-end mb-8 border-b border-gray-800 pb-6">
+          <h1 className="text-4xl font-black italic text-white flex items-center gap-4 uppercase tracking-tighter">
+            <Wallet className="text-[#39FF14] w-10 h-10" /> Asset Vault
           </h1>
-          {/* Header HUD */}
           <CurrencyHUD />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
         {/* GOLD CARD */}
-        <div className="bg-[#0f0f0f] border border-yellow-500/30 p-8 rounded-lg relative overflow-hidden group shadow-[0_0_30px_rgba(234,179,8,0.1)]">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Coins size={100} />
+        <div className="bg-[#050505] border border-yellow-500/50 p-8 relative overflow-hidden group hover:border-yellow-500 transition-colors">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity grayscale group-hover:grayscale-0">
+                <Coins size={120} />
             </div>
             <div className="relative z-10">
-                <h3 className="text-gray-400 font-mono text-sm uppercase tracking-widest mb-2">Gold Balance</h3>
-                <div className="text-5xl font-russo text-yellow-500 mb-6">{gold}</div>
-                <GetGoldButton variant="cta" label="TOP UP GOLD" />
+                <h3 className="text-yellow-500 font-bold text-xs uppercase tracking-[0.2em] mb-4">Store Credit (Gold)</h3>
+                <div className="text-6xl font-black text-white mb-8">{gold.toLocaleString()}</div>
+                <GetGoldButton variant="cta" label="ACQUIRE CREDITS" />
             </div>
         </div>
 
         {/* JOULES CARD */}
-        <div className="bg-[#0f0f0f] border border-primary/30 p-8 rounded-lg relative overflow-hidden shadow-[0_0_30px_rgba(0,255,65,0.05)]">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Zap size={100} />
+        <div className="bg-[#050505] border border-[#39FF14]/50 p-8 relative overflow-hidden group hover:border-[#39FF14] transition-colors shadow-[0_0_15px_rgba(57,255,20,0.05)]">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Zap size={120} className="text-[#39FF14]" />
             </div>
             <div className="relative z-10">
-                <h3 className="text-gray-400 font-mono text-sm uppercase tracking-widest mb-2">Energy (Joules)</h3>
-                <div className="text-5xl font-russo text-primary mb-6">{joules}</div>
-                <p className="text-sm text-gray-500">Play games to earn Joules.</p>
+                <h3 className="text-[#39FF14] font-bold text-xs uppercase tracking-[0.2em] mb-4">Energy (Joules)</h3>
+                <div className="text-6xl font-black text-white mb-8">{joules.toLocaleString()}</div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">
+                    // PLAY PROTOCOLS TO MINE JOULES
+                </p>
             </div>
         </div>
       </div>
 
-      <div className="border-t border-white/10 pt-8">
-          {/* Uses the RecentPurchases component which has the history logic */}
+      <div className="border-t border-gray-800 pt-8">
+          <h3 className="text-sm font-bold text-gray-500 uppercase mb-4">Ledger History</h3>
           <RecentPurchases />
       </div>
     </div>

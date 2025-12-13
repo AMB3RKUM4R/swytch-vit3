@@ -12,27 +12,27 @@ const QuickAccessGames: FC<QuickAccessGamesProps> = ({ onGameLaunch }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="space-y-8"
+            className="space-y-8 font-mono"
         >
-            <div className="border-l-4 border-primary pl-4">
-                <h3 className="text-2xl font-russo text-white uppercase tracking-wider mb-1">
-                    Active Simulations
+            <div className="border-l-2 border-[#39FF14] pl-4">
+                <h3 className="text-xl font-black italic text-white uppercase tracking-tighter mb-1">
+                    Simulation Feed
                 </h3>
-                <p className="text-xs font-mono text-gray-500">// SELECT GATE TO ENTER</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">// SELECT GATE TO ENTER</p>
             </div>
             
             <GameGrid onGameLaunch={onGameLaunch} />
 
-            <div className="mt-12 pt-8 border-t border-white/10">
-                <h3 className="text-lg font-bold font-russo text-gray-500 uppercase mb-4">
-                    New Releases & Calibration Modes
+            <div className="mt-12 pt-8 border-t border-gray-800">
+                <h3 className="text-sm font-bold text-gray-500 uppercase mb-4 tracking-widest">
+                    Upcoming Modules
                 </h3>
                 <div className="flex flex-wrap gap-4">
-                    <div className="px-6 py-3 bg-white/5 border border-white/10 text-xs text-gray-400 font-mono uppercase tracking-widest hover:text-white hover:border-white/30 transition-colors cursor-pointer">
+                    <div className="px-6 py-3 bg-black border border-gray-800 text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:border-[#39FF14] hover:text-[#39FF14] transition-colors cursor-pointer">
                         Mana Miner V2
                     </div>
-                    <div className="px-6 py-3 bg-white/5 border border-white/10 text-xs text-gray-400 font-mono uppercase tracking-widest hover:text-white hover:border-white/30 transition-colors cursor-pointer">
-                        Season 2 Preview
+                    <div className="px-6 py-3 bg-black border border-gray-800 text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:border-[#39FF14] hover:text-[#39FF14] transition-colors cursor-pointer">
+                        Season 2 [PREVIEW]
                     </div>
                 </div>
             </div>

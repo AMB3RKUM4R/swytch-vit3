@@ -1,12 +1,10 @@
-// src/components/membership/MembershipUpgrade.tsx
 import { FC, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, Terminal, Key } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 import { serverTimestamp } from 'firebase/firestore';
-import { PlayerData } from '../../lib/types'; // Import PlayerData
+import { PlayerData } from '../../lib/types'; 
 
-// Define props for this component
 interface MembershipUpgradeProps {
   userId: string | null;
   setIsPETMember: (isMember: boolean) => void;
@@ -27,70 +25,75 @@ const MembershipUpgrade: FC<MembershipUpgradeProps> = ({
 
   const handleApplyPromoCode = useCallback(async () => {
     if (!userId) {
-      setShowMessage('⚠️ Please sign in to apply a code.');
+      setShowMessage('⚠️ AUTHENTICATION REQUIRED');
       setActiveModal('auth');
       return;
     }
     
     setIsLoading(true);
     
-    // Simulate API call for promo code validation
+    // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    if (promoCode.toUpperCase() === 'PET_LAUNCH_2025') {
+    // Simple validation logic (You can add more codes here)
+    if (promoCode.toUpperCase() === 'LIFETIME_ACCESS' || promoCode.toUpperCase() === 'PET_LAUNCH_2025') {
       try {
-        // Update user's membership status in Firestore
+        // --- THIS IS THE CRITICAL UPDATE ---
+        // With the new Rules, this write will now succeed.
         await updatePlayerFirestore({
           isPETMember: true,
-          membership: 'ecosystem', // Grant the base tier
+          membership: 'lifetime', // Explicitly set to lifetime
           updatedAt: serverTimestamp(),
         });
 
         setIsPETMember(true);
-        setShowMessage('🎉 Promo code applied! You are now a PET Member!');
+        setShowMessage('🎉 ACCESS GRANTED: LIFETIME MEMBERSHIP');
         setPromoCode('');
       } catch (err: any) {
         console.error('Failed to apply promo code:', err);
-        setShowMessage('⚠️ Failed to apply promo code. Please try again.');
+        setShowMessage('⚠️ ERROR: PERMISSION DENIED BY PROTOCOL');
       }
     } else {
-      setShowMessage('❌ Invalid promo code.');
+      setShowMessage('❌ ERROR: INVALID ACCESS KEY');
     }
     
     setIsLoading(false);
   }, [promoCode, userId, setShowMessage, setActiveModal, updatePlayerFirestore, setIsPETMember]);
 
   return (
-    // FIX: Changed 'gradient' prop to 'variant'
-    <SwytchCard variant="holographic" className="p-6 text-center">
-      <h3 className="text-2xl font-bold text-foreground font-poppins mb-3">
-        Have a Promo Code?
+    <SwytchCard className="p-8 text-center border-gray-800">
+      <h3 className="text-2xl font-black italic text-white mb-2 uppercase tracking-tighter flex justify-center items-center gap-2">
+        <Key className="w-6 h-6 text-[#39FF14]" /> Activation Key
       </h3>
-      <p className="text-muted-foreground mb-6 font-inter">
-        Enter a special promotional code to unlock membership.
+      <p className="text-gray-500 mb-6 font-mono text-xs uppercase tracking-wide">
+        ENTER KEY TO UNLOCK LIFETIME CLEARANCE.
       </p>
-      <div className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+      
+      <div className="flex flex-col sm:flex-row gap-0 max-w-md mx-auto border border-gray-700 rounded-sm overflow-hidden group hover:border-[#39FF14] transition-colors">
+        <div className="flex items-center bg-[#050505] pl-3 border-r border-gray-800">
+            <Terminal className="w-4 h-4 text-[#39FF14]" />
+        </div>
         <input
           type="text"
-          placeholder="Enter code (e.g., PET_LAUNCH_2025)"
+          placeholder="ENTER_CODE"
           value={promoCode}
           onChange={(e) => setPromoCode(e.target.value)}
-          className="input flex-grow text-center sm:text-left"
+          className="flex-grow bg-[#050505] p-3 text-white font-mono text-sm placeholder:text-gray-700 outline-none uppercase"
           disabled={isLoading}
         />
         <motion.button
-          className="btn-primary"
+          className="px-6 bg-[#39FF14] text-black font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-white transition-colors disabled:opacity-50 tracking-widest"
           onClick={handleApplyPromoCode}
           disabled={isLoading || !promoCode}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
           {isLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <Check className="w-5 h-5" />
+            <Check className="w-4 h-4" />
           )}
-          Apply Code
+          EXECUTE
         </motion.button>
       </div>
     </SwytchCard>

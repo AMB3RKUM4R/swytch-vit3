@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, LogOut, Mail, Lock, Loader2, AlertTriangle } from 'lucide-react';
 import { useAuthUserFirebase } from '../hooks/useAuthUserFirebase';
 import { useModal } from './context/ModalContext';
-import { AuthModalProps } from '@/lib/types';
 
 const modalVariants = {
   hidden: { opacity: 0, scale: 0.9 },
@@ -12,6 +11,11 @@ const modalVariants = {
 };
 
 type AuthMode = 'signIn' | 'register' | 'forgotPassword';
+
+// FIX: Define Props Locally if missing from types.ts
+interface AuthModalProps {
+  setShowMessage: (message: string) => void;
+}
 
 const AuthModal: FC<AuthModalProps> = ({ setShowMessage }) => {
   const { activeModal, setActiveModal: setModalActive } = useModal();

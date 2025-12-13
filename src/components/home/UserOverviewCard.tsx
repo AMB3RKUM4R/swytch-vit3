@@ -8,65 +8,65 @@ const UserOverviewCard: FC = () => {
   useAccount();
 
   return (
-    <div className="bg-black border border-white/10 p-6 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-      <h2 className="text-xl font-bold text-white font-russo mb-6 flex items-center uppercase tracking-wider">
-        <Shield className="inline-block w-6 h-6 mr-3 text-primary" /> Energy Signature
+    <div className="bg-black border border-gray-800 p-6 shadow-lg font-mono">
+      <h2 className="text-lg font-black text-white mb-6 flex items-center uppercase tracking-widest gap-2">
+        <Shield className="w-5 h-5 text-[#39FF14]" /> Energy Signature
       </h2>
-      <div className="grid grid-cols-1 gap-4 font-inter">
+      <div className="grid grid-cols-1 gap-4">
         
         {/* Hunter Status */}
-        <div className="flex items-center gap-4 bg-white/5 p-4 border border-white/10 hover:border-primary/50 transition-colors">
-          <div className="w-10 h-10 bg-black border border-white/20 flex items-center justify-center">
-             <User className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-4 bg-[#050505] p-3 border border-gray-800 hover:border-[#39FF14] transition-colors group">
+          <div className="w-10 h-10 bg-black border border-gray-700 flex items-center justify-center group-hover:border-[#39FF14]">
+             <User className="w-5 h-5 text-white group-hover:text-[#39FF14]" />
           </div>
           <div>
-            <p className="text-[10px] text-gray-500 font-mono uppercase">Hunter Archetype</p>
-            <p className="text-lg font-bold text-white truncate max-w-[150px]">{playerData?.character?.selectedID || 'UNASSIGNED'}</p>
+            <p className="text-[9px] text-gray-500 uppercase tracking-wider">Hunter ID</p>
+            <p className="text-sm font-bold text-white truncate max-w-[150px]">{playerData?.username || 'UNASSIGNED'}</p>
           </div>
         </div>
         
         {/* Level */}
-        <div className="flex items-center gap-4 bg-white/5 p-4 border border-white/10 hover:border-primary/50 transition-colors">
-          <div className="w-10 h-10 bg-black border border-white/20 flex items-center justify-center">
-             <Shield className="w-5 h-5 text-primary" />
+        <div className="flex items-center gap-4 bg-[#050505] p-3 border border-gray-800 hover:border-[#39FF14] transition-colors group">
+          <div className="w-10 h-10 bg-black border border-gray-700 flex items-center justify-center group-hover:border-[#39FF14]">
+             <Shield className="w-5 h-5 text-[#39FF14]" />
           </div>
           <div>
-            <p className="text-[10px] text-gray-500 font-mono uppercase">Protocol Rank</p>
-            <p className="text-lg font-bold text-white">LVL {currentLevel}</p>
+            <p className="text-[9px] text-gray-500 uppercase tracking-wider">Protocol Rank</p>
+            <p className="text-sm font-bold text-white">LVL {currentLevel}</p>
           </div>
         </div>
 
-        {/* JOULES Balance */}
-        <div className="flex items-center gap-4 bg-white/5 p-4 border border-white/10 hover:border-yellow-500/50 transition-colors">
-          <div className="w-10 h-10 bg-black border border-white/20 flex items-center justify-center">
-             <Gem className="w-5 h-5 text-yellow-500" />
+        {/* JOULES */}
+        <div className="flex items-center gap-4 bg-[#050505] p-3 border border-gray-800 hover:border-[#39FF14] transition-colors group">
+          <div className="w-10 h-10 bg-black border border-gray-700 flex items-center justify-center group-hover:border-[#39FF14]">
+             <Gem className="w-5 h-5 text-[#39FF14]" />
           </div>
           <div>
-            <p className="text-[10px] text-gray-500 font-mono uppercase">JOULES (Yield)</p>
-            <p className="text-lg font-bold text-white">{joulesBalance.toFixed(0)}</p>
+            <p className="text-[9px] text-gray-500 uppercase tracking-wider">JOULES (Yield)</p>
+            <p className="text-sm font-bold text-[#39FF14]">{joulesBalance.toFixed(0)}</p>
           </div>
         </div>
         
-        {/* Gold Balance */}
-        <div className="flex items-center gap-4 bg-white/5 p-4 border border-white/10 hover:border-green-500/50 transition-colors">
-          <div className="w-10 h-10 bg-black border border-white/20 flex items-center justify-center">
-             <DollarSign className="w-5 h-5 text-green-500" />
+        {/* Gold */}
+        <div className="flex items-center gap-4 bg-[#050505] p-3 border border-gray-800 hover:border-yellow-500 transition-colors group">
+          <div className="w-10 h-10 bg-black border border-gray-700 flex items-center justify-center group-hover:border-yellow-500">
+             <DollarSign className="w-5 h-5 text-yellow-500" />
           </div>
           <div>
-            <p className="text-[10px] text-gray-500 font-mono uppercase">GOLD (Ore)</p>
-            <p className="text-lg font-bold text-white">{goldBalance.toFixed(0)}</p>
+            <p className="text-[9px] text-gray-500 uppercase tracking-wider">GOLD (Credits)</p>
+            <p className="text-sm font-bold text-white">{goldBalance.toFixed(0)}</p>
           </div>
         </div>
         
-        {/* Membership Status */}
-        <div className="flex items-center gap-4 bg-white/5 p-4 border border-white/10 hover:border-purple-500/50 transition-colors">
-          <div className="w-10 h-10 bg-black border border-white/20 flex items-center justify-center">
+        {/* Membership */}
+        <div className="flex items-center gap-4 bg-[#050505] p-3 border border-gray-800 hover:border-purple-500 transition-colors group">
+          <div className="w-10 h-10 bg-black border border-gray-700 flex items-center justify-center group-hover:border-purple-500">
              <Wallet className="w-5 h-5 text-purple-500" />
           </div>
           <div>
-            <p className="text-[10px] text-gray-500 font-mono uppercase">Beneficiary Status</p>
-            <p className={`text-sm font-bold ${isPETMember ? 'text-green-500' : 'text-gray-400'}`}>
-              {isPETMember ? 'ACTIVE PROTOCOL' : 'CALIBRATION MODE'}
+            <p className="text-[9px] text-gray-500 uppercase tracking-wider">Status</p>
+            <p className={`text-xs font-bold ${isPETMember ? 'text-[#39FF14]' : 'text-gray-500'}`}>
+              {isPETMember ? 'ACTIVE' : 'STANDARD'}
             </p>
           </div>
         </div>

@@ -1,39 +1,28 @@
-// src/components/context/WebGLContext.tsx
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, FC } from 'react';
 
-// Define the interface for the WebGL Context
 interface WebGLContextType {
   activeGameId: string | null;
   setActiveGameId: (id: string | null) => void;
+  visualMode: 'DEFAULT' | 'INTENSE' | 'Glitch'; // For visual effects
+  setVisualMode: (mode: 'DEFAULT' | 'INTENSE' | 'Glitch') => void;
 }
 
-// Create the Context
 const WebGLContext = createContext<WebGLContextType | undefined>(undefined);
 
-// Define the Provider Component
-export const WebGLProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const WebGLProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
-
-  const setGameId = useCallback((id: string | null) => {
-    setActiveGameId(id);
-  }, []);
+  const [visualMode, setVisualMode] = useState<'DEFAULT' | 'INTENSE' | 'Glitch'>('DEFAULT');
 
   return (
-    <WebGLContext.Provider
-      value={{
-        activeGameId,
-        setActiveGameId: setGameId,
-      }}
-    >
+    <WebGLContext.Provider value={{ activeGameId, setActiveGameId, visualMode, setVisualMode }}>
       {children}
     </WebGLContext.Provider>
   );
 };
 
-// Custom Hook to consume the context
 export const useWebGL = () => {
   const context = useContext(WebGLContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useWebGL must be used within a WebGLProvider');
   }
   return context;

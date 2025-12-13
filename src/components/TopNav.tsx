@@ -1,4 +1,3 @@
-// src/components/TopNav.tsx
 import { FC, useCallback, useState, useEffect } from 'react'; 
 import { motion } from 'framer-motion';
 import { Sparkles, Settings, User, LogOut, LoaderCircle, ShoppingCart, Package, HandCoins, Users } from 'lucide-react'; 
@@ -19,11 +18,11 @@ const MOCK_FETCH_PENDING_TX = async (): Promise<number> => {
 };
 
 const navItems = [
-  { path: '/home', label: 'FEED', icon: <Sparkles className="w-5 h-5" /> },
-  { path: '/inventory', label: 'ARMORY', icon: <Package className="w-5 h-5" /> },
-  { path: '/shop', label: 'MARKET', icon: <ShoppingCart className="w-5 h-5" /> },
-  { path: '/vault', label: 'VAULT', icon: <HandCoins className="w-5 h-5" /> },
-  { path: '/community', label: 'NET', icon: <Users className="w-5 h-5" /> },
+  { path: '/home', label: 'FEED', icon: <Sparkles className="w-4 h-4" /> },
+  { path: '/inventory', label: 'ARMORY', icon: <Package className="w-4 h-4" /> },
+  { path: '/shop', label: 'MARKET', icon: <ShoppingCart className="w-4 h-4" /> },
+  { path: '/vault', label: 'VAULT', icon: <HandCoins className="w-4 h-4" /> },
+  { path: '/community', label: 'NET', icon: <Users className="w-4 h-4" /> },
 ];
 
 const TopNav: FC = () => {
@@ -40,7 +39,6 @@ const TopNav: FC = () => {
   const [pendingTxCount, setPendingTxCount] = useState<number>(0);
   const [, setIsCheckingStatus] = useState(false);
 
-  // Admin Check Logic
   const checkPendingTxStatus = useCallback(async () => {
       if (!isUserAdmin) {
           setPendingTxCount(0);
@@ -86,36 +84,35 @@ const TopNav: FC = () => {
 
   return (
     <motion.nav
-      className="fixed top-0 left-0 w-full z-50 h-[70px] bg-black/95 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-2 md:px-4 font-inter"
+      className="fixed top-0 left-0 w-full z-50 h-[70px] bg-black/95 backdrop-blur-md border-b border-gray-800 flex items-center justify-between px-2 md:px-4 font-mono"
       initial={{ y: -100 }} animate={{ y: 0 }} transition={{ duration: 0.5 }}
     >
       {/* 1. LEFT SIDE: BRAND & NAV */}
-      <div className="flex items-center gap-2 md:gap-4 flex-1 overflow-hidden">
-        {/* Brand Icon - Text hidden on small mobile to save space for icons */}
+      <div className="flex items-center gap-2 md:gap-8 flex-1 overflow-hidden">
+        {/* Brand */}
         <Link to="/home" className="flex items-center gap-2 group shrink-0">
-            <Sparkles className="text-primary w-6 h-6 group-hover:animate-spin" />
-            <span className="text-lg md:text-xl font-bold font-russo text-white tracking-tighter uppercase hidden lg:block group-hover:text-primary transition-colors">
+            <Sparkles className="text-[#39FF14] w-6 h-6 group-hover:animate-spin" />
+            <span className="text-lg md:text-xl font-black italic text-white tracking-tighter uppercase hidden lg:block group-hover:text-[#39FF14] transition-colors">
               PETverse
             </span>
         </Link>
 
-        {/* NAVIGATION LINKS - ALWAYS VISIBLE (Icons only on mobile) */}
-        <div className="flex items-center gap-1 ml-1 md:ml-4 overflow-x-auto no-scrollbar mask-gradient-right">
+        {/* NAVIGATION LINKS */}
+        <div className="flex items-center gap-1 ml-1 md:ml-4 overflow-x-auto no-scrollbar">
             {navItems.map(({ path, label, icon }) => (
             <Link
                 key={path}
                 to={path}
                 onClick={(e) => { if (!handleRestrictedNav(label)) e.preventDefault(); }}
                 className={cn(
-                    "flex items-center gap-2 text-xs font-bold px-2 md:px-3 py-2 uppercase transition-all whitespace-nowrap rounded-md",
+                    "flex items-center gap-2 text-[10px] font-bold px-3 py-2 uppercase transition-all whitespace-nowrap rounded-sm tracking-wider",
                     location.pathname === path 
-                        ? 'text-primary bg-white/5 border-b-2 border-primary' 
-                        : 'text-gray-500 hover:text-white hover:bg-white/5'
+                        ? 'text-[#39FF14] bg-[#39FF14]/10 border border-[#39FF14]' 
+                        : 'text-gray-500 hover:text-white hover:bg-white/5 border border-transparent'
                 )}
                 title={label}
             >
                 {icon}
-                {/* Text Hidden on Mobile, Visible on Medium+ Screens */}
                 <span className="hidden md:block">{label}</span>
             </Link>
             ))}
@@ -125,14 +122,14 @@ const TopNav: FC = () => {
       {/* 2. RIGHT SIDE: USER INFO & ACTIONS */}
       <div className="flex items-center gap-2 md:gap-4 shrink-0">
         
-        {/* Admin Alert Bell */}
+        {/* Admin */}
         {isLoggedIn && isUserAdmin && (
            <Link
             to="/admin"
             onClick={(e) => { if (!handleAdminNav()) e.preventDefault(); }}
             className={cn(
                 "relative p-2 transition-colors hidden sm:block",
-                location.pathname === '/admin' ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+                location.pathname === '/admin' ? 'text-red-500' : 'text-gray-600 hover:text-red-500'
             )}
             title="Command Center"
           >
@@ -146,32 +143,29 @@ const TopNav: FC = () => {
           </Link>
         )}
 
-        {/* --- USER STATS & CURRENCY HUD --- */}
+        {/* --- USER STATS --- */}
         {isLoggedIn && playerData && (
           <div className="flex items-center gap-2 md:gap-3">
-            
-            {/* Currency HUD - Hidden on very small screens to prioritize Nav Icons */}
             <div className="hidden sm:block">
                <CurrencyHUD />
             </div>
 
-            {/* User Identity */}
-            <div className="lg:flex items-center gap-2 bg-white/5 px-3 py-1.5 border border-white/10 rounded-full">
+            <div className="lg:flex items-center gap-2 bg-[#050505] px-3 py-1.5 border border-gray-800 rounded-sm">
                 {profileImageUrl ? (
-                  <img src={profileImageUrl} alt="Avatar" className="w-5 h-5 object-cover rounded-full border border-white/20" />
+                  <img src={profileImageUrl} alt="Avatar" className="w-5 h-5 object-cover rounded-sm border border-gray-600" />
                 ) : (
-                  <User className="text-primary w-4 h-4" />
+                  <User className="text-[#39FF14] w-4 h-4" />
                 )}
-                <span className="text-xs font-mono font-bold text-white uppercase max-w-[100px] truncate">
+                <span className="text-xs font-bold text-white uppercase max-w-[100px] truncate">
                   {displayName}
                 </span>
             </div>
           </div>
         )}
 
-        {/* Wallet / Auth Actions */}
+        {/* Actions */}
         {authLoading ? (
-          <LoaderCircle className="w-5 h-5 animate-spin text-primary" />
+          <LoaderCircle className="w-5 h-5 animate-spin text-[#39FF14]" />
         ) : (
           <div className="flex items-center gap-2">
             <div className="hidden sm:block">
@@ -188,7 +182,7 @@ const TopNav: FC = () => {
                   signOutUser(); 
                   setShowMessage("SYSTEM DISCONNECTED");
                 }} 
-                className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center border border-white/10 hover:bg-red-900/20 hover:border-red-500 hover:text-red-500 transition-all text-white/50 rounded-md"
+                className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center border border-gray-800 bg-black hover:bg-red-900/20 hover:border-red-500 hover:text-red-500 transition-all text-gray-500 rounded-sm"
                 title="Disconnect" 
               >
                 <LogOut className="w-4 h-4" />
@@ -196,7 +190,7 @@ const TopNav: FC = () => {
             ) : (
               <button 
                 onClick={() => setActiveModal('auth')}
-                className="btn-primary h-8 px-3 text-[10px] md:text-xs font-bold" 
+                className="h-8 px-4 text-[10px] md:text-xs font-bold bg-[#39FF14] text-black hover:bg-white uppercase tracking-wider transition-colors" 
               >
                 CONNECT
               </button>

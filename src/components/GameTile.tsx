@@ -31,7 +31,6 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // FIX: Removed unused 'actionType' parameter
     const handleAction = async () => {
         setIsProcessing(true);
         await new Promise(r => setTimeout(r, 500));
@@ -89,13 +88,13 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
 
     return (
         <motion.div 
-            className="relative w-full h-full bg-black border-x border-white/10 overflow-hidden flex flex-col justify-end snap-start group"
+            className="relative w-full h-full bg-black border-x border-gray-800 overflow-hidden flex flex-col justify-end snap-start group font-mono"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: false, amount: 0.1 }}
         >
             <div className="absolute top-4 right-4 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <CurrencyHUD className="bg-black/60 backdrop-blur p-2 rounded-lg border border-white/10" />
+                <CurrencyHUD className="bg-black/80 backdrop-blur p-2 rounded-sm border border-gray-800" />
             </div>
 
             <div className="absolute inset-0 z-0 bg-black flex items-center justify-center">
@@ -105,7 +104,7 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
                         src={mediaSrc}
                         autoPlay loop muted playsInline
                         className="w-full h-full object-cover opacity-60"
-                        poster={`https://placehold.co/450x800/000/44D62C?text=${game.title}`} 
+                        poster={`https://placehold.co/450x800/000/39FF14?text=${game.title}`} 
                     />
                 ) : (
                     <img 
@@ -114,7 +113,7 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
                         className="w-full h-full object-cover opacity-80"
                         onError={(e) => {
                             e.currentTarget.onerror = null;
-                            e.currentTarget.src = `https://placehold.co/450x800/222/555?text=NO+IMAGE`;
+                            e.currentTarget.src = `https://placehold.co/450x800/111/444?text=NO+IMAGE`;
                         }}
                     />
                 )}
@@ -123,14 +122,14 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
 
             <div className="absolute right-4 bottom-32 z-20 flex flex-col items-center gap-6">
                 <div className="flex flex-col items-center gap-1">
-                    <button className="p-3 bg-black/40 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all group">
-                        <Heart className="w-6 h-6 text-white group-hover:text-red-500" />
+                    <button className="p-3 bg-black/50 backdrop-blur-md rounded-full border border-gray-600 hover:border-[#39FF14] transition-all group">
+                        <Heart className="w-6 h-6 text-white group-hover:text-[#39FF14]" />
                     </button>
                     <span className="text-[10px] font-bold text-white shadow-black drop-shadow-md">2.4k</span>
                 </div>
                 <div className="flex flex-col items-center gap-1">
-                    <button onClick={handleBroadcast} className="p-3 bg-black/40 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all group">
-                        <Share2 className="w-6 h-6 text-white group-hover:text-primary" />
+                    <button onClick={handleBroadcast} className="p-3 bg-black/50 backdrop-blur-md rounded-full border border-gray-600 hover:border-[#39FF14] transition-all group">
+                        <Share2 className="w-6 h-6 text-white group-hover:text-[#39FF14]" />
                     </button>
                     <span className="text-[10px] font-bold text-white shadow-black drop-shadow-md">Share</span>
                 </div>
@@ -138,30 +137,30 @@ const GameTile: FC<GameTileProps> = ({ game, onGameLaunch }) => {
 
             <div className="relative z-20 p-6 pb-8 w-full pr-20">
                 <div className="flex items-center gap-2 mb-2">
-                    <div className="px-2 py-1 bg-primary/20 border border-primary/50 rounded-sm backdrop-blur-md flex items-center gap-1">
-                        {getTypeIcon()}
-                        <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{game.type}</span>
+                    <div className="px-2 py-1 bg-[#39FF14]/10 border border-[#39FF14]/50 rounded-sm backdrop-blur-md flex items-center gap-1">
+                        <div className="text-[#39FF14]">{getTypeIcon()}</div>
+                        <span className="text-[10px] font-bold text-[#39FF14] uppercase tracking-wider">{game.type}</span>
                     </div>
                     {game.price && (
-                        <div className="px-2 py-1 bg-yellow-500/20 border border-yellow-500/50 rounded-sm backdrop-blur-md">
-                            <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider">
+                        <div className="px-2 py-1 bg-yellow-500/10 border border-yellow-500/50 rounded-sm backdrop-blur-md">
+                            <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-wider">
                                 {game.price} G 
                             </span>
                         </div>
                     )}
                 </div>
 
-                <h2 className="text-3xl md:text-4xl font-black font-russo text-white uppercase leading-none mb-2 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] text-glow-primary">
+                <h2 className="text-3xl md:text-4xl font-black italic text-white uppercase leading-none mb-2 drop-shadow-lg tracking-tighter">
                     {game.title}
                 </h2>
-                <p className="text-sm text-white/90 font-mono mb-6 line-clamp-2 drop-shadow-md">
+                <p className="text-xs text-gray-300 font-mono mb-6 line-clamp-2 uppercase tracking-wide">
                     {game.subtitle}
                 </p>
 
                 <button 
-                    onClick={handleAction} // No args passed now
+                    onClick={handleAction} 
                     disabled={isProcessing} 
-                    className="w-full btn-primary h-14 text-lg flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,255,65,0.3)] hover:scale-[1.02] transition-transform disabled:opacity-80 disabled:cursor-not-allowed"
+                    className="w-full bg-[#39FF14] text-black h-14 text-lg font-black uppercase flex items-center justify-center gap-3 hover:bg-white transition-colors disabled:opacity-80 disabled:cursor-not-allowed tracking-widest shadow-[0_0_20px_rgba(57,255,20,0.3)]"
                 >
                     {isProcessing ? (
                         <>

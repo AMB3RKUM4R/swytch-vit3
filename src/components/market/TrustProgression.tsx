@@ -9,27 +9,32 @@ const TrustProgression: FC = () => {
   const progressPercent = (currentScore / maxScore) * 100;
 
   return (
-    <div className="bg-black border border-white/10 p-6">
-      <div className="flex justify-between items-end mb-2">
+    <div className="bg-black border border-gray-800 p-6 font-mono">
+      <div className="flex justify-between items-end mb-4">
           <div>
-              <h3 className="text-sm font-bold font-russo text-white uppercase">Trust Protocol</h3>
-              <p className="text-[10px] text-gray-500 font-mono">ID: HUNTER_CLASS</p>
+              <h3 className="text-xs font-bold text-white uppercase tracking-widest">Trust Protocol</h3>
+              <p className="text-[9px] text-gray-500 uppercase">ID: HUNTER_CLASS</p>
           </div>
-          <span className="text-2xl font-black text-primary">{currentScore}</span>
+          <span className="text-3xl font-black text-[#39FF14]">{currentScore}</span>
       </div>
 
-      <div className="w-full h-1 bg-white/10 mt-4 overflow-hidden">
+      {/* Bar */}
+      <div className="w-full h-2 bg-gray-900 border border-gray-800 overflow-hidden relative">
+          {/* Grid lines */}
+          <div className="absolute inset-0 flex justify-between px-1">
+              {[...Array(10)].map((_, i) => <div key={i} className="w-[1px] h-full bg-black/50" />)}
+          </div>
           <motion.div 
-            className="h-full bg-primary"
+            className="h-full bg-[#39FF14] shadow-[0_0_10px_#39FF14]"
             initial={{ width: 0 }}
             animate={{ width: `${progressPercent}%` }}
             transition={{ duration: 1 }}
           />
       </div>
       
-      <div className="flex justify-between mt-2 text-[10px] font-mono text-gray-600">
-          <span>LVL {currentLevel}</span>
-          <span>NEXT TIER: {((Math.floor(currentLevel/10)+1)*10)}</span>
+      <div className="flex justify-between mt-2 text-[9px] text-gray-500 uppercase">
+          <span>Current Rank: {currentLevel}</span>
+          <span>Next Tier: {((Math.floor(currentLevel/10)+1)*10)}</span>
       </div>
     </div>
   );

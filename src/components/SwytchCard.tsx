@@ -6,7 +6,7 @@ interface SwytchCardProps {
   children: ReactNode;
   className?: string;
   onClick?: () => void;
-  variant?: 'default' | 'holographic'; // Kept props for compatibility, but style is unified
+  variant?: 'default' | 'holographic';
 }
 
 const SwytchCard: FC<SwytchCardProps> = ({ 
@@ -17,13 +17,19 @@ const SwytchCard: FC<SwytchCardProps> = ({
   return (
     <motion.div
       className={cn(
-        "bg-black border border-white/10 p-0 relative overflow-hidden",
-        onClick && "cursor-pointer hover:border-white/30 transition-colors",
+        "bg-black border border-gray-800 p-0 relative overflow-hidden",
+        onClick && "cursor-pointer hover:border-[#39FF14] transition-colors group",
         className
       )}
       onClick={onClick}
     >
-      {children}
+      {/* Optional Scanline Overlay on Hover */}
+      {onClick && (
+        <div className="absolute inset-0 bg-[#39FF14] opacity-0 group-hover:opacity-5 pointer-events-none transition-opacity z-0" />
+      )}
+      <div className="relative z-10">
+        {children}
+      </div>
     </motion.div>
   );
 };

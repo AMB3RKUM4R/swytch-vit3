@@ -13,24 +13,24 @@ const LoadingScreen: FC<{ message: string }> = ({ message }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center font-mono">
         <div className="text-center">
-            <Terminal className="w-12 h-12 text-primary mx-auto mb-6 animate-pulse" />
-            <h1 className="text-xl font-mono text-white font-bold tracking-widest uppercase mb-2">
+            <Terminal className="w-12 h-12 text-[#39FF14] mx-auto mb-6 animate-pulse" />
+            <h1 className="text-2xl font-black italic text-white tracking-tighter uppercase mb-2">
                 SYSTEM_BOOT
             </h1>
-            <p className="text-xs text-white/50 font-mono uppercase">
+            <p className="text-xs text-[#39FF14] uppercase tracking-widest">
                 {message}{dots}
             </p>
         </div>
         
         {/* Loading Bar */}
-        <div className="absolute bottom-0 left-0 w-full h-1 bg-white/10">
+        <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-900">
             <motion.div 
-                className="h-full bg-primary"
+                className="h-full bg-[#39FF14] shadow-[0_0_10px_#39FF14]"
                 initial={{ width: 0 }}
                 animate={{ width: "100%" }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
             />
         </div>
     </div>

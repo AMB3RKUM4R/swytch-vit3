@@ -1,80 +1,100 @@
-// src/lib/types.ts
 import { Timestamp, FieldValue } from 'firebase/firestore';
 
-export type MembershipTier = 'ecosystem' | 'gamers' | 'gold' | 'none';
-export const MEMBERSHIP_TIERS = {
-  ecosystem: {level: 1, name: 'Ecosystem Explorer', usdAmount: 10, contentRoute: '/ecosystem-content'},
-  gamers: {level: 2, name: 'Gamer Elite', usdAmount: 25, contentRoute: '/gamers-content'},
-  gold: {level: 3, name: 'Gold Sovereign', usdAmount: 100, contentRoute: '/gold-content'},
-} as const;
+export type TransactionType = 'deposit' | 'withdraw' | 'item-purchase' | 'membership' | 'game-reward' | 'quest-reward';
+export type SupportedCurrency = 'USD' | 'INR' | 'ETH' | 'JOULES';
+export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'success';
 
-export type SupportedCurrency = 'ETH' | 'JOULES' | 'USDT' | 'INR';
-export type TransactionType = 'membership' | 'deposit' | 'withdraw' | 'level-purchase' | 'quest-reward' | 'payout' | 'connect' | 'disconnect' | 'item-purchase' | 'item-sale' | 'crypto-swap' | 'ad_reward' | 'loot_drop' | 'game_reward';
-export type TransactionStatus = 'success' | 'pending' | 'failed' | 'approved' | 'completed' | 'rejected' | 'withdrawal_processing' | 'withdrawal_pending' | 'withdrawal_failed';
+// FIX: Updated Rarity to match the new system (S-Rank, etc.)
+export type Rarity = 'E-Rank' | 'D-Rank' | 'C-Rank' | 'B-Rank' | 'A-Rank' | 'S-Rank' | 'Common' | 'Rare' | 'Legendary' | 'System_Admin';
+
+// FIX: Updated Membership Types
+export type MembershipTier = 'none' | 'ecosystem' | 'lifetime';
+
+export interface PlayerData {
+  userId: string;
+  username: string;
+  email: string;
+  profilePictureUrl?: string;
+  joules: number;
+  gold: number;
+  level: number;
+  xp: number;
+  energy: number;
+  mana: number;
+  // FIX: Allow lifetime membership string
+  membership: MembershipTier; 
+  isPETMember: boolean;
+  inventory: {
+    items: Record<string, InventoryItem>;
+    equipped: {
+      weapon?: string;
+      armor?: string;
+    };
+  };
+  character: {
+    selectedID: string;
+    unlocked: string[];
+  };
+  walletAddress?: string;
+  stats: Record<string, number>;
+  achievements: string[];
+  createdAt: Timestamp | FieldValue;
+  updatedAt: Timestamp | FieldValue;
+  lastActive: Timestamp | FieldValue;
+  isAdmin?: boolean;
+}
 
 export interface InventoryItem {
   itemId: string;
-  acquiredAt: Timestamp | FieldValue;
+  obtainedAt: Timestamp;
   isListed?: boolean;
+  listingPrice?: string;
+  instanceId?: string; // Optional for UI mapping
 }
 
 export interface ItemDefinition {
   id: string;
   itemName: string;
-  itemType: 'weapon' | 'armor' | 'consumable' | 'character_skin' | 'title';
-  rarity: 'E-Rank' | 'D-Rank' | 'C-Rank' | 'B-Rank' | 'A-Rank' | 'S-Rank';
+  itemType: 'weapon' | 'armor' | 'consumable' | 'artifact' | 'yield_boost' | 'insurance' | 'access_key' | 'cosmetic';
+  rarity: Rarity;
   description: string;
-  levelRequirement?: number;
-  stats?: { [key: string]: number };
-  // CRITICAL: This structure matches what InventoryItemCard.tsx expects
-  visuals?: { 
-      prefabName: string; 
-      iconName: string; // This holds the path e.g., "/items/weapons/pickaxe_d.png"
+  levelRequirement: number;
+  stats?: Record<string, number>;
+  visuals: {
+    prefabName?: string;
+    iconName?: string; // FIX: Added iconName
+    iconPath?: string; // Legacy support
   };
-  price?: { [key in SupportedCurrency]?: number } & { USD?: number };
-}
-
-export interface PlayerData {
-  userId: string;
-  username: string;
-  email: string | null;
-  phoneNumber: string | null;
-  joules: number;
-  gold: number;
-  level: number;
-  xp: number;
-  isPETMember: boolean;
-  membership: MembershipTier;
-  walletAddress: string | null;
-  createdAt: Timestamp | FieldValue;
-  updatedAt: Timestamp | FieldValue;
-  energy: number;
-  mana: number;
-  character: { selectedID: string; skin: string; } | null;
-  inventory: {
-    equipped: { weapon: string | null; armor: string | null; };
-    items: { [instanceId: string]: InventoryItem; };
-  } | null;
-  profilePictureUrl?: string | null;
-  session: {
-    webToken: string | null;
-    webTokenCreatedAt: Timestamp | FieldValue | null;
-  }
+  price: {
+    gold?: number;
+    usd?: number;    // FIX: lowercase usd
+    eth?: number;
+    joules?: number; // FIX: added joules
+  };
 }
 
 export interface Transaction {
-  id?: string;
-  transactionId: string;
+  id: string;
+  transactionId?: string;
   userId: string;
   amount: number;
-  currency: SupportedCurrency | 'USD' | 'INR';
+  currency: SupportedCurrency;
   transactionType: TransactionType;
   status: TransactionStatus;
   timestamp: Timestamp | FieldValue;
-  itemId?: string | null;
-  paymentGatewayId?: string | null;
-  smartContractAddress?: string;
-  transactionHash?: `0x${string}`;
+  itemId?: string;
+  paymentGatewayId?: string;
+  transactionHash?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  username: string;
+  profilePictureUrl?: string | null;
+  text: string;
+  // FIX: Allow null for local bot messages
+  timestamp: Timestamp | FieldValue | null; 
 }
 
 export interface Quest {
@@ -87,62 +107,40 @@ export interface Quest {
   completed: boolean;
 }
 
-export interface ChatMessage {
-  id?: string;
-  userId: string;
-  username: string;
-  profilePictureUrl: string | null;
-  text: string;
-  timestamp: Timestamp | FieldValue;
-  // Optional attachment for Rich Chat
-  attachment?: {
-      type: 'game' | 'item' | 'avatar' | 'arena';
-      id: string;
-      title: string;
-      image?: string;
-  };
-}
-
-// COMPONENT PROPS
-export interface ListForSaleModalProps {
-  itemDefinition: ItemDefinition;
-  itemInstance: InventoryItem;
-  instanceId: string;
-  onClose: () => void;
-  onSuccess: (instanceId: string) => void;
-}
-
-export interface UserInventoryDisplayProps { 
-    playerData: PlayerData | null;
-    userId: string | null;
-    onListForSale: (instance: InventoryItem, definition: ItemDefinition, instanceId: string) => void;
-}
-
-export interface AuthModalProps {
-  setShowMessage: (message: string) => void;
-}
-
 export interface LoadingSpinnerProps {
-  message?: string; fullScreen?: boolean;
+  message?: string;
+  fullScreen?: boolean;
 }
 
 export interface SwytchErrorBoundaryProps {
   children: React.ReactNode;
-  setShowMessage: React.Dispatch<React.SetStateAction<string>>;
-  setActiveModal: React.Dispatch<React.SetStateAction<string | null>>;
+  setShowMessage: (msg: string) => void;
+  setActiveModal: (modal: any) => void;
 }
 
 export interface VaultWalletInfoProps {
   isConnected: boolean;
-  address: `0x${string}` | undefined;
-  chainId: number | undefined;
-  ensName: string | null;
-  blockNumber: bigint | null;
-  gasPrice: bigint | undefined;
-  usdtBalance: {
-    formatted: string;
-    value: bigint;
-    symbol: string;
-    decimals: number;
-  } | undefined;
+  address?: string;
+  chainId?: number;
+  blockNumber?: bigint | null;
+  gasPrice?: bigint;
+  usdtBalance?: { formatted: string; symbol: string; value: bigint };
+  ensName?: string | null;
 }
+
+export interface UserInventoryDisplayProps {
+  playerData: PlayerData | null;
+  onListForSale: (instance: InventoryItem, def: ItemDefinition, instanceId: string) => void;
+}
+
+export interface ListForSaleModalProps {
+  itemDefinition: ItemDefinition;
+  instanceId: string;
+  onClose: () => void;
+  onSuccess: (id: string) => void;
+}
+
+export const MEMBERSHIP_TIERS: Record<string, { name: string; usdAmount: number }> = {
+  ecosystem: { name: 'Ecosystem Member', usdAmount: 9.99 },
+  lifetime: { name: 'Lifetime Elite', usdAmount: 29.99 },
+};

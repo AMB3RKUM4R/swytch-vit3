@@ -42,24 +42,28 @@ const QuestsPanel: FC = () => {
     }, [userId, logTransaction, setShowMessage]);
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-2 font-mono">
             {quests.map((quest) => {
                 const isClaimed = quest.completed;
                 return (
-                    <div key={quest.id} className="p-3 bg-white/5 border border-white/10 flex items-center justify-between group hover:border-primary/50 transition-colors">
+                    <div key={quest.id} className="p-3 bg-black border border-gray-800 flex items-center justify-between group hover:border-[#39FF14] transition-colors">
                         <div>
-                            <h3 className="text-xs font-bold text-white uppercase">{quest.title}</h3>
+                            <h3 className="text-[10px] font-bold text-white uppercase tracking-wider">{quest.title}</h3>
                             <p className="text-[10px] text-gray-500 font-mono mt-1 flex items-center gap-2">
-                                <Zap className="w-3 h-3 text-yellow-400" /> {quest.rewardJOULES} JOULES
+                                <Zap className="w-3 h-3 text-[#39FF14]" /> {quest.rewardJOULES} JOULES
                             </p>
                         </div>
                         
                         <button 
                             onClick={() => !isClaimed && handleClaimReward(quest)}
                             disabled={isClaimed || claimingId === quest.id}
-                            className={`text-[10px] px-3 py-1 font-bold uppercase border ${isClaimed ? 'border-green-600 text-green-600' : 'border-white/20 text-white hover:bg-white/10'}`}
+                            className={`text-[10px] px-3 py-1 font-bold uppercase border transition-all ${
+                                isClaimed 
+                                ? 'border-gray-800 text-gray-600 cursor-not-allowed' 
+                                : 'border-[#39FF14] text-[#39FF14] hover:bg-[#39FF14] hover:text-black'
+                            }`}
                         >
-                            {isClaimed ? 'COMPLETED' : (claimingId === quest.id ? 'CLAIMING...' : 'CLAIM')}
+                            {isClaimed ? 'COMPLETED' : (claimingId === quest.id ? '...' : 'CLAIM')}
                         </button>
                     </div>
                 );

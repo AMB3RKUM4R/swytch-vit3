@@ -11,6 +11,7 @@ import { ModalProvider } from './components/context/ModalContext';
 import { ThemeProvider } from './components/context/ThemeContext';
 import { PlayerProvider } from './components/context/PlayerContext';
 import { WebGLProvider } from './components/context/WebglContext'; 
+import GlobalCanvas from './components/canvas/GlobalCanvas'; // The 3D Background
 
 // Config & App
 import { wagmiConfig } from './lib/wagmi';
@@ -20,7 +21,6 @@ import App from './App';
 import '@rainbow-me/rainbowkit/styles.css';
 import './index.css';
 
-// React Query
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -32,7 +32,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// PayPal (Sandbox defaults used if ENV is missing)
 const paypalOptions = {
   clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID || "sb",
   currency: "USD",
@@ -47,9 +46,9 @@ const Root = () => (
         <WagmiProvider config={wagmiConfig}>
           <RainbowKitProvider 
             theme={darkTheme({
-              accentColor: '#00D4FF',
+              accentColor: '#39FF14', // NEON GREEN
               accentColorForeground: '#000',
-              borderRadius: 'large',
+              borderRadius: 'none', 
               overlayBlur: 'small',
             })}
           >
@@ -57,8 +56,9 @@ const Root = () => (
               <ThemeProvider>
                 <ModalProvider>
                   <PlayerProvider>
-                    {/* CRITICAL: WebGLProvider MUST wrap the App component to manage the game launch state */}
                     <WebGLProvider>
+                      {/* Renders the R3F Background Scene behind everything */}
+                      <GlobalCanvas /> 
                       <App />
                     </WebGLProvider>
                   </PlayerProvider>

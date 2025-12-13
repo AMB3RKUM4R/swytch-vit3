@@ -7,7 +7,7 @@
 
 @layer base {
   :root {
-    /* RAZOR THEME */
+    /* NEON EMPIRE THEME */
     --background: 0 0% 0%; 
     --foreground: 0 0% 95%; 
     
@@ -17,7 +17,8 @@
     --popover: 0 0% 0%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 135 100% 50%; /* #00FF41 */
+    /* NEON GREEN #39FF14 */
+    --primary: 111 100% 54%; 
     --primary-foreground: 0 0% 0%; 
 
     --secondary: 0 0% 12%; 
@@ -31,7 +32,7 @@
 
     --border: 0 0% 20%; 
     --input: 0 0% 15%; 
-    --ring: 135 100% 50%; 
+    --ring: 111 100% 54%; 
     --radius: 0.0rem; 
   }
 
@@ -42,8 +43,10 @@
   html, body {
     @apply min-h-screen font-inter text-foreground antialiased;
     background-color: black;
-    background-image: linear-gradient(to right, #111 1px, transparent 1px),
-                      linear-gradient(to bottom, #111 1px, transparent 1px);
+    /* Optional: Subtle grid overlay */
+    background-image: 
+        linear-gradient(rgba(18, 18, 18, 0.5) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(18, 18, 18, 0.5) 1px, transparent 1px);
     background-size: 40px 40px;
     overflow-x: hidden;
   }
@@ -56,26 +59,27 @@
 
   /* --- RAZOR SCROLLBARS --- */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
   
   ::-webkit-scrollbar-track {
-    background: #1a1a1a; /* Dark Grey Track */
-    border-left: 1px solid #333;
+    background: #000; 
+    border-left: 1px solid #111;
   }
   
   ::-webkit-scrollbar-thumb {
-    background: var(--primary); /* Neon Green Thumb */
+    background: #39FF14; 
     border-radius: 0;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #00cc33; /* Slightly darker green on hover */
-    box-shadow: 0 0 10px var(--primary); /* Glow effect */
+    background: #32D412; 
+    box-shadow: 0 0 10px #39FF14; 
   }
+}
 
-  /* Utility to hide scrollbar but keep functionality */
+@layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -83,16 +87,20 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  
+  .text-glow-primary { 
+    text-shadow: 0 0 10px #39FF14; 
+  }
 }
 
 @layer components {
-  .card { @apply bg-card text-card-foreground p-0 rounded-none border border-white/10; }
+  .card { @apply bg-black text-white p-0 rounded-none border border-white/10; }
   
   .btn-primary {
     @apply inline-flex items-center justify-center whitespace-nowrap rounded-none text-sm font-bold uppercase tracking-wider
            transition-all duration-200
-           bg-primary text-black border border-primary
-           hover:bg-black hover:text-primary hover:shadow-[0_0_15px_rgba(0,255,65,0.4)]
+           bg-[#39FF14] text-black border border-[#39FF14]
+           hover:bg-white hover:text-black hover:shadow-[0_0_20px_rgba(57,255,20,0.4)]
            h-12 px-6 py-3;
   }
 
@@ -100,7 +108,7 @@
      @apply inline-flex items-center justify-center whitespace-nowrap rounded-none text-sm font-bold uppercase tracking-wider
            transition-colors
            border border-white/20 bg-black text-white
-           hover:bg-white/10
+           hover:bg-white hover:text-black
            h-12 px-6 py-3;
   }
 
@@ -112,9 +120,6 @@
   
   .input {
     @apply flex h-12 w-full rounded-none border border-white/20 bg-black px-4 py-2 text-sm text-white
-           placeholder:text-gray-600 focus-visible:outline-none focus-visible:border-primary;
+           placeholder:text-gray-600 focus-visible:outline-none focus-visible:border-[#39FF14];
   }
-
-  .glass-dark { @apply bg-black/90 border-l border-white/10 backdrop-blur-md; }
-  .text-glow-primary { text-shadow: 0 0 10px rgba(0, 255, 65, 0.5); }
 }

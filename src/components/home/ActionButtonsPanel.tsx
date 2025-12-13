@@ -23,15 +23,15 @@ const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({ handleShareOnX }) => 
   };
 
   return (
-    <div className="bg-black border border-white/10 p-6 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-      <h2 className="text-xl font-bold text-center mb-6 font-russo flex items-center justify-center gap-2 text-white uppercase tracking-wider">
-        <Zap className="w-5 h-5 text-primary" /> Logistics Terminal
+    <div className="bg-black border border-gray-800 p-6 shadow-[0_0_20px_rgba(0,0,0,0.5)] font-mono">
+      <h2 className="text-sm font-black text-center mb-6 text-white uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+        <Zap className="w-4 h-4 text-[#39FF14]" /> Logistics Terminal
       </h2>
       <div className="grid grid-cols-2 gap-4">
         
         {/* Deposit */}
         <motion.button 
-          className="btn-primary flex items-center justify-center text-[10px] md:text-xs" 
+          className="h-12 border border-[#39FF14] text-[#39FF14] font-bold text-[10px] md:text-xs uppercase hover:bg-[#39FF14] hover:text-black transition-colors flex items-center justify-center" 
           onClick={() => { if (handleRestrictedAction('deposit assets')) setActiveModal('payment'); }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -41,7 +41,7 @@ const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({ handleShareOnX }) => 
         
         {/* Withdraw */}
         <motion.button 
-          className="btn-destructive flex items-center justify-center text-[10px] md:text-xs"
+          className="h-12 border border-red-500 text-red-500 font-bold text-[10px] md:text-xs uppercase hover:bg-red-500 hover:text-black transition-colors flex items-center justify-center"
           onClick={() => { 
             if (handleRestrictedAction('withdraw energy')) setActiveModal('withdraw'); 
           }}
@@ -51,11 +51,11 @@ const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({ handleShareOnX }) => 
           <ArrowDownCircle className="w-4 h-4 mr-2" /> EXTRACT
         </motion.button>
         
-        {/* Sentinel Terminal */}
+        {/* Sentinels */}
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
           <Link 
             to="/sentinels" 
-            className="btn-secondary w-full flex items-center justify-center text-[10px] md:text-xs" 
+            className="h-12 w-full border border-gray-700 text-white font-bold text-[10px] md:text-xs uppercase hover:bg-white hover:text-black transition-colors flex items-center justify-center" 
             onClick={(e) => {
               if (!handleRestrictedAction('access Sentinels', null)) e.preventDefault();
             }}
@@ -64,9 +64,9 @@ const ActionButtonsPanel: FC<ActionButtonsPanelProps> = ({ handleShareOnX }) => 
           </Link>
         </motion.div>
         
-        {/* Share Button */}
+        {/* Broadcast */}
         <motion.button 
-          className="btn-secondary flex items-center justify-center text-[10px] md:text-xs" 
+          className="h-12 border border-blue-500 text-blue-500 font-bold text-[10px] md:text-xs uppercase hover:bg-blue-500 hover:text-white transition-colors flex items-center justify-center" 
           onClick={handleShareOnX}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}

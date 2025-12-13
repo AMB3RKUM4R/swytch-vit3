@@ -4,48 +4,30 @@ import { motion } from 'framer-motion';
 import { Star, Gem, Shield, Zap } from 'lucide-react';
 import SwytchCard from '../SwytchCard';
 
-// This component is purely presentational and requires no props
-
 const benefits = [
-  {
-    icon: Star,
-    title: 'Exclusive Access',
-    description: 'Unlock members-only features and content.',
-  },
-  {
-    icon: Gem,
-    title: 'Bonus Rewards',
-    description: 'Earn more JOULES from quests and activities.',
-  },
-  {
-    icon: Shield,
-    title: 'Priority Support',
-    description: 'Receive expedited assistance from our support team.',
-  },
-  {
-    icon: Zap,
-    title: 'Enhanced Energy',
-    description: 'Boost your in-game energy regeneration and caps.',
-  },
+  { icon: Star, title: 'Exclusive Access', description: 'Unlock members-only features.' },
+  { icon: Gem, title: 'Bonus Rewards', description: 'Earn more JOULES from quests.' },
+  { icon: Shield, title: 'Priority Support', description: 'Expedited assistance channel.' },
+  { icon: Zap, title: 'Enhanced Energy', description: 'Boost your energy regeneration.' },
 ];
 
 const VaultMembershipBenefits: FC = () => {
   return (
-    <SwytchCard variant="holographic" className="p-6">
-      <h2 className="text-2xl font-bold text-foreground font-poppins mb-4 text-center flex items-center justify-center gap-2">
-        <Star className="w-7 h-7 text-primary" /> Membership Benefits
+    <SwytchCard className="p-6 border-gray-800">
+      <h2 className="text-xl font-black italic text-white mb-4 text-center flex items-center justify-center gap-2 uppercase tracking-tighter">
+        <Star className="w-5 h-5 text-[#39FF14]" /> Member Protocols
       </h2>
-      <p className="text-lg text-muted-foreground text-center mb-6 font-inter">
-        Discover the advantages of being a PETverse Member!
+      <p className="text-xs text-gray-500 text-center mb-6 font-mono uppercase">
+        ADVANTAGES OF ELITE STATUS
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {benefits.map((benefit, index) => (
-          <motion.div key={index} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-            <div className="bg-black/20 p-6 rounded-lg border border-border text-center h-full flex flex-col items-center justify-center">
-              <benefit.icon className="w-10 h-10 text-primary mb-4" />
-              <h3 className="text-xl font-semibold text-foreground mb-2 font-poppins">{benefit.title}</h3>
-              <p className="text-sm text-muted-foreground font-inter">{benefit.description}</p>
+          <motion.div key={index} whileHover={{ y: -3 }}>
+            <div className="bg-black p-4 border border-gray-800 hover:border-[#39FF14] transition-colors text-center h-full flex flex-col items-center justify-center group">
+              <benefit.icon className="w-8 h-8 text-gray-600 group-hover:text-[#39FF14] mb-3 transition-colors" />
+              <h3 className="text-sm font-bold text-white mb-1 uppercase tracking-wide">{benefit.title}</h3>
+              <p className="text-[10px] text-gray-500 font-mono uppercase">{benefit.description}</p>
             </div>
           </motion.div>
         ))}

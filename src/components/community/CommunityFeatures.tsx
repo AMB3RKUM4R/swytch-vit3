@@ -1,4 +1,3 @@
-// src/components/community/CommunityFeatures.tsx
 import { FC, ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Trophy, ShieldCheck, Lightbulb } from 'lucide-react';
@@ -14,24 +13,24 @@ interface FeatureItem {
 
 const features: FeatureItem[] = [
   {
-    icon: <MessageSquare className="w-10 h-10 text-primary" />,
-    title: 'Live Chat & Forums',
-    description: 'Engage in real-time discussions and share insights with other players.',
+    icon: <MessageSquare className="w-8 h-8 text-[#39FF14]" />,
+    title: 'Live Comms',
+    description: 'Real-time encrypted chat channels.',
   },
   {
-    icon: <Trophy className="w-10 h-10 text-yellow-400" />,
-    title: 'Leaderboards & Rankings',
-    description: 'Compete for top spots and see where you stand among the PETverse elite.',
+    icon: <Trophy className="w-8 h-8 text-yellow-500" />,
+    title: 'Rankings',
+    description: 'Compete for top global operator status.',
   },
   {
-    icon: <ShieldCheck className="w-10 h-10 text-green-400" />,
-    title: 'Community Governance',
-    description: 'Vote on important decisions and shape the future of the PETverse ecosystem.',
+    icon: <ShieldCheck className="w-8 h-8 text-white" />,
+    title: 'Governance',
+    description: 'Vote on decentralized protocol decisions.',
   },
   {
-    icon: <Lightbulb className="w-10 h-10 text-purple-400" />,
-    title: 'Idea Sharing',
-    description: 'Propose new game features, items, and improvements directly to the developers.',
+    icon: <Lightbulb className="w-8 h-8 text-purple-500" />,
+    title: 'Intel Share',
+    description: 'Propose new features and strategies.',
   },
 ];
 
@@ -41,25 +40,26 @@ const CommunityFeatures: FC = () => {
 
   const handleFeatureClick = (title: string) => {
     if (!userId) {
-      setShowMessage('⚠️ Sign in to explore community features!');
+      setShowMessage('⚠️ LOGIN REQUIRED');
       setActiveModal('auth');
       return;
     }
-    setShowMessage(`Exploring: ${title}!`);
+    setShowMessage(`ACCESSING: ${title.toUpperCase()}`);
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono">
       {features.map((feature, index) => (
-        <motion.div key={index} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
+        <motion.div key={index} whileHover={{ y: -3 }}>
           <SwytchCard
-            variant="default"
-            className="p-6 text-center h-full flex flex-col items-center justify-center cursor-pointer"
+            className="p-6 text-center h-full flex flex-col items-center justify-center cursor-pointer border-gray-800 hover:border-[#39FF14] transition-colors group"
             onClick={() => handleFeatureClick(feature.title)}
           >
-            {feature.icon}
-            <h3 className="text-xl font-semibold text-foreground mt-4 font-poppins">{feature.title}</h3>
-            <p className="text-sm text-muted-foreground mt-2 font-inter">{feature.description}</p>
+            <div className="mb-4 transition-transform group-hover:scale-110 duration-300">
+                {feature.icon}
+            </div>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2 group-hover:text-[#39FF14] transition-colors">{feature.title}</h3>
+            <p className="text-[10px] text-gray-500 uppercase">{feature.description}</p>
           </SwytchCard>
         </motion.div>
       ))}

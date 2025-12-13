@@ -1,257 +1,146 @@
-// src/components/context/PlayerContext.tsx
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
-import { User } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, addDoc, collection, serverTimestamp, setDoc, Timestamp, FieldValue } from 'firebase/firestore';
-import { db } from '@/lib/firebaseConfig';
-import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase';
+import { createContext, useContext, useState, useEffect, ReactNode, FC } from 'react';
 import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi';
-import { PlayerData, Transaction } from '@/lib/types';
-import { useNavigate } from 'react-router-dom';
+import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase';
+import { PlayerData, Transaction } from '@/lib/types'; 
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebaseConfig';
 
-// 1. DEFINE THE SHAPE OF THE CONTEXT
 interface PlayerContextType {
-  // Auth State
-  firebaseUser: User | null;
-  wagmiAddress: `0x${string}` | undefined;
   userId: string | null;
-  idToken: string | null; 
-  authLoading: boolean;
-  authError: string | null; 
-  initialAuthCheckComplete: boolean;
-
-  // Player Data State
   playerData: PlayerData | null;
-  isPETMember: boolean;
-  setIsPETMember: React.Dispatch<React.SetStateAction<boolean>>;
   joulesBalance: number;
   goldBalance: number;
   currentLevel: number;
-  dataLoading: boolean;
-
-  // Core Functions
-  updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
-  logTransaction: (txData: Omit<Transaction, 'id' | 'timestamp'>) => Promise<void>;
-  updatePlayerCharacter: (avatarId: string) => Promise<void>; 
-
-  // Auth Functions
-  signInWithGoogle: () => Promise<void>;
-  signOutUser: () => Promise<void>;
-  registerWithEmail: (email: string, password: string) => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  sendPasswordReset: (email: string) => Promise<void>;
-  isAuthenticated: () => boolean;
+  isPETMember: boolean;
   isAdmin: () => boolean;
+  dataLoading: boolean;
+  authLoading: boolean;
+  idToken: string; // Kept for compatibility if used elsewhere, currently empty
+  updatePlayerCharacter: (charId: string) => Promise<void>;
+  updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
+  logTransaction: (tx: Partial<Transaction>) => Promise<void>;
 }
 
-// 2. CREATE THE CONTEXT
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
-const createNewPlayerData = (user: User, walletAddress: `0x${string}` | undefined): PlayerData => {
-    const now = Timestamp.now();
-    return {
-        userId: user.uid,
-        username: user.displayName || user.email?.split('@')[0] || `Hunter${Math.floor(1000 + Math.random() * 9000)}`,
-        email: user.email,
-        phoneNumber: user.phoneNumber || null,
-        joules: 0,
-        gold: 0,
-        level: 1,
-        xp: 0,
-        energy: 100,
-        mana: 100,
-        isPETMember: true,
-        membership: 'ecosystem',
-        walletAddress: walletAddress || null,
-        
-        // FIX 1: Match the default object from AuthManager.cs
-        character: { 
-          selectedID: "Hunter", 
-          skin: "default" 
-        },
-        // FIX 2: Match the default object from AuthManager.cs
-        inventory: { 
-          equipped: { weapon: null, armor: null }, 
-          items: {} 
-        },
-        
-        createdAt: now as Timestamp,
-        updatedAt: now as Timestamp,
-        profilePictureUrl: '',
-
-        // FIX 3: Add the session map
-        session: {
-          webToken: null,
-          webTokenCreatedAt: null
-        }
-    };
-};
-
-// 3. CREATE THE PROVIDER
-export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const navigate = useNavigate();
-
-  // --- AUTH LOGIC ---
-  const { address: wagmiAddress, disconnect: disconnectWagmi } = useAuthUserWagmi();
+export const PlayerProvider: FC<{ children: ReactNode }> = ({ children }) => {
+  const { address } = useAuthUserWagmi();
+  const { user, loading: authLoading, isAdmin } = useAuthUserFirebase({});
   
-  const { 
-    user: firebaseUser, 
-    loading: firebaseLoading,
-    error: authError,
-    signInWithGoogle,
-    signOutUser,
-    registerWithEmail,
-    signInWithEmail,
-    sendPasswordReset,
-    isAuthenticated,
-    isAdmin,
-  } = useAuthUserFirebase({ disconnectWagmi });
-
-  const userId = firebaseUser?.uid || null;
-
-  // --- ID TOKEN STATE (NEW) ---
-  const [idToken, setIdToken] = useState<string | null>(null);
-  
-  useEffect(() => {
-    if (firebaseUser) {
-        // Fetch the ID token whenever the user object changes
-        firebaseUser.getIdToken().then(token => {
-            setIdToken(token);
-        }).catch(err => {
-            console.error("Failed to fetch ID token:", err);
-            setIdToken(null);
-        });
-    } else {
-        setIdToken(null);
-    }
-  }, [firebaseUser]);
-  // --- END OF ID TOKEN STATE ---
-
-
-  // --- DATA FETCHING LOGIC ---
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
-  const [isPETMember, setIsPETMember] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
-  const [initialAuthCheckComplete, setInitialAuthCheckComplete] = useState(false);
 
+  // Sync Firebase User to Firestore Player Document
   useEffect(() => {
-    if (firebaseLoading) {
-      return; 
-    }
-    
-    if (!userId) {
-      setPlayerData(null);
-      setIsPETMember(false);
-      setDataLoading(false);
-      setInitialAuthCheckComplete(true);
-      return;
-    }
+    let unsubscribe: () => void;
 
-    setDataLoading(true);
-    const playerRef = doc(db, 'Players', userId);
-    const unsubscribe = onSnapshot(playerRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as PlayerData;
-        setPlayerData(data);
-        setIsPETMember(data.isPETMember || false);
-        if (window.location.pathname === '/') {
-            navigate('/home');
+    const syncPlayer = async () => {
+      if (user) {
+        const userRef = doc(db, 'Players', user.uid);
+        const snapshot = await getDoc(userRef);
+
+        if (!snapshot.exists()) {
+          // Initialize New Player with strict Type compliance
+          const newPlayer: PlayerData = {
+            userId: user.uid,
+            username: user.displayName || `OP-${user.uid.slice(0, 4)}`,
+            email: user.email || "unknown@void.net", // FIX: Fallback
+            profilePictureUrl: user.photoURL || undefined,
+            joules: 0,
+            gold: 0,
+            level: 1,
+            xp: 0,
+            energy: 100,
+            mana: 100,
+            membership: 'none',
+            isPETMember: false,
+            inventory: { 
+                items: {}, 
+                equipped: {} // FIX: Empty object is valid
+            },
+            character: { selectedID: "cyber_samurai", unlocked: ["cyber_samurai"] }, // FIX: Removed skin
+            walletAddress: address || undefined, // FIX: Undefined if null
+            stats: {},
+            achievements: [],
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastActive: serverTimestamp(),
+          };
+          await setDoc(userRef, newPlayer);
+        } else {
+            // Update Wallet if changed
+            if (address && snapshot.data().walletAddress !== address) {
+                await updateDoc(userRef, { walletAddress: address });
+            }
         }
+
+        // Realtime Listener
+        unsubscribe = onSnapshot(userRef, (doc) => {
+          if (doc.exists()) {
+            setPlayerData(doc.data() as PlayerData);
+          }
+          setDataLoading(false);
+        });
       } else {
-        if (firebaseUser) {
-            // This case should be rare, but handles Firestore doc deletion
-            const newPlayerData = createNewPlayerData(firebaseUser, wagmiAddress);
-            setDoc(playerRef, newPlayerData);
-            // setPlayerData will be updated by the next snapshot event
-        }
+        setPlayerData(null);
+        setDataLoading(false);
       }
-      setDataLoading(false);
-      setInitialAuthCheckComplete(true);
-    }, (error) => {
-      console.error("Firestore snapshot error:", error); 
-      setDataLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-  }, [userId, firebaseUser, wagmiAddress, firebaseLoading, navigate]);
-
-  // --- CORE FUNCTIONS ---
-  const updatePlayerFirestore = useCallback(async (updates: Partial<PlayerData>) => {
-    if (!userId) return;
-    // Use FieldValue.serverTimestamp() for updatedAt, as defined in types.ts
-    await updateDoc(doc(db, 'Players', userId), { ...updates, updatedAt: serverTimestamp() as FieldValue });
-  }, [userId]);
-
-  const logTransaction = useCallback(async (txData: Omit<Transaction, 'id' | 'timestamp'>) => {
-    if (!userId) return;
-    await addDoc(collection(db, 'Transactions'), { 
-      ...txData, 
-      timestamp: serverTimestamp() as FieldValue 
-    });
-  }, [userId]);
-
-  const updatePlayerCharacter = useCallback(async (avatarId: string) => {
-    if (!userId) {
-      console.error("No user logged in to update character.");
-      throw new Error("User not authenticated");
+    if (!authLoading) {
+      syncPlayer();
     }
-    
-    const playerRef = doc(db, 'Players', userId);
-    await updateDoc(playerRef, {
-      'character.selectedID': avatarId,
-      'updatedAt': serverTimestamp()
-    });
-  }, [userId]); 
 
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user, authLoading, address]);
 
-  // --- FINAL CONTEXT VALUE ---
-  const value = useMemo(() => ({
-    // Auth State
-    firebaseUser,
-    wagmiAddress,
-    userId: userId ?? null,
-    idToken,
-    authLoading: firebaseLoading,
-    authError: authError, 
-    initialAuthCheckComplete,
+  const updatePlayerCharacter = async (charId: string) => {
+      if(!user) return;
+      const userRef = doc(db, 'Players', user.uid);
+      await updateDoc(userRef, {
+          "character.selectedID": charId
+      });
+  }
 
-    // Player Data State
-    playerData,
-    isPETMember,
-    setIsPETMember, 
-    joulesBalance: playerData?.joules ?? 0,
-    goldBalance: playerData?.gold ?? 0,
-    currentLevel: playerData?.level ?? 0,
-    dataLoading,
+  const updatePlayerFirestore = async (updates: Partial<PlayerData>) => {
+      if(!user) return;
+      const userRef = doc(db, 'Players', user.uid);
+      await updateDoc(userRef, updates);
+  }
 
-    // Core Functions
-    updatePlayerFirestore,
-    logTransaction,
-    updatePlayerCharacter, 
-    
-    // Auth Functions
-    signInWithGoogle,
-    signOutUser,
-    registerWithEmail,
-    signInWithEmail,
-    sendPasswordReset,
-    isAuthenticated,
-    isAdmin,
-  }), [
-    firebaseUser, wagmiAddress, userId, idToken, firebaseLoading, authError, initialAuthCheckComplete,
-    playerData, isPETMember, setIsPETMember, dataLoading,
-    updatePlayerFirestore, logTransaction, updatePlayerCharacter, 
-    signInWithGoogle, signOutUser, registerWithEmail, signInWithEmail, sendPasswordReset, isAuthenticated, isAdmin
-  ]);
+  const logTransaction = async (tx: Partial<Transaction>) => {
+      if(!user) return;
+      await addDoc(collection(db, 'Transactions'), {
+          ...tx,
+          userId: user.uid,
+          timestamp: serverTimestamp()
+      });
+  }
 
   return (
-    <PlayerContext.Provider value={value}>
+    <PlayerContext.Provider value={{
+      userId: user ? user.uid : null,
+      playerData,
+      joulesBalance: playerData?.joules || 0,
+      goldBalance: playerData?.gold || 0,
+      currentLevel: playerData?.level || 1,
+      isPETMember: playerData?.isPETMember || false,
+      isAdmin,
+      dataLoading,
+      authLoading,
+      idToken: "", // Placeholder if not strictly needed by current logic
+      updatePlayerCharacter,
+      updatePlayerFirestore,
+      logTransaction
+    }}>
       {children}
     </PlayerContext.Provider>
   );
 };
 
-// 4. Create the custom hook to use this context
-export const usePlayer = (): PlayerContextType => {
+export const usePlayer = () => {
   const context = useContext(PlayerContext);
   if (context === undefined) {
     throw new Error('usePlayer must be used within a PlayerProvider');

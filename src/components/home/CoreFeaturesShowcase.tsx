@@ -8,24 +8,24 @@ const CoreFeaturesShowcase: FC = () => {
 
   const features = [
     {
-      icon: <Gem className="w-8 h-8 text-primary" />,
-      title: 'TRUE OWNERSHIP',
-      description: 'Items minted as NFTs. Tradable. Permanent.',
+      icon: <Gem className="w-6 h-6 text-[#39FF14]" />,
+      title: 'Ownership',
+      description: 'Items minted on-chain. Permanent.',
     },
     {
-      icon: <DollarSign className="w-8 h-8 text-green-500" />,
-      title: 'CRYPTO ECONOMY',
-      description: 'Convert JOULES to Fiat/Crypto instantly.',
+      icon: <DollarSign className="w-6 h-6 text-yellow-500" />,
+      title: 'Economy',
+      description: 'Convert JOULES to liquid assets.',
     },
     {
-      icon: <Lock className="w-8 h-8 text-red-500" />,
-      title: 'SECURE PROTOCOL',
-      description: 'Blockchain-backed security ensures fair play.',
+      icon: <Lock className="w-6 h-6 text-white" />,
+      title: 'Security',
+      description: 'Blockchain-backed fairness.',
     },
     {
-      icon: <Zap className="w-8 h-8 text-yellow-500" />,
-      title: 'CROSS-GAME ASSETS',
-      description: 'One inventory across all simulated realities.',
+      icon: <Zap className="w-6 h-6 text-blue-500" />,
+      title: 'Unified',
+      description: 'One inventory. All realities.',
     },
   ];
 
@@ -34,27 +34,27 @@ const CoreFeaturesShowcase: FC = () => {
   };
 
   return (
-    <>
-      <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-3 font-russo mb-8 uppercase tracking-widest">
-        <Sparkles className="w-6 h-6 text-primary" /> SYSTEM PROTOCOLS
+    <div className="font-mono">
+      <h2 className="text-xl font-black italic text-white flex items-center justify-center gap-3 mb-8 uppercase tracking-tighter">
+        <Sparkles className="w-5 h-5 text-[#39FF14]" /> System Protocols
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {features.map((feature, index) => (
-          <motion.div key={index} whileHover={{ y: -5 }} whileTap={{ scale: 0.98 }}>
+          <motion.div key={index} whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}>
             <div
-              className="bg-black border border-white/10 p-6 h-full flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary/50 transition-colors group"
+              className="bg-black border border-gray-800 p-6 h-full flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#39FF14] transition-colors group"
               onClick={() => handleFeatureClick(feature.title)}
             >
-              <div className="mb-4 p-3 bg-white/5 rounded-none border border-white/10 group-hover:border-primary/30 transition-colors">
+              <div className="mb-4 p-3 bg-black border border-gray-800 rounded-sm group-hover:border-[#39FF14] transition-colors">
                   {feature.icon}
               </div>
-              <h3 className="text-lg font-bold text-white mb-2 font-russo uppercase">{feature.title}</h3>
-              <p className="text-xs text-gray-500 font-mono leading-relaxed">{feature.description}</p>
+              <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wide group-hover:text-[#39FF14] transition-colors">{feature.title}</h3>
+              <p className="text-[10px] text-gray-500 uppercase">{feature.description}</p>
             </div>
           </motion.div>
         ))}
       </div>
-    </>
+    </div>
   );
 };
 

@@ -14,14 +14,13 @@ import WithdrawModal from './components/WithdrawlModal';
 import TopNav from './components/TopNav'; 
 import BottomNav from './components/BottomNav'; 
 import SplashScreen from './components/SplashScreen'; 
-import UnityStage from './components/UnityStage';
 import CommunityChat from './components/community/CommunityChat'; 
 import CommunityRankings from './components/community/CommunityRankings';
 
 // Pages
-import LandingPage from './pages/LandingPage';
+import Home from './pages/Home'; // The Main Arcade
 import Customize from './pages/Customize';
-import { Vault } from './pages/Vault'; 
+import {Vault} from './pages/Vault'; 
 import Shop from './pages/Shop';
 import Inventory from './pages/Inventory';
 import AdminPage from './pages/AdminPage';
@@ -29,46 +28,44 @@ import AdminPage from './pages/AdminPage';
 const App: FC = () => {
   const { activeModal, setActiveModal, setShowMessage } = useModal(); 
   const { userId } = usePlayer();
-  const { activeGameId, setActiveGameId } = useWebGL(); 
+  const { activeGameId } = useWebGL(); // Used to hide navs when playing
   
   const [showSplash, setShowSplash] = useState(true);
+  
+  // Hide navigation if a game is currently active
   const showNav = !activeGameId;
 
-  // --- NEW: Handle Splash Screen Completion ---
   const handleSplashComplete = useCallback(() => {
     setShowSplash(false);
-    // If user is NOT logged in, open the Auth Modal immediately
     if (!userId) {
       setActiveModal('auth');
     }
   }, [setShowSplash, userId, setActiveModal]);
 
   return (
-    <div className="min-h-screen bg-black text-white font-inter overflow-hidden selection:bg-primary/30"> 
+    <div className="min-h-screen bg-transparent text-white font-inter overflow-hidden selection:bg-[#39FF14] selection:text-black"> 
       
-      {/* 1. SPLASH SCREEN (Gatekeeper) */}
+      {/* 1. SPLASH SCREEN */}
       <AnimatePresence>
         {showSplash && (
           <SplashScreen onComplete={handleSplashComplete} />
         )}
       </AnimatePresence>
 
-      <UnityStage activeGameId={activeGameId} setActiveGameId={setActiveGameId} /> 
-
-      <div className={`h-screen flex flex-col ${activeGameId ? 'hidden' : 'flex'}`}>
+      <div className={`h-screen flex flex-col ${activeGameId ? 'h-screen overflow-hidden' : 'flex'}`}>
          
-         {/* TOP NAV ALWAYS VISIBLE */}
+         {/* TOP NAV */}
          {showNav && <TopNav />}
 
          <div className="flex-grow flex overflow-hidden relative pt-[70px]">
              
-             {/* CENTER: FEED */}
-             <main className="flex-1 overflow-y-auto relative z-10 bg-black scrollbar-thin scrollbar-thumb-primary">
+             {/* CENTER CONTENT */}
+             <main className="flex-1 overflow-y-auto relative z-10 bg-transparent scrollbar-thin scrollbar-thumb-[#39FF14] scrollbar-track-black">
                  <div className="w-full h-full"> 
                      <AnimatePresence mode="wait">
                       <Routes>
-                        <Route path="/" element={<LandingPage />} />
-                        <Route path="/home" element={<LandingPage />} />
+                        <Route path="/" element={<Home />} />
+                        <Route path="/home" element={<Home />} />
                         
                         <Route path="/customize" element={userId ? <Customize /> : <Navigate to="/" />} />
                         <Route path="/vault" element={userId ? <Vault /> : <Navigate to="/" />} />
@@ -81,21 +78,21 @@ const App: FC = () => {
                  </div>
              </main>
 
-             {/* RIGHT: CHAT */}
-             <aside className="hidden xl:flex w-[380px] border-l border-white/10 bg-black/50 backdrop-blur-sm flex-col z-20 flex-shrink-0">
+             {/* RIGHT SIDEBAR (Chat & Ranks) */}
+             <aside className={`hidden xl:flex w-[350px] border-l border-white/10 bg-black/80 backdrop-blur-md flex-col z-20 flex-shrink-0 ${activeGameId ? 'hidden' : ''}`}>
                  <div className="h-1/2 flex flex-col border-b border-white/10">
-                    <div className="p-3 bg-white/5 border-b border-white/5 font-mono text-[10px] text-primary tracking-widest uppercase">
-                        // GLOBAL_CHAT_RELAY
+                    <div className="p-3 bg-black border-b border-white/5 font-mono text-[10px] text-[#39FF14] tracking-widest uppercase flex items-center gap-2">
+                        <span className="w-2 h-2 bg-[#39FF14] animate-pulse rounded-full"></span> GLOBAL_UPLINK
                     </div>
                     <div className="flex-grow overflow-hidden">
                         <CommunityChat />
                     </div>
                  </div>
                  <div className="h-1/2 flex flex-col">
-                    <div className="p-3 bg-white/5 border-b border-white/5 font-mono text-[10px] text-white/50 tracking-widest uppercase">
+                    <div className="p-3 bg-black border-b border-white/5 font-mono text-[10px] text-gray-500 tracking-widest uppercase">
                         // ELITE_OPERATORS
                     </div>
-                    <div className="flex-grow overflow-y-auto p-4">
+                    <div className="flex-grow overflow-y-auto p-0">
                         <CommunityRankings />
                     </div>
                  </div>

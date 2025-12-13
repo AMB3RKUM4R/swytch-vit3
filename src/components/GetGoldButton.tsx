@@ -1,6 +1,5 @@
 import { FC } from 'react';
 import { Plus, Coins } from 'lucide-react';
-//
 import { useModal } from '@/components/context/ModalContext';
 
 interface GetGoldButtonProps {
@@ -18,7 +17,6 @@ const GetGoldButton: FC<GetGoldButtonProps> = ({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation(); 
-    // This matches the check inside your layout/modal manager
     setActiveModal('payment');
   };
 
@@ -26,7 +24,7 @@ const GetGoldButton: FC<GetGoldButtonProps> = ({
     return (
       <button 
         onClick={handleClick}
-        className={`bg-yellow-500/20 hover:bg-yellow-500/40 border border-yellow-500/50 text-yellow-500 p-1 rounded transition-all hover:scale-110 ${className}`}
+        className={`bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500 text-yellow-500 p-1 rounded-sm transition-all hover:shadow-[0_0_10px_rgba(234,179,8,0.4)] ${className}`}
         title="Buy Gold"
       >
         <Plus className="w-3 h-3" />
@@ -41,13 +39,15 @@ const GetGoldButton: FC<GetGoldButtonProps> = ({
   return (
     <button 
       onClick={handleClick}
-      className={`group relative overflow-hidden bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-russo uppercase tracking-wider py-3 px-8 skew-x-[-10deg] border-2 border-yellow-400 hover:border-white transition-all shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:shadow-[0_0_30px_rgba(234,179,8,0.6)] ${className}`}
+      className={`group relative overflow-hidden bg-yellow-500 text-black font-black font-mono uppercase tracking-wider py-3 px-8 border border-yellow-400 hover:bg-white hover:text-black transition-all shadow-[0_0_15px_rgba(234,179,8,0.4)] hover:shadow-[0_0_25px_rgba(234,179,8,0.6)] ${className}`}
     >
-      <div className="skew-x-[10deg] flex items-center gap-2 justify-center">
+      <div className="flex items-center gap-2 justify-center relative z-10">
         <Coins className="w-5 h-5 group-hover:rotate-12 transition-transform" />
         <span>{label}</span>
       </div>
-      <div className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:left-[100%] transition-all duration-500" />
+      
+      {/* Glitch Shine Effect */}
+      <div className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/50 to-transparent group-hover:left-[100%] transition-all duration-300 ease-out" />
     </button>
   );
 };
