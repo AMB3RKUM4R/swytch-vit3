@@ -11,8 +11,8 @@ export const useAdSystem = () => {
   const triggerSmartLink = useCallback(async () => {
     // 1. Open the Smartlink (The "Coin Insert" mechanic)
     // This opens the ad in a new tab while the game restarts in the current tab.
-    if (AD_CONFIG.SMARTLINK_URL) {
-        window.open(AD_CONFIG.SMARTLINK_URL, '_blank');
+    if (AD_CONFIG.SOCIAL_BAR_URL) {
+        window.open(AD_CONFIG.SOCIAL_BAR_URL, '_blank');
     }
 
     // 2. Member Reward Logic (Play-to-Earn)
