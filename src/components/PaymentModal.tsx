@@ -88,7 +88,7 @@ const PaymentModal: FC = () => {
               await updatePlayerFirestore({
                   isPETMember: true,
                   membership: selectedMembership, // FIX: Use variable here
-                  gold: increment(MEMBERSHIP_BONUS_GOLD)
+                  gold: increment(MEMBERSHIP_BONUS_GOLD) as any 
               });
               
               await logTransaction({
@@ -105,7 +105,7 @@ const PaymentModal: FC = () => {
           } else {
               // 2. Grant Gold
               await updatePlayerFirestore({
-                  gold: increment(selectedGoldPack.gold)
+                  gold: increment(selectedGoldPack.gold) as any
               });
 
               await logTransaction({
