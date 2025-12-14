@@ -38,6 +38,5 @@ export const AD_CONFIG = {
     height: 300
   },
 
-   SMARTLINK_URL: "https://www.effectivegatecpm.com/zr9c8sky?key=a084b279a865ec19ee6cc852eebc49e0",
    SOCIAL_BAR_URL: "https://pl28258693.effectivegatecpm.com/81/48/44/8148444126cbd5fb2d34a1bffb245a16.js",
 };
