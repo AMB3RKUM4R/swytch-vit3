@@ -1,42 +1,43 @@
 import { FC, useEffect, useRef } from 'react';
+import { AD_CONFIG } from '@/lib/adConfig';
 
 interface AdPanelProps {
-  zoneType: 'native' | 'banner';
+  zoneType?: 'native' | 'banner';
 }
 
-const AdDisplayPanel: FC<AdPanelProps> = ({ zoneType }) => {
+const AdDisplayPanel: FC<AdPanelProps> = ({ zoneType = 'banner' }) => {
   const adContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!adContainerRef.current) return;
-    adContainerRef.current.innerHTML = '';
+    if (!adContainerRef.current || !AD_CONFIG.BANNER_ID) return;
 
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.async = true;
-
-    // INSERT ADSTERRA LINKS HERE WHEN READY
-    if (zoneType === 'native') {
-        console.log("Loading Native Ad...");
-    } else {
-        console.log("Loading Banner Ad...");
-    }
+    // Placeholder for when you get a real Banner Script from Adsterra
+    // adContainerRef.current.innerHTML = '';
+    // const script = document.createElement('script');
+    // ... insert script logic here later
     
-    // adContainerRef.current.appendChild(script);
-
   }, [zoneType]);
 
   return (
     <div 
         ref={adContainerRef} 
-        className="w-full flex justify-center items-center min-h-[100px] bg-black border border-dashed border-gray-800 rounded-sm overflow-hidden relative group"
+        className="w-full max-w-[320px] mx-auto flex justify-center items-center min-h-[100px] bg-black/40 border border-gray-800 rounded-sm overflow-hidden relative group my-4"
     >
-        {/* Placeholder UI */}
-        <div className="text-center">
-            <span className="text-[10px] text-gray-600 font-mono uppercase tracking-widest group-hover:text-[#39FF14] transition-colors">
-                [ SPONSORED_STREAM :: {zoneType.toUpperCase()} ]
+        {/* Background Grid Effect */}
+        <div className="absolute inset-0 bg-[url('/grid-pattern.png')] opacity-10 pointer-events-none"></div>
+        
+        {/* Placeholder Text (Visible until you add real banner code) */}
+        <div className="text-center z-10 p-4">
+            <span className="text-[9px] text-gray-600 font-mono uppercase tracking-widest block mb-1">
+                // SPONSORED_UPLINK
             </span>
+            <div className="text-[#39FF14]/50 text-xs font-bold animate-pulse">
+                [ AWAITING SIGNAL ]
+            </div>
         </div>
+        
+        {/* Scanline */}
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-[#39FF14]/20 animate-scan"></div>
     </div>
   );
 };

@@ -1,224 +1,213 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Bug, ShieldAlert, Zap, Crosshair } from 'lucide-react';
 import SwytchContainer from './SwytchContainer';
+import { useAdSystem } from '@/hooks/useAdSystem';
 
 const GRID_SIZE = 9;
+const MAX_TIME = 30;
+
+type EntityType = 'glitch' | 'firewall' | 'energy' | null;
 
 export default function GlitchNinja() {
-  const [activeSlot, setActiveSlot] = useState<number | null>(null); 
+  const { triggerSmartLink } = useAdSystem();
+  
+  // Game State
+  const [grid, setGrid] = useState<EntityType[]>(Array(GRID_SIZE).fill(null));
   const [score, setScore] = useState(0);
+  const [combo, setCombo] = useState(1);
+  const [timeLeft, setTimeLeft] = useState(MAX_TIME);
   const [gameOn, setGameOn] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(15); 
   const [gameOver, setGameOver] = useState(false);
-  const [won, setWon] = useState(false);
+  const [message, setMessage] = useState("SYSTEM STANDBY");
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (gameOn && timeLeft > 0) {
-      interval = setInterval(() => setTimeLeft(t => t - 1), 1000);
-    } else if (timeLeft === 0) {
-      setGameOn(false);
-      setActiveSlot(null);
-      setGameOver(true);
-      setWon(score > 50); // arbitrary win threshold for demo feel
-    }
-    return () => clearInterval(interval);
-  }, [gameOn, timeLeft, score]);
+  const scoreRef = useRef(score);
+  const comboRef = useRef(combo);
+  
+  useEffect(() => { scoreRef.current = score; }, [score]);
+  useEffect(() => { comboRef.current = combo; }, [combo]);
 
+  // SPAWNING
   useEffect(() => {
-    let moveInterval: NodeJS.Timeout;
+    let spawnInterval: NodeJS.Timeout;
     if (gameOn) {
-      moveInterval = setInterval(() => {
-        const randomSlot = Math.floor(Math.random() * GRID_SIZE);
-        setActiveSlot(randomSlot);
-      }, 700); 
+      const speed = timeLeft > 20 ? 700 : timeLeft > 10 ? 500 : 350;
+      spawnInterval = setInterval(() => {
+        setGrid(currentGrid => {
+          const newGrid = [...currentGrid];
+          // Decay random old entity
+          if (Math.random() > 0.7) {
+             const randomClear = Math.floor(Math.random() * GRID_SIZE);
+             newGrid[randomClear] = null;
+          }
+          
+          const emptySlots = newGrid.map((val, idx) => val === null ? idx : -1).filter(idx => idx !== -1);
+          if (emptySlots.length > 0) {
+            const slot = emptySlots[Math.floor(Math.random() * emptySlots.length)];
+            const rng = Math.random();
+            if (rng < 0.7) newGrid[slot] = 'glitch'; 
+            else if (rng < 0.9) newGrid[slot] = 'firewall';
+            else newGrid[slot] = 'energy';
+          }
+          return newGrid;
+        });
+      }, speed);
     }
-    return () => clearInterval(moveInterval);
-  }, [gameOn]);
+    return () => clearInterval(spawnInterval);
+  }, [gameOn, timeLeft]);
 
-  const handleClick = (index: number) => {
+  // TIMER
+  useEffect(() => {
+    let timerInterval: NodeJS.Timeout;
+    if (gameOn && timeLeft > 0) {
+      timerInterval = setInterval(() => setTimeLeft(t => t - 1), 1000);
+    } else if (timeLeft <= 0) {
+      endGame();
+    }
+    return () => clearInterval(timerInterval);
+  }, [gameOn, timeLeft]);
+
+  const startGame = () => {
+    setGrid(Array(GRID_SIZE).fill(null));
+    setScore(0);
+    setCombo(1);
+    setTimeLeft(MAX_TIME);
+    setGameOn(true);
+    setGameOver(false);
+    setMessage("PURGE PROTOCOL ACTIVE");
+  };
+
+  const handleRetry = () => {
+      triggerSmartLink();
+      startGame(); 
+  };
+
+  const endGame = () => {
+    setGameOn(false);
+    setGameOver(true);
+    setGrid(Array(GRID_SIZE).fill(null));
+    setMessage("SESSION COMPLETE");
+  };
+
+  const handleSlotClick = (index: number) => {
     if (!gameOn) return;
-    if (index === activeSlot) {
-      setScore(s => s + 10);
-      setActiveSlot(null); 
+    const entity = grid[index];
+
+    if (entity === 'glitch') {
+        const points = 100 * comboRef.current;
+        setScore(s => s + points);
+        setCombo(c => Math.min(c + 1, 5));
+        clearSlot(index);
+    } else if (entity === 'firewall') {
+        setScore(s => Math.max(0, s - 500));
+        setCombo(1);
+        setTimeLeft(t => Math.max(0, t - 3));
+        setMessage("FIREWALL HIT! // SYSTEM DAMAGED");
+        clearSlot(index);
+    } else if (entity === 'energy') {
+        setTimeLeft(t => Math.min(t + 5, MAX_TIME));
+        setMessage("ENERGY RESTORED");
+        clearSlot(index);
     } else {
-        setScore(s => s - 5); 
+        setCombo(1);
+        setScore(s => Math.max(0, s - 50));
     }
   };
 
-  const startGame = () => {
-    setScore(0);
-    setTimeLeft(15);
-    setGameOn(true);
-    setGameOver(false);
-    setWon(false);
+  const clearSlot = (index: number) => {
+    setGrid(prev => { const n = [...prev]; n[index] = null; return n; });
+  };
+
+  const getEntityIcon = (type: EntityType) => {
+      switch(type) {
+          case 'glitch': return <Bug className="w-8 h-8 text-[#39FF14] animate-pulse drop-shadow-[0_0_8px_#39FF14]" />;
+          case 'firewall': return <ShieldAlert className="w-8 h-8 text-red-500 drop-shadow-[0_0_8px_red]" />;
+          case 'energy': return <Zap className="w-8 h-8 text-blue-400 animate-bounce drop-shadow-[0_0_8px_blue]" />;
+          default: return null;
+      }
   };
 
   return (
-    <SwytchContainer title="GLITCH HUNT">
-      {/* Multi-Layered Background (same as previous) */}
-      <div className="absolute inset-0 opacity-30 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(57,255,20,0.05)_0,rgba(57,255,20,0.05)_1px,transparent_1px,transparent_4px),repeating-linear-gradient(90deg,rgba(57,255,20,0.05)_0,rgba(57,255,20,0.05)_1px,transparent_1px,transparent_4px)] animate-grid-slow" />
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(57,255,20,0.08)_0,rgba(57,255,20,0.08)_2px,transparent_2px,transparent_8px)] animate-grid-med" />
-        <div className="absolute inset-0">
-          <div className="absolute top-8 left-8 w-2 h-2 bg-[#39FF14]/40 rounded-full animate-float-deep shadow-[0_0_6px_#39FF14]" />
-          <div className="absolute top-20 right-12 w-1 h-1 bg-[#39FF14]/60 rounded-full animate-float-mid shadow-[0_0_4px_#39FF14]" />
-          <div className="absolute bottom-16 left-20 w-1.5 h-1.5 bg-[#39FF14]/50 rounded-full animate-float-fast shadow-[0_0_5px_#39FF14]" />
-        </div>
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(57,255,20,0.04)_0,rgba(57,255,20,0.04)_1px,transparent_1px,transparent_3px)] animate-scan-up" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.6)_0%,transparent_70%)]" />
-      </div>
-
-      {/* Game Grid (same multi-layered cells as before) */}
-      <div className="perspective-[1200px] relative z-10 px-4 mb-8">
-        <div className="grid grid-cols-3 gap-4 w-full max-w-md mx-auto">
-          {Array.from({ length: GRID_SIZE }).map((_, i) => (
-            <div key={i} onClick={() => handleClick(i)}
-              className={`group relative w-32 h-32 cursor-pointer active:scale-[0.97] transition-all duration-300 overflow-hidden bg-black/50 backdrop-blur-sm border border-gray-900/50 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.5)] hover:shadow-[0_30px_60px_rgba(57,255,20,0.15)] transform-style-preserve-3d hover:[transform:rotateX(8deg)_rotateY(8deg)] ${activeSlot === i ? "border-[#39FF14] shadow-[0_0_40px_#39FF14,inset_0_0_30px_rgba(57,255,20,0.2)] scale-[1.03] animate-glitch-layer-pulse mix-blend-screen" : "hover:border-[#39FF14]/40"} ${!gameOn && !gameOver ? 'opacity-60' : ''}`}>
-              <div className={`absolute inset-0 bg-[radial-gradient(circle,rgba(57,255,20,0.06)_0%,black_60%)] rounded-2xl ${activeSlot === i ? 'animate-circuit-glow scale-110' : ''}`} />
-              <div className={`absolute inset-2 border-4 border-transparent rounded-xl bg-gradient-to-r from-[#39FF14]/20 to-transparent ${activeSlot === i ? '[border-image:linear-gradient(45deg,#39FF14,transparent)_1] animate-frame-pulse delay-200' : ''}`} />
-              <div className={`relative z-20 flex items-center justify-center h-full ${activeSlot === i ? 'animate-icon-emerge delay-400 scale-110' : 'opacity-0 scale-90'}`}>
-                {activeSlot === i && (
-                  <svg viewBox="0 0 48 48" fill="none" stroke="#39FF14" strokeWidth="3.5" className="w-20 h-20 drop-shadow-[0_0_12px_#39FF14] animate-[spin_1.2s_linear_infinite]">
-                    <path d="M24 4C12.95 4 4 12.95 4 24s8.95 20 20 20 20-8.95 20-20S35.05 4 24 4z" strokeDasharray="5 5" className="animate-ping" />
-                    <circle cx="24" cy="24" r="10" fill="#39FF14" fillOpacity="0.25" className="animate-pulse scale-[1.2]" />
-                    <path d="M18 6L6 18M6 6l12 12" className="stroke-white/90 animate-[glitch-layer_0.4s_infinite] stroke-[4px]" />
-                  </svg>
-                )}
-              </div>
-              {activeSlot === i && (
-                <>
-                  <div className="absolute inset-0 rounded-2xl border-8 border-[#39FF14]/30 animate-ring-expand-1 opacity-80 mix-blend-screen" />
-                  <div className="absolute inset-0 rounded-2xl border-4 border-[#39FF14]/50 animate-ring-expand-2 delay-150 opacity-90" />
-                  <div className="absolute inset-0 rounded-2xl border-2 border-[#39FF14] animate-ring-expand-3 delay-300" />
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
+    <SwytchContainer title="GLITCH NINJA 2.0">
+      
       {/* HUD */}
-      <div className="relative z-20 flex justify-between w-full px-10 mb-8 text-white font-mono text-xl tracking-[0.1em]">
-        <div className="hud-panel">TIMER: <span className={`ml-3 px-4 py-2 bg-black/60 backdrop-blur-md border-2 border-${timeLeft < 5 ? 'red-500/80' : '[#39FF14]/60'} rounded-xl ${timeLeft < 5 ? "text-red-300 animate-pulse" : "text-[#39FF14] glow-text-lg"}`}>{timeLeft.toString().padStart(2, '0')}s</span></div>
-        <div className="hud-panel">SCORE: <span className="ml-3 px-6 py-2 bg-gradient-to-r from-[#39FF14]/30 via-black/50 to-[#39FF14]/30 border border-[#39FF14]/80 rounded-xl shadow-[0_0_25px_rgba(57,255,20,0.5)] text-[#39FF14] font-black text-2xl animate-score-glow">{score}</span></div>
+      <div className="flex justify-between items-center w-full px-4 mb-6 border-b border-gray-800 pb-2 font-mono">
+          <div className="text-left">
+              <p className="text-[10px] text-gray-500 uppercase">MULTIPLIER</p>
+              <p className={`text-2xl font-black ${combo > 1 ? "text-[#39FF14] animate-pulse" : "text-white"}`}>x{combo}</p>
+          </div>
+          <div className="text-right">
+              <p className="text-[10px] text-gray-500 uppercase">TIME REMAINING</p>
+              <p className={`text-2xl font-mono ${timeLeft < 5 ? "text-red-500 animate-ping" : "text-white"}`}>
+                  {timeLeft}s
+              </p>
+          </div>
       </div>
 
-      {/* Start Button */}
+      {/* GRID */}
+      <div className="grid grid-cols-3 gap-3 mb-6 relative z-10">
+        {grid.map((entity, i) => (
+          <div 
+            key={i}
+            onMouseDown={() => handleSlotClick(i)}
+            className={`
+                w-20 h-20 border-2 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-100 relative overflow-hidden
+                ${entity === 'glitch' ? "border-[#39FF14] bg-[#39FF14]/20 shadow-[0_0_20px_#39FF14]" : 
+                  entity === 'firewall' ? "border-red-500 bg-red-900/30 shadow-[0_0_15px_red]" : 
+                  entity === 'energy' ? "border-blue-500 bg-blue-900/30 shadow-[0_0_15px_blue]" :
+                  "border-gray-800 bg-[#050505] hover:border-gray-600"}
+            `}
+          >
+            {/* Grid Pattern BG */}
+            <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.8)_50%)] bg-[length:100%_4px] pointer-events-none opacity-30"></div>
+            
+            {getEntityIcon(entity)}
+            
+            {!entity && <Crosshair className="w-4 h-4 text-gray-800 opacity-20" />}
+          </div>
+        ))}
+      </div>
+
+      {/* MESSAGE */}
+      <div className="w-full text-center mb-4 h-6">
+          <p className="text-xs font-mono text-[#39FF14] uppercase tracking-widest animate-pulse">
+              {gameOn ? (combo > 3 ? ">> MAX OVERDRIVE <<" : message) : message}
+          </p>
+      </div>
+
+      {/* SCORE */}
+      <div className="text-4xl font-black text-white mb-6 tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+          {score.toLocaleString()} <span className="text-xs text-gray-500 font-normal align-middle">PTS</span>
+      </div>
+
+      {/* CONTROLS */}
       {!gameOn && !gameOver && (
-        <button onClick={startGame} className="relative z-20 px-12 py-6 border-3 border-[#39FF14] text-[#39FF14] hover:bg-[#39FF14] hover:text-black font-black uppercase tracking-[0.3em] text-xl overflow-hidden shadow-[0_0_30px_rgba(57,255,20,0.4)] hover:shadow-[0_0_60px_rgba(57,255,20,0.7)] transition-all duration-400 group hover:scale-[1.05]">
-          <span className="relative z-10">INITIATE PURGE</span>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+        <button 
+            onClick={startGame} 
+            className="w-full py-4 border-2 border-[#39FF14] text-[#39FF14] font-black uppercase tracking-[0.3em] hover:bg-[#39FF14] hover:text-black transition-all shadow-[0_0_30px_rgba(57,255,20,0.3)]"
+        >
+          INITIATE LINK
         </button>
       )}
 
-      {/* End Game Panel */}
+      {/* GAME OVER */}
       {gameOver && (
-        <div className="absolute inset-0 bg-black/90 backdrop-blur-lg flex items-center justify-center z-50 animate-fade-in">
-          <div className="text-center p-12 border-4 border-[#39FF14]/80 rounded-3xl bg-black/80 shadow-[0_0_80px_rgba(57,255,20,0.6)] animate-glitch-panel">
-            <h2 className={`text-6xl font-black mb-8 ${won ? 'text-[#39FF14]' : 'text-red-500'} glow-text-xl`}>
-              {won ? "PURGE COMPLETE" : "SYSTEM BREACHED"}
-            </h2>
-            <p className="text-3xl text-[#39FF14] mb-4">FINAL SCORE</p>
-            <p className="text-7xl font-black text-[#39FF14] mb-12 tracking-widest animate-score-glow">{score}</p>
-            <button onClick={startGame} className="px-16 py-6 bg-[#39FF14] text-black font-black text-2xl uppercase tracking-[0.4em] hover:bg-white transition-all duration-300 shadow-[0_0_40px_#39FF14] hover:scale-105">
-              RETRY PROTOCOL
+        <div className="absolute inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center z-50 animate-fade-in p-6 text-center">
+            <h2 className="text-4xl font-black text-[#39FF14] mb-2 uppercase italic tracking-tighter">Mission Report</h2>
+            <p className="text-gray-500 font-mono text-xs mb-8">Session ID: {Math.floor(Math.random()*99999)}</p>
+            
+            <div className="mb-8">
+                <p className="text-sm text-gray-400 uppercase tracking-widest mb-1">Final Score</p>
+                <p className="text-6xl font-black text-white drop-shadow-[0_0_20px_#39FF14]">{scoreRef.current}</p>
+            </div>
+
+            <button 
+                onClick={handleRetry}
+                className="px-10 py-4 bg-[#39FF14] text-black font-black uppercase tracking-[0.2em] hover:bg-white transition-all shadow-[0_0_40px_#39FF14]"
+            >
+                RETRY PROTOCOL
             </button>
-          </div>
         </div>
       )}
-
-      {/* Epic Styles - Multi-Layer Keyframes */}
-      <style>{`
-        .perspective-\\[1200px\\] { perspective: 1200px; }
-        .transform-style-preserve-3d { transform-style: preserve-3d; }
-        .hud-panel { @apply relative bg-black/40 px-4 py-2 rounded-xl backdrop-blur-lg border border-gray-800/50 shadow-[0_10px_30px_rgba(0,0,0,0.4)]; }
-        .glow-text-lg { text-shadow: 0 0 12px #39FF14, 0 0 24px #39FF14, 0 0 36px #39FF14; }
-        .shadow-red-glow { box-shadow: 0 0 20px rgba(239,68,68,0.6), inset 0 0 20px rgba(239,68,68,0.3); }
-        .animate-score-glow { animation: score-glow 2s ease-in-out infinite alternate; }
-        .animate-grid-slow { animation: grid-move 40s linear infinite; }
-        .animate-grid-med { animation: grid-move 20s linear infinite reverse; }
-        .animate-scan-up { animation: scanlines 3s linear infinite; }
-        .animate-glitch-layer-pulse {
-          0%, 100% { transform: scale(1.03) rotateZ(0deg); filter: drop-shadow(0 0 30px #39FF14) hue-rotate(0deg); }
-          10% { transform: scale(1.06) rotateZ(1deg); filter: drop-shadow(0 0 40px #39FF14) hue-rotate(60deg); }
-          20% { transform: scale(1.03) rotateZ(-1deg); filter: drop-shadow(0 0 35px #39FF14) hue-rotate(120deg); }
-          30% { transform: scale(1.07) rotateZ(2deg); filter: drop-shadow(0 0 45px #39FF14) hue-rotate(180deg); }
-          40% { transform: scale(1.04) rotateZ(0deg); filter: drop-shadow(0 0 30px #39FF14) hue-rotate(240deg); }
-          50% { transform: scale(1.06) rotateZ(-2deg); filter: drop-shadow(0 0 40px #39FF14) hue-rotate(300deg); }
-          60%, 100% { transform: scale(1.03) rotateZ(0deg); filter: drop-shadow(0 0 30px #39FF14) hue-rotate(360deg); }
-        }
-        .animate-circuit-glow { animation: circuit-glow 1.5s ease-in-out infinite alternate; box-shadow: inset 0 0 20px rgba(57,255,20,0.4); }
-        .animate-frame-pulse { animation: frame-pulse 1s ease-in-out infinite; }
-        .delay-100 { animation-delay: 0.1s; }
-        .delay-150 { animation-delay: 0.15s; }
-        .delay-200 { animation-delay: 0.2s; }
-        .delay-300 { animation-delay: 0.3s; }
-        .delay-400 { animation-delay: 0.4s; }
-        .animate-icon-emerge { animation: icon-emerge 0.8s cubic-bezier(0.25,0.46,0.45,0.94) forwards; opacity: 1 !important; }
-        .animate-ring-expand-1 { animation: ring-expand 1s ease-out forwards; }
-        .animate-ring-expand-2 { animation: ring-expand 1.2s ease-out 0.15s forwards; }
-        .animate-ring-expand-3 { animation: ring-expand 1.4s ease-out 0.3s forwards; }
-        .animate-crack-multi { animation: crack-multi 0.6s ease-in-out; }
-        .particle { position: absolute; width: 4px; height: 4px; background: #39FF14; border-radius: 50%; opacity: 0; pointer-events: none; }
-        .particle-1 { top: 20%; left: 20%; animation: burst-particle 0.6s cubic-bezier(0.68,-0.55,0.265,1.55) 0.1s forwards; }
-        .particle-2 { top: 30%; right: 20%; animation: burst-particle 0.6s cubic-bezier(0.68,-0.55,0.265,1.55) 0.15s forwards rotate(45deg); }
-        .particle-3 { bottom: 20%; left: 30%; animation: burst-particle 0.6s cubic-bezier(0.68,-0.55,0.265,1.55) 0.2s forwards rotate(-45deg); }
-        .particle-4 { top: 40%; left: 10%; animation: burst-particle 0.5s cubic-bezier(0.68,-0.55,0.265,1.55) 0.25s forwards rotate(90deg); }
-        .particle-5 { bottom: 30%; right: 10%; animation: burst-particle 0.5s cubic-bezier(0.68,-0.55,0.265,1.55) 0.3s forwards rotate(-90deg); }
-        .particle-6 { top: 50%; right: 30%; animation: burst-particle 0.7s cubic-bezier(0.68,-0.55,0.265,1.55) 0.35s forwards; }
-        @keyframes grid-move {
-          0% { background-position: 0 0; }
-          100% { background-position: 100px 100px; }
-        }
-        @keyframes scanlines {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(4px); }
-        }
-        @keyframes float-deep { 0%,100%{transform:translateY(0) rotate(0deg);}50%{transform:translateY(-12px) rotate(180deg);}}
-        @keyframes float-mid { 0%,100%{transform:translate(0,0) rotate(0deg);}33%{transform:translate(16px,-8px) rotate(120deg);}66%{transform:translate(-12px,8px) rotate(240deg);}}
-        @keyframes float-fast { 0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-16px) scale(1.15);}}
-        @keyframes float-deep2 { 0%,100%{transform:translate(0,0) scale(0.8);}50%{transform:translate(8px,-10px) scale(1.2);}}
-        @keyframes glitch-layer {
-          0%,100%{transform:translate(0);}
-          20%{transform:translate(-2px,2px);}
-          40%{transform:translate(-2px,-2px);}
-          60%{transform:translate(2px,2px);}
-          80%{transform:translate(2px,-2px);}
-        }
-        @keyframes circuit-glow {
-          from { box-shadow: inset 0 0 10px rgba(57,255,20,0.2); }
-          to { box-shadow: inset 0 0 30px rgba(57,255,20,0.5); }
-        }
-        @keyframes frame-pulse {
-          0%,100%{opacity:0.7; transform:scale(1);}
-          50%{opacity:1; transform:scale(1.05);}
-        }
-        @keyframes icon-emerge {
-          0% { opacity:0; transform: scale(0.5) translateZ(-50px) rotateY(180deg); }
-          100% { opacity:1; transform: scale(1.1) translateZ(20px) rotateY(0deg); }
-        }
-        @keyframes ring-expand {
-          0% { transform: scale(0.5); opacity:1; }
-          100% { transform: scale(4); opacity:0; }
-        }
-        @keyframes crack-multi {
-          0% { clip-path: inset(0 100% 100% 0); transform: skew(0deg); opacity:0.6; }
-          30% { clip-path: inset(0 0 0 0); transform: skew(2deg) scale(1.02); opacity:1; }
-          70% { clip-path: inset(0 0 0 0); transform: skew(-1deg) scale(0.98); opacity:0.8; }
-          100% { clip-path: inset(0 100% 100% 0); transform: skew(0deg); opacity:0; }
-        }
-        @keyframes burst-particle {
-          0% { opacity:1; transform: scale(0) translate(0,0); }
-          50% { opacity:1; transform: scale(1.2) translate(var(--tx,0), var(--ty,0)); }
-          100% { opacity:0; transform: scale(0) translate(var(--tx,0) var(--ty,0)); }
-        }
-        @keyframes score-glow {
-          from { text-shadow: 0 0 20px #39FF14, 0 0 30px #39FF14; }
-          to { text-shadow: 0 0 30px #39FF14, 0 0 40px #39FF14, 0 0 50px #39FF14; }
-        }
-        .transform-gpu { transform: translateZ(0); }
-        .group-hover\\:\\[transform:rotateX\\(8deg\\)_rotateY\\(8deg\\)\\] { }
-      `}</style>
     </SwytchContainer>
   );
 }
