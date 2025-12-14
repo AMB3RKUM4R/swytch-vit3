@@ -1,5 +1,5 @@
 /* src/index.css */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;700&family=Russo+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&family=Inter:wght@400;500;700&family=Russo+One&family=JetBrains+Mono:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,119 +7,209 @@
 
 @layer base {
   :root {
-    /* NEON EMPIRE THEME */
-    --background: 0 0% 0%; 
+    /* --- COLOR PALETTE: THE NEON JUNGLE --- */
+    
+    /* Base Colors */
+    --background: 0 0% 2%;  /* Almost pure black #050505 */
     --foreground: 0 0% 95%; 
     
-    --card: 0 0% 5%; 
-    --card-foreground: 0 0% 95%;
-
-    --popover: 0 0% 0%;
-    --popover-foreground: 0 0% 95%;
-
-    /* NEON GREEN #39FF14 */
+    /* Primary: TOXIC NEON (#39FF14) */
     --primary: 111 100% 54%; 
     --primary-foreground: 0 0% 0%; 
 
-    --secondary: 0 0% 12%; 
-    --secondary-foreground: 0 0% 95%;
+    /* Secondary: DEEP EMERALD (#059669) - Used for gradients/depth */
+    --secondary: 160 84% 39%; 
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%; 
-
-    --destructive: 0 84% 60%; 
+    /* Accent: CYBER MINT (#00F0FF) - Used for high-tech highlights */
+    --accent: 180 100% 50%;
+    
+    /* Destructive: SYSTEM ERROR RED */
+    --destructive: 0 90% 60%; 
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%; 
-    --input: 0 0% 15%; 
-    --ring: 111 100% 54%; 
-    --radius: 0.0rem; 
+    /* UI Surfaces */
+    --card: 0 0% 4%; 
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 3%;
+    --popover-foreground: 0 0% 95%;
+    --border: 0 0% 15%; 
+    --input: 0 0% 10%; 
+    
+    /* Effects */
+    --radius: 0px; /* Razor sharp edges */
+    --scanline-color: rgba(0, 255, 0, 0.02);
   }
 
   * {
-    @apply border-border;
+    @apply border-border selection:bg-[#39FF14] selection:text-black;
   }
 
   html, body {
-    @apply min-h-screen font-inter text-foreground antialiased;
-    background-color: black;
-    /* Optional: Subtle grid overlay */
+    @apply min-h-screen font-inter text-foreground antialiased overflow-x-hidden;
+    background-color: #020202;
+    
+    /* COMPLEX GRID BACKGROUND */
     background-image: 
-        linear-gradient(rgba(18, 18, 18, 0.5) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(18, 18, 18, 0.5) 1px, transparent 1px);
-    background-size: 40px 40px;
-    overflow-x: hidden;
+        /* Vignette to focus center */
+        radial-gradient(circle at 50% 50%, transparent 0%, #000 85%),
+        /* Main Grid (Green Tint) */
+        linear-gradient(rgba(57, 255, 20, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(57, 255, 20, 0.05) 1px, transparent 1px);
+    background-size: 100% 100%, 50px 50px, 50px 50px;
+    background-attachment: fixed;
   }
 
+  /* TYPOGRAPHY OVERRIDES */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-poppins font-bold tracking-tight text-white;
+    @apply font-poppins font-black tracking-tighter text-white;
   }
   
   .font-russo { font-family: 'Russo One', sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-  /* --- RAZOR SCROLLBARS --- */
+  /* --- CUSTOM SCROLLBARS (The "Razor" Look) --- */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   
   ::-webkit-scrollbar-track {
-    background: #000; 
-    border-left: 1px solid #111;
+    background: #050505; 
+    border-left: 1px solid #1a1a1a;
   }
   
   ::-webkit-scrollbar-thumb {
-    background: #39FF14; 
-    border-radius: 0;
+    background: linear-gradient(180deg, #39FF14 0%, #059669 100%); /* Green Gradient */
+    border: 1px solid #000;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #32D412; 
-    box-shadow: 0 0 10px #39FF14; 
-  }
-}
-
-@layer utilities {
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  
-  .text-glow-primary { 
-    text-shadow: 0 0 10px #39FF14; 
+    background: #39FF14; 
+    box-shadow: 0 0 15px #39FF14; 
   }
 }
 
 @layer components {
-  .card { @apply bg-black text-white p-0 rounded-none border border-white/10; }
+  /* --- CARD STYLES --- */
+  .card { 
+    @apply bg-black/60 backdrop-blur-md text-white p-0 rounded-none border border-white/10 relative overflow-hidden;
+  }
   
-  .btn-primary {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-none text-sm font-bold uppercase tracking-wider
-           transition-all duration-200
-           bg-[#39FF14] text-black border border-[#39FF14]
-           hover:bg-white hover:text-black hover:shadow-[0_0_20px_rgba(57,255,20,0.4)]
-           h-12 px-6 py-3;
+  /* Cyberpunk Corner Clip Effect */
+  .cyber-clip {
+    clip-path: polygon(
+      0 0, 
+      100% 0, 
+      100% calc(100% - 15px), 
+      calc(100% - 15px) 100%, 
+      0 100%
+    );
   }
 
+  /* --- BUTTONS --- */
+  
+  /* 1. Primary: The "Radioactive" Button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-none text-sm font-black uppercase tracking-[0.1em]
+           transition-all duration-200 relative overflow-hidden
+           bg-[#39FF14] text-black border border-[#39FF14]
+           hover:bg-white hover:text-black hover:shadow-[0_0_30px_rgba(57,255,20,0.6)]
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+           h-12 px-8 py-3;
+  }
+
+  /* 2. Secondary: The "Holographic" Button */
   .btn-secondary {
      @apply inline-flex items-center justify-center whitespace-nowrap rounded-none text-sm font-bold uppercase tracking-wider
-           transition-colors
-           border border-white/20 bg-black text-white
-           hover:bg-white hover:text-black
+           transition-all duration-300
+           border border-[#39FF14]/30 bg-black/50 text-white backdrop-blur-sm
+           hover:bg-[#39FF14]/10 hover:border-[#39FF14] hover:text-[#39FF14]
+           active:scale-95
            h-12 px-6 py-3;
   }
 
+  /* 3. Ghost: Minimalist Text */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-[#39FF14] transition-colors;
+  }
+
+  /* 4. Destructive: System Alert */
   .btn-destructive {
      @apply inline-flex items-center justify-center whitespace-nowrap rounded-none text-sm font-bold uppercase
-           bg-red-600 text-white hover:bg-red-700
-           h-12 px-6 py-3;
+           bg-red-900/20 border border-red-600 text-red-500 
+           hover:bg-red-600 hover:text-black hover:shadow-[0_0_20px_rgba(220,38,38,0.5)]
+           transition-all h-12 px-6 py-3;
   }
   
+  /* --- INPUTS --- */
   .input {
-    @apply flex h-12 w-full rounded-none border border-white/20 bg-black px-4 py-2 text-sm text-white
-           placeholder:text-gray-600 focus-visible:outline-none focus-visible:border-[#39FF14];
+    @apply flex h-12 w-full rounded-none border border-white/10 bg-[#0a0a0a] px-4 py-2 text-sm text-white font-mono
+           placeholder:text-gray-700 
+           focus-visible:outline-none focus-visible:border-[#39FF14] focus-visible:ring-1 focus-visible:ring-[#39FF14]/50
+           transition-all;
+  }
+}
+
+@layer utilities {
+  /* Hides scrollbar but allows scrolling */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  
+  /* --- NEON GLOWS --- */
+  .text-shadow-neon { text-shadow: 0 0 10px rgba(57, 255, 20, 0.7), 0 0 20px rgba(57, 255, 20, 0.5); }
+  .text-glow-primary { text-shadow: 0 0 10px #39FF14; }
+  
+  .glow-border { box-shadow: 0 0 15px rgba(57, 255, 20, 0.15); }
+
+  /* --- ANIMATIONS --- */
+  
+  /* 1. Slow Pulse for background elements */
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+  .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
+
+  /* 2. CRT Scanline Move */
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  .animate-scan { animation: scan 4s linear infinite; }
+
+  /* 3. Glitch Flicker */
+  @keyframes glitch {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
+  }
+  .animate-glitch { animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite; }
+
+  /* 4. Fade In Down */
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translate3d(0, -20px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  .animate-fade-in-down { animation: fadeInDown 0.5s ease-out forwards; }
+  
+  /* 5. Fade In */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+
+  /* --- GRADIENTS --- */
+  /* The "Toxic Matrix" Gradient */
+  .bg-gradient-toxic {
+    background: linear-gradient(135deg, #39FF14 0%, #059669 100%);
+  }
+  
+  .text-gradient-toxic {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#39FF14] to-[#059669];
   }
 }

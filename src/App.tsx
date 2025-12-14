@@ -19,10 +19,12 @@ import CommunityRankings from './components/community/CommunityRankings';
 // Pages
 import Home from './pages/Home'; 
 import Customize from './pages/Customize';
-import {Vault} from './pages/Vault'; // FIX: Default import (removed curly braces)
+import { Vault } from './pages/Vault'; 
 import Shop from './pages/Shop';
 import Inventory from './pages/Inventory';
 import AdminPage from './pages/AdminPage';
+import Community from './pages/Community';     // NEW
+import Membership from './pages/Membership';   // NEW
 
 const App: FC = () => {
   const { activeModal, setActiveModal, setShowMessage } = useModal(); 
@@ -62,11 +64,20 @@ const App: FC = () => {
                         <Route path="/" element={<Home />} />
                         <Route path="/home" element={<Home />} />
                         
+                        {/* Protected Routes */}
                         <Route path="/customize" element={userId ? <Customize /> : <Navigate to="/" />} />
                         <Route path="/vault" element={userId ? <Vault /> : <Navigate to="/" />} />
+                        
+                        {/* Public/Feature Routes */}
                         <Route path="/shop" element={<Shop />} />
                         <Route path="/inventory" element={<Inventory />} />
+                        <Route path="/community" element={<Community />} />
+                        <Route path="/membership" element={<Membership />} />
+                        
+                        {/* Admin */}
                         <Route path="/admin" element={<AdminPage />} />
+                        
+                        {/* Fallback */}
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </AnimatePresence>
