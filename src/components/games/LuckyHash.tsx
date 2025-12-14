@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import SwytchContainer from './SwytchContainer';
 import { useAdSystem } from '@/hooks/useAdSystem';
 

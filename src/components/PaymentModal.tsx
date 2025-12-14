@@ -1,6 +1,6 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, HandCoins, AlertTriangle, CreditCard, Droplet, QrCode, Loader2, Zap, ShieldCheck, CheckCircle } from 'lucide-react'; 
+import { X, AlertTriangle, Droplet, QrCode, Loader2, Zap, ShieldCheck } from 'lucide-react'; 
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 import { PayPalButtons } from "@paypal/react-paypal-js";
@@ -48,7 +48,8 @@ const PaymentModal: FC = () => {
   
   // Selection State
   const [selectedGoldPack, setSelectedGoldPack] = useState(GOLD_PACKAGES[1]); 
-  // Defaulting to 'ecosystem' tier
+  
+  // FIX: Variable is now used in getCost and handleSuccessLogic
   const selectedMembership = 'ecosystem'; 
 
   const [processing, setProcessing] = useState(false);
@@ -63,7 +64,8 @@ const PaymentModal: FC = () => {
   // Determine current cost
   const getCost = () => {
       if (viewMode === 'membership') {
-          return MEMBERSHIP_TIERS['ecosystem'].usdAmount;
+          // FIX: Use the variable here
+          return MEMBERSHIP_TIERS[selectedMembership].usdAmount;
       }
       if (paymentMethod === 'crypto') return selectedGoldPack.cost.eth;
       if (paymentMethod === 'upi') return selectedGoldPack.cost.inr;
@@ -85,8 +87,8 @@ const PaymentModal: FC = () => {
               // 1. Grant Membership + Bonus
               await updatePlayerFirestore({
                   isPETMember: true,
-                  membership: 'ecosystem',
-                  gold: increment(MEMBERSHIP_BONUS_GOLD) as any
+                  membership: selectedMembership, // FIX: Use variable here
+                  gold: increment(MEMBERSHIP_BONUS_GOLD)
               });
               
               await logTransaction({
@@ -96,14 +98,14 @@ const PaymentModal: FC = () => {
                   currency: 'USD',
                   transactionType: 'membership',
                   status: 'completed',
-                  itemId: 'ecosystem',
+                  itemId: selectedMembership, // FIX: Use variable here
                   paymentGatewayId: method
               });
               setShowMessage(`✅ UPGRADE COMPLETE! +${MEMBERSHIP_BONUS_GOLD} GOLD ADDED.`);
           } else {
               // 2. Grant Gold
               await updatePlayerFirestore({
-                  gold: increment(selectedGoldPack.gold) as any
+                  gold: increment(selectedGoldPack.gold)
               });
 
               await logTransaction({
@@ -250,7 +252,7 @@ const PaymentModal: FC = () => {
                         <ShieldCheck className="w-12 h-12 text-[#39FF14] mx-auto mb-4" />
                         <h3 className="text-xl font-black text-white uppercase italic">Elite Status</h3>
                         <p className="text-gray-500 text-xs mb-6 max-w-xs mx-auto">
-                            Unlock All Games, Earn Joules, Priority Support.
+                            Unlock Game Access, Earn Joules from Ads, and get Priority Support.
                         </p>
                         
                         <div className="p-4 border border-[#39FF14] bg-[#39FF14]/10 mb-6">
@@ -260,7 +262,9 @@ const PaymentModal: FC = () => {
                     </div>
                 )}
 
-                {/* --- PAYPAL BUTTONS --- */}
+                {/* --- ACTION BUTTONS --- */}
+                
+                {/* 1. PAYPAL BUTTONS (Official Integration) */}
                 {(paymentMethod === 'paypal' || viewMode === 'membership') && (
                     <div className="relative z-10 w-full">
                         <PayPalButtons 
@@ -294,14 +298,14 @@ const PaymentModal: FC = () => {
                     </div>
                 )}
 
-                {/* --- CRYPTO BUTTON --- */}
+                {/* 2. CRYPTO BUTTON (Only for Gold currently) */}
                 {viewMode === 'gold' && paymentMethod === 'crypto' && (
                     <button onClick={handleCryptoPayment} disabled={isTxPending || isConfirming || !isConnected} className="w-full py-3 bg-[#39FF14] hover:bg-white text-black font-black uppercase rounded-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50 tracking-widest">
                         {isTxPending || isConfirming ? <Loader2 className="animate-spin" /> : <><Droplet className="w-4 h-4" /> PAY {selectedGoldPack.cost.eth} ETH</>}
                     </button>
                 )}
 
-                {/* --- UPI BUTTON --- */}
+                {/* 3. UPI BUTTON */}
                 {viewMode === 'gold' && paymentMethod === 'upi' && (
                     <button onClick={handleUpiPayment} className="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-black uppercase rounded-sm flex items-center justify-center gap-2 transition-colors tracking-widest">
                         <QrCode className="w-4 h-4" /> PAY ₹{selectedGoldPack.cost.inr}
