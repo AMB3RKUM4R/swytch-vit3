@@ -1,79 +1,80 @@
 import { FC, useEffect, useRef } from 'react';
 import { AD_CONFIG } from '@/lib/adConfig';
-import { usePlayer } from './context/PlayerContext';
-import { useAdSystem } from '@/hooks/useAdSystem';
-import { Zap } from 'lucide-react';
+
+// Define the available variants based on your config
+export type AdVariant = 'leaderboard' | 'header' | 'square' | 'mobile' | 'skyscraper' | 'tall';
 
 interface AdPanelProps {
-  zoneType?: 'native' | 'banner';
+  variant?: AdVariant;
+  className?: string;
 }
 
-const AdDisplayPanel: FC<AdPanelProps> = ({ zoneType = 'banner' }) => {
+const AdDisplayPanel: FC<AdPanelProps> = ({ variant = 'header', className = '' }) => {
   const bannerRef = useRef<HTMLDivElement>(null);
-  const { isPETMember } = usePlayer();
-  const { triggerSmartLink } = useAdSystem();
+
+  // Map variant to config
+  const getConfig = () => {
+    switch(variant) {
+        case 'leaderboard': return AD_CONFIG.BANNER_728x90;
+        case 'square': return AD_CONFIG.BANNER_300x250;
+        case 'mobile': return AD_CONFIG.BANNER_320x50;
+        case 'skyscraper': return AD_CONFIG.BANNER_160x600;
+        case 'tall': return AD_CONFIG.BANNER_160x300;
+        case 'header': default: return AD_CONFIG.BANNER_468x60;
+    }
+  };
 
   useEffect(() => {
     if (!bannerRef.current) return;
+    const config = getConfig();
+    if (!config.key) return;
 
-    // 1. Clear any existing ad to prevent duplicates
+    // 1. Clean previous ad to prevent duplication
     bannerRef.current.innerHTML = '';
 
-    // 2. Create the Options Script
+    // 2. Options Script
     const optionsScript = document.createElement('script');
     optionsScript.type = 'text/javascript';
     optionsScript.innerHTML = `
       atOptions = {
-        'key' : '${AD_CONFIG.BANNER_KEY}',
+        'key' : '${config.key}',
         'format' : 'iframe',
-        'height' : ${AD_CONFIG.BANNER_HEIGHT},
-        'width' : ${AD_CONFIG.BANNER_WIDTH},
+        'height' : ${config.height},
+        'width' : ${config.width},
         'params' : {}
       };
     `;
 
-    // 3. Create the Invoke Script
+    // 3. Invoke Script
     const invokeScript = document.createElement('script');
     invokeScript.type = 'text/javascript';
-    invokeScript.src = `//www.highperformanceformat.com/${AD_CONFIG.BANNER_KEY}/invoke.js`;
+    invokeScript.src = `//www.highperformanceformat.com/${config.key}/invoke.js`;
 
-    // 4. Append nicely to the container
-    // Note: We append options first, then the invoker
+    // 4. Inject
     bannerRef.current.appendChild(optionsScript);
     bannerRef.current.appendChild(invokeScript);
+  }, [variant]);
 
-  }, [zoneType]);
+  const config = getConfig();
 
   return (
-    <div className="flex flex-col gap-2 items-center my-4">
-        
-        {/* The Ad Container */}
+    <div className={`flex justify-center items-center my-4 ${className} relative z-10`}>
+        {/* Ad Container */}
         <div 
-            className="bg-black/40 border border-gray-800 rounded-sm overflow-hidden relative flex justify-center items-center"
-            style={{ 
-                width: `${AD_CONFIG.BANNER_WIDTH}px`, 
-                height: `${AD_CONFIG.BANNER_HEIGHT}px`,
-                maxWidth: '100%' // Responsive safety
-            }}
+            className="bg-black/60 border border-gray-800 rounded-sm relative group overflow-hidden shadow-lg"
+            style={{ width: config.width, height: config.height }}
         >
-            {/* The Ad Script injects here */}
+            {/* Ad Script Target */}
             <div ref={bannerRef} />
             
-            {/* Fallback Background (Visible while ad loads) */}
+            {/* Visual Fallback (Grid Pattern) */}
             <div className="absolute inset-0 -z-10 bg-[url('/grid-pattern.png')] opacity-10 pointer-events-none"></div>
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-[#39FF14]/20 animate-scan -z-10"></div>
+            
+            {/* "AD" Label */}
+            <div className="absolute top-0 right-0 bg-gray-900 px-1.5 py-0.5 z-20 border-l border-b border-gray-800">
+                <span className="text-[8px] font-mono text-gray-500 block leading-none">SPONSORED</span>
+            </div>
         </div>
-
-        {/* Member Exclusive: Watch to Earn Button */}
-        {isPETMember && (
-            <button 
-                onClick={triggerSmartLink}
-                className="py-2 px-6 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] text-[10px] font-bold uppercase tracking-widest hover:bg-[#39FF14] hover:text-black transition-colors flex items-center justify-center gap-2"
-                style={{ width: `${AD_CONFIG.BANNER_WIDTH}px`, maxWidth: '100%' }}
-            >
-                <Zap className="w-3 h-3" /> WATCH AD (+10 JOULES)
-            </button>
-        )}
     </div>
   );
 };

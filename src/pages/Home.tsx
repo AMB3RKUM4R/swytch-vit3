@@ -1,11 +1,11 @@
 import { FC, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { Sparkles, Lock, Search, PlayCircle } from 'lucide-react';
+import { Zap, Lock, Search, PlayCircle, Crown, Gem } from 'lucide-react';
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { GAME_COST } from '@/lib/types'; 
 import CurrencyHUD from '@/components/CurrencyHUD';
-import AdDisplayPanel from '@/components/AdDisplayPanel';
+import AdDisplayPanel from '@/components/AdDisplayPanel'; // Import Ads
 
 // --- GAME IMPORTS ---
 import LuckyHash from '@/components/games/LuckyHash';
@@ -26,26 +26,25 @@ import WallBall from '@/components/games/WallBall';
 import HoverBot from '@/components/games/HoverBot';
 import PinCore from '@/components/games/PinCore';
 
-// --- ASSETS (Placeholders for the Parallax Look) ---
-// In production, replace these with your actual game thumbnails
+// --- ASSETS ---
 const GAME_THUMBS = {
-    luck: "https://placehold.co/600x800/000000/39FF14?text=LUCKY+HASH",
-    hilo: "https://placehold.co/600x400/000000/39FF14?text=HIGH+LOW",
-    stop: "https://placehold.co/600x600/000000/39FF14?text=CHRONO",
-    slice: "https://placehold.co/600x900/000000/39FF14?text=CYBER+SLICE",
-    orbit: "https://placehold.co/600x600/000000/39FF14?text=ORBIT",
-    ninja: "https://placehold.co/600x400/000000/39FF14?text=GLITCH+HUNT",
-    simon: "https://placehold.co/600x800/000000/39FF14?text=SIMON",
-    cards: "https://placehold.co/600x400/000000/39FF14?text=CARD+HACK",
-    seq: "https://placehold.co/600x600/000000/39FF14?text=SEQUENCE",
-    shell: "https://placehold.co/600x800/000000/39FF14?text=DATA+SHUFFLE",
-    blind: "https://placehold.co/600x400/000000/39FF14?text=PIXEL+DIFF",
-    run: "https://placehold.co/600x900/000000/39FF14?text=NEON+RUNNER",
-    shoot: "https://placehold.co/600x600/000000/39FF14?text=VOID+DEFENDER",
-    drop: "https://placehold.co/600x800/000000/39FF14?text=DATA+STREAM",
-    pong: "https://placehold.co/600x400/000000/39FF14?text=WALL+BALL",
-    fly: "https://placehold.co/600x600/000000/39FF14?text=HOVER+BOT",
-    pin: "https://placehold.co/600x800/000000/39FF14?text=PIN+CORE",
+    luck: "/games/thumbnails/lucky_hash.jpg",
+    hilo: "/games/thumbnails/high_low.jpg",
+    stop: "/games/thumbnails/chrono_sync.jpg",
+    slice: "/games/thumbnails/cyber_slice.jpg",
+    orbit: "/games/thumbnails/orbit_breaker.jpg",
+    ninja: "/games/thumbnails/glitch_hunt.jpg",
+    simon: "/games/thumbnails/cyber_simon.jpg",
+    cards: "/games/thumbnails/card_hack.jpg",
+    seq: "/games/thumbnails/sequence_eye.jpg",
+    shell: "/games/thumbnails/data_shuffle.jpg",
+    blind: "/games/thumbnails/pixel_diff.jpg",
+    run: "/games/thumbnails/neon_runner.jpg",
+    shoot: "/games/thumbnails/void_defender.jpg",
+    drop: "/games/thumbnails/data_stream.jpg",
+    pong: "/games/thumbnails/wall_ball.jpg",
+    fly: "/games/thumbnails/hover_bot.jpg",
+    pin: "/games/thumbnails/pin_core.jpg",
 };
 
 interface GameDef {
@@ -54,7 +53,7 @@ interface GameDef {
   cat: 'REFLEX' | 'MEMORY' | 'ACTION' | 'RNG';
   component: JSX.Element;
   image: string;
-  featured?: boolean; // For larger grid spans
+  featured?: boolean;
 }
 
 const GAMES: GameDef[] = [
@@ -85,7 +84,8 @@ const Home: FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 500], [0, 200]); // Parallax Effect
+  const y1 = useTransform(scrollY, [0, 500], [0, 200]);
+  const opacityHero = useTransform(scrollY, [0, 400], [1, 0]);
 
   const visibleGames = useMemo(() => {
       let filtered = GAMES;
@@ -109,32 +109,33 @@ const Home: FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#39FF14] selection:text-black">
+    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#39FF14] selection:text-black pb-20">
       
-      {/* 1. HERO PARALLAX HEADER */}
+      {/* 1. HERO SECTION */}
       {!activeGame && (
         <div className="relative h-[60vh] overflow-hidden flex items-center justify-center border-b border-[#39FF14]/20">
-            {/* Background Grid */}
-            <div className="absolute inset-0 bg-[url('/grid-pattern.png')] opacity-20 animate-pulse"></div>
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/50 to-[#050505]"></div>
+            <div className="absolute inset-0 bg-[url('/grid-pattern.png')] opacity-30 animate-pulse"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/40 to-[#050505]"></div>
             
-            {/* Parallax Content */}
-            <motion.div style={{ y: y1 }} className="text-center z-10 p-4">
-                <Sparkles className="w-16 h-16 text-[#39FF14] mx-auto mb-4 animate-spin-slow" />
-                <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-500 mb-4 drop-shadow-[0_0_20px_rgba(57,255,20,0.3)]">
-                    SWYTCH ARCADE
+            <motion.div style={{ y: y1, opacity: opacityHero }} className="text-center z-10 px-4 max-w-4xl">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#39FF14]/30 bg-[#39FF14]/10 mb-6 backdrop-blur-md">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#39FF14] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#39FF14]"></span>
+                    </span>
+                    <span className="text-[#39FF14] text-xs font-bold tracking-widest uppercase">System Online V2.0</span>
+                </div>
+                <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-white mb-6 drop-shadow-[0_0_30px_rgba(57,255,20,0.4)]">
+                    PLAY. EARN. <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#39FF14] to-emerald-600">DOMINATE.</span>
                 </h1>
-                <p className="text-gray-400 font-mono text-sm uppercase tracking-[0.5em] mb-8">
-                    18 PROTOCOLS // HIGH SCORES // REAL REWARDS
-                </p>
                 
-                {/* Search Bar */}
+                {/* Search */}
                 <div className="max-w-md mx-auto relative group">
                     <input 
                         type="text" 
                         placeholder="SEARCH PROTOCOLS..." 
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-black/80 border border-gray-700 rounded-full py-4 px-12 text-sm focus:outline-none focus:border-[#39FF14] transition-all"
+                        className="w-full bg-black/60 border border-gray-700 rounded-full py-4 px-12 text-sm focus:outline-none focus:border-[#39FF14] transition-all backdrop-blur-md"
                     />
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#39FF14]" />
                 </div>
@@ -142,15 +143,17 @@ const Home: FC = () => {
         </div>
       )}
 
-      {/* 2. STICKY NAV & HUD */}
-      <div className="sticky top-0 z-40 bg-[#050505]/90 backdrop-blur-xl border-b border-gray-800 p-4 flex justify-between items-center">
-        <div className="flex gap-4 overflow-x-auto no-scrollbar">
+      {/* 2. STICKY NAV */}
+      <div className="sticky top-0 z-40 bg-[#050505]/90 backdrop-blur-xl border-b border-gray-800 p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar w-full md:w-auto">
             {['ALL', 'ACTION', 'REFLEX', 'MEMORY', 'RNG'].map(cat => (
                 <button
                     key={cat}
                     onClick={() => setFilter(cat)}
-                    className={`text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full transition-all whitespace-nowrap ${
-                        filter === cat ? 'bg-[#39FF14] text-black' : 'text-gray-500 hover:text-white'
+                    className={`text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-full transition-all whitespace-nowrap border ${
+                        filter === cat 
+                        ? 'bg-[#39FF14] text-black border-[#39FF14]' 
+                        : 'bg-black text-gray-500 border-gray-800 hover:border-gray-500'
                     }`}
                 >
                     {cat}
@@ -164,7 +167,7 @@ const Home: FC = () => {
         
         <AnimatePresence mode="wait">
           {activeGame ? (
-            // GAME VIEW (Minimalist)
+            // --- GAME VIEW ---
             <motion.div 
               key="game-view"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -175,87 +178,132 @@ const Home: FC = () => {
               <div className="w-full max-w-4xl flex justify-between items-center mb-8">
                   <button 
                     onClick={() => setActiveGame(null)}
-                    className="px-6 py-2 border border-gray-700 rounded-full text-gray-400 hover:border-[#39FF14] hover:text-[#39FF14] transition-colors text-xs uppercase tracking-widest"
+                    className="px-6 py-2 border border-gray-700 rounded-full text-gray-400 hover:border-[#39FF14] hover:text-[#39FF14] transition-colors text-xs uppercase tracking-widest flex items-center gap-2"
                   >
-                    ← EXIT TO LOBBY
+                    ← ABORT MISSION
                   </button>
-                  <h2 className="text-xl font-black text-white italic">{activeGame.title}</h2>
+                  <h2 className="text-xl font-black text-white italic tracking-tighter uppercase text-shadow-neon">{activeGame.title}</h2>
               </div>
               
-              <div className="w-full max-w-md">
+              <div className="w-full max-w-md relative z-10">
                 {activeGame.component}
               </div>
             </motion.div>
           ) : (
             
-            // MASONRY GRID VIEW
+            // --- MASONRY GRID (SYSTEMATIC ADS) ---
             <motion.div 
               key="grid-view"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6"
             >
-                {/* 1. First Ad Injection */}
+                {/* 1. HEADER AD (First item in grid) */}
                 <div className="break-inside-avoid mb-6">
-                    <AdDisplayPanel zoneType="native" />
+                    <AdDisplayPanel variant="header" />
                 </div>
 
-                {visibleGames.map((game) => (
-                  <motion.div 
-                    key={game.id}
-                    layoutId={game.id}
-                    className="break-inside-avoid relative group cursor-pointer rounded-2xl overflow-hidden bg-gray-900 border border-transparent hover:border-[#39FF14] transition-all duration-300"
-                    onClick={() => handleLaunch(game)}
-                  >
-                    {/* Image */}
-                    <div className="relative w-full overflow-hidden">
-                        <img 
-                            src={game.image} 
-                            alt={game.title} 
-                            className="w-full h-auto object-cover transform group-hover:scale-110 transition-transform duration-700" 
-                        />
-                        
-                        {/* Hover Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60 group-hover:opacity-90 transition-opacity" />
-                        
-                        {/* Play Icon (Appears on Hover) */}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <div className="bg-[#39FF14] text-black rounded-full p-4 shadow-[0_0_30px_#39FF14]">
-                                <PlayCircle className="w-8 h-8" fill="black" />
+                {/* CALLOUT: BENEFITS */}
+                <div className="break-inside-avoid bg-[#39FF14]/10 border border-[#39FF14] p-6 rounded-2xl relative overflow-hidden mb-6 group">
+                    <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+                        <Crown className="w-24 h-24 text-[#39FF14]" />
+                    </div>
+                    <h3 className="text-2xl font-black text-white italic mb-2">ELITE STATUS</h3>
+                    <p className="text-gray-400 text-xs mb-4 leading-relaxed">
+                        Upgrade to membership to unlock S-Rank Gear and earn <span className="text-[#39FF14]">Joules</span> from ads.
+                    </p>
+                    <button onClick={() => setActiveModal('payment')} className="px-6 py-3 bg-[#39FF14] text-black font-bold text-xs uppercase tracking-widest hover:bg-white transition-colors w-full rounded-sm">
+                        UPGRADE NOW
+                    </button>
+                </div>
+
+                {/* GAME CARDS Loop */}
+                {visibleGames.map((game, i) => (
+                  <div key={game.id} className="break-inside-avoid">
+                      <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="relative group cursor-pointer rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 hover:border-[#39FF14] transition-all duration-300 shadow-lg"
+                        onClick={() => handleLaunch(game)}
+                      >
+                        <div className="relative w-full overflow-hidden aspect-[4/5] sm:aspect-square lg:aspect-[3/4]">
+                            <img src={game.image} alt={game.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+                            
+                            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/40 backdrop-blur-[2px]">
+                                <div className="bg-[#39FF14] text-black rounded-full p-4 shadow-[0_0_30px_#39FF14]">
+                                    <PlayCircle className="w-8 h-8" fill="black" />
+                                </div>
+                                <span className="mt-4 text-[#39FF14] font-black tracking-widest text-xs uppercase">INITIALIZE</span>
                             </div>
+
+                            {!isPETMember && userId && (
+                                <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md p-2 rounded-full border border-gray-700">
+                                    <Lock className="w-4 h-4 text-gray-400" />
+                                </div>
+                            )}
                         </div>
 
-                        {/* Lock (If Locked) */}
-                        {!isPETMember && userId && (
-                            <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md p-2 rounded-full">
-                                <Lock className="w-4 h-4 text-white" />
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Meta Data */}
-                    <div className="absolute bottom-0 left-0 w-full p-6 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                        <div className="flex justify-between items-end">
-                            <div>
-                                <p className="text-[#39FF14] text-[10px] font-bold uppercase tracking-widest mb-1">{game.cat}</p>
-                                <h3 className="text-xl font-black text-white italic uppercase leading-none">{game.title}</h3>
-                            </div>
-                            <div className="bg-black/50 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-                                <p className="text-[10px] font-mono text-gray-300">-{GAME_COST}</p>
+                        <div className="absolute bottom-0 left-0 w-full p-5 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                            <div className="flex justify-between items-end">
+                                <div>
+                                    <p className="text-[#39FF14] text-[9px] font-bold uppercase tracking-[0.2em] mb-1">{game.cat}</p>
+                                    <h3 className="text-xl font-black text-white italic uppercase leading-none drop-shadow-md">{game.title}</h3>
+                                </div>
+                                <div className="bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-[#39FF14]/30">
+                                    <p className="text-[10px] font-mono text-[#39FF14] font-bold">-{GAME_COST}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                  </motion.div>
+                      </motion.div>
+
+                      {/* SYSTEMATIC ADS INJECTION */}
+                      {/* Inject Square Ad after 4th item */}
+                      {i === 3 && (
+                          <div className="mt-6">
+                              <AdDisplayPanel variant="square" />
+                          </div>
+                      )}
+                      {/* Inject Tall Ad after 8th item */}
+                      {i === 7 && (
+                          <div className="mt-6">
+                              <AdDisplayPanel variant="tall" />
+                          </div>
+                      )}
+                  </div>
                 ))}
 
-                {/* 2. Second Ad Injection (Bottom) */}
-                <div className="break-inside-avoid mt-6">
-                    <AdDisplayPanel zoneType="banner" />
+                {/* 2. CALLOUT: ECONOMY */}
+                <div className="break-inside-avoid bg-gradient-to-br from-gray-900 to-black border border-gray-800 p-6 rounded-2xl relative overflow-hidden mb-6 group hover:border-yellow-500 transition-colors">
+                    <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Gem className="w-32 h-32 text-yellow-500" />
+                    </div>
+                    <div className="relative z-10">
+                        <div className="w-10 h-10 bg-yellow-500/20 rounded-full flex items-center justify-center mb-4 text-yellow-500">
+                            <Zap className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-xl font-black text-white italic mb-2">POWER UP</h3>
+                        <p className="text-gray-400 text-xs mb-4">
+                            Running low on credits? Purchase Gold Packs instantly.
+                        </p>
+                        <button onClick={() => setActiveModal('payment')} className="text-yellow-500 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors flex items-center gap-2">
+                            OPEN VAULT →
+                        </button>
+                    </div>
                 </div>
 
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* 3. MOBILE STICKY AD (Visible only on mobile) */}
+        {!activeGame && (
+            <div className="fixed bottom-0 left-0 w-full z-50 md:hidden bg-black/90 backdrop-blur-md border-t border-gray-800 flex justify-center py-2">
+                <AdDisplayPanel variant="mobile" />
+            </div>
+        )}
+
       </main>
     </div>
   );

@@ -9,16 +9,18 @@ export const useAdSystem = () => {
   const { setShowMessage } = useModal();
 
   const triggerSmartLink = useCallback(async () => {
-    // 1. Open the Ad (Smartlink)
+    // 1. Open the Smartlink (The "Coin Insert" mechanic)
+    // This opens the ad in a new tab while the game restarts in the current tab.
     if (AD_CONFIG.SMARTLINK_URL) {
         window.open(AD_CONFIG.SMARTLINK_URL, '_blank');
     }
 
-    // 2. Member Reward Logic
+    // 2. Member Reward Logic (Play-to-Earn)
+    // Only members get Joules for watching the ad
     if (isPETMember) {
         try {
             await updatePlayerFirestore({
-                joules: increment(10) as any // REWARD: 10 Joules per ad
+                joules: increment(10) as any // Cast to any to allow Firestore FieldValue
             });
             setShowMessage("💎 AD BONUS: +10 JOULES ADDED");
         } catch (e) {
