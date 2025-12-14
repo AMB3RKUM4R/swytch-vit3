@@ -1,6 +1,6 @@
-import { FC, useState, useMemo, useEffect } from 'react';
+import { FC, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { Sparkles, Zap, Brain, Dna, Lock, Search, PlayCircle } from 'lucide-react';
+import { Sparkles, Lock, Search, PlayCircle } from 'lucide-react';
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { GAME_COST } from '@/lib/types'; 
