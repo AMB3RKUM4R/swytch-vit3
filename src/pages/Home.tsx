@@ -1,6 +1,6 @@
 import { FC, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { Zap, Lock, Search, PlayCircle, Crown, Gem, Play } from 'lucide-react'; // Added Play icon
+import { Zap, Lock, Search, Crown, Gem, Play } from 'lucide-react'; // Added Play icon
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { GAME_COST } from '@/lib/types'; 
