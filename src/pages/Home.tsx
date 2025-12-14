@@ -1,11 +1,11 @@
 import { FC, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { Zap, Lock, Search, PlayCircle, Crown, Gem } from 'lucide-react';
+import { Zap, Lock, Search, PlayCircle, Crown, Gem, Play } from 'lucide-react'; // Added Play icon
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { GAME_COST } from '@/lib/types'; 
 import CurrencyHUD from '@/components/CurrencyHUD';
-import AdDisplayPanel from '@/components/AdDisplayPanel'; // Import Ads
+import AdDisplayPanel from '@/components/AdDisplayPanel'; 
 
 // --- GAME IMPORTS ---
 import LuckyHash from '@/components/games/LuckyHash';
@@ -84,7 +84,7 @@ const Home: FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 500], [0, 150]); // Slower parallax for image
+  const y1 = useTransform(scrollY, [0, 500], [0, 150]); 
   const opacityHero = useTransform(scrollY, [0, 300], [1, 0]);
 
   const visibleGames = useMemo(() => {
@@ -111,20 +111,13 @@ const Home: FC = () => {
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#39FF14] selection:text-black pb-20">
       
-      {/* 1. HERO SECTION (Updated for Image) */}
+      {/* 1. HERO SECTION */}
       {!activeGame && (
         <div className="relative h-[65vh] overflow-hidden flex items-center justify-center border-b border-[#39FF14]/20 group">
-            
-            {/* HERO IMAGE LAYER */}
-            {/* bg-cover ensures it fills screen, bg-center centers it */}
             <div className="absolute inset-0 bg-[url('/grid-pattern.png')] bg-cover bg-center opacity-70 transition-transform duration-[10s] ease-in-out group-hover:scale-105"></div>
-            
-            {/* DARK GRADIENT OVERLAY (Readability) */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-[#050505]"></div>
             
             <motion.div style={{ y: y1, opacity: opacityHero }} className="text-center z-10 px-4 max-w-4xl relative">
-                
-                {/* Badge */}
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#39FF14]/30 bg-black/60 backdrop-blur-md mb-6 shadow-[0_0_20px_rgba(57,255,20,0.1)]">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#39FF14] opacity-75"></span>
@@ -137,7 +130,6 @@ const Home: FC = () => {
                     PLAY. EARN. <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#39FF14] to-emerald-500">DOMINATE.</span>
                 </h1>
                 
-                {/* Search Bar */}
                 <div className="max-w-md mx-auto relative group mt-8">
                     <div className="absolute inset-0 bg-[#39FF14] opacity-20 blur-xl rounded-full group-hover:opacity-30 transition-opacity"></div>
                     <input 
@@ -200,14 +192,14 @@ const Home: FC = () => {
             </motion.div>
           ) : (
             
-            // --- MASONRY GRID (SYSTEMATIC ADS) ---
+            // --- MASONRY GRID ---
             <motion.div 
               key="grid-view"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6"
             >
-                {/* 1. HEADER AD (First item in grid) */}
+                {/* HEADER AD */}
                 <div className="break-inside-avoid mb-6">
                     <AdDisplayPanel variant="header" />
                 </div>
@@ -236,7 +228,7 @@ const Home: FC = () => {
                         className="relative group cursor-pointer rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 hover:border-[#39FF14] transition-all duration-300 shadow-lg"
                         onClick={() => handleLaunch(game)}
                       >
-                        {/* 1. GAME COVER & OVERLAY */}
+                        {/* 1. GAME COVER */}
                         <div className="relative w-full overflow-hidden aspect-[3/4]">
                             <img 
                               src={game.image} 
@@ -244,51 +236,58 @@ const Home: FC = () => {
                               className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" 
                             />
                             
-                            {/* Dark Overlay (Darkens on Hover for readability) */}
-                            <div className="absolute inset-0 bg-black/30 group-hover:bg-black/60 transition-colors duration-300" />
+                            {/* Overlay: Darkens on hover to pop text */}
+                            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/70 transition-all duration-300" />
                             
-                            {/* 2. CENTER CONTENT (Title & Category) */}
+                            {/* 2. CENTER CONTENT - TEXT & ACTIONS */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center p-4 z-10 text-center">
-                                {/* Title */}
-                                <h3 className="text-2xl font-black text-white italic uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-2 scale-95 group-hover:scale-100 transition-transform duration-300">
+                                
+                                {/* A. Title */}
+                                <h3 className="text-2xl font-black text-white italic uppercase tracking-wider drop-shadow-md mb-1 scale-95 group-hover:scale-100 transition-transform duration-300">
                                   {game.title}
                                 </h3>
                                 
-                                {/* Info Pills (Category & Cost) */}
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[#39FF14] text-[10px] font-bold border border-[#39FF14]/30 px-2 py-1 rounded bg-black/60 backdrop-blur-md uppercase tracking-widest">
-                                    {game.cat}
-                                  </span>
-                                  <span className="text-white text-[10px] font-mono border border-white/20 px-2 py-1 rounded bg-black/60 backdrop-blur-md">
-                                    -{GAME_COST}
-                                  </span>
-                                </div>
+                                {/* B. Category Pill */}
+                                <span className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-4">
+                                  {game.cat}
+                                </span>
 
-                                {/* Play Icon (Slides Up on Hover) */}
-                                <div className="mt-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
-                                    <div className="bg-[#39FF14] text-black rounded-full p-2 shadow-[0_0_15px_#39FF14]">
-                                      <PlayCircle className="w-8 h-8" fill="black" />
-                                    </div>
+                                {/* C. ACTION BUTTON / COST DISPLAY */}
+                                <div className="mt-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                                  {/* Logic: If Member, show Cost to Play. If Not, show Locked reason. */}
+                                  {isPETMember ? (
+                                     <div className="flex flex-col items-center gap-2">
+                                        <div className="bg-[#39FF14] hover:bg-white text-black px-4 py-2 rounded-full flex items-center gap-2 shadow-[0_0_15px_#39FF14] transition-colors">
+                                           <Play className="w-4 h-4 fill-black" />
+                                           <span className="font-black text-xs tracking-wider">PLAY NOW</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-[#39FF14] text-xs font-mono font-bold bg-black/60 px-2 py-1 rounded border border-[#39FF14]/30 backdrop-blur-md">
+                                           <Zap className="w-3 h-3 fill-[#39FF14]" />
+                                           <span>{GAME_COST} JOULES</span>
+                                        </div>
+                                     </div>
+                                  ) : (
+                                     <div className="flex flex-col items-center gap-2">
+                                        <div className="bg-gray-800 border border-gray-600 text-gray-400 px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-md">
+                                           <Lock className="w-4 h-4" />
+                                           <span className="font-bold text-xs tracking-wider">LOCKED</span>
+                                        </div>
+                                        <span className="text-[9px] text-[#39FF14] uppercase tracking-widest font-bold bg-black/80 px-2 py-1 rounded">
+                                            MEMBERS ONLY
+                                        </span>
+                                     </div>
+                                  )}
                                 </div>
                             </div>
-
-                            {/* Lock Icon (Top Right) */}
-                            {!isPETMember && userId && (
-                                <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md p-2 rounded-full border border-gray-700 z-20">
-                                    <Lock className="w-4 h-4 text-gray-400" />
-                                </div>
-                            )}
                         </div>
                       </motion.div>
 
-                      {/* SYSTEMATIC ADS INJECTION */}
-                      {/* Inject Square Ad after 4th item */}
+                      {/* ADS INJECTION */}
                       {i === 3 && (
                           <div className="mt-6">
                               <AdDisplayPanel variant="square" />
                           </div>
                       )}
-                      {/* Inject Tall Ad after 8th item */}
                       {i === 7 && (
                           <div className="mt-6">
                               <AdDisplayPanel variant="tall" />
@@ -320,7 +319,7 @@ const Home: FC = () => {
           )}
         </AnimatePresence>
 
-        {/* 3. MOBILE STICKY AD (Visible only on mobile) */}
+        {/* 3. MOBILE STICKY AD */}
         {!activeGame && (
             <div className="fixed bottom-0 left-0 w-full z-50 md:hidden bg-black/90 backdrop-blur-md border-t border-gray-800 flex justify-center py-2">
                 <AdDisplayPanel variant="mobile" />
