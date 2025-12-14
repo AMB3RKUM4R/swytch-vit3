@@ -236,34 +236,48 @@ const Home: FC = () => {
                         className="relative group cursor-pointer rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 hover:border-[#39FF14] transition-all duration-300 shadow-lg"
                         onClick={() => handleLaunch(game)}
                       >
-                        <div className="relative w-full overflow-hidden aspect-[4/5] sm:aspect-square lg:aspect-[3/4]">
-                            <img src={game.image} alt={game.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+                        {/* 1. GAME COVER & OVERLAY */}
+                        <div className="relative w-full overflow-hidden aspect-[3/4]">
+                            <img 
+                              src={game.image} 
+                              alt={game.title} 
+                              className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" 
+                            />
                             
-                            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/40 backdrop-blur-[2px]">
-                                <div className="bg-[#39FF14] text-black rounded-full p-4 shadow-[0_0_30px_#39FF14]">
-                                    <PlayCircle className="w-8 h-8" fill="black" />
+                            {/* Dark Overlay (Darkens on Hover for readability) */}
+                            <div className="absolute inset-0 bg-black/30 group-hover:bg-black/60 transition-colors duration-300" />
+                            
+                            {/* 2. CENTER CONTENT (Title & Category) */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center p-4 z-10 text-center">
+                                {/* Title */}
+                                <h3 className="text-2xl font-black text-white italic uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-2 scale-95 group-hover:scale-100 transition-transform duration-300">
+                                  {game.title}
+                                </h3>
+                                
+                                {/* Info Pills (Category & Cost) */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[#39FF14] text-[10px] font-bold border border-[#39FF14]/30 px-2 py-1 rounded bg-black/60 backdrop-blur-md uppercase tracking-widest">
+                                    {game.cat}
+                                  </span>
+                                  <span className="text-white text-[10px] font-mono border border-white/20 px-2 py-1 rounded bg-black/60 backdrop-blur-md">
+                                    -{GAME_COST}
+                                  </span>
                                 </div>
-                                <span className="mt-4 text-[#39FF14] font-black tracking-widest text-xs uppercase">INITIALIZE</span>
+
+                                {/* Play Icon (Slides Up on Hover) */}
+                                <div className="mt-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
+                                    <div className="bg-[#39FF14] text-black rounded-full p-2 shadow-[0_0_15px_#39FF14]">
+                                      <PlayCircle className="w-8 h-8" fill="black" />
+                                    </div>
+                                </div>
                             </div>
 
+                            {/* Lock Icon (Top Right) */}
                             {!isPETMember && userId && (
-                                <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md p-2 rounded-full border border-gray-700">
+                                <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md p-2 rounded-full border border-gray-700 z-20">
                                     <Lock className="w-4 h-4 text-gray-400" />
                                 </div>
                             )}
-                        </div>
-
-                        <div className="absolute bottom-0 left-0 w-full p-5 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                            <div className="flex justify-between items-end">
-                                <div>
-                                    <p className="text-[#39FF14] text-[9px] font-bold uppercase tracking-[0.2em] mb-1">{game.cat}</p>
-                                    <h3 className="text-xl font-black text-white italic uppercase leading-none drop-shadow-md">{game.title}</h3>
-                                </div>
-                                <div className="bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-[#39FF14]/30">
-                                    <p className="text-[10px] font-mono text-[#39FF14] font-bold">-{GAME_COST}</p>
-                                </div>
-                            </div>
                         </div>
                       </motion.div>
 
