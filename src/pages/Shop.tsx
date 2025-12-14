@@ -98,7 +98,7 @@ const Shop: FC = () => {
                               title: item.itemName,
                               subtitle: item.rarity,
                               imageUrl: item.visuals?.iconName,
-                              // FIX: Lowercase properties matching new types.ts
+                              // Calculate display price
                               price: item.price?.usd ? item.price.usd * 100 : (item.price?.joules ? Math.floor(item.price.joules/10) : 100),
                               data: item
                           }}
@@ -111,7 +111,8 @@ const Shop: FC = () => {
           {/* --- AD BANNER --- */}
           <div className="w-full flex justify-center py-8 border-t border-gray-900">
                <div className="w-full max-w-4xl bg-[#050505] border border-dashed border-gray-800 p-4 text-center text-gray-600 text-xs">
-                   <AdDisplayPanel zoneType="banner" />
+                   {/* FIX: Use 'variant' instead of 'zoneType' */}
+                   <AdDisplayPanel variant="leaderboard" />
                    <span className="block mt-2 opacity-50">SPONSORED_CONTENT</span>
                </div>
           </div>

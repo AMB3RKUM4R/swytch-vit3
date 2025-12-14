@@ -6,7 +6,6 @@ import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp,
 import { usePlayer } from '@/components/context/PlayerContext';
 import { ChatMessage } from '@/lib/types';
 
-// FIX: Explicitly match the ChatMessage type where timestamp can be null
 interface ExtendedMessage extends Omit<ChatMessage, 'timestamp'> {
   timestamp: Timestamp | FieldValue | null;
   isLocal?: boolean;
@@ -14,10 +13,10 @@ interface ExtendedMessage extends Omit<ChatMessage, 'timestamp'> {
 }
 
 const FAQ_COMMANDS = [
-    { label: 'HOW TO EARN', response: '>> PLAY GAMES in the Feed or complete Daily Quests to mine JOULES.' },
-    { label: 'WITHDRAW RULES', response: '>> Go to VAULT > EXTRACT. Min: 10 J. Requires verified wallet.' },
-    { label: 'BUY GOLD', response: '>> Go to MARKET. Select a package. Pay via Crypto/UPI to get Credits.' },
-    { label: 'VIP STATUS', response: '>> Buy ELITE STATUS in the Vault to unlock 2x Yield Multipliers.' },
+    { label: 'HOW TO EARN', response: '>> PLAY GAMES or complete QUESTS to mine JOULES.' },
+    { label: 'WITHDRAW', response: '>> Go to VAULT > EXTRACT. Min: 10 J.' },
+    { label: 'BUY GOLD', response: '>> Go to MARKET. Use Crypto/UPI for Credits.' },
+    { label: 'VIP STATUS', response: '>> Buy ELITE STATUS in the Vault for 2x Yield.' },
 ];
 
 const CommunityChat: FC = () => {
@@ -46,7 +45,6 @@ const CommunityChat: FC = () => {
         const data = doc.data();
         const isSystem = data.username === 'Admin' || data.username === 'System';
         
-        // Cast data to ensure it fits our interface
         const msg: ExtendedMessage = { 
             id: doc.id, 
             userId: data.userId,
@@ -101,23 +99,25 @@ const CommunityChat: FC = () => {
           isLocal: true,
           profilePictureUrl: null
       };
-      
       setMessages(prev => [...prev, botMsg]);
       setShowBotMenu(false);
       setTimeout(scrollToBottom, 100);
   };
 
   return (
-    <div className="flex flex-col h-full bg-black border-l border-gray-800 font-mono text-xs">
+    <div className="flex flex-col h-full bg-black/95 font-mono text-xs relative overflow-hidden">
       
+      {/* Background Visuals */}
+      <div className="absolute inset-0 bg-[url('/grid-pattern.png')] opacity-5 pointer-events-none"></div>
+
+      {/* Pinned Message */}
       {pinnedAnnouncement && (
-          <div className="bg-[#050505] border-b border-red-900/30 p-3 flex items-start gap-3 shadow-md relative overflow-hidden">
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600 animate-pulse" />
-              <Shield className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+          <div className="bg-red-900/10 border-b border-red-900/50 p-3 flex items-start gap-3 relative z-10 backdrop-blur-md">
+              <Shield className="w-4 h-4 text-red-500 mt-0.5 animate-pulse flex-shrink-0" />
               <div className="flex-grow">
                   <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest mb-1 flex justify-between">
                       <span>SYSTEM BROADCAST</span>
-                      <span className="opacity-50">LATEST</span>
+                      <span className="opacity-50 text-[8px] border border-red-500/50 px-1 rounded">PRIORITY_1</span>
                   </p>
                   <p className="text-white text-[10px] leading-tight uppercase font-bold">
                       {pinnedAnnouncement.text}
@@ -126,7 +126,8 @@ const CommunityChat: FC = () => {
           </div>
       )}
 
-      <div className="flex-grow p-4 space-y-4 overflow-y-auto no-scrollbar bg-black relative">
+      {/* Messages Area */}
+      <div className="flex-grow p-4 space-y-4 overflow-y-auto no-scrollbar relative z-10 scrollbar-thin scrollbar-thumb-gray-800">
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
              const isBot = msg.isLocal;
@@ -140,32 +141,30 @@ const CommunityChat: FC = () => {
                     animate={{ opacity: 1, x: 0 }}
                     className={`flex items-start gap-3 ${isMe ? 'flex-row-reverse' : ''}`}
                 >
-                    <div className={`w-8 h-8 rounded-sm border flex-shrink-0 overflow-hidden flex items-center justify-center ${
+                    {/* Avatar */}
+                    <div className={`w-7 h-7 rounded-sm border flex-shrink-0 overflow-hidden flex items-center justify-center ${
                         isBot ? 'border-[#39FF14] bg-[#39FF14]/10' : 
                         isAdmin ? 'border-red-500 bg-red-900/20' :
                         isMe ? 'border-gray-500' : 'border-gray-800 bg-[#050505]'
                     }`}>
-                        {isBot ? <Bot className="w-5 h-5 text-[#39FF14]" /> : 
-                         isAdmin ? <AlertTriangle className="w-4 h-4 text-red-500" /> :
+                        {isBot ? <Bot className="w-4 h-4 text-[#39FF14]" /> : 
+                         isAdmin ? <AlertTriangle className="w-3 h-3 text-red-500" /> :
                          msg.profilePictureUrl ? <img src={msg.profilePictureUrl} className="w-full h-full object-cover" /> :
-                         <User className="w-4 h-4 text-gray-500" />
+                         <User className="w-3 h-3 text-gray-500" />
                         }
                     </div>
 
+                    {/* Bubble */}
                     <div className={`max-w-[85%] space-y-1 ${isMe ? 'items-end text-right' : 'items-start'}`}>
                         <div className="flex items-center gap-2">
                             <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                                isBot ? 'text-[#39FF14]' : 
-                                isAdmin ? 'text-red-500' :
-                                isMe ? 'text-white' : 'text-gray-500'
+                                isBot ? 'text-[#39FF14]' : isAdmin ? 'text-red-500' : isMe ? 'text-white' : 'text-gray-500'
                             }`}>
                                 {msg.username}
                             </span>
-                            {isBot && <span className="bg-[#39FF14] text-black text-[8px] px-1 font-bold rounded-sm">BOT</span>}
-                            {isAdmin && <span className="bg-red-500 text-black text-[8px] px-1 font-bold rounded-sm">ADMIN</span>}
                         </div>
                         
-                        <div className={`p-2.5 text-xs leading-relaxed border rounded-sm shadow-sm ${
+                        <div className={`px-2.5 py-2 text-xs leading-relaxed border rounded-sm ${
                             isBot ? 'bg-[#39FF14]/5 border-[#39FF14] text-[#39FF14] font-bold' :
                             isAdmin ? 'bg-red-900/10 border-red-500/50 text-white' :
                             isMe ? 'bg-white/10 border-white/20 text-white' : 
@@ -181,14 +180,17 @@ const CommunityChat: FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Input Area */}
       <div className="bg-[#050505] border-t border-gray-800 relative z-20">
+        
+        {/* Bot Menu */}
         <AnimatePresence>
             {showBotMenu && (
                 <motion.div 
                     initial={{ height: 0, opacity: 0 }} 
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="p-2 grid grid-cols-2 gap-2 border-b border-gray-800 bg-gray-900/90"
+                    className="p-2 grid grid-cols-2 gap-2 border-b border-gray-800 bg-gray-900/95 backdrop-blur-md absolute bottom-full w-full left-0"
                 >
                     {FAQ_COMMANDS.map(cmd => (
                         <button 
@@ -203,34 +205,31 @@ const CommunityChat: FC = () => {
             )}
         </AnimatePresence>
 
-        <div className="p-3 flex items-center gap-2">
+        <div className="p-2 flex items-center gap-2">
              <button 
                 onClick={() => setShowBotMenu(!showBotMenu)}
-                className={`h-10 w-10 flex-shrink-0 flex items-center justify-center border rounded-sm transition-all ${
+                className={`h-9 w-9 flex-shrink-0 flex items-center justify-center border rounded-sm transition-all ${
                     showBotMenu 
                     ? 'bg-[#39FF14] text-black border-[#39FF14] rotate-90' 
                     : 'border-gray-700 text-gray-500 hover:text-[#39FF14] hover:border-[#39FF14]'
                 }`}
-                title="Open Support Terminal"
              >
                  {showBotMenu ? <X className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
              </button>
 
              <form onSubmit={handleSendMessage} className="flex-grow flex items-center gap-2">
-                <div className="relative flex-grow group">
-                    <input
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder={userId ? "ENTER_MESSAGE..." : "LOGIN_REQUIRED"}
-                        className="w-full bg-black border border-gray-800 py-2 pl-3 pr-3 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-[#39FF14] transition-colors font-mono rounded-sm h-10 uppercase"
-                        disabled={!userId}
-                    />
-                </div>
+                <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder={userId ? "TRANSMIT..." : "LOGIN_REQ"}
+                    className="w-full bg-black border border-gray-800 py-2 pl-3 pr-3 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-[#39FF14] transition-colors font-mono rounded-sm h-9 uppercase"
+                    disabled={!userId}
+                />
                 <button
                     type="submit"
                     disabled={!userId || !newMessage.trim()}
-                    className="h-10 w-12 flex-shrink-0 flex items-center justify-center bg-[#39FF14] text-black hover:bg-white transition-colors disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-600 rounded-sm"
+                    className="h-9 w-10 flex-shrink-0 flex items-center justify-center bg-[#39FF14] text-black hover:bg-white transition-colors disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-600 rounded-sm"
                 >
                     <Send className="w-4 h-4" />
                 </button>
