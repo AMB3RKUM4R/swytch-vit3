@@ -2,10 +2,17 @@ import { useState, useEffect, useRef } from 'react';
 import SwytchContainer from './SwytchContainer';
 import { useAdSystem } from '@/hooks/useAdSystem';
 
+const ENEMIES = [
+    "https://placehold.co/50x50/000000/FF0000?text=👾",
+    "https://placehold.co/50x50/000000/FF00FF?text=🛸",
+    "https://placehold.co/50x50/000000/FFFF00?text=🦗"
+];
+
 interface GameObject {
   id: number;
   x: number;
   y: number;
+  type: number;
 }
 
 export default function VoidShooter() {
@@ -21,11 +28,11 @@ export default function VoidShooter() {
 
   const loop = () => {
     // Bullets
-    setBullets(prev => prev.map(b => ({ ...b, y: b.y + 2 })).filter(b => b.y < 100));
+    setBullets(prev => prev.map(b => ({ ...b, y: b.y + 2.5 })).filter(b => b.y < 100));
 
     // Enemies
     setEnemies(prev => {
-      const moved = prev.map(e => ({ ...e, y: e.y + 0.5 })); 
+      const moved = prev.map(e => ({ ...e, y: e.y + 0.6 })); 
       if (moved.some(e => e.y > 90)) {
         setPlaying(false);
         setGameOver(true);
@@ -39,7 +46,7 @@ export default function VoidShooter() {
         setEnemies(currEnemies => {
             let nextEnemies = [...currEnemies];
             nextBullets = nextBullets.filter(b => {
-                const hitIndex = nextEnemies.findIndex(e => Math.abs(e.x - b.x) < 10 && Math.abs(e.y - (100-b.y)) < 10);
+                const hitIndex = nextEnemies.findIndex(e => Math.abs(e.x - b.x) < 8 && Math.abs(e.y - (100-b.y)) < 8);
                 if (hitIndex > -1) {
                     nextEnemies.splice(hitIndex, 1);
                     setScore(s => s + 100);
@@ -53,8 +60,8 @@ export default function VoidShooter() {
     });
 
     // Spawn
-    if (Math.random() < 0.03) {
-      setEnemies(prev => [...prev, { id: Math.random(), x: Math.random() * 90, y: 0 }]);
+    if (Math.random() < 0.04) {
+      setEnemies(prev => [...prev, { id: Math.random(), x: Math.random() * 90, y: 0, type: Math.floor(Math.random()*3) }]);
     }
     
     if (playing) reqRef.current = requestAnimationFrame(loop);
@@ -66,7 +73,7 @@ export default function VoidShooter() {
   }, [playing]);
 
   const shoot = () => {
-    setBullets(prev => [...prev, { id: Math.random(), x: playerX + 2, y: 10 }]); 
+    setBullets(prev => [...prev, { id: Math.random(), x: playerX + 2, y: 10, type: 0 }]); 
   };
 
   const startGame = () => {
@@ -86,13 +93,15 @@ export default function VoidShooter() {
     <SwytchContainer title="VOID DEFENDER">
       <div className="relative w-[300px] h-[300px] border-2 border-gray-800 bg-[#050505] overflow-hidden mb-4 rounded-lg shadow-[inset_0_0_40px_rgba(0,0,0,0.8)] mx-auto">
         {/* Starfield */}
-        <div className="absolute inset-0 bg-[radial-gradient(white_1px,transparent_1px)] bg-[length:20px_20px] opacity-20"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(white_1px,transparent_1px)] bg-[length:20px_20px] opacity-30"></div>
 
-        {/* Player */}
+        {/* Player Ship */}
         <div 
-            className="absolute bottom-4 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-b-[20px] border-b-[#39FF14] filter drop-shadow-[0_0_10px_#39FF14] transition-all duration-75"
+            className="absolute bottom-4 w-12 h-12 flex justify-center items-end transition-all duration-75"
             style={{ left: `${playerX}%` }}
-        />
+        >
+            <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[20px] border-b-[#39FF14] filter drop-shadow-[0_0_10px_#39FF14]"></div>
+        </div>
 
         {/* Bullets */}
         {bullets.map(b => (
@@ -101,8 +110,8 @@ export default function VoidShooter() {
 
         {/* Enemies */}
         {enemies.map(e => (
-            <div key={e.id} className="absolute w-8 h-8 flex items-center justify-center text-red-500 font-bold text-lg animate-pulse" style={{ left: `${e.x}%`, top: `${e.y}%` }}>
-                👾
+            <div key={e.id} className="absolute w-8 h-8 flex items-center justify-center animate-pulse" style={{ left: `${e.x}%`, top: `${e.y}%` }}>
+                <img src={ENEMIES[e.type]} className="w-full h-full object-contain" />
             </div>
         ))}
 
@@ -113,9 +122,9 @@ export default function VoidShooter() {
 
       {/* Controls */}
       <div className="grid grid-cols-3 gap-2 w-full max-w-[300px]">
-        <button onMouseDown={() => setPlayerX(x => Math.max(x-10, 0))} className="bg-gray-900 border border-gray-700 text-white py-4 hover:border-[#39FF14]">◀</button>
+        <button onMouseDown={() => setPlayerX(x => Math.max(x-15, 0))} className="bg-gray-900 border border-gray-700 text-white py-4 hover:border-[#39FF14]">◀</button>
         <button onMouseDown={shoot} className="bg-[#39FF14] text-black font-black tracking-widest hover:bg-white shadow-[0_0_15px_#39FF14]">FIRE</button>
-        <button onMouseDown={() => setPlayerX(x => Math.min(x+10, 90))} className="bg-gray-900 border border-gray-700 text-white py-4 hover:border-[#39FF14]">▶</button>
+        <button onMouseDown={() => setPlayerX(x => Math.min(x+15, 90))} className="bg-gray-900 border border-gray-700 text-white py-4 hover:border-[#39FF14]">▶</button>
       </div>
 
       {!playing && !gameOver && (

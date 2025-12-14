@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import SwytchContainer from './SwytchContainer';
 import { useAdSystem } from '@/hooks/useAdSystem';
 
+const CORE_COLORS = ["#39FF14", "#00FFFF", "#FF00FF"];
+
 export default function PinCore() {
   const { triggerSmartLink } = useAdSystem();
 
@@ -9,10 +11,11 @@ export default function PinCore() {
   const [rotation, setRotation] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const [colorIdx, setColorIdx] = useState(0);
   const reqRef = useRef<number>();
 
   const loop = () => {
-    setRotation(r => (r + 2.5) % 360); // Speed
+    setRotation(r => (r + 2.5 + (pins.length * 0.1)) % 360); // Gets faster
     reqRef.current = requestAnimationFrame(loop);
   };
 
@@ -24,11 +27,8 @@ export default function PinCore() {
   const shoot = () => {
     if (!playing || gameOver) return;
     
-    // Calculate angle relative to the core's current rotation
     const currentAngle = (360 - rotation + 90) % 360; 
-    
-    // Check collision (too close to another pin)
-    const collision = pins.some(p => Math.abs(p - currentAngle) < 12);
+    const collision = pins.some(p => Math.abs(p - currentAngle) < 15);
     
     if (collision) {
       setPlaying(false);
@@ -42,6 +42,7 @@ export default function PinCore() {
     setPlaying(true);
     setPins([]);
     setGameOver(false);
+    setColorIdx(prev => (prev + 1) % CORE_COLORS.length);
   };
 
   const handleRetry = () => {
@@ -49,17 +50,23 @@ export default function PinCore() {
       startGame();
   };
 
+  const activeColor = CORE_COLORS[colorIdx];
+
   return (
     <SwytchContainer title="PIN THE CORE">
       <div className="relative w-[300px] h-[300px] flex items-center justify-center overflow-hidden mb-4">
         {/* Core */}
         <div 
-          className="w-24 h-24 bg-[#39FF14] rounded-full relative flex items-center justify-center shadow-[0_0_30px_#39FF14]"
-          style={{ transform: `rotate(${rotation}deg)` }}
+          className="w-24 h-24 rounded-full relative flex items-center justify-center transition-all duration-75"
+          style={{ 
+              transform: `rotate(${rotation}deg)`,
+              backgroundColor: activeColor,
+              boxShadow: `0 0 30px ${activeColor}`
+          }}
         >
            <span className="text-black font-black text-xl">{pins.length}</span>
            
-           {/* Existing Pins attached to Core */}
+           {/* Pins */}
            {pins.map((angle, i) => (
              <div 
                key={i}
@@ -71,11 +78,10 @@ export default function PinCore() {
            ))}
         </div>
 
-        {/* Player Pin (Ready to fire) */}
+        {/* Player Pin */}
         <div className="absolute bottom-8 w-1 h-12 bg-white animate-pulse"></div>
       </div>
       
-      {/* Controls */}
       {!playing && !gameOver ? (
         <button onClick={startGame} className="w-full py-4 bg-[#39FF14] text-black font-black uppercase tracking-widest hover:bg-white transition-colors">
             START
@@ -90,7 +96,6 @@ export default function PinCore() {
         </button>
       )}
 
-      {/* Game Over */}
       {gameOver && (
         <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 animate-fade-in">
             <h2 className="text-red-500 font-black text-2xl mb-2">SHATTERED</h2>

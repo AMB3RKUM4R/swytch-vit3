@@ -1,13 +1,15 @@
 import { Timestamp, FieldValue } from 'firebase/firestore';
 
-export type TransactionType = 'deposit' | 'withdraw' | 'item-purchase' | 'membership' | 'game-reward' | 'quest-reward';
-export type SupportedCurrency = 'USD' | 'INR' | 'ETH' | 'JOULES';
+// --- ECONOMY CONSTANTS ---
+export const GAME_COST = 30; 
+export const MEMBERSHIP_BONUS_GOLD = 100; 
+
+export type TransactionType = 'deposit' | 'withdraw' | 'item-purchase' | 'membership' | 'game-reward' | 'quest-reward' | 'game-fee';
+export type SupportedCurrency = 'USD' | 'INR' | 'ETH' | 'JOULES' | 'GOLD';
 export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'success';
 
-// FIX: Updated Rarity to match the new system (S-Rank, etc.)
 export type Rarity = 'E-Rank' | 'D-Rank' | 'C-Rank' | 'B-Rank' | 'A-Rank' | 'S-Rank' | 'Common' | 'Rare' | 'Legendary' | 'System_Admin';
 
-// FIX: Updated Membership Types
 export type MembershipTier = 'none' | 'ecosystem' | 'lifetime';
 
 export interface PlayerData {
@@ -21,7 +23,6 @@ export interface PlayerData {
   xp: number;
   energy: number;
   mana: number;
-  // FIX: Allow lifetime membership string
   membership: MembershipTier; 
   isPETMember: boolean;
   inventory: {
@@ -49,7 +50,7 @@ export interface InventoryItem {
   obtainedAt: Timestamp;
   isListed?: boolean;
   listingPrice?: string;
-  instanceId?: string; // Optional for UI mapping
+  instanceId?: string; 
 }
 
 export interface ItemDefinition {
@@ -62,26 +63,26 @@ export interface ItemDefinition {
   stats?: Record<string, number>;
   visuals: {
     prefabName?: string;
-    iconName?: string; // FIX: Added iconName
-    iconPath?: string; // Legacy support
+    iconName?: string; 
+    iconPath?: string; 
   };
   price: {
     gold?: number;
-    usd?: number;    // FIX: lowercase usd
+    usd?: number;    
     eth?: number;
-    joules?: number; // FIX: added joules
+    joules?: number; 
   };
 }
 
 export interface Transaction {
-  id: string;
+  id?: string; // Optional for creation, added by Firestore
   transactionId?: string;
   userId: string;
   amount: number;
   currency: SupportedCurrency;
   transactionType: TransactionType;
   status: TransactionStatus;
-  timestamp: Timestamp | FieldValue;
+  timestamp?: Timestamp | FieldValue; // Optional for creation
   itemId?: string;
   paymentGatewayId?: string;
   transactionHash?: string;
@@ -93,7 +94,6 @@ export interface ChatMessage {
   username: string;
   profilePictureUrl?: string | null;
   text: string;
-  // FIX: Allow null for local bot messages
   timestamp: Timestamp | FieldValue | null; 
 }
 

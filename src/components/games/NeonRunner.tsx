@@ -2,6 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import SwytchContainer from './SwytchContainer';
 import { useAdSystem } from '@/hooks/useAdSystem';
 
+const SKINS = [
+    "https://placehold.co/100x100/000000/39FF14?text=🏃",
+    "https://placehold.co/100x100/000000/00FFFF?text=🤖",
+    "https://placehold.co/100x100/000000/FFFF00?text=⚡"
+];
+
 export default function NeonRunner() {
   const { triggerSmartLink } = useAdSystem();
   
@@ -10,6 +16,7 @@ export default function NeonRunner() {
   const [dinoY, setDinoY] = useState(0); 
   const [obstacleX, setObstacleX] = useState(300); 
   const [gameOver, setGameOver] = useState(false);
+  const [skinIdx, setSkinIdx] = useState(0);
   
   const isJumping = useRef(false);
   const gameLoop = useRef<NodeJS.Timeout>();
@@ -20,7 +27,7 @@ export default function NeonRunner() {
     
     let jumpHeight = 0;
     const upInterval = setInterval(() => {
-      if (jumpHeight >= 70) { // Higher Jump
+      if (jumpHeight >= 80) { // Higher Jump
         clearInterval(upInterval);
         const downInterval = setInterval(() => {
           if (jumpHeight <= 0) {
@@ -28,12 +35,12 @@ export default function NeonRunner() {
             isJumping.current = false;
             setDinoY(0);
           } else {
-            jumpHeight -= 5;
+            jumpHeight -= 6;
             setDinoY(jumpHeight);
           }
         }, 20);
       } else {
-        jumpHeight += 7;
+        jumpHeight += 8;
         setDinoY(jumpHeight);
       }
     }, 20);
@@ -47,15 +54,14 @@ export default function NeonRunner() {
              setScore(s => s + 1);
              return 300; 
           }
-          return prev - 6; // Faster speed
+          return prev - (7 + score * 0.1); // Accelerates
         });
       }, 20);
     }
     return () => clearInterval(gameLoop.current);
-  }, [playing]);
+  }, [playing, score]);
 
   useEffect(() => {
-    // Hitbox logic
     if (obstacleX < 40 && obstacleX > 10 && dinoY < 30) {
       setPlaying(false);
       setGameOver(true);
@@ -69,6 +75,7 @@ export default function NeonRunner() {
     setDinoY(0);
     setGameOver(false);
     isJumping.current = false;
+    setSkinIdx(prev => (prev + 1) % SKINS.length); // Change skin
   };
 
   const handleRetry = () => {
@@ -78,31 +85,26 @@ export default function NeonRunner() {
 
   return (
     <SwytchContainer title="NEON RUNNER">
-      {/* Background */}
       <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,#39FF14_0,#39FF14_1px,transparent_1px,transparent_20px)] animate-grid-fast" />
+        <div className={`absolute inset-0 bg-[repeating-linear-gradient(90deg,#39FF14_0,#39FF14_1px,transparent_1px,transparent_40px)] ${playing ? 'animate-grid-fast' : ''}`} />
       </div>
 
-      {/* Game Area */}
       <div 
-        className="relative w-[300px] h-[180px] border-b-4 border-[#39FF14] bg-[#050505] overflow-hidden rounded-t-lg mx-auto mb-6 cursor-pointer active:bg-[#111]"
+        className="relative w-[300px] h-[180px] border-b-4 border-[#39FF14] bg-[#050505] overflow-hidden rounded-t-lg mx-auto mb-6 cursor-pointer active:bg-[#111] shadow-inner"
         onMouseDown={jump}
         onTouchStart={(e) => { e.preventDefault(); jump(); }}
       >
-        {/* Ground */}
-        <div className="absolute bottom-0 left-0 w-full h-1 bg-[#39FF14] shadow-[0_0_20px_#39FF14]" />
-        
         {/* Player */}
         <div 
-          className="absolute left-6 w-10 h-10 bg-[#39FF14] rounded-sm shadow-[0_0_20px_#39FF14] transition-all duration-0 border-2 border-black"
+          className="absolute left-6 w-10 h-10 rounded-sm transition-all duration-0"
           style={{ bottom: `${dinoY + 4}px` }}
         >
-           <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+           <img src={SKINS[skinIdx]} className="w-full h-full object-cover rounded-sm shadow-[0_0_10px_#39FF14]" />
         </div>
 
         {/* Obstacle */}
         <div 
-          className="absolute bottom-0 w-6 h-12 bg-red-600 rounded-t-sm border border-red-400 shadow-[0_0_15px_red]"
+          className="absolute bottom-0 w-8 h-12 bg-red-600 rounded-t-sm border border-red-400 shadow-[0_0_15px_red]"
           style={{ left: `${obstacleX}px` }}
         />
         
@@ -112,16 +114,14 @@ export default function NeonRunner() {
         </div>
       </div>
 
-      {/* Start Button */}
       {!playing && !gameOver && (
         <button onClick={startGame} className="w-full py-4 bg-[#39FF14] text-black font-black uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_30px_rgba(57,255,20,0.4)]">
           RUN PROGRAM
         </button>
       )}
       
-      {playing && <p className="text-gray-500 font-mono text-xs animate-pulse">TAP SCREEN TO JUMP</p>}
+      {playing && <p className="text-gray-500 font-mono text-xs animate-pulse text-center">TAP TO JUMP</p>}
 
-      {/* Game Over */}
       {gameOver && (
         <div className="absolute inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center z-50 animate-fade-in text-center p-6">
             <h2 className="text-red-500 font-black text-3xl mb-2 uppercase tracking-tighter glow-text">CRASHED</h2>
@@ -133,8 +133,8 @@ export default function NeonRunner() {
       )}
       
       <style>{`
-        @keyframes grid-fast { from { background-position: 0 0; } to { background-position: -20px 0; } }
-        .animate-grid-fast { animation: grid-fast 0.5s linear infinite; }
+        @keyframes grid-fast { from { background-position: 0 0; } to { background-position: -40px 0; } }
+        .animate-grid-fast { animation: grid-fast 0.3s linear infinite; }
       `}</style>
     </SwytchContainer>
   );

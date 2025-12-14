@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, FC } from 'r
 import { useAuthUserWagmi } from '@/hooks/useAuthUserWagmi';
 import { useAuthUserFirebase } from '@/hooks/useAuthUserFirebase';
 import { PlayerData, Transaction } from '@/lib/types'; 
-import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, updateDoc, collection, addDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
 
 interface PlayerContextType {
@@ -15,10 +15,11 @@ interface PlayerContextType {
   isAdmin: () => boolean;
   dataLoading: boolean;
   authLoading: boolean;
-  idToken: string; // Kept for compatibility if used elsewhere, currently empty
+  idToken: string; 
   updatePlayerCharacter: (charId: string) => Promise<void>;
   updatePlayerFirestore: (updates: Partial<PlayerData>) => Promise<void>;
   logTransaction: (tx: Partial<Transaction>) => Promise<void>;
+  spendCurrency: (amount: number) => Promise<boolean>; 
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -40,11 +41,10 @@ export const PlayerProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const snapshot = await getDoc(userRef);
 
         if (!snapshot.exists()) {
-          // Initialize New Player with strict Type compliance
           const newPlayer: PlayerData = {
             userId: user.uid,
             username: user.displayName || `OP-${user.uid.slice(0, 4)}`,
-            email: user.email || "unknown@void.net", // FIX: Fallback
+            email: user.email || "unknown@void.net",
             profilePictureUrl: user.photoURL || undefined,
             joules: 0,
             gold: 0,
@@ -56,10 +56,10 @@ export const PlayerProvider: FC<{ children: ReactNode }> = ({ children }) => {
             isPETMember: false,
             inventory: { 
                 items: {}, 
-                equipped: {} // FIX: Empty object is valid
+                equipped: {} 
             },
-            character: { selectedID: "cyber_samurai", unlocked: ["cyber_samurai"] }, // FIX: Removed skin
-            walletAddress: address || undefined, // FIX: Undefined if null
+            character: { selectedID: "cyber_samurai", unlocked: ["cyber_samurai"] },
+            walletAddress: address || undefined, 
             stats: {},
             achievements: [],
             createdAt: serverTimestamp(),
@@ -68,13 +68,11 @@ export const PlayerProvider: FC<{ children: ReactNode }> = ({ children }) => {
           };
           await setDoc(userRef, newPlayer);
         } else {
-            // Update Wallet if changed
             if (address && snapshot.data().walletAddress !== address) {
                 await updateDoc(userRef, { walletAddress: address });
             }
         }
 
-        // Realtime Listener
         unsubscribe = onSnapshot(userRef, (doc) => {
           if (doc.exists()) {
             setPlayerData(doc.data() as PlayerData);
@@ -119,6 +117,40 @@ export const PlayerProvider: FC<{ children: ReactNode }> = ({ children }) => {
       });
   }
 
+  // --- NEW: SPEND LOGIC (Gatekeeper) ---
+  const spendCurrency = async (amount: number): Promise<boolean> => {
+    if (!user || !playerData) return false;
+
+    const userRef = doc(db, 'Players', user.uid);
+    const gold = playerData.gold || 0;
+    const joules = playerData.joules || 0;
+
+    // 1. Try Gold First
+    if (gold >= amount) {
+      await updateDoc(userRef, { gold: increment(-amount) });
+      await logTransaction({ 
+          amount: -amount, 
+          currency: 'GOLD', 
+          transactionType: 'game-fee', 
+          status: 'completed' 
+      });
+      return true;
+    } 
+    // 2. Try Joules Second
+    else if (joules >= amount) {
+      await updateDoc(userRef, { joules: increment(-amount) });
+      await logTransaction({ 
+          amount: -amount, 
+          currency: 'JOULES', 
+          transactionType: 'game-fee', 
+          status: 'completed' 
+      });
+      return true;
+    }
+
+    return false; // Broke
+  };
+
   return (
     <PlayerContext.Provider value={{
       userId: user ? user.uid : null,
@@ -130,10 +162,11 @@ export const PlayerProvider: FC<{ children: ReactNode }> = ({ children }) => {
       isAdmin,
       dataLoading,
       authLoading,
-      idToken: "", // Placeholder if not strictly needed by current logic
+      idToken: "", 
       updatePlayerCharacter,
       updatePlayerFirestore,
-      logTransaction
+      logTransaction,
+      spendCurrency 
     }}>
       {children}
     </PlayerContext.Provider>

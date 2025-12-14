@@ -2,11 +2,19 @@ import { useState, useEffect, useRef } from 'react';
 import SwytchContainer from './SwytchContainer';
 import { useAdSystem } from '@/hooks/useAdSystem';
 
+const PACKETS = [
+    "https://placehold.co/50x50/000000/39FF14?text=💾",
+    "https://placehold.co/50x50/000000/00FFFF?text=💿",
+    "https://placehold.co/50x50/000000/FFFF00?text=📁"
+];
+const VIRUS = "https://placehold.co/50x50/000000/FF0000?text=🦠";
+
 interface GameItem {
   id: number;
   x: number;
   y: number;
-  type: string;
+  type: 'good' | 'bad';
+  imgIdx: number;
 }
 
 export default function DataStream() {
@@ -20,23 +28,23 @@ export default function DataStream() {
   const reqRef = useRef<number>();
 
   const loop = () => {
-    // Spawn
-    if (Math.random() < 0.03) {
+    if (Math.random() < 0.04) {
+      const type = Math.random() > 0.25 ? 'good' : 'bad';
       setItems(prev => [...prev, { 
         id: Math.random(), 
         x: Math.random() * 280, 
         y: 0, 
-        type: Math.random() > 0.3 ? 'good' : 'bad' 
+        type,
+        imgIdx: Math.floor(Math.random() * PACKETS.length)
       }]);
     }
 
-    // Move & Collide
     setItems(prev => {
       const next: GameItem[] = [];
       prev.forEach(item => {
-        const newY = item.y + 3;
+        const newY = item.y + 4;
         // Hitbox
-        if (newY > 230 && newY < 250 && Math.abs(item.x - basketX) < 30) {
+        if (newY > 230 && newY < 250 && Math.abs(item.x - basketX) < 35) {
            if (item.type === 'good') setScore(s => s + 10);
            else setScore(s => s - 50); 
         } else if (newY < 260) {
@@ -55,7 +63,6 @@ export default function DataStream() {
   }, [playing]);
 
   useEffect(() => {
-      // Loose condition: Negative score
       if (score < -50 && playing) {
           setPlaying(false);
           setGameOver(true);
@@ -82,20 +89,29 @@ export default function DataStream() {
             const rect = e.currentTarget.getBoundingClientRect();
             setBasketX(e.clientX - rect.left - 20); 
         }}
+        onTouchMove={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const touch = e.touches[0];
+            setBasketX(touch.clientX - rect.left - 20);
+        }}
       >
         {/* Basket */}
         <div 
-            className="absolute bottom-0 w-10 h-5 bg-[#39FF14] rounded-t-lg shadow-[0_0_15px_#39FF14]"
+            className="absolute bottom-0 w-12 h-6 bg-[#39FF14] rounded-t-lg shadow-[0_0_20px_#39FF14] flex justify-center items-center"
             style={{ left: `${basketX}px` }}
-        ></div>
+        >
+            <div className="w-8 h-1 bg-black/50 rounded-full mt-2"></div>
+        </div>
 
         {/* Items */}
         {items.map(item => (
            <div 
              key={item.id}
-             className={`absolute w-4 h-4 rounded-full shadow-lg ${item.type === 'good' ? 'bg-white shadow-white' : 'bg-red-500 shadow-red-500'}`}
+             className="absolute w-6 h-6"
              style={{ left: `${item.x}px`, top: `${item.y}px` }}
-           ></div>
+           >
+               <img src={item.type === 'good' ? PACKETS[item.imgIdx] : VIRUS} className="w-full h-full object-contain" />
+           </div>
         ))}
         
         <div className="absolute top-2 left-2 text-[#39FF14] font-bold font-mono text-xs">

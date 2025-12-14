@@ -34,18 +34,22 @@ export default function ColorBlind() {
 
   return (
     <SwytchContainer title="PIXEL DIFF">
-      <div className="grid grid-cols-4 gap-3 mb-6 p-2">
-        {Array.from({ length: 16 }).map((_, i) => (
-          <div
-            key={i}
-            onClick={() => handleClick(i)}
-            style={{
-              backgroundColor: '#39FF14',
-              opacity: i === targetIndex ? getOpacity() : 1
-            }}
-            className={`w-14 h-14 rounded-md cursor-pointer transition-transform active:scale-95 hover:shadow-[0_0_15px_#39FF14] ${gameOver ? 'pointer-events-none' : ''}`}
-          ></div>
-        ))}
+      <div className="relative mb-6">
+          <div className="grid grid-cols-4 gap-2 p-2 bg-gray-900 rounded-lg">
+            {Array.from({ length: 16 }).map((_, i) => (
+            <div
+                key={i}
+                onClick={() => handleClick(i)}
+                style={{
+                backgroundColor: '#39FF14',
+                opacity: i === targetIndex ? getOpacity() : 1
+                }}
+                className={`w-14 h-14 rounded-sm cursor-pointer transition-transform active:scale-95 ${gameOver ? 'pointer-events-none' : ''}`}
+            ></div>
+            ))}
+          </div>
+          {/* Scanline Overlay */}
+          <div className="absolute inset-0 bg-[url('/scanline.png')] opacity-10 pointer-events-none"></div>
       </div>
 
       <div className="flex justify-between w-full px-8 text-white font-mono text-sm mb-4">
@@ -54,10 +58,10 @@ export default function ColorBlind() {
       </div>
 
       {gameOver && (
-        <div className="absolute inset-0 bg-black/95 backdrop-blur-sm flex flex-col items-center justify-center z-20 animate-fade-in p-6 text-center">
-            <h2 className="text-red-500 font-black text-2xl mb-2">EYE STRAIN DETECTED</h2>
+        <div className="absolute inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center z-50 animate-fade-in p-6 text-center">
+            <h2 className="text-red-500 font-black text-2xl mb-2">VISION FAILURE</h2>
             <p className="text-white text-4xl font-bold mb-6">{score}</p>
-            <button onClick={handleRestart} className="px-8 py-3 bg-[#39FF14] text-black font-bold uppercase tracking-widest hover:bg-white transition-colors">
+            <button onClick={handleRestart} className="px-10 py-4 bg-[#39FF14] text-black font-bold uppercase tracking-widest hover:bg-white transition-colors">
               RECALIBRATE
             </button>
         </div>

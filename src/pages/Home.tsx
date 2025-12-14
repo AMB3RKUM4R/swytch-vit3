@@ -1,8 +1,9 @@
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Zap, Brain, Dna } from 'lucide-react';
+import { Sparkles, Zap, Brain, Dna, Lock } from 'lucide-react'; // Added Lock
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
+import { GAME_COST } from '@/lib/types'; // Import Cost Constant
 import CurrencyHUD from '@/components/CurrencyHUD';
 
 // --- BATCH 1 (REFLEX) ---
@@ -60,28 +61,48 @@ const GAMES: GameDef[] = [
 ];
 
 const Home: FC = () => {
-  usePlayer();
-  useModal();
+  const { userId, isPETMember, spendCurrency } = usePlayer();
+  const { setActiveModal, setShowMessage } = useModal();
   const [activeGame, setActiveGame] = useState<GameDef | null>(null);
   const [filter, setFilter] = useState('ALL');
 
   const visibleGames = filter === 'ALL' ? GAMES : GAMES.filter(g => g.cat === filter);
 
-  const handleLaunch = (game: GameDef) => {
-      // Optional: Require login to play
-      // if (!userId) {
-      //     setShowMessage("⚠️ CONNECT WALLET TO ENTER");
-      //     setActiveModal('auth');
-      //     return;
-      // }
-      setActiveGame(game);
+  // --- GATEKEEPER LOGIC ---
+  const handleLaunch = async (game: GameDef) => {
+      // 1. Auth Check
+      if (!userId) {
+          setShowMessage("⚠️ CONNECT WALLET TO ENTER");
+          setActiveModal('auth');
+          return;
+      }
+
+      // 2. Membership Check
+      if (!isPETMember) {
+          setShowMessage("🔒 MEMBERSHIP REQUIRED. ACCESS VAULT.");
+          setActiveModal('payment'); // Send to upgrade
+          return;
+      }
+
+      // 3. Balance Check & Deduct
+      const paid = await spendCurrency(GAME_COST);
+      
+      if (paid) {
+          // Success: Launch Game
+          setShowMessage(`✅ ${GAME_COST} CREDITS DEDUCTED. LOADING...`);
+          setActiveGame(game);
+      } else {
+          // Failure: Insufficient Funds
+          setShowMessage(`⚠️ INSUFFICIENT FUNDS. COST: ${GAME_COST} CREDITS.`);
+          setActiveModal('payment'); // Send to buy gold
+      }
   };
 
   return (
     <div className="min-h-screen bg-black text-white pb-24 font-mono selection:bg-[#39FF14] selection:text-black">
       
       {/* HEADER HUD */}
-      <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-[#39FF14]/20 p-4 flex justify-between items-center">
+      <div className="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-[#39FF14]/20 p-4 flex justify-between items-center">
         <h1 className="text-2xl font-black italic tracking-tighter text-white">
           SWYTCH <span className="text-[#39FF14]">ARCADE</span>
         </h1>
@@ -121,14 +142,14 @@ const Home: FC = () => {
             >
               {/* Hero Banner */}
               <div className="relative mb-12 border border-[#39FF14]/30 rounded-xl overflow-hidden bg-[#050505]">
-                 <div className="absolute inset-0 bg-[url('/grid-pattern.png')] opacity-20"></div>
+                 <div className="absolute inset-0 bg-[url('/grid-pattern.png')] opacity-10"></div>
                  <div className="relative p-8 md:p-12 text-center">
                     <Sparkles className="w-12 h-12 text-[#39FF14] mx-auto mb-4 animate-pulse" />
                     <h2 className="text-4xl md:text-5xl font-black text-white uppercase italic tracking-tighter mb-2">
                         System <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#39FF14] to-emerald-600">Online</span>
                     </h2>
-                    <p className="text-gray-400 text-sm md:text-base max-w-lg mx-auto">
-                        ACCESS 18 HYPER-CASUAL PROTOCOLS. COMPETE FOR HIGH SCORES.
+                    <p className="text-gray-400 text-sm md:text-base max-w-lg mx-auto uppercase tracking-wide">
+                        ENTRY FEE: {GAME_COST} CREDITS // MEMBERS ONLY
                     </p>
                  </div>
               </div>
@@ -158,14 +179,30 @@ const Home: FC = () => {
                     onClick={() => handleLaunch(game)}
                     className="group relative h-48 bg-[#0a0a0a] border border-gray-800 hover:border-[#39FF14] cursor-pointer transition-all hover:-translate-y-1 overflow-hidden rounded-lg"
                   >
-                    {/* Background Icon Opacity */}
+                    {/* Icon */}
                     <div className="absolute top-4 right-4 text-gray-800 group-hover:text-[#39FF14]/20 transition-colors">
                         {game.icon}
                     </div>
 
+                    {/* Lock Overlay (Visual Indicator) */}
+                    {!isPETMember && userId && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20 backdrop-blur-[2px]">
+                            <Lock className="w-8 h-8 text-gray-500" />
+                        </div>
+                    )}
+
+                    {/* Bottom Info */}
                     <div className="absolute bottom-0 w-full p-4 bg-gradient-to-t from-black via-black/80 to-transparent">
-                      <div className="text-[#39FF14] text-[10px] font-bold mb-1 tracking-[0.2em]">{game.cat}</div>
-                      <h3 className="text-xl font-bold text-white group-hover:text-[#39FF14] transition-colors uppercase italic">{game.title}</h3>
+                      <div className="flex justify-between items-end">
+                          <div>
+                            <div className="text-[#39FF14] text-[10px] font-bold mb-1 tracking-[0.2em]">{game.cat}</div>
+                            <h3 className="text-xl font-bold text-white group-hover:text-[#39FF14] transition-colors uppercase italic">{game.title}</h3>
+                          </div>
+                          {/* Cost Badge */}
+                          <div className="text-[10px] font-mono text-gray-500 bg-black/50 px-2 py-1 rounded border border-gray-800">
+                              -{GAME_COST}
+                          </div>
+                      </div>
                     </div>
                     
                     {/* Scanline Hover Effect */}

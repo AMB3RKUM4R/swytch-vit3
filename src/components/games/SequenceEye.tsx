@@ -36,7 +36,7 @@ export default function SequenceEye() {
       if (nextNum === level) {
         setPhase("won");
         setLevel(l => Math.min(l + 1, 16)); 
-        setTimeout(startGame, 1000); // Auto next level
+        setTimeout(startGame, 1000); 
       } else {
         setNextNum(n => n + 1);
       }
@@ -61,10 +61,10 @@ export default function SequenceEye() {
           <div
             key={i}
             onClick={() => handleCellClick(val)}
-            className={`w-14 h-14 border border-gray-800 flex items-center justify-center font-bold text-xl select-none cursor-pointer rounded-md transition-all
-              ${phase === "memorize" && val ? "text-[#39FF14] border-[#39FF14] bg-[#39FF14]/10" : "text-transparent"}
-              ${phase === "recall" && val && val < nextNum ? "text-gray-500 border-gray-600 bg-gray-900" : ""} 
-              ${phase === "lost" && val ? "text-red-500 border-red-500" : ""}
+            className={`w-16 h-16 border-2 flex items-center justify-center font-black text-xl select-none cursor-pointer rounded-md transition-all duration-300
+              ${phase === "memorize" && val ? "border-[#39FF14] bg-[#39FF14] text-black shadow-[0_0_20px_#39FF14]" : "border-gray-800 bg-[#050505] text-transparent"}
+              ${phase === "recall" && val && val < nextNum ? "border-gray-600 bg-gray-800 text-gray-500" : ""} 
+              ${phase === "lost" && val ? "border-red-500 bg-red-500 text-black" : ""}
             `}
           >
             {(phase === "memorize" || phase === "lost" || phase === "won" || (phase === "recall" && val && val < nextNum)) ? val : ""}
@@ -75,23 +75,28 @@ export default function SequenceEye() {
       <div className="h-8 mb-4 text-center">
         <p className={`font-mono text-xs uppercase tracking-widest ${gameOver ? 'text-red-500' : 'text-white'}`}>
             {phase === "idle" && "READY TO SCAN?"}
-            {phase === "memorize" && "MEMORIZE POSITIONS..."}
-            {phase === "recall" && `LOCATE NUMBER: ${nextNum}`}
-            {phase === "won" && "SUCCESS. UPLOADING..."}
-            {phase === "lost" && "SEQUENCE FAILED."}
+            {phase === "memorize" && "MEMORIZE PATTERN..."}
+            {phase === "recall" && `LOCATE: ${nextNum}`}
+            {phase === "won" && "SUCCESS"}
+            {phase === "lost" && "FAILURE"}
         </p>
       </div>
 
       {phase === "idle" && !gameOver && (
-        <button onClick={startGame} className="w-full py-3 bg-[#39FF14] text-black font-bold uppercase tracking-widest hover:bg-white transition-colors">
+        <button onClick={startGame} className="w-full py-4 bg-[#39FF14] text-black font-black uppercase tracking-widest hover:bg-white transition-colors">
           START SCAN
         </button>
       )}
 
       {gameOver && (
-        <button onClick={handleRestart} className="w-full py-3 bg-red-600 text-white font-bold uppercase tracking-widest hover:bg-red-700 transition-colors">
-          RETRY
-        </button>
+        <div className="absolute inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center z-50 animate-fade-in text-center p-6">
+            <h2 className="text-red-500 font-black text-3xl mb-2">BREACHED</h2>
+            <p className="text-gray-500 text-xs uppercase mb-1">Level Reached</p>
+            <p className="text-white text-5xl font-bold mb-8">{level}</p>
+            <button onClick={handleRestart} className="px-10 py-4 bg-[#39FF14] text-black font-bold uppercase tracking-widest hover:bg-white">
+              RETRY
+            </button>
+        </div>
       )}
     </SwytchContainer>
   );

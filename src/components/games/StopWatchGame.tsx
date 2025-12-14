@@ -2,12 +2,17 @@ import { useState, useRef } from 'react';
 import SwytchContainer from './SwytchContainer';
 import { useAdSystem } from '@/hooks/useAdSystem';
 
+const RINGS = {
+    idle: "https://placehold.co/300x300/000000/39FF14?text=⚪",
+    running: "https://placehold.co/300x300/000000/39FF14?text=🟢",
+    fail: "https://placehold.co/300x300/000000/FF0000?text=🔴"
+};
+
 export default function StopWatchGame() {
   const { triggerSmartLink } = useAdSystem();
 
   const [time, setTime] = useState(0);
   const [running, setRunning] = useState(false);
-  const [result, setResult] = useState("STOP AT X.00");
   const [gameOver, setGameOver] = useState(false);
   const [perfect, setPerfect] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -19,65 +24,60 @@ export default function StopWatchGame() {
       setGameOver(true);
       
       const decimalPart = (time % 100); 
-      // Allow slight margin of error (0-5 or 95-99)
-      if (decimalPart < 5 || decimalPart > 95) {
-        setResult("PERFECT SYNC");
-        setPerfect(true);
-      } else {
-        setResult(`OFFSET: .${String(decimalPart).padStart(2,'0')}`);
-        setPerfect(false);
-      }
+      if (decimalPart < 5 || decimalPart > 95) setPerfect(true);
+      else setPerfect(false);
     } else {
       setTime(0);
-      setResult("RUNNING...");
       setRunning(true);
       setGameOver(false);
-      timerRef.current = setInterval(() => {
-        setTime(prev => prev + 1); 
-      }, 10);
+      setPerfect(false);
+      timerRef.current = setInterval(() => setTime(p => p + 1), 10);
     }
   };
 
   const handleRestart = () => {
       triggerSmartLink();
-      handleAction(); // Starts the game immediately
+      handleAction();
   };
-
-  const formatTime = (t: number) => (t / 100).toFixed(2);
 
   return (
     <SwytchContainer title="CHRONO SYNC">
-      <div className="relative mb-8">
-          <div className="text-7xl font-mono font-black text-white tracking-tighter">
-            {formatTime(time)}<span className="text-2xl text-[#39FF14] ml-1">s</span>
+      <div className="relative w-64 h-64 mx-auto mb-8 flex items-center justify-center">
+          {/* Rotating Ring Image */}
+          <div className={`absolute inset-0 rounded-full opacity-30 ${running ? 'animate-spin-slow' : ''}`}>
+              <img src={gameOver && !perfect ? RINGS.fail : running ? RINGS.running : RINGS.idle} className="w-full h-full object-cover rounded-full" />
+          </div>
+
+          <div className={`relative z-10 text-6xl font-mono font-black tracking-tighter ${running ? 'text-white' : perfect ? 'text-[#39FF14] scale-110' : 'text-red-500'} transition-all`}>
+            {(time / 100).toFixed(2)}<span className="text-xl opacity-50">s</span>
           </div>
       </div>
       
-      <p className={`text-lg font-black uppercase mb-8 h-8 tracking-widest ${perfect ? 'text-[#39FF14]' : gameOver ? 'text-red-500' : 'text-gray-500'}`}>
-        {result}
-      </p>
+      <p className="text-center text-xs text-gray-500 mb-6 uppercase tracking-[0.2em]">Target: X.00s</p>
 
-      {!gameOver && (
+      {!gameOver ? (
         <button 
             onClick={handleAction}
-            className={`w-full py-6 font-black text-xl uppercase tracking-[0.2em] transition-all ${
+            className={`w-full py-6 font-black text-2xl uppercase tracking-widest transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)] ${
             running 
-                ? "bg-red-600 text-white hover:bg-red-700 shadow-[0_0_30px_red]" 
-                : "bg-[#39FF14] text-black hover:bg-white shadow-[0_0_30px_#39FF14]"
+                ? "bg-red-600 text-white hover:bg-red-700" 
+                : "bg-[#39FF14] text-black hover:bg-white"
             }`}
         >
-            {running ? "HALT" : "INITIATE"}
+            {running ? "HALT" : "SYNC"}
         </button>
-      )}
-
-      {gameOver && (
+      ) : (
         <button 
             onClick={handleRestart}
             className="w-full py-6 border-2 border-[#39FF14] text-[#39FF14] font-black uppercase tracking-widest hover:bg-[#39FF14] hover:text-black transition-colors"
         >
-            RE-INITIATE
+            RE-SYNC
         </button>
       )}
+      
+      <style>{`
+        .animate-spin-slow { animation: spin 4s linear infinite; }
+      `}</style>
     </SwytchContainer>
   );
 }

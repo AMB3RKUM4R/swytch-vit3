@@ -2,6 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import SwytchContainer from './SwytchContainer';
 import { useAdSystem } from '@/hooks/useAdSystem';
 
+const BOTS = [
+    "https://placehold.co/50x50/000000/39FF14?text=🚁",
+    "https://placehold.co/50x50/000000/00FFFF?text=🛸",
+    "https://placehold.co/50x50/000000/FFFF00?text=🚀"
+];
+
 export default function HoverBot() {
   const { triggerSmartLink } = useAdSystem();
 
@@ -10,11 +16,11 @@ export default function HoverBot() {
   const [playing, setPlaying] = useState(false);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+  const [skinIdx, setSkinIdx] = useState(0);
   const reqRef = useRef<number>();
 
   const loop = () => {
     setY(prevY => {
-      // Collision bounds (Top or Bottom)
       if (prevY > 230 || prevY < 0) { 
         setPlaying(false);
         setGameOver(true);
@@ -44,6 +50,7 @@ export default function HoverBot() {
     setY(100);
     setScore(0);
     setGameOver(false);
+    setSkinIdx(prev => (prev + 1) % BOTS.length);
   };
 
   const handleRetry = () => {
@@ -55,21 +62,20 @@ export default function HoverBot() {
     <SwytchContainer title="HOVER BOT">
       <div 
         onMouseDown={boost}
-        className="relative w-[300px] h-[250px] border-y-4 border-red-600 bg-[#0a0a0a] cursor-pointer overflow-hidden rounded-lg mx-auto mb-4"
+        onTouchStart={(e) => { e.preventDefault(); boost(); }}
+        className="relative w-[300px] h-[250px] border-y-4 border-red-600 bg-[#0a0a0a] cursor-pointer overflow-hidden rounded-lg mx-auto mb-4 active:border-white transition-colors"
       >
-        {/* Red Zones */}
-        <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-b from-red-600/50 to-transparent pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-red-600/50 to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-0 w-full h-6 bg-gradient-to-b from-red-600/50 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-full h-6 bg-gradient-to-t from-red-600/50 to-transparent pointer-events-none" />
 
         {/* Bot */}
         <div 
-          className="absolute left-10 w-8 h-8 bg-[#39FF14] border-2 border-white rounded-md flex items-center justify-center shadow-[0_0_15px_#39FF14]"
+          className="absolute left-10 w-8 h-8 flex items-center justify-center transition-transform duration-75"
           style={{ top: `${y}px`, transform: `rotate(${velocity * 3}deg)` }}
         >
-          <div className="w-4 h-1 bg-black/50 rounded-full"></div>
+          <img src={BOTS[skinIdx]} className="w-full h-full object-contain drop-shadow-[0_0_10px_#39FF14]" />
         </div>
 
-        {/* HUD */}
         <div className="absolute top-2 right-2 text-white font-mono text-xs bg-black/50 px-2 py-1 rounded">
             ALT: {score}
         </div>

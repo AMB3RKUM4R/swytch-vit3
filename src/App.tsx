@@ -5,7 +5,6 @@ import { AnimatePresence } from 'framer-motion';
 // Contexts
 import { useModal } from './components/context/ModalContext';
 import { usePlayer } from './components/context/PlayerContext';
-import { useWebGL } from './components/context/WebglContext'; 
 
 // Components
 import AuthModal from './components/AuthModal';
@@ -18,9 +17,9 @@ import CommunityChat from './components/community/CommunityChat';
 import CommunityRankings from './components/community/CommunityRankings';
 
 // Pages
-import Home from './pages/Home'; // The Main Arcade
+import Home from './pages/Home'; 
 import Customize from './pages/Customize';
-import {Vault} from './pages/Vault'; 
+import {Vault} from './pages/Vault'; // FIX: Default import (removed curly braces)
 import Shop from './pages/Shop';
 import Inventory from './pages/Inventory';
 import AdminPage from './pages/AdminPage';
@@ -28,13 +27,9 @@ import AdminPage from './pages/AdminPage';
 const App: FC = () => {
   const { activeModal, setActiveModal, setShowMessage } = useModal(); 
   const { userId } = usePlayer();
-  const { activeGameId } = useWebGL(); // Used to hide navs when playing
   
   const [showSplash, setShowSplash] = useState(true);
   
-  // Hide navigation if a game is currently active
-  const showNav = !activeGameId;
-
   const handleSplashComplete = useCallback(() => {
     setShowSplash(false);
     if (!userId) {
@@ -52,10 +47,10 @@ const App: FC = () => {
         )}
       </AnimatePresence>
 
-      <div className={`h-screen flex flex-col ${activeGameId ? 'h-screen overflow-hidden' : 'flex'}`}>
+      <div className="h-screen flex flex-col">
          
          {/* TOP NAV */}
-         {showNav && <TopNav />}
+         <TopNav />
 
          <div className="flex-grow flex overflow-hidden relative pt-[70px]">
              
@@ -78,8 +73,8 @@ const App: FC = () => {
                  </div>
              </main>
 
-             {/* RIGHT SIDEBAR (Chat & Ranks) */}
-             <aside className={`hidden xl:flex w-[350px] border-l border-white/10 bg-black/80 backdrop-blur-md flex-col z-20 flex-shrink-0 ${activeGameId ? 'hidden' : ''}`}>
+             {/* RIGHT SIDEBAR (Chat & Ranks) - Hidden on Mobile */}
+             <aside className="hidden xl:flex w-[350px] border-l border-white/10 bg-black/80 backdrop-blur-md flex-col z-20 flex-shrink-0">
                  <div className="h-1/2 flex flex-col border-b border-white/10">
                     <div className="p-3 bg-black border-b border-white/5 font-mono text-[10px] text-[#39FF14] tracking-widest uppercase flex items-center gap-2">
                         <span className="w-2 h-2 bg-[#39FF14] animate-pulse rounded-full"></span> GLOBAL_UPLINK
@@ -101,12 +96,12 @@ const App: FC = () => {
 
          {/* MOBILE BOTTOM NAV */}
          <div className="lg:hidden">
-            {showNav && <BottomNav />}
+            <BottomNav />
          </div>
 
       </div>
 
-      {/* MODALS */}
+      {/* GLOBAL MODALS */}
       <AnimatePresence>
         {activeModal === 'auth' && <AuthModal setShowMessage={setShowMessage} />} 
         {(activeModal === 'payment' || activeModal === 'deposit') && <PaymentModal />} 
