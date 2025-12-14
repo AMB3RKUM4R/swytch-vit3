@@ -84,8 +84,8 @@ const Home: FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 500], [0, 200]);
-  const opacityHero = useTransform(scrollY, [0, 400], [1, 0]);
+  const y1 = useTransform(scrollY, [0, 500], [0, 150]); // Slower parallax for image
+  const opacityHero = useTransform(scrollY, [0, 300], [1, 0]);
 
   const visibleGames = useMemo(() => {
       let filtered = GAMES;
@@ -111,33 +111,42 @@ const Home: FC = () => {
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#39FF14] selection:text-black pb-20">
       
-      {/* 1. HERO SECTION */}
+      {/* 1. HERO SECTION (Updated for Image) */}
       {!activeGame && (
-        <div className="relative h-[60vh] overflow-hidden flex items-center justify-center border-b border-[#39FF14]/20">
-            <div className="absolute inset-0 bg-[url('/grid-pattern.png')] opacity-30 animate-pulse"></div>
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/40 to-[#050505]"></div>
+        <div className="relative h-[65vh] overflow-hidden flex items-center justify-center border-b border-[#39FF14]/20 group">
             
-            <motion.div style={{ y: y1, opacity: opacityHero }} className="text-center z-10 px-4 max-w-4xl">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#39FF14]/30 bg-[#39FF14]/10 mb-6 backdrop-blur-md">
+            {/* HERO IMAGE LAYER */}
+            {/* bg-cover ensures it fills screen, bg-center centers it */}
+            <div className="absolute inset-0 bg-[url('/grid-pattern.png')] bg-cover bg-center opacity-70 transition-transform duration-[10s] ease-in-out group-hover:scale-105"></div>
+            
+            {/* DARK GRADIENT OVERLAY (Readability) */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-[#050505]"></div>
+            
+            <motion.div style={{ y: y1, opacity: opacityHero }} className="text-center z-10 px-4 max-w-4xl relative">
+                
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#39FF14]/30 bg-black/60 backdrop-blur-md mb-6 shadow-[0_0_20px_rgba(57,255,20,0.1)]">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#39FF14] opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-[#39FF14]"></span>
                     </span>
-                    <span className="text-[#39FF14] text-xs font-bold tracking-widest uppercase">System Online V2.0</span>
+                    <span className="text-[#39FF14] text-xs font-bold tracking-widest uppercase text-shadow-neon">System Online V2.0</span>
                 </div>
-                <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-white mb-6 drop-shadow-[0_0_30px_rgba(57,255,20,0.4)]">
-                    PLAY. EARN. <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#39FF14] to-emerald-600">DOMINATE.</span>
+
+                <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-white mb-6 drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
+                    PLAY. EARN. <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#39FF14] to-emerald-500">DOMINATE.</span>
                 </h1>
                 
-                {/* Search */}
-                <div className="max-w-md mx-auto relative group">
+                {/* Search Bar */}
+                <div className="max-w-md mx-auto relative group mt-8">
+                    <div className="absolute inset-0 bg-[#39FF14] opacity-20 blur-xl rounded-full group-hover:opacity-30 transition-opacity"></div>
                     <input 
                         type="text" 
                         placeholder="SEARCH PROTOCOLS..." 
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-black/60 border border-gray-700 rounded-full py-4 px-12 text-sm focus:outline-none focus:border-[#39FF14] transition-all backdrop-blur-md"
+                        className="relative w-full bg-black/80 border border-gray-600 rounded-full py-4 px-12 text-sm text-white focus:outline-none focus:border-[#39FF14] focus:ring-1 focus:ring-[#39FF14] transition-all backdrop-blur-md placeholder:text-gray-500"
                     />
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#39FF14]" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#39FF14] z-10" />
                 </div>
             </motion.div>
         </div>
@@ -152,7 +161,7 @@ const Home: FC = () => {
                     onClick={() => setFilter(cat)}
                     className={`text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-full transition-all whitespace-nowrap border ${
                         filter === cat 
-                        ? 'bg-[#39FF14] text-black border-[#39FF14]' 
+                        ? 'bg-[#39FF14] text-black border-[#39FF14] shadow-[0_0_15px_#39FF14]' 
                         : 'bg-black text-gray-500 border-gray-800 hover:border-gray-500'
                     }`}
                 >
