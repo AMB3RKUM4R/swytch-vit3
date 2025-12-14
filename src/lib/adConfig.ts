@@ -39,5 +39,5 @@ export const AD_CONFIG = {
   },
 
    SMARTLINK_URL: "https://www.effectivegatecpm.com/zr9c8sky?key=a084b279a865ec19ee6cc852eebc49e0",
-   SOCIAL_BAR_URL: "https://pl28143915.effectivegatecpm.com/0b/21/8f/0b218f4041c8303b4d642ff46e521b61.js",
+   SOCIAL_BAR_URL: "https://pl28258693.effectivegatecpm.com/81/48/44/8148444126cbd5fb2d34a1bffb245a16.js",
 };
