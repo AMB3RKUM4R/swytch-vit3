@@ -1,6 +1,6 @@
 import { FC, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { Zap, Lock, Search, Crown, Gem, Play } from 'lucide-react'; 
+import { Zap, Search, Crown, Gem, Play } from 'lucide-react'; 
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { GAME_COST } from '@/lib/types'; 
@@ -77,13 +77,12 @@ const GAMES: GameDef[] = [
 ];
 
 const Home: FC = () => {
-  const { userId, isPETMember, spendCurrency } = usePlayer();
+  const { userId, spendCurrency } = usePlayer();
   const { setActiveModal, setShowMessage } = useModal();
   const [activeGame, setActiveGame] = useState<GameDef | null>(null);
   const [filter, setFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // NEW: State to track which specific game is currently loading
   const [launchingId, setLaunchingId] = useState<string | null>(null);
 
   const { scrollY } = useScroll();
@@ -97,33 +96,31 @@ const Home: FC = () => {
       return filtered;
   }, [filter, searchTerm]);
 
-  // UPDATED: Robust Launch Handler with Feedback
+  // FIXED: Launch Handler allows Gold OR Joules
   const handleLaunch = async (game: GameDef) => {
-      // Prevent double clicks
       if (launchingId) return;
 
       if (!userId) { setShowMessage("⚠️ CONNECT WALLET"); setActiveModal('auth'); return; }
-      if (!isPETMember) { setShowMessage("🔒 MEMBERSHIP REQUIRED"); setActiveModal('payment'); return; }
       
       try {
-        setLaunchingId(game.id); // Start Loading Spinner
+        setLaunchingId(game.id); 
         
-        // Artificial delay (optional) to ensure user sees the "Processing" state
         await new Promise(r => setTimeout(r, 400));
 
+        // Attempt payment (accepts Gold or Joules via PlayerContext)
         const paid = await spendCurrency(GAME_COST);
         if (paid) {
             setShowMessage(`✅ LOADING ${game.title}...`);
             setActiveGame(game);
         } else {
-            setShowMessage(`⚠️ NEED ${GAME_COST} JOULES`);
+            setShowMessage(`⚠️ NEED ${GAME_COST} JOULES OR GOLD`);
             setActiveModal('payment');
         }
       } catch (e) {
         console.error("Launch Error", e);
         setShowMessage("❌ SYSTEM ERROR");
       } finally {
-        setLaunchingId(null); // Stop Loading Spinner
+        setLaunchingId(null); 
       }
   };
 
@@ -245,8 +242,8 @@ const Home: FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
                         className="relative group cursor-pointer rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 hover:border-[#39FF14] transition-all duration-300 shadow-lg"
-                        // Keep parent click as fallback, but specific buttons handle their own logic
-                        onClick={() => !isPETMember && handleLaunch(game)}
+                        // FIXED: Click handler now works for everyone
+                        onClick={() => handleLaunch(game)}
                       >
                         {/* 1. GAME COVER */}
                         <div className="relative w-full overflow-hidden aspect-[3/4]">
@@ -255,29 +252,22 @@ const Home: FC = () => {
                               alt={game.title} 
                               className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" 
                             />
-                            
-                            {/* Overlay: Darkens on hover to pop text */}
                             <div className="absolute inset-0 bg-black/40 group-hover:bg-black/70 transition-all duration-300" />
                             
                             {/* 2. CENTER CONTENT - TEXT & ACTIONS */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center p-4 z-10 text-center">
                                 
-                                {/* A. Title */}
                                 <h3 className="text-2xl font-black text-white italic uppercase tracking-wider drop-shadow-md mb-1 scale-95 group-hover:scale-100 transition-transform duration-300">
                                   {game.title}
                                 </h3>
                                 
-                                {/* B. Category Pill */}
                                 <span className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-4">
                                   {game.cat}
                                 </span>
 
-                                {/* C. ACTION BUTTON / COST DISPLAY */}
+                                {/* FIXED: Play Button is now visible to ALL users */}
                                 <div className="mt-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                                  {/* Logic: If Member, show Cost to Play. If Not, show Locked reason. */}
-                                  {isPETMember ? (
                                      <div className="flex flex-col items-center gap-2">
-                                        {/* UPDATED BUTTON: Stops propagation, shows feedback */}
                                         <button 
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -304,20 +294,9 @@ const Home: FC = () => {
 
                                         <div className="flex items-center gap-1 text-[#39FF14] text-xs font-mono font-bold bg-black/60 px-2 py-1 rounded border border-[#39FF14]/30 backdrop-blur-md">
                                            <Zap className="w-3 h-3 fill-[#39FF14]" />
-                                           <span>{GAME_COST} JOULES</span>
+                                           <span>{GAME_COST} ENERGY</span>
                                         </div>
                                      </div>
-                                  ) : (
-                                     <div className="flex flex-col items-center gap-2">
-                                        <div className="bg-gray-800 border border-gray-600 text-gray-400 px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-md">
-                                           <Lock className="w-4 h-4" />
-                                           <span className="font-bold text-xs tracking-wider">LOCKED</span>
-                                        </div>
-                                        <span className="text-[9px] text-[#39FF14] uppercase tracking-widest font-bold bg-black/80 px-2 py-1 rounded">
-                                            MEMBERS ONLY
-                                        </span>
-                                     </div>
-                                  )}
                                 </div>
                             </div>
                         </div>
