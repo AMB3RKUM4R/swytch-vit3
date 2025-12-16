@@ -37,6 +37,4 @@ export const AD_CONFIG = {
     width: 160,
     height: 300
   },
-
-   SOCIAL_BAR_URL: "https://pl28258693.effectivegatecpm.com/81/48/44/8148444126cbd5fb2d34a1bffb245a16.js",
 };

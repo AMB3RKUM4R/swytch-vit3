@@ -21,7 +21,7 @@ const AdDisplayPanel: FC<AdPanelProps> = ({ variant = 'header', className = '' }
 
         const script = document.createElement('script');
         script.type = 'text/javascript';
-        script.src = AD_CONFIG.SOCIAL_BAR_URL; 
+        
         
         // Error handling for the script
         script.onerror = () => console.warn("Social Bar Ad blocked by browser/extension");
