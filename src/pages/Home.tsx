@@ -1,6 +1,6 @@
 import { FC, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { Zap, Search, Crown, Gem, Play } from 'lucide-react'; 
+import { Zap, Search, Crown, Gem, Play, Coins } from 'lucide-react'; // Added Coins icon
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { GAME_COST } from '@/lib/types'; 
@@ -77,7 +77,7 @@ const GAMES: GameDef[] = [
 ];
 
 const Home: FC = () => {
-  const { userId, spendCurrency } = usePlayer();
+  const { userId, spendCurrency, isPETMember } = usePlayer(); // Grab isPETMember to hide/show UI
   const { setActiveModal, setShowMessage } = useModal();
   const [activeGame, setActiveGame] = useState<GameDef | null>(null);
   const [filter, setFilter] = useState('ALL');
@@ -96,7 +96,6 @@ const Home: FC = () => {
       return filtered;
   }, [filter, searchTerm]);
 
-  // FIXED: Launch Handler allows Gold OR Joules
   const handleLaunch = async (game: GameDef) => {
       if (launchingId) return;
 
@@ -107,7 +106,7 @@ const Home: FC = () => {
         
         await new Promise(r => setTimeout(r, 400));
 
-        // Attempt payment (accepts Gold or Joules via PlayerContext)
+        // Attempt payment (PlayerContext handles Gold vs Joules priority)
         const paid = await spendCurrency(GAME_COST);
         if (paid) {
             setShowMessage(`✅ LOADING ${game.title}...`);
@@ -242,7 +241,6 @@ const Home: FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
                         className="relative group cursor-pointer rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 hover:border-[#39FF14] transition-all duration-300 shadow-lg"
-                        // FIXED: Click handler now works for everyone
                         onClick={() => handleLaunch(game)}
                       >
                         {/* 1. GAME COVER */}
@@ -265,7 +263,6 @@ const Home: FC = () => {
                                   {game.cat}
                                 </span>
 
-                                {/* FIXED: Play Button is now visible to ALL users */}
                                 <div className="mt-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                                      <div className="flex flex-col items-center gap-2">
                                         <button 
@@ -292,10 +289,26 @@ const Home: FC = () => {
                                            )}
                                         </button>
 
-                                        <div className="flex items-center gap-1 text-[#39FF14] text-xs font-mono font-bold bg-black/60 px-2 py-1 rounded border border-[#39FF14]/30 backdrop-blur-md">
-                                           <Zap className="w-3 h-3 fill-[#39FF14]" />
-                                           <span>{GAME_COST} ENERGY</span>
-                                        </div>
+                                        {/* UPDATED PRICE DISPLAY:
+                                          1. Hides completely if user is PET Member ("unlocked").
+                                          2. Shows BOTH Joules (Zap) and Gold (Coins) if not a member.
+                                        */}
+                                        {!isPETMember && (
+                                            <div className="flex items-center gap-3 text-[#39FF14] text-xs font-mono font-bold bg-black/60 px-3 py-1.5 rounded border border-[#39FF14]/30 backdrop-blur-md">
+                                                {/* Joules */}
+                                                <div className="flex items-center gap-1">
+                                                    <Zap className="w-3 h-3 fill-[#39FF14]" />
+                                                    <span>{GAME_COST}</span>
+                                                </div>
+                                                {/* Divider */}
+                                                <div className="w-px h-3 bg-[#39FF14]/50"></div>
+                                                {/* Gold */}
+                                                <div className="flex items-center gap-1 text-yellow-500">
+                                                    <Coins className="w-3 h-3 fill-yellow-500" />
+                                                    <span>{GAME_COST}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                      </div>
                                 </div>
                             </div>
