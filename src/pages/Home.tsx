@@ -1,6 +1,6 @@
 import { FC, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { Zap, Lock, Search, Crown, Gem, Play } from 'lucide-react'; // Added Play icon
+import { Zap, Lock, Search, Crown, Gem, Play } from 'lucide-react'; 
 import { useModal } from '@/components/context/ModalContext';
 import { usePlayer } from '@/components/context/PlayerContext';
 import { GAME_COST } from '@/lib/types'; 
@@ -82,6 +82,9 @@ const Home: FC = () => {
   const [activeGame, setActiveGame] = useState<GameDef | null>(null);
   const [filter, setFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // NEW: State to track which specific game is currently loading
+  const [launchingId, setLaunchingId] = useState<string | null>(null);
 
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 500], [0, 150]); 
@@ -94,17 +97,33 @@ const Home: FC = () => {
       return filtered;
   }, [filter, searchTerm]);
 
+  // UPDATED: Robust Launch Handler with Feedback
   const handleLaunch = async (game: GameDef) => {
+      // Prevent double clicks
+      if (launchingId) return;
+
       if (!userId) { setShowMessage("⚠️ CONNECT WALLET"); setActiveModal('auth'); return; }
       if (!isPETMember) { setShowMessage("🔒 MEMBERSHIP REQUIRED"); setActiveModal('payment'); return; }
       
-      const paid = await spendCurrency(GAME_COST);
-      if (paid) {
-          setShowMessage(`✅ LOADING ${game.title}...`);
-          setActiveGame(game);
-      } else {
-          setShowMessage(`⚠️ NEED ${GAME_COST} CREDITS`);
-          setActiveModal('payment');
+      try {
+        setLaunchingId(game.id); // Start Loading Spinner
+        
+        // Artificial delay (optional) to ensure user sees the "Processing" state
+        await new Promise(r => setTimeout(r, 400));
+
+        const paid = await spendCurrency(GAME_COST);
+        if (paid) {
+            setShowMessage(`✅ LOADING ${game.title}...`);
+            setActiveGame(game);
+        } else {
+            setShowMessage(`⚠️ NEED ${GAME_COST} JOULES`);
+            setActiveModal('payment');
+        }
+      } catch (e) {
+        console.error("Launch Error", e);
+        setShowMessage("❌ SYSTEM ERROR");
+      } finally {
+        setLaunchingId(null); // Stop Loading Spinner
       }
   };
 
@@ -226,7 +245,8 @@ const Home: FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
                         className="relative group cursor-pointer rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 hover:border-[#39FF14] transition-all duration-300 shadow-lg"
-                        onClick={() => handleLaunch(game)}
+                        // Keep parent click as fallback, but specific buttons handle their own logic
+                        onClick={() => !isPETMember && handleLaunch(game)}
                       >
                         {/* 1. GAME COVER */}
                         <div className="relative w-full overflow-hidden aspect-[3/4]">
@@ -257,10 +277,31 @@ const Home: FC = () => {
                                   {/* Logic: If Member, show Cost to Play. If Not, show Locked reason. */}
                                   {isPETMember ? (
                                      <div className="flex flex-col items-center gap-2">
-                                        <div className="bg-[#39FF14] hover:bg-white text-black px-4 py-2 rounded-full flex items-center gap-2 shadow-[0_0_15px_#39FF14] transition-colors">
-                                           <Play className="w-4 h-4 fill-black" />
-                                           <span className="font-black text-xs tracking-wider">PLAY NOW</span>
-                                        </div>
+                                        {/* UPDATED BUTTON: Stops propagation, shows feedback */}
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleLaunch(game);
+                                            }}
+                                            disabled={launchingId === game.id}
+                                            className={`
+                                                bg-[#39FF14] hover:bg-white text-black px-4 py-2 rounded-full flex items-center gap-2 shadow-[0_0_15px_#39FF14] transition-all
+                                                ${launchingId === game.id ? 'opacity-80 scale-95 cursor-wait' : 'hover:scale-105 active:scale-95'}
+                                            `}
+                                        >
+                                           {launchingId === game.id ? (
+                                              <>
+                                                 <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                                                 <span className="font-black text-xs tracking-wider">PROCESSING...</span>
+                                              </>
+                                           ) : (
+                                              <>
+                                                 <Play className="w-4 h-4 fill-black" />
+                                                 <span className="font-black text-xs tracking-wider">PLAY NOW</span>
+                                              </>
+                                           )}
+                                        </button>
+
                                         <div className="flex items-center gap-1 text-[#39FF14] text-xs font-mono font-bold bg-black/60 px-2 py-1 rounded border border-[#39FF14]/30 backdrop-blur-md">
                                            <Zap className="w-3 h-3 fill-[#39FF14]" />
                                            <span>{GAME_COST} JOULES</span>
